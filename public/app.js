@@ -564,6 +564,9 @@ async function selectStrategy(id) {
   const mod = await import(`/strategies/${S.strategyDesc.file}?t=${Date.now()}`);
   S.strategyMod = mod.default;
   S.params = resolveParams(S.strategyMod, {});
+  // Adopt the strategy's own risk envelope if it ships one, since stop width and
+  // sizing are part of the result, not incidental settings around it.
+  S.exec = { ...S.meta.defaults.exec, ...(S.strategyDesc.execDefaults || {}) };
   // Old sweep belongs to a different strategy — drop it rather than show numbers
   // that no longer describe anything on screen.
   S.sweep = null;

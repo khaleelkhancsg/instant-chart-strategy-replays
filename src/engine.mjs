@@ -18,6 +18,15 @@ export const EXIT = { SL: "SL", TP: "TP", FLIP: "FLIP", EOD: "EOD", TIME: "TIME"
 
 export const DEFAULT_EXEC = {
   contracts: 8,
+  // Sizing mode. 'fixed' trades a constant contract count, so the DOLLAR risk of
+  // a trade rises and falls with volatility. 'risk' instead holds dollar risk
+  // constant by sizing against the stop distance — which matters a great deal
+  // against a fixed drawdown limit, since MNQ's 5-min ATR ranges from ~6 points
+  // (2019) to ~28 (2026) and a fixed size that survives one era is either
+  // suicidal or inert in the other.
+  sizingMode: "fixed",      // 'fixed' | 'risk'
+  riskDollars: 400,         // target loss per stop-out when sizingMode = 'risk'
+  maxContracts: 10,         // firm cap; also bounds 'risk' sizing
   tickSize: 0.25,
   pointValue: 2.0,          // MNQ: $2 per index point per contract
   // Commission: 'per-contract' is what a broker actually charges. The legacy
@@ -64,15 +73,16 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
   const trades = [];
   let pos = 0, ep = 0, ei = 0, slDist = 0, tpDist = 0;
   let hiSeen = -Infinity, loSeen = Infinity;
+  let qCur = q;   // contracts for the OPEN trade (varies under 'risk' sizing)
 
   function close_(rawExit, reason, i) {
     // Slippage always works against the position on both legs.
     const exitPrice = pos === 1 ? rawExit - slip : rawExit + slip;
     const entryFill = pos === 1 ? ep + slip : ep - slip;
-    const gross = (exitPrice - entryFill) * pos * pv * q;
-    const fees = roundTripCost(x, q);
-    const mfe = (pos === 1 ? hiSeen - entryFill : entryFill - loSeen) * pv * q;
-    const mae = (pos === 1 ? loSeen - entryFill : entryFill - hiSeen) * pv * q;
+    const gross = (exitPrice - entryFill) * pos * pv * qCur;
+    const fees = roundTripCost(x, qCur);
+    const mfe = (pos === 1 ? hiSeen - entryFill : entryFill - loSeen) * pv * qCur;
+    const mae = (pos === 1 ? loSeen - entryFill : entryFill - hiSeen) * pv * qCur;
     trades.push({
       entryIdx: ei, exitIdx: i,
       entryTime: TS[ei], exitTime: TS[i],
@@ -86,7 +96,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       // The bracket that was live for this trade, so the chart can draw it.
       stop: pos === 1 ? ep - slDist : ep + slDist,
       target: pos === 1 ? ep + tpDist : ep - tpDist,
-      contracts: q,
+      contracts: qCur,
       pnl: gross - fees,
       gross, fees,
       mae: Math.min(0, mae), mfe: Math.max(0, mfe),
@@ -124,6 +134,10 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
         ep = O[i]; ei = i; pos = s;
         slDist = Math.max(a * x.slAtrMult, x.tickSize);
         tpDist = Math.max(a * x.tpAtrMult, x.tickSize);
+        // Size from the stop distance known at entry — never from anything later.
+        qCur = x.sizingMode === "risk"
+          ? Math.max(1, Math.min(Math.trunc(x.maxContracts), Math.round(x.riskDollars / (slDist * pv))))
+          : q;
         hiSeen = H[i]; loSeen = L[i];
       }
     }

@@ -53,5 +53,9 @@ export function describe(s) {
     timeframeMin: s.timeframeMin ?? 1,
     warmupBars: s.warmupBars ?? 300,
     params: s.params || [],
+    // A signal is only meaningful alongside the risk envelope it was tuned with —
+    // stop width, target, and sizing change the outcome more than the signal does.
+    // Strategies may therefore ship execution defaults, applied when selected.
+    execDefaults: s.execDefaults || null,
   };
 }
