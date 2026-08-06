@@ -1,0 +1,12 @@
+{
+  "name": "mnq-chart-lab",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Visual 30-day combine backtester for MNQ 1-minute data — canvas charts, live parameter tuning, prop-firm rule replay.",
+  "scripts": {
+    "prepare-data": "node prepare.mjs",
+    "start": "node server.mjs"
+  },
+  "engines": { "node": ">=18" }
+}

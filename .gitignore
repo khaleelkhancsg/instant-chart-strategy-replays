@@ -1,0 +1,13 @@
+# Derived data cache — rebuild with `node prepare.mjs`.
+# 54MB of typed arrays generated from a local CSV; no reason to version it.
+data/*.bin
+data/*.meta.json
+
+node_modules/
+
+# Local-only editor/tooling state
+.claude/settings.local.json
+
+# OS noise
+Thumbs.db
+.DS_Store

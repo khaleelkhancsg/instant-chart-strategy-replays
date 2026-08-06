@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MNQ Chart Lab — 30-day combine backtester</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div id="app">
+
+  <aside id="sidebar">
+    <div class="brand">
+      <span class="brand-mark"></span>
+      <div>
+        <div class="brand-name">MNQ Chart Lab</div>
+        <div class="brand-sub" id="datasetInfo">loading…</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="strategy">Strategy</label>
+      <select id="strategy"></select>
+      <div class="hint" id="strategyDesc"></div>
+    </div>
+
+    <div id="paramGroups"></div>
+
+    <div class="sidebar-actions">
+      <button id="reloadStrategies" class="ghost" title="Re-scan the strategies/ folder">Reload strategies</button>
+      <button id="resetParams" class="ghost">Reset defaults</button>
+    </div>
+  </aside>
+
+  <main id="main">
+    <header id="topbar">
+      <div class="winnav">
+        <button id="prevWin" title="Previous day (←)">◀</button>
+        <input type="date" id="startDate">
+        <button id="nextWin" title="Next day (→)">▶</button>
+        <span class="winrange" id="winRange"></span>
+      </div>
+
+      <div class="verdict" id="verdict"><span class="badge open">—</span></div>
+
+      <div class="topstats" id="topStats"></div>
+
+      <div class="perf" id="perf" title="Time to re-run the strategy and rules over this window, in your browser"></div>
+    </header>
+
+    <div id="navWrap">
+      <canvas id="nav"></canvas>
+      <div class="navbar-foot">
+        <span id="navSummary">Full-history sweep: every 30-day start, coloured by outcome. Click to jump.</span>
+        <button id="runSweep" class="primary">Run full sweep</button>
+      </div>
+    </div>
+
+    <div id="chartWrap"></div>
+
+    <div id="tooltip" class="tooltip hidden"></div>
+    <div id="toast" class="toast hidden"></div>
+  </main>
+</div>
+
+<script type="module" src="/app.js"></script>
+</body>
+</html>
