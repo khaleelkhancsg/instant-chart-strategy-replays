@@ -80,7 +80,12 @@ export function rsi(C, p = 14) {
   const eu = ema(up, p * 2 - 1), ed = ema(dn, p * 2 - 1);
   const out = new Float64Array(n);
   for (let i = 0; i < n; i++) {
-    const rs = ed[i] === 0 ? 100 : eu[i] / ed[i];
+    // Zero average loss is the degenerate case. Substituting rs = 100 (as the
+    // original engine did) yields 99.01 on an unbroken uptrend instead of the
+    // correct 100 — small, but it silently caps the indicator below its own
+    // range and would skew any "RSI > 99" style condition.
+    if (ed[i] === 0) { out[i] = eu[i] === 0 ? 50 : 100; continue; }
+    const rs = eu[i] / ed[i];
     out[i] = 100 - 100 / (1 + rs);
   }
   return out;

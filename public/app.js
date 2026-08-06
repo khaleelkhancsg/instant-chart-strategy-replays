@@ -641,4 +641,8 @@ async function boot() {
   });
 }
 
+// Debug handle: lets the console (and the verification scripts) inspect exactly
+// what the chart was handed, rather than re-deriving it and testing a copy.
+window.lab = { S, get chart() { return S.chart; }, get last() { return lastResult; }, recompute };
+
 boot().catch((e) => { console.error(e); toast(e.message, true); });

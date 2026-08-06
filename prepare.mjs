@@ -281,14 +281,51 @@ function main() {
   pieceStart.push(N);
   const nPieces = pieceStart.length - 1;
 
+  // Measure the calendar spread from both contracts quoted at the SAME MINUTE.
+  //
+  // The naive method — (first bar of the new contract) minus (last bar of the
+  // old one) — silently conflates the contract spread with however much price
+  // moved in between. That is harmless when the handover lands mid-session, but
+  // 4 of the 20 MNQ rolls land at the Sunday 22:00 reopen, where "in between" is
+  // a 49-hour weekend. Adjusting by that combined figure removes the spread AND
+  // erases a real weekend move from the series.
+  //
+  // Both contracts trade simultaneously for weeks before expiry, so the true
+  // spread is directly observable with no time-passage component at all.
+  function overlapSpread(symA, symB, handoverMs) {
+    const lookbackMs = 10 * 86400000;
+    let s = 0, e = n;
+    while (s < e) { const m = (s + e) >>> 1; if (ts[m] < handoverMs - lookbackMs) s = m + 1; else e = m; }
+    const a = new Map(), b = new Map();
+    for (let i = s; i < n && ts[i] <= handoverMs; i++) {
+      if (sym[i] === symA) a.set(ts[i], cl[i]);
+      else if (sym[i] === symB) b.set(ts[i], cl[i]);
+    }
+    let at = -1;
+    for (const t of a.keys()) if (t > at && b.has(t)) at = t;
+    return at < 0 ? null : { gap: b.get(at) - a.get(at), at, overlapBars: b.size };
+  }
+
   // Measure every gap BEFORE shifting anything. The adjustment mutates oC in
   // place, so reading a gap mid-pass would see an already-shifted next piece and
   // compound the correction at every rollover.
   const gaps = new Float64Array(Math.max(0, nPieces - 1));
+  const gapMeta = [];
   for (let pi = 0; pi < nPieces - 1; pi++) {
     const b = pieceStart[pi + 1];
-    gaps[pi] = oC[b] - oC[b - 1];
+    const naive = oC[b] - oC[b - 1];
+    const ov = overlapSpread(oS[b - 1], oS[b], oTs[b]);
+    gaps[pi] = ov ? ov.gap : naive;
+    gapMeta.push({
+      method: ov ? "overlap" : "close-to-close",
+      naive: Math.round(naive * 100) / 100,
+      measuredAt: ov ? new Date(ov.at).toISOString() : null,
+      overlapBars: ov ? ov.overlapBars : 0,
+      elapsedMin: ov ? Math.round((oTs[b] - ov.at) / 60000) : null,
+    });
   }
+  const noOverlap = gapMeta.filter((g) => g.method !== "overlap").length;
+  if (noOverlap) log(`  WARNING: ${noOverlap} rollover(s) had no overlapping quotes; fell back to close-to-close`);
 
   const rollovers = [];
   let cumAdj = 0;
@@ -301,6 +338,7 @@ function main() {
         from: syms.names[oS[e - 1]],
         to: syms.names[oS[pieceStart[pi + 1]]],
         gap: Math.round(gaps[pi] * 100) / 100,
+        ...gapMeta[pi],
       });
     }
     if (Math.abs(cumAdj) > 1e-9) {
@@ -317,13 +355,18 @@ function main() {
 
   // Sanity check: the adjustment should leave no seam bigger than a normal
   // weekend gap. Anything wilder means the dominance logic picked wrong.
-  let worstSeam = 0, worstAt = 0;
+  // A correct adjustment leaves no discontinuity that elapsed time cannot
+  // explain. Mid-session handovers (1 minute apart) must be ~flat; handovers at
+  // the Sunday reopen legitimately carry the weekend's real move, which we must
+  // NOT flatten — doing so would delete a move that actually happened.
+  let worstMid = 0, worstMidAt = 0;
   for (let pi = 1; pi < nPieces; pi++) {
     const i = pieceStart[pi];
+    const elapsedMin = (oTs[i] - oTs[i - 1]) / 60000;
     const jump = Math.abs(oC[i] - oC[i - 1]);
-    if (jump > worstSeam) { worstSeam = jump; worstAt = oTs[i]; }
+    if (elapsedMin <= 5 && jump > worstMid) { worstMid = jump; worstMidAt = oTs[i]; }
   }
-  log(`  worst residual seam at a rollover: ${worstSeam.toFixed(4)} pts ${worstSeam > 1 ? `(!! at ${new Date(worstAt).toISOString()})` : "(clean)"}`);
+  log(`  worst mid-session rollover seam: ${worstMid.toFixed(4)} pts ${worstMid > 1 ? `(!! at ${new Date(worstMidAt).toISOString()})` : "(clean)"}`);
 
   // ── CME trading-day index ──
   const tday = buildTradingDays(oTs, N);
@@ -353,7 +396,7 @@ function main() {
     start: new Date(oTs[0]).toISOString(), end: new Date(oTs[N - 1]).toISOString(),
     symbols: syms.names,
     rollovers,
-    worstResidualSeam: Math.round(worstSeam * 10000) / 10000,
+    worstMidSessionSeam: Math.round(worstMid * 10000) / 10000,
   };
   fs.writeFileSync(outPath.replace(/\.bin$/, ".meta.json"), JSON.stringify(meta, null, 2));
 

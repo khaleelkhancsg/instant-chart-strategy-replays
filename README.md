@@ -157,13 +157,100 @@ stats so it's never invisible.
   exactly the kind of artifact that manufactures a phantom edge)
 - CME trading-day index (17:00 ET, DST-aware) precomputed per bar
 
-Result: **1,770,275 bars**, 2021-07-15 → 2026-07-14, and a self-check confirming
-**0.0000 points residual seam** at all 20 rollovers.
+Result: **1,770,275 bars**, 2021-07-15 → 2026-07-14.
 
-> That check earns its keep. The first build reported a 233,233,920-point seam —
-> gaps were being measured against already-adjusted prices, compounding the
-> correction at every rollover. Silently wrong data is the worst failure mode
-> here, so `prepare.mjs` verifies its own output and prints the result.
+### How the roll spread is measured (this part is subtle)
+
+The obvious way to size a rollover gap — *(first bar of the new contract)* minus
+*(last bar of the old one)* — is wrong, and wrong in a way that hides itself.
+It measures the contract spread **plus whatever the market moved in between**.
+
+That is harmless when the handover lands mid-session (one minute apart), but
+**4 of the 20 MNQ rolls land at the Sunday 22:00 UTC reopen**, where "in between"
+is a 49-hour weekend. Adjusting by that combined number removes the spread *and
+erases a real weekend move from history*:
+
+| Roll | Naive gap | True spread | Move erased |
+|---|---|---|---|
+| 2026-06-14 (Sun) | 654pt | **294.75pt** | 359pt |
+| 2022-06-12 (Sun) | −118pt | **+28.75pt** | −147pt (*wrong sign*) |
+| 2022-03-13 (Sun) | 43.25pt | **−4.5pt** | 48pt |
+
+So the spread is measured from **both contracts quoted at the same minute**,
+which has no time-passage component at all. Every roll has 6,000–9,000
+overlapping bars available, and all 20 are measured at the exact handover minute.
+294.75pt is textbook cost-of-carry at 29,888 with ~4% rates; 654pt was not.
+
+`verify_rolls.mjs` proves the result independently: across every seam, the move
+the continuous series shows is confirmed by the **incoming** contract to within
+6.25pt worst case (typically <1pt). The residual moves are real market moves,
+correctly preserved rather than adjusted away.
+
+> Both halves of this were bugs at some point. The first build reported a
+> 233,233,920-point seam — gaps were measured against already-adjusted prices,
+> compounding at every rollover. Silently wrong data is the worst failure mode
+> here, which is why `prepare.mjs` verifies its own output and why `audit.mjs`
+> exists at all.
+
+Practical impact of the same-minute fix on the reference strategy: pass rate
+75.6% → 75.7%, net P&L $15,319 → $18,157. Small, because it touches one bar at
+4 of 20 rolls — but it is the difference between a series that reflects what
+happened and one that doesn't.
+
+---
+
+## Verification
+
+```bash
+npm run check          # test.mjs + audit.mjs
+npm run verify-rolls   # seam coherence against the incoming contract
+```
+
+**`test.mjs` — 67 tests, all passing.** The approach is to test optimised code
+against a naive reference that is obviously correct, and rule logic against
+numbers hand-traced on paper:
+
+- Indicators cross-checked against independent implementations — the O(n)
+  Donchian deque against O(n·p) brute force at 5 periods × 400 bars, ADX against
+  a from-scratch reimplementation, rolling stats against literal window means.
+- Engine invariants: entry fills at the *open* of the bar after the signal;
+  bar *i*'s own high/low provably cannot change whether it was entered;
+  stop-before-target inside one bar; gap-through-stop fills at the open; flip
+  closes and re-enters same-bar; P&L, fees, slippage, and MAE/MFE arithmetic.
+- Rules traced by hand: floor trailing, the breakeven lock, `<=` boundary
+  behaviour, soft lockouts that skip trades without failing, consistency, EOD vs
+  intraday trailing, and `sweepWindows` agreeing with `replayWindow` at every
+  start it reports.
+- Real data: the final contract piece matches the source CSV **exactly** across
+  20,000 bars (it takes zero adjustment, so any parse or pack error would show);
+  prices stay on the 0.25 tick grid; resampling conserves volume and true
+  extremes.
+
+**`audit.mjs` — data artifact sweep.** OHLC integrity, timestamp ordering and
+duplicates, rollover seams, the largest jumps classified session-gap vs
+intra-session, tick-grid adherence, and volume sanity. Current verdict: *no
+artifacts found*.
+
+**Chart rendering** (browser console, `window.lab`): trade markers land on the
+exact bar of their entry time (0ms offset over 123 trades); pixel-column
+bucketing preserves the true high and low exactly; indicator overlays align to
+their own timeframe bucket (0 misaligned of 6,877); skipped trades are excluded
+from the equity curve.
+
+**Browser/server equivalence:** 12 randomised configs — timeframes 1/3/5/15m,
+ADX 10–42, 1–10 contracts, both trailing modes, window starts across 4 years,
+trade counts from 2 to 144 — produced **identical** outcome, net P&L, and trade
+count from the in-page preview and the server's independent full-history sweep.
+
+### Two things the data legitimately contains
+
+Neither is a defect, both will look like one if you don't expect them:
+
+1. **3,752 moves over 40pt inside a single 1-minute bar.** Real — they cluster on
+   CPI and FOMC print times. The largest, 438.5pt, is 2025-04-09 17:19 UTC.
+2. **No bar exists at 17:00 ET.** CME halts 17:00–18:00 ET daily, so the first
+   bar of every session is 18:00 ET — verified across 600/600 boundaries, holding
+   through both EDT and EST.
 
 ---
 
