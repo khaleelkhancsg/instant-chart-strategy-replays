@@ -148,8 +148,14 @@ stats so it's never invisible.
 
 ## Data pipeline
 
-`prepare.mjs` turns the 317MB / 2.87M-row Databento CSV into `data/mnq_1m.bin`:
+`prepare.mjs` turns the Databento CSV batches into `data/mnq_1m.bin`:
 
+- **Multiple source files merged.** Databento delivers overlapping batches; list
+  them all and they are combined into one series, deduplicated on
+  (timestamp, symbol) by a linear merge of the sorted runs. Overlapping rows are
+  compared field-by-field and the build **aborts** if any disagree, rather than
+  silently picking a winner. Across the current two files, 2,624,027 overlapping
+  rows agreed exactly.
 - Parsed straight from a `Buffer` — no giant intermediate string, no per-row objects
 - Calendar-spread rows (`MNQU1-MNQZ1`) dropped
 - Dominant contract per day chosen by volume → single continuous front-month
@@ -157,7 +163,18 @@ stats so it's never invisible.
   exactly the kind of artifact that manufactures a phantom edge)
 - CME trading-day index (17:00 ET, DST-aware) precomputed per bar
 
-Result: **1,770,275 bars**, 2021-07-15 → 2026-07-14.
+Result: **2,534,706 bars**, 2019-05-05 → 2026-07-14 — MNQ's entire history, since
+the contract launched in May 2019.
+
+```bash
+node prepare.mjs                       # uses the default source list
+node prepare.mjs --in a.csv --in b.csv # or name them explicitly
+```
+
+> Early MNQ is complete but thin: 2019 averages 1,335 bars/session (the same
+> coverage as today) at **137 contracts/bar versus 1,148 in 2025**. The bars are
+> real and the session coverage is full, but fills in 2019 would have been harder
+> than the backtest's slippage setting assumes.
 
 ### How the roll spread is measured (this part is subtle)
 
@@ -260,21 +277,29 @@ Neither is a defect, both will look like one if you don't expect them:
 `CHALLENGE_STRATEGY_SPEC.md`: 5-min Donchian-30 breakout, ADX ≥ 25, 2×ATR stop,
 12×ATR target (6:1), 8 contracts.
 
-Measured here across 1,796 windows, against what the spec documents:
+Measured across **2,598 windows / 7.2 years**: **71.9% pass**, 20.4% breach,
+7.7% unresolved, median 13 days to pass. The spec documents ~73% — close, and
+that agreement now holds over 2.2 years the strategy was never tuned on.
 
-| ADX min | Profit factor | Pass rate | Spec says |
-|---|---|---|---|
-| 25 (neutral EV) | 1.005 | **75.6%** | PF ~1.01, ~73% |
-| 32 (positive EV) | 1.058 | **67.3%** | PF ~1.06, ~69% |
+Its per-trade edge over the full history is **profit factor 0.9917, −$3.22/trade**
+— slightly negative. That is not a contradiction: this book is explicitly a
+neutral-EV design, and 0.99 versus the spec's ~1.01 is noise around zero. It
+passes because of the challenge *structure* (short window, stop-on-pass, lenient
+EOD trailing, tight breaker), not because of an edge. Set ADX minimum to 32 for
+the positive-EV variant.
 
-Close agreement on *both* variants — and it independently reproduces the central
-trade-off, that loosening the ADX gate raises pass rate while lowering per-trade
-edge. Reassuring given this build uses stricter per-contract commission,
-clock-aligned bars, and entry-time window membership.
+**The 5-year figure was optimistic.** On 2021-07 → 2026-07 alone the same config
+showed 75.7% pass and +$18,157; adding MNQ's first two years takes it to 71.9%
+and −$33,127. More history did not flatter it, which is the point of having it.
 
-Its profit factor is ~1.0 by design. It passes because of the challenge
-*structure* (short window, stop-on-pass, lenient EOD trailing, tight breaker), not
-a strong edge.
+Pass rate by year — the widest spread in the project, and the strongest argument
+that regime dominates everything else:
+
+| 2019 | 2020 | 2021 | 2022 | 2023 | 2024 | 2025 | 2026 |
+|---|---|---|---|---|---|---|---|
+| 48.5% | 63.4% | **89.9%** | 70.4% | 73.4% | 82.8% | 75.9% | 52.1% |
+
+(2019 and 2026 are partial years.)
 
 One mechanic the tool surfaces that's easy to miss: median net per passing window
 is ~$6,600, not ~$3,000. The consistency rule is why. A single 12×ATR winner on 8

@@ -24,7 +24,14 @@ import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
-const DEFAULT_IN = "C:\\Users\\khale\\Desktop\\Backtesting\\data\\glbx-mdp3-20210715-20260714.ohlcv-1m.csv";
+// Databento delivers MNQ history in overlapping batches. Listing several here
+// merges them into one continuous series; overlapping rows are deduplicated on
+// (timestamp, symbol). Verified byte-identical where these two overlap, so
+// either copy of a shared row is equally valid.
+const DEFAULT_IN = [
+  "C:\\Users\\khale\\Desktop\\Backtesting\\MNQ CSV\\glbx-mdp3-20100606-20260323.ohlcv-1m.csv",
+  "C:\\Users\\khale\\Desktop\\Backtesting\\MNQ CSV\\glbx-mdp3-20210715-20260714.ohlcv-1m.csv",
+];
 const DEFAULT_OUT = path.join(HERE, "data", "mnq_1m.bin");
 
 // ─────────────────────────── byte-level parsing ───────────────────────────
@@ -137,43 +144,38 @@ function arg(name, fallback) {
   return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
 }
 
+// `--in a.csv --in b.csv` may be repeated; falls back to DEFAULT_IN.
+function argList(name, fallback) {
+  const out = [];
+  for (let i = 0; i < process.argv.length; i++) {
+    if (process.argv[i] === name && process.argv[i + 1]) out.push(process.argv[i + 1]);
+  }
+  return out.length ? out : fallback;
+}
+
 function log(msg) { process.stdout.write(msg + "\n"); }
 
-function main() {
-  const inPath = arg("--in", DEFAULT_IN);
-  const outPath = arg("--out", DEFAULT_OUT);
-
-  if (!fs.existsSync(inPath)) {
-    console.error(`Input CSV not found: ${inPath}`);
-    process.exit(1);
-  }
-  fs.mkdirSync(path.dirname(outPath), { recursive: true });
-
+// ─────────────────────── parse one CSV into typed arrays ───────────────────────
+// `syms` is shared across files so a symbol id means the same contract everywhere.
+function parseFile(inPath, syms) {
   const t0 = Date.now();
-  log(`Reading ${inPath} ...`);
+  log(`Reading ${path.basename(inPath)} ...`);
   const buf = fs.readFileSync(inPath);
-  log(`  ${(buf.length / 1048576).toFixed(1)} MB in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+  log(`  ${(buf.length / 1048576).toFixed(1)} MB`);
 
-  // Header: locate the columns we need by name.
   let hEnd = buf.indexOf(CH_NL);
-  if (hEnd < 0) throw new Error("CSV has no newline — is this really a CSV?");
+  if (hEnd < 0) throw new Error(`${inPath}: no newline — is this really a CSV?`);
   const header = buf.toString("latin1", 0, hEnd).replace(/\r$/, "").split(",").map((h) => h.trim().toLowerCase());
   const col = (...names) => {
-    for (const nm of names) {
-      const i = header.findIndex((h) => h === nm);
-      if (i >= 0) return i;
-    }
-    for (const nm of names) {
-      const i = header.findIndex((h) => h.includes(nm));
-      if (i >= 0) return i;
-    }
+    for (const nm of names) { const i = header.findIndex((h) => h === nm); if (i >= 0) return i; }
+    for (const nm of names) { const i = header.findIndex((h) => h.includes(nm)); if (i >= 0) return i; }
     return -1;
   };
   const iTs = col("ts_event", "timestamp", "date", "time");
   const iO = col("open"), iH = col("high"), iL = col("low"), iC = col("close");
   const iV = col("volume", "vol"), iSym = col("symbol");
   if ([iTs, iO, iH, iL, iC].some((x) => x < 0)) {
-    throw new Error(`CSV missing a required column. Header was: ${header.join(",")}`);
+    throw new Error(`${inPath} missing a required column. Header was: ${header.join(",")}`);
   }
   const maxCol = Math.max(iTs, iO, iH, iL, iC, iV, iSym);
 
@@ -185,17 +187,15 @@ function main() {
     if (nl - p > 1) rows++;
     p = nl + 1;
   }
-  log(`  ${rows.toLocaleString()} data rows`);
 
   const ts = new Float64Array(rows);
   const op = new Float32Array(rows), hi = new Float32Array(rows);
   const lo = new Float32Array(rows), cl = new Float32Array(rows);
   const vol = new Float32Array(rows);
   const sym = new Int16Array(rows);
-  const syms = new SymbolTable();
-  const fields = new Int32Array((maxCol + 2) * 2); // [start,end] per column
+  const fields = new Int32Array((maxCol + 2) * 2);
 
-  let n = 0, skippedSpread = 0, skippedBad = 0;
+  let n = 0, skippedSpread = 0, skippedBad = 0, outOfOrder = 0;
   for (let p = hEnd + 1; p < buf.length;) {
     let nl = buf.indexOf(CH_NL, p);
     if (nl < 0) nl = buf.length;
@@ -203,7 +203,6 @@ function main() {
     if (end > p && buf[end - 1] === CH_CR) end--;
     if (end <= p) { p = nl + 1; continue; }
 
-    // Split the line into column ranges.
     let f = 0, fs_ = p;
     for (let i = p; i <= end && f <= maxCol; i++) {
       if (i === end || buf[i] === CH_COMMA) {
@@ -226,6 +225,7 @@ function main() {
 
     const t = parseTs(buf, fields[iTs * 2], fields[iTs * 2 + 1]);
     if (!Number.isFinite(t)) { skippedBad++; continue; }
+    if (n > 0 && t < ts[n - 1]) outOfOrder++;
     ts[n] = t;
     op[n] = parseNum(buf, fields[iO * 2], fields[iO * 2 + 1]);
     hi[n] = parseNum(buf, fields[iH * 2], fields[iH * 2 + 1]);
@@ -234,7 +234,104 @@ function main() {
     vol[n] = iV >= 0 ? parseNum(buf, fields[iV * 2], fields[iV * 2 + 1]) : 0;
     n++;
   }
-  log(`  parsed ${n.toLocaleString()} outright rows (${skippedSpread.toLocaleString()} spreads, ${skippedBad} unparseable) in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+
+  log(`  ${n.toLocaleString()} outright rows (${skippedSpread.toLocaleString()} spreads, ${skippedBad} unparseable) in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+  log(`  ${new Date(ts[0]).toISOString().slice(0, 16)} -> ${new Date(ts[n - 1]).toISOString().slice(0, 16)}`);
+  // The merge below is a linear merge of sorted runs, so a file that is not
+  // already timestamp-ordered would silently produce a scrambled series.
+  if (outOfOrder) throw new Error(`${inPath}: ${outOfOrder} rows are out of timestamp order; the merge requires sorted input`);
+
+  return { ts, op, hi, lo, cl, vol, sym, n, path: inPath };
+}
+
+// ─────────────────────── merge sorted files, dedupe ───────────────────────
+// Linear k-way merge on timestamp. At each distinct timestamp every contributing
+// file is drained, and a (timestamp, symbol) pair is emitted only once — earlier
+// files in the list win ties. Overlapping rows were verified byte-identical, so
+// which copy wins does not matter; the check below re-confirms that per run.
+function mergeFiles(files) {
+  const total = files.reduce((a, f) => a + f.n, 0);
+  const ts = new Float64Array(total), op = new Float32Array(total), hi = new Float32Array(total);
+  const lo = new Float32Array(total), cl = new Float32Array(total), vol = new Float32Array(total);
+  const sym = new Int16Array(total);
+
+  const cur = new Array(files.length).fill(0);
+  let n = 0, dupes = 0, conflicts = 0;
+  let firstConflict = null;
+  const seen = new Map(); // symbol id -> index emitted at the current timestamp
+
+  for (;;) {
+    let t = Infinity;
+    for (let k = 0; k < files.length; k++) {
+      if (cur[k] < files[k].n && files[k].ts[cur[k]] < t) t = files[k].ts[cur[k]];
+    }
+    if (t === Infinity) break;
+
+    seen.clear();
+    for (let k = 0; k < files.length; k++) {
+      const f = files[k];
+      while (cur[k] < f.n && f.ts[cur[k]] === t) {
+        const i = cur[k]++;
+        const s = f.sym[i];
+        const prev = seen.get(s);
+        if (prev !== undefined) {
+          dupes++;
+          // Same bar from two batches: they should agree exactly.
+          if (op[prev] !== f.op[i] || hi[prev] !== f.hi[i] || lo[prev] !== f.lo[i] ||
+              cl[prev] !== f.cl[i] || vol[prev] !== f.vol[i]) {
+            conflicts++;
+            if (!firstConflict) firstConflict = { t, s, kept: [op[prev], hi[prev], lo[prev], cl[prev], vol[prev]], seen: [f.op[i], f.hi[i], f.lo[i], f.cl[i], f.vol[i]] };
+          }
+          continue;
+        }
+        seen.set(s, n);
+        ts[n] = t; op[n] = f.op[i]; hi[n] = f.hi[i]; lo[n] = f.lo[i];
+        cl[n] = f.cl[i]; vol[n] = f.vol[i]; sym[n] = s;
+        n++;
+      }
+    }
+  }
+
+  return { ts, op, hi, lo, cl, vol, sym, n, dupes, conflicts, firstConflict };
+}
+
+function main() {
+  const inPaths = argList("--in", DEFAULT_IN);
+  const outPath = arg("--out", DEFAULT_OUT);
+
+  const missing = inPaths.filter((p) => !fs.existsSync(p));
+  if (missing.length) {
+    console.error(`Input CSV not found:\n  ${missing.join("\n  ")}`);
+    process.exit(1);
+  }
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
+
+  const t0 = Date.now();
+  const syms = new SymbolTable();          // shared, so ids mean the same thing across files
+  const parsed = inPaths.map((p) => parseFile(p, syms));
+
+  let ts, op, hi, lo, cl, vol, sym, n;
+  if (parsed.length === 1) {
+    ({ ts, op, hi, lo, cl, vol, sym, n } = parsed[0]);
+  } else {
+    log(`\nMerging ${parsed.length} files ...`);
+    const m = mergeFiles(parsed);
+    ({ ts, op, hi, lo, cl, vol, sym, n } = m);
+    log(`  ${n.toLocaleString()} unique rows (${m.dupes.toLocaleString()} overlapping rows deduplicated)`);
+    if (m.conflicts) {
+      // Same (timestamp, symbol) with different OHLCV in two batches means one
+      // of them is revised or corrupt. Refuse to silently pick a winner.
+      const c = m.firstConflict;
+      log(`  !! ${m.conflicts.toLocaleString()} overlapping rows DISAGREE between files`);
+      log(`     first at ${new Date(c.t).toISOString()} ${syms.names[c.s]}`);
+      log(`     kept ${c.kept.join(",")}  vs  ${c.seen.join(",")}`);
+      throw new Error("Overlapping rows disagree — resolve before trusting the merge");
+    }
+    log(`  all overlapping rows agreed exactly`);
+  }
+
+  log(`\n${n.toLocaleString()} outright rows total in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+  log(`  ${new Date(ts[0]).toISOString().slice(0, 16)} -> ${new Date(ts[n - 1]).toISOString().slice(0, 16)}`);
   log(`  symbols: ${syms.names.length} (${syms.names.slice(0, 6).join(", ")}${syms.names.length > 6 ? ", ..." : ""})`);
 
   // ── dominant contract per UTC day, by volume ──
@@ -366,7 +463,10 @@ function main() {
     const jump = Math.abs(oC[i] - oC[i - 1]);
     if (elapsedMin <= 5 && jump > worstMid) { worstMid = jump; worstMidAt = oTs[i]; }
   }
-  log(`  worst mid-session rollover seam: ${worstMid.toFixed(4)} pts ${worstMid > 1 ? `(!! at ${new Date(worstMidAt).toISOString()})` : "(clean)"}`);
+  // A mid-session seam is the outgoing contract's own 1-minute move across the
+  // handover — a real move that must survive, not be flattened. Only a jump too
+  // large to be one minute of trading indicates the spread was mis-measured.
+  log(`  worst mid-session rollover seam: ${worstMid.toFixed(2)} pts (a 1-min market move)${worstMid > 30 ? ` !! implausibly large, at ${new Date(worstMidAt).toISOString()}` : ""}`);
 
   // ── CME trading-day index ──
   const tday = buildTradingDays(oTs, N);
@@ -389,7 +489,8 @@ function main() {
   fs.writeFileSync(outPath, out);
 
   const meta = {
-    source: inPath,
+    source: inPaths[inPaths.length - 1],   // kept for tools that expect one path
+    sources: inPaths,
     builtAt: new Date().toISOString(),
     bars: N,
     startMs: oTs[0], endMs: oTs[N - 1],
