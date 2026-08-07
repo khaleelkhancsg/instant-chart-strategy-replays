@@ -10,7 +10,7 @@ import { ema, sma, atr, adx, rsi, donchian, rollingMeanStd, trueRange, efficienc
 import { buildFilterContext, applyFilters, countSurviving } from "./src/filters.mjs";
 import { resample, sliceBars, indexAtOrAfter, indexAtOrBefore } from "./src/resample.mjs";
 import { runBrackets, tradeStats, EXIT } from "./src/engine.mjs";
-import { replayWindow, sweepWindows, simulateFunded, sweepFunded, OUTCOME } from "./src/challenge.mjs";
+import { replayWindow, sweepWindows, simulateFunded, sweepFunded, hasOverlappingTrades, OUTCOME } from "./src/challenge.mjs";
 import { loadBars, packBars } from "./src/data.mjs";
 
 let pass = 0, fail = 0;
@@ -777,6 +777,31 @@ t("minCushion equals the smallest observed equity-to-floor distance", () => {
   let worst = Infinity;
   for (const e of r.events) if (e.taken) worst = Math.min(worst, e.cum - e.floor);
   close(r.stats.minCushion, worst, 1e-9);
+});
+
+t("overlapping trades are detected, because the replay cannot score them", () => {
+  const seq = tr([100, 100, 100]);
+  eq(hasOverlappingTrades(seq), false, "one-at-a-time trades do not overlap:");
+  // Two books merged: the same trades duplicated, so every pair overlaps.
+  eq(hasOverlappingTrades([...seq, ...seq]), true, "a pooled list does overlap:");
+});
+
+t("splitting one book into copies CHANGES the outcome — the reason pooling is unsafe", () => {
+  // Documents the artefact rather than hiding it. Seven $700 losing days at
+  // 1 unit versus the same days split into seven 1/7 pieces: the daily rules
+  // truncate the split version, which is why a naive pool inflates pass rates.
+  const big = tr([-700, -700, -700], { sameDay: true });
+  const split = [];
+  for (const t2 of big) for (let k = 0; k < 7; k++) split.push({ ...t2, pnl: t2.pnl / 7 });
+  split.sort((a, b) => a.entryTime - b.entryTime);
+
+  const R = { ...BASE, circuitBreaker: 150, trailingDD: 999999 };
+  const whole = replayWindow(big, START, R);
+  const pieces = replayWindow(split, START, R);
+  if (Math.abs(whole.stats.netPnl - pieces.stats.netPnl) < 1e-9) {
+    throw new Error("expected the split version to diverge — if it no longer does, the note in challenge.mjs is stale");
+  }
+  eq(hasOverlappingTrades(split), true, "and the split list is detectably overlapping:");
 });
 
 t("sweepWindows agrees with replayWindow at every start it reports", () => {

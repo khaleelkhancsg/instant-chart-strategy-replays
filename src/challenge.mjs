@@ -54,6 +54,30 @@ export function resolveRules(r = {}) {
 
 export const OUTCOME = { PASS: "PASS", FAIL: "FAIL", OPEN: "IN_PROGRESS" };
 
+/**
+ * IMPORTANT LIMITATION — this replay assumes trades are SEQUENTIAL.
+ *
+ * The daily rules credit a trade's P&L at its position in entry order, and treat
+ * a soft-stopped trade as never having happened. Both are correct when only one
+ * position is ever open, which is what `runBrackets` produces.
+ *
+ * They are NOT correct for a merged list where positions overlap. Splitting one
+ * book into N smaller copies lets the daily rules truncate what is really a
+ * single position: a 7-lot loss that trips a $150 breaker outright becomes seven
+ * $100 losses of which only two are taken. Measured, that turns a 32.2% pass rate
+ * into 81.0% purely by relabelling the same trades — an artefact, not
+ * diversification.
+ *
+ * So: check overlap before replaying any pooled trade list.
+ */
+export function hasOverlappingTrades(trades) {
+  const s = trades.slice().sort((a, b) => a.entryTime - b.entryTime);
+  for (let i = 1; i < s.length; i++) {
+    if (s[i].entryTime < s[i - 1].exitTime) return true;
+  }
+  return false;
+}
+
 // Locate the first trade with entryTime >= startMs. Trades must be entry-sorted.
 function firstTradeAt(trades, startMs) {
   let lo = 0, hi = trades.length;
