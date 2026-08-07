@@ -60,9 +60,9 @@ const RULES_PARAMS = [
     hint: "Your own tighter stop. The single biggest pass-rate lever in this project's testing. 0 = off." },
   { key: "consistencyPct", label: "Consistency cap %", type: "int", min: 0, max: 100, step: 5, default: 50,
     hint: "No single day may exceed this share of total profit." },
-  { key: "consistencyGatesPass", label: "Consistency blocks the pass", type: "select", default: "off",
-    options: [["off", "No — pass on target"], ["on", "Yes — must dilute first"]],
-    hint: "If it blocks, one oversized winning day forces you to keep trading to dilute it. Measured here: 95% of passing windows reach the target first and then trade ~10 more times." },
+  { key: "consistencyGatesPass", label: "Consistency applies to", type: "select", default: "off",
+    options: [["off", "Payout only — pass on target"], ["on", "The evaluation too"]],
+    hint: "Your firm's spec says 'at payout', so it should not block the pass. Switching it on answers a different question — days to become WITHDRAWABLE, not days to pass — since one oversized day must be diluted before you can take money out. That costs ~10 extra trades and doubles median days (6 → 13)." },
   { key: "minTradingDays", label: "Min trading days", type: "int", min: 0, max: 30, step: 1, default: 0 },
   { key: "windowDays", label: "Window length (days)", type: "int", min: 5, max: 90, step: 1, default: 30 },
 ];

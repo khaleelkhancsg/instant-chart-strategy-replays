@@ -40,14 +40,25 @@ evaluation is over the moment you hit the target or breach. A dashed marker show
 where, everything after it is dimmed, and trades in the dead region are drawn
 faded because they never happened.
 
-Related and easy to miss: the **consistency rule can block a pass**. If it gates
-the evaluation, one oversized winning day forces you to keep trading to dilute it
-below the cap — measured here, 95% of passing windows reach the target *first* and
-then trade ~10 more times, which both delays the pass and re-exposes the account.
-The `Consistency blocks the pass` control chooses; the default is off (pass on
-target), and a pass that would violate the cap is flagged with ⚠ rather than
-silently accepted. Turning it on drops pass rate 78.8% → 71.9% and doubles the
-median time to pass from 6 days to 13.
+Related and easy to miss: **when does the consistency rule bite?** The firm spec
+says "no single day may exceed 50% of total profit *at payout*" — a payout rule,
+not an evaluation rule. So the combine ends at the target, and consistency then
+governs whether you can withdraw.
+
+The `Consistency applies to` control switches between the two, and they answer
+genuinely different questions:
+
+| | ends when | median | pass rate |
+|---|---|---|---|
+| Payout only *(default, matches the spec)* | target reached | **6 days** | 78.8% |
+| The evaluation too | best day diluted below 50% | **13 days** | 71.9% |
+
+The second is not wrong — it is the honest answer to *"how long until the money is
+actually withdrawable?"*, because a lone oversized winning day has to be diluted
+before you can take anything out. Measured here, 95% of passing windows reach the
+target first and would then need ~10 more trades to become payout-eligible, which
+re-exposes the account to breach in the meantime. A pass carrying that problem is
+flagged ⚠ on the consistency stat rather than silently accepted.
 
 **Navigator** — every possible 30-day start across the 5 years, coloured by
 outcome. Click to jump. This is the difference between "this window passed" and
