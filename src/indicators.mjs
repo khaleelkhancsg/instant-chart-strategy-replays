@@ -157,6 +157,88 @@ export function vwap(H, L, C, V, dayIdx) {
   return out;
 }
 
+// Kaufman efficiency ratio: net movement divided by total path length, over p
+// bars. 1.0 = a straight line, ~0 = pure chop. The cleanest single number for
+// "is this market going anywhere", and unlike ADX it is bounded and needs no
+// smoothing period of its own.
+export function efficiencyRatio(C, p = 20) {
+  const n = C.length;
+  const out = new Float64Array(n).fill(NaN);
+  let path = 0;
+  for (let i = 1; i < n; i++) {
+    path += Math.abs(C[i] - C[i - 1]);
+    if (i > p) path -= Math.abs(C[i - p] - C[i - p - 1]);
+    if (i >= p) out[i] = path === 0 ? 0 : Math.abs(C[i] - C[i - p]) / path;
+  }
+  return out;
+}
+
+// Choppiness index: 100 when range-bound, ~0 when trending. Built from true
+// range against the total high-low span, so it reads volatility structure rather
+// than direction.
+export function choppiness(H, L, C, p = 14) {
+  const n = C.length;
+  const tr = trueRange(H, L, C);
+  const out = new Float64Array(n).fill(NaN);
+  const { high: hh, low: ll } = rollingMinMax(H, L, p);
+  let sum = 0;
+  const logP = Math.log10(p);
+  for (let i = 0; i < n; i++) {
+    sum += tr[i];
+    if (i >= p) sum -= tr[i - p];
+    if (i >= p - 1) {
+      const span = hh[i] - ll[i];
+      out[i] = span > 0 ? (100 * Math.log10(sum / span)) / logP : 100;
+    }
+  }
+  return out;
+}
+
+// Commodity Channel Index — deviation from a typical-price mean, scaled by mean
+// absolute deviation. Unbounded, so extremes are genuinely rare.
+export function cci(H, L, C, p = 20) {
+  const n = C.length;
+  const tp = new Float64Array(n);
+  for (let i = 0; i < n; i++) tp[i] = (H[i] + L[i] + C[i]) / 3;
+  const m = sma(tp, p);
+  const out = new Float64Array(n).fill(NaN);
+  for (let i = p - 1; i < n; i++) {
+    let mad = 0;
+    for (let j = i - p + 1; j <= i; j++) mad += Math.abs(tp[j] - m[i]);
+    mad /= p;
+    out[i] = mad === 0 ? 0 : (tp[i] - m[i]) / (0.015 * mad);
+  }
+  return out;
+}
+
+// Aroon oscillator: how recently the window's high was made versus its low.
+// +100 = the high is the newest bar, -100 = the low is. Measures trend AGE,
+// which none of the other indicators here capture.
+export function aroon(H, L, p = 25) {
+  const n = H.length;
+  const out = new Float64Array(n).fill(NaN);
+  for (let i = p; i < n; i++) {
+    let hi = -Infinity, lo = Infinity, hIdx = i, lIdx = i;
+    for (let j = i - p; j <= i; j++) {
+      if (H[j] >= hi) { hi = H[j]; hIdx = j; }
+      if (L[j] <= lo) { lo = L[j]; lIdx = j; }
+    }
+    out[i] = ((p - (i - hIdx)) / p) * 100 - ((p - (i - lIdx)) / p) * 100;
+  }
+  return out;
+}
+
+// Bollinger bandwidth as a fraction of the mid — the standard "squeeze" gauge.
+export function bandwidth(C, p = 20, mult = 2) {
+  const b = bollinger(C, p, mult);
+  const n = C.length;
+  const out = new Float64Array(n).fill(NaN);
+  for (let i = 0; i < n; i++) {
+    if (b.mid[i] > 0) out[i] = (b.upper[i] - b.lower[i]) / b.mid[i];
+  }
+  return out;
+}
+
 export function macd(C, fast = 12, slow = 26, signal = 9) {
   const ef = ema(C, fast), es = ema(C, slow);
   const line = new Float64Array(C.length);
