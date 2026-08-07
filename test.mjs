@@ -8,6 +8,7 @@
 import fs from "node:fs";
 import { ema, sma, atr, adx, rsi, donchian, rollingMeanStd, trueRange, efficiencyRatio } from "./src/indicators.mjs";
 import { buildFilterContext, applyFilters, countSurviving } from "./src/filters.mjs";
+import { replayPortfolio } from "./src/portfolio.mjs";
 import { resample, sliceBars, indexAtOrAfter, indexAtOrBefore } from "./src/resample.mjs";
 import { runBrackets, tradeStats, EXIT } from "./src/engine.mjs";
 import { replayWindow, sweepWindows, simulateFunded, sweepFunded, hasOverlappingTrades, OUTCOME } from "./src/challenge.mjs";
@@ -905,6 +906,67 @@ t("sweepFunded aggregates runs consistently", () => {
   close(sw.summary.meanTotalPaid, sw.runs.reduce((a, r) => a + r.netTotal, 0) / sw.runs.length, 1e-9);
   const paid = sw.runs.filter((r) => r.payouts.length).length;
   close(sw.summary.reachedPayout, (paid / sw.runs.length) * 100, 1e-9);
+});
+
+// ══════════════════════════════ 4d. PORTFOLIO REPLAY ══════════════════════════════
+section("4d. Multi-book portfolio replay");
+
+t("one book reproduces replayWindow exactly", () => {
+  // The event-driven path must agree with the shipped sequential replay whenever
+  // trades do not overlap, or it is not measuring the same rules.
+  const cases = [[900, 900, 900, 900], [1500, -2100, 900], [2000, 1500, 900, 900], [-300, 400, -200, 3000]];
+  for (const pnls of cases) {
+    const trades = tr(pnls);
+    for (const c of [1, 3, 8]) {
+      const scaled = trades.map((x) => ({ ...x, pnl: x.pnl * c, mae: x.mae * c, mfe: x.mfe * c }));
+      const seq = replayWindow(scaled, START, BASE);
+      const pf = replayPortfolio([{ trades, contracts: c }], START, BASE, { maxContracts: 99 });
+      eq(pf.outcome, seq.outcome, `pnls=${pnls} c=${c} outcome:`);
+      close(pf.netPnl, seq.stats.netPnl, 1e-6, `pnls=${pnls} c=${c} net:`);
+    }
+  }
+});
+
+t("splitting one book into copies does NOT change the result", () => {
+  // This is the exact failure that invalidated the old pooling attempt: there,
+  // the same trades relabelled turned 32% into 81%. Here the account-wide
+  // contract cap and realised-P&L accounting must make it a no-op.
+  const trades = tr([-700, -700, 800, 900, 900]);
+  const whole = replayPortfolio([{ trades, contracts: 8 }], START, BASE, { maxContracts: 99 });
+  const split = replayPortfolio(
+    [{ trades, contracts: 4 }, { trades, contracts: 4 }], START, BASE, { maxContracts: 99 });
+  eq(split.outcome, whole.outcome, "outcome must match:");
+  close(split.netPnl, whole.netPnl, 1e-6, "and so must the P&L:");
+});
+
+t("the contract cap applies to the ACCOUNT, not per book", () => {
+  // Two books wanting 8 lots each cannot both be on under a 10-lot cap.
+  const a = tr([500, 500, 500]);
+  const b = a.map((x) => ({ ...x, entryTime: x.entryTime + 60000, exitTime: x.exitTime + 60000 }));
+  const r = replayPortfolio([{ trades: a, contracts: 8 }, { trades: b, contracts: 8 }], START, BASE, { maxContracts: 10 });
+  if (r.skippedCap === 0) throw new Error("cap never bound despite 16 lots requested");
+});
+
+t("shrink mode takes the remaining size instead of skipping", () => {
+  const a = tr([500, 500]);
+  const b = a.map((x) => ({ ...x, entryTime: x.entryTime + 60000, exitTime: x.exitTime + 60000 }));
+  const books = [{ trades: a, contracts: 7 }, { trades: b, contracts: 7 }];
+  const skip = replayPortfolio(books, START, BASE, { maxContracts: 10, onCapBreach: "skip" });
+  const shrunk = replayPortfolio(books, START, BASE, { maxContracts: 10, onCapBreach: "shrink" });
+  eq(shrunk.taken >= skip.taken, true, "shrink takes at least as many trades:");
+});
+
+t("a daily stop is judged on REALISED P&L, not on open positions", () => {
+  // A trade still open cannot have contributed to the day's loss yet, so it must
+  // not trip the breaker for a trade entered while it is running.
+  const base = Date.UTC(2024, 0, 1, 12);
+  const long = [{ entryTime: base, exitTime: base + 6 * 3600000, pnl: -900, mae: -900, mfe: 0,
+                  tday: Math.floor(base / 86400000), dir: 1, contracts: 1, fees: 0, entryPrice: 1, exitPrice: 1, reason: "SL", entrySrc: 0, exitSrc: 0 }];
+  const later = [{ entryTime: base + 3600000, exitTime: base + 2 * 3600000, pnl: 500, mae: 0, mfe: 500,
+                   tday: Math.floor(base / 86400000), dir: 1, contracts: 1, fees: 0, entryPrice: 1, exitPrice: 1, reason: "TP", entrySrc: 0, exitSrc: 0 }];
+  const r = replayPortfolio([{ trades: long, contracts: 1 }, { trades: later, contracts: 1 }],
+    START, { ...BASE, circuitBreaker: 150, trailingDD: 999999 }, { maxContracts: 99 });
+  eq(r.taken, 2, "the second trade opens because the first has not settled yet:");
 });
 
 // ══════════════════════════════ 4c. SIGNAL FILTERS ══════════════════════════════
