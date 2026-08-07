@@ -36,6 +36,9 @@ export default {
     { key: "orEndCt", label: "Opening range ends (CT)", type: "time", min: 0, max: 1439, step: 5, default: 9 * 60, group: "Signal" },
     { key: "entryEndCt", label: "Last entry (CT)", type: "time", min: 0, max: 1439, step: 5, default: 14 * 60, group: "Signal",
       hint: "Stop taking new breaks after this, so trades have room before the flatten." },
+    { key: "direction", label: "On a break", type: "select", default: "break",
+      options: [["break", "Go with it (continuation)"], ["fade", "Fade it (failed break)"]], group: "Signal",
+      hint: "Failed opening-range breaks are a real setup in their own right — worth testing both ways." },
     { key: "onePerSide", label: "Trades per day", type: "select", default: "one",
       options: [["one", "First break each way only"], ["many", "Every break"]], group: "Signal" },
     { key: "minRangePts", label: "Minimum range (points)", type: "float", min: 0, max: 200, step: 1, default: 0, group: "Signal",
@@ -79,8 +82,9 @@ export default {
       if (ct >= p.entryEndCt) continue;
 
       const once = p.onePerSide === "one";
-      if (C[i] > orHi && (!once || !tookLong)) { sig[i] = 1; tookLong = true; }
-      else if (C[i] < orLo && (!once || !tookShort)) { sig[i] = -1; tookShort = true; }
+      const brk = p.direction !== "fade";
+      if (C[i] > orHi && (!once || !tookLong)) { sig[i] = brk ? 1 : -1; tookLong = true; }
+      else if (C[i] < orLo && (!once || !tookShort)) { sig[i] = brk ? -1 : 1; tookShort = true; }
     }
 
     return {

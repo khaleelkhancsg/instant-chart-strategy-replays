@@ -388,6 +388,56 @@ t("flip closes at the open and re-enters on the SAME bar", () => {
   eq(trades[1].dir, -1);
 });
 
+t("no re-entry on the bar a trade exited (causality)", () => {
+  // Long stopped out mid-bar 2. A new signal on the same bar must NOT re-enter,
+  // because the only available fill price is that bar's open — which occurred
+  // BEFORE the stop-out.
+  const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [100, 101, 85, 100], [100, 101, 99, 100]]);
+  const sig = new Int8Array(4).fill(1);
+  const { trades } = runBrackets(b, sig, flatAtr(4, 10), { ...NOFEE, slAtrMult: 1, tpAtrMult: 20 });
+  const bar2Entries = trades.filter((t2) => t2.entryIdx === 2);
+  eq(bar2Entries.length, 0, "must not enter on the bar it was stopped out:");
+});
+
+t("sameBarReentry:true opts into the non-causal fill", () => {
+  const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [100, 101, 85, 100], [100, 101, 99, 100]]);
+  const sig = new Int8Array(4).fill(1);
+  const off = runBrackets(b, sig, flatAtr(4, 10), { ...NOFEE, slAtrMult: 1, tpAtrMult: 20 }).trades;
+  const on = runBrackets(b, sig, flatAtr(4, 10), { ...NOFEE, slAtrMult: 1, tpAtrMult: 20, sameBarReentry: true }).trades;
+  if (!(on.length > off.length)) throw new Error("flag had no effect");
+  eq(on.some((t2) => t2.entryIdx === 2), true, "opting in allows the same-bar entry:");
+});
+
+t("tpMode:'rr' sets the target from the stop distance", () => {
+  const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [100, 101, 99, 100]]);
+  const sig = new Int8Array(3); sig[0] = 1;
+  const { trades } = runBrackets(b, sig, flatAtr(3, 4), { ...NOFEE, slAtrMult: 1.5, tpMode: "rr", tpRR: 1.2 });
+  const t2 = trades[0];
+  close(t2.stop, 100 - 6, 1e-6, "stop = 1.5 x ATR(4):");
+  close(t2.target, 100 + 7.2, 1e-6, "target = 1.2 x the 6pt stop distance:");
+});
+
+t("flipOnOpposite:false holds through an opposite signal", () => {
+  const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [100, 101, 99, 100], [100, 101, 99, 100]]);
+  const sig = new Int8Array(4); sig[0] = 1; sig[1] = -1;
+  const held = runBrackets(b, sig, flatAtr(4, 50), { ...NOFEE, slAtrMult: 10, tpAtrMult: 10, flipOnOpposite: false }).trades;
+  eq(held.length, 1, "one trade, held to the end:");
+  if (held[0].reason === EXIT.FLIP) throw new Error("flipped despite flipOnOpposite:false");
+});
+
+t("cooldownAfterStopMins blocks same-direction re-entry only", () => {
+  const rows = Array.from({ length: 40 }, () => [100, 101, 99, 100]);
+  rows[2] = [100, 101, 80, 100];               // stop out the long here
+  const b = bars(rows);                        // 1-minute spacing
+  const sig = new Int8Array(40).fill(1);
+  const { trades } = runBrackets(b, sig, flatAtr(40, 10), { ...NOFEE, slAtrMult: 1, tpAtrMult: 50, cooldownAfterStopMins: 20 });
+  const stop = trades.find((t2) => t2.reason === EXIT.SL);
+  const after = trades.filter((t2) => t2.entryTime > stop.exitTime && t2.dir === 1);
+  for (const t2 of after) {
+    if (t2.entryTime - stop.exitTime < 20 * 60000) throw new Error("re-entered long inside the cooldown");
+  }
+});
+
 t("MAE/MFE capture the worst and best excursion in dollars", () => {
   const b = bars([
     [100, 101, 99, 100], [100, 101, 99, 100],

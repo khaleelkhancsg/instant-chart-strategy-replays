@@ -58,6 +58,22 @@ export const DEFAULT_EXEC = {
   slippageTicks: 0,         // adverse ticks applied to BOTH entry and exit fills
   slAtrMult: 2.0,
   tpAtrMult: 12.0,
+  // Target sizing. 'atr' sets it from ATR directly; 'rr' sets it as a multiple
+  // of the STOP distance, so the reward:risk ratio stays fixed as volatility
+  // moves. Books tuned on R:R geometry cannot be reproduced with 'atr'.
+  tpMode: "atr",            // 'atr' | 'rr'
+  tpRR: 1.2,
+  // Force-flip on an opposite signal. The default matches the original engine,
+  // but a strategy whose signal is a PERSISTENT STATE rather than a cross event
+  // will thrash if every disagreement closes the trade — those need this off.
+  flipOnOpposite: true,
+  // Allow a new position on the same bar a previous one exited. See the comment
+  // at the exit block: the re-entry price precedes the exit, so this is not
+  // physically tradeable. Off by default; on only to reproduce other tooling.
+  sameBarReentry: false,
+  // Block re-entry in the SAME direction for this many minutes after a stop-out.
+  // Cannot live in the signal, because it depends on how the trade ended.
+  cooldownAfterStopMins: 0,
   atrPeriod: 14,
   maxBarsInTrade: 0,        // 0 = no time stop
   // Intraday-only mode: flat by `flattenCt`, no re-entry until `reopenCt`.
@@ -101,6 +117,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
   let pos = 0, ep = 0, ei = 0, slDist = 0, tpDist = 0;
   let hiSeen = -Infinity, loSeen = Infinity;
   let qCur = q;   // contracts for the OPEN trade (varies under 'risk' sizing)
+  let lastStopMs = -Infinity, lastStopDir = 0;   // for cooldownAfterStopMins
 
   function close_(rawExit, reason, i) {
     // Slippage always works against the position on both legs.
@@ -130,6 +147,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       bars: i - ei,
       reason,
     });
+    if (reason === EXIT.SL) { lastStopMs = TS[i]; lastStopDir = pos; }
     pos = 0;
   }
 
@@ -149,19 +167,27 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       // first is what makes the run honest about overnight holds being banned.
       if (flatNow) { close_(O[i], EXIT.FLAT, i); continue; }
 
+      // `sameBarReentry` lets a new position open on the very bar the last one
+      // exited. It is OFF by default because the re-entry fills at that bar's
+      // OPEN — a price that occurred BEFORE the mid-bar stop-out — which is not
+      // a sequence that could actually be traded. lib_faithful_eval in the other
+      // repo does allow it, so the flag exists to reproduce those numbers.
+      let exited = false;
       if (pos === 1) {
         const sl = ep - slDist, tp = ep + tpDist;
-        if (O[i] <= sl) { close_(O[i], EXIT.SL, i); continue; }
-        if (L[i] <= sl) { close_(sl, EXIT.SL, i); continue; }
-        if (H[i] >= tp) { close_(tp, EXIT.TP, i); continue; }
+        if (O[i] <= sl) { close_(O[i], EXIT.SL, i); exited = true; }
+        else if (L[i] <= sl) { close_(sl, EXIT.SL, i); exited = true; }
+        else if (H[i] >= tp) { close_(tp, EXIT.TP, i); exited = true; }
       } else {
         const sl = ep + slDist, tp = ep - tpDist;
-        if (O[i] >= sl) { close_(O[i], EXIT.SL, i); continue; }
-        if (H[i] >= sl) { close_(sl, EXIT.SL, i); continue; }
-        if (L[i] <= tp) { close_(tp, EXIT.TP, i); continue; }
+        if (O[i] >= sl) { close_(O[i], EXIT.SL, i); exited = true; }
+        else if (H[i] >= sl) { close_(sl, EXIT.SL, i); exited = true; }
+        else if (L[i] <= tp) { close_(tp, EXIT.TP, i); exited = true; }
       }
+      if (exited && !x.sameBarReentry) continue;
       if (maxBars > 0 && i - ei >= maxBars) { close_(O[i], EXIT.TIME, i); continue; }
-      if (s !== 0 && s !== pos) close_(O[i], EXIT.FLIP, i); // may re-enter below
+      if (x.flipOnOpposite && s !== 0 && s !== pos) close_(O[i], EXIT.FLIP, i); // may re-enter below
+      if (pos !== 0) continue;   // still holding: no entry logic this bar
     }
 
     if (pos === 0 && s !== 0 && !flatNow) {
@@ -171,11 +197,17 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       const tooLate = intraday && x.noEntryMinsBeforeFlat > 0 &&
                       inFlatWindow(CT[i], cutoff, x.reopenCt);
       if (tooLate) { continue; }
+      // A stop-out in this direction may still be cooling off.
+      if (x.cooldownAfterStopMins > 0 && s === lastStopDir &&
+          TS[i] - lastStopMs < x.cooldownAfterStopMins * 60000) continue;
+
       const a = atrArr[i - 1];
       if (Number.isFinite(a) && a > 0) {
         ep = O[i]; ei = i; pos = s;
         slDist = Math.max(a * x.slAtrMult, x.tickSize);
-        tpDist = Math.max(a * x.tpAtrMult, x.tickSize);
+        tpDist = x.tpMode === "rr"
+          ? Math.max(slDist * x.tpRR, x.tickSize)
+          : Math.max(a * x.tpAtrMult, x.tickSize);
         // Size from the stop distance known at entry — never from anything later.
         qCur = x.sizingMode === "risk"
           ? Math.max(1, Math.min(Math.trunc(x.maxContracts), Math.round(x.riskDollars / (slDist * pv))))
