@@ -1,0 +1,512 @@
+{
+ "meta": {
+  "sims": 10987380,
+  "policies": 7200
+ },
+ "top": [
+  {
+   "p": {
+    "base": 6,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 2,
+    "nearTargetFrac": 0,
+    "nearTargetMult": 1,
+    "postLockMult": 1.5
+   },
+   "is": 40.12096774193548,
+   "oos": 40.090090090090094
+  },
+  {
+   "p": {
+    "base": 6,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 2,
+    "nearTargetFrac": 0,
+    "nearTargetMult": 1,
+    "postLockMult": 2
+   },
+   "is": 39.91935483870967,
+   "oos": 40.630630630630634
+  },
+  {
+   "p": {
+    "base": 8,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 2,
+    "nearTargetFrac": 0.25,
+    "nearTargetMult": 0.5,
+    "postLockMult": 2
+   },
+   "is": 39.58333333333333,
+   "oos": 39.729729729729726
+  },
+  {
+   "p": {
+    "base": 10,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 1,
+    "nearTargetFrac": 0.25,
+    "nearTargetMult": 0.5,
+    "postLockMult": 2
+   },
+   "is": 39.314516129032256,
+   "oos": 39.54954954954955
+  },
+  {
+   "p": {
+    "base": 10,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 2,
+    "nearTargetFrac": 0.25,
+    "nearTargetMult": 0.5,
+    "postLockMult": 2
+   },
+   "is": 39.314516129032256,
+   "oos": 39.54954954954955
+  },
+  {
+   "p": {
+    "base": 8,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 1,
+    "nearTargetFrac": 0.25,
+    "nearTargetMult": 0.5,
+    "postLockMult": 2
+   },
+   "is": 39.247311827956985,
+   "oos": 39.729729729729726
+  },
+  {
+   "p": {
+    "base": 10,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 0,
+    "nearTargetFrac": 0.25,
+    "nearTargetMult": 0.5,
+    "postLockMult": 2
+   },
+   "is": 39.247311827956985,
+   "oos": 39.54954954954955
+  },
+  {
+   "p": {
+    "base": 10,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 0.5,
+    "nearTargetFrac": 0.25,
+    "nearTargetMult": 0.5,
+    "postLockMult": 2
+   },
+   "is": 39.247311827956985,
+   "oos": 39.54954954954955
+  },
+  {
+   "p": {
+    "base": 10,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 1,
+    "nearTargetFrac": 0.25,
+    "nearTargetMult": 0.5,
+    "postLockMult": 1.5
+   },
+   "is": 39.71774193548387,
+   "oos": 39.00900900900901
+  },
+  {
+   "p": {
+    "base": 10,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 2,
+    "nearTargetFrac": 0.25,
+    "nearTargetMult": 0.5,
+    "postLockMult": 1.5
+   },
+   "is": 39.784946236559136,
+   "oos": 39.00900900900901
+  },
+  {
+   "p": {
+    "base": 6,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 1,
+    "nearTargetFrac": 0,
+    "nearTargetMult": 1,
+    "postLockMult": 1.5
+   },
+   "is": 38.91129032258064,
+   "oos": 39.189189189189186
+  },
+  {
+   "p": {
+    "base": 8,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 0.5,
+    "nearTargetFrac": 0.25,
+    "nearTargetMult": 0.5,
+    "postLockMult": 2
+   },
+   "is": 38.844086021505376,
+   "oos": 39.81981981981982
+  },
+  {
+   "p": {
+    "base": 10,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 0.5,
+    "nearTargetFrac": 0.25,
+    "nearTargetMult": 0.5,
+    "postLockMult": 1.5
+   },
+   "is": 39.6505376344086,
+   "oos": 38.828828828828826
+  },
+  {
+   "p": {
+    "base": 10,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 0,
+    "nearTargetFrac": 0.25,
+    "nearTargetMult": 0.5,
+    "postLockMult": 1.5
+   },
+   "is": 39.58333333333333,
+   "oos": 38.73873873873874
+  },
+  {
+   "p": {
+    "base": 10,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 0,
+    "nearTargetFrac": 0,
+    "nearTargetMult": 1,
+    "postLockMult": 1
+   },
+   "is": 38.64247311827957,
+   "oos": 39.189189189189186
+  },
+  {
+   "p": {
+    "base": 10,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 0,
+    "nearTargetFrac": 0,
+    "nearTargetMult": 1,
+    "postLockMult": 1.5
+   },
+   "is": 38.64247311827957,
+   "oos": 39.189189189189186
+  },
+  {
+   "p": {
+    "base": 10,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 0,
+    "nearTargetFrac": 0,
+    "nearTargetMult": 1,
+    "postLockMult": 2
+   },
+   "is": 38.64247311827957,
+   "oos": 39.189189189189186
+  },
+  {
+   "p": {
+    "base": 10,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 0.5,
+    "nearTargetFrac": 0,
+    "nearTargetMult": 1,
+    "postLockMult": 1
+   },
+   "is": 38.64247311827957,
+   "oos": 39.189189189189186
+  },
+  {
+   "p": {
+    "base": 10,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 0.5,
+    "nearTargetFrac": 0,
+    "nearTargetMult": 1,
+    "postLockMult": 1.5
+   },
+   "is": 38.64247311827957,
+   "oos": 39.189189189189186
+  },
+  {
+   "p": {
+    "base": 10,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 0.5,
+    "nearTargetFrac": 0,
+    "nearTargetMult": 1,
+    "postLockMult": 2
+   },
+   "is": 38.64247311827957,
+   "oos": 39.189189189189186
+  },
+  {
+   "p": {
+    "base": 10,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 1,
+    "nearTargetFrac": 0,
+    "nearTargetMult": 1,
+    "postLockMult": 1
+   },
+   "is": 38.64247311827957,
+   "oos": 39.189189189189186
+  },
+  {
+   "p": {
+    "base": 10,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 1,
+    "nearTargetFrac": 0,
+    "nearTargetMult": 1,
+    "postLockMult": 1.5
+   },
+   "is": 38.64247311827957,
+   "oos": 39.189189189189186
+  },
+  {
+   "p": {
+    "base": 10,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 1,
+    "nearTargetFrac": 0,
+    "nearTargetMult": 1,
+    "postLockMult": 2
+   },
+   "is": 38.64247311827957,
+   "oos": 39.189189189189186
+  },
+  {
+   "p": {
+    "base": 10,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 2,
+    "nearTargetFrac": 0,
+    "nearTargetMult": 1,
+    "postLockMult": 1
+   },
+   "is": 38.64247311827957,
+   "oos": 39.189189189189186
+  },
+  {
+   "p": {
+    "base": 10,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 2,
+    "nearTargetFrac": 0,
+    "nearTargetMult": 1,
+    "postLockMult": 1.5
+   },
+   "is": 38.64247311827957,
+   "oos": 39.189189189189186
+  },
+  {
+   "p": {
+    "base": 10,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 2,
+    "nearTargetFrac": 0,
+    "nearTargetMult": 1,
+    "postLockMult": 2
+   },
+   "is": 38.64247311827957,
+   "oos": 39.189189189189186
+  },
+  {
+   "p": {
+    "base": 8,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 2,
+    "nearTargetFrac": 0.25,
+    "nearTargetMult": 0.5,
+    "postLockMult": 1.5
+   },
+   "is": 39.247311827956985,
+   "oos": 38.288288288288285
+  },
+  {
+   "p": {
+    "base": 8,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 1,
+    "nearTargetFrac": 0.25,
+    "nearTargetMult": 0.5,
+    "postLockMult": 1.5
+   },
+   "is": 38.844086021505376,
+   "oos": 38.108108108108105
+  },
+  {
+   "p": {
+    "base": 8,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 2,
+    "nearTargetFrac": 0,
+    "nearTargetMult": 1,
+    "postLockMult": 1
+   },
+   "is": 38.97849462365591,
+   "oos": 37.747747747747745
+  },
+  {
+   "p": {
+    "base": 8,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 1,
+    "nearTargetFrac": 0,
+    "nearTargetMult": 1,
+    "postLockMult": 1
+   },
+   "is": 38.70967741935484,
+   "oos": 37.567567567567565
+  },
+  {
+   "p": {
+    "base": 8,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 2,
+    "nearTargetFrac": 0,
+    "nearTargetMult": 1,
+    "postLockMult": 1.5
+   },
+   "is": 39.71774193548387,
+   "oos": 37.207207207207205
+  },
+  {
+   "p": {
+    "base": 8,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 2,
+    "nearTargetFrac": 0,
+    "nearTargetMult": 1,
+    "postLockMult": 2
+   },
+   "is": 39.71774193548387,
+   "oos": 37.207207207207205
+  },
+  {
+   "p": {
+    "base": 8,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 1,
+    "nearTargetFrac": 0,
+    "nearTargetMult": 1,
+    "postLockMult": 1.5
+   },
+   "is": 39.6505376344086,
+   "oos": 37.11711711711712
+  },
+  {
+   "p": {
+    "base": 8,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 1,
+    "nearTargetFrac": 0,
+    "nearTargetMult": 1,
+    "postLockMult": 2
+   },
+   "is": 39.6505376344086,
+   "oos": 37.11711711711712
+  },
+  {
+   "p": {
+    "base": 8,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 0.5,
+    "nearTargetFrac": 0,
+    "nearTargetMult": 1,
+    "postLockMult": 1.5
+   },
+   "is": 39.516129032258064,
+   "oos": 36.93693693693694
+  },
+  {
+   "p": {
+    "base": 8,
+    "min": 1,
+    "max": 10,
+    "cushionFrac": 0,
+    "urgency": 0.5,
+    "nearTargetFrac": 0,
+    "nearTargetMult": 1,
+    "postLockMult": 2
+   },
+   "is": 39.516129032258064,
+   "oos": 36.93693693693694
+  }
+ ]
+}
