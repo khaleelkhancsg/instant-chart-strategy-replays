@@ -25,6 +25,7 @@ export function resample(bars, tfMin) {
   const high = new Float32Array(cap), low = new Float32Array(cap);
   const close = new Float32Array(cap), volume = new Float32Array(cap);
   const tday = new Int32Array(cap);
+  const ctMin = new Int16Array(cap);
   const srcFirst = new Int32Array(cap), srcLast = new Int32Array(cap);
 
   let m = -1, curBucket = NaN;
@@ -39,6 +40,8 @@ export function resample(bars, tfMin) {
       low[m] = bars.low[i];
       volume[m] = 0;
       srcFirst[m] = i;
+      // Session rules key off when a bar OPENS, matching its timestamp.
+      ctMin[m] = bars.ctMin ? bars.ctMin[i] : 0;
     }
     if (bars.high[i] > high[m]) high[m] = bars.high[i];
     if (bars.low[i] < low[m]) low[m] = bars.low[i];
@@ -57,6 +60,7 @@ export function resample(bars, tfMin) {
     close: close.subarray(0, count),
     volume: volume.subarray(0, count),
     tday: tday.subarray(0, count),
+    ctMin: ctMin.subarray(0, count),
     srcFirst: srcFirst.subarray(0, count),
     srcLast: srcLast.subarray(0, count),
     tfMin: tf,
@@ -74,6 +78,7 @@ export function sliceBars(bars, s, e) {
     volume: bars.volume.subarray(s, e),
     tday: bars.tday.subarray(s, e),
   };
+  if (bars.ctMin) out.ctMin = bars.ctMin.subarray(s, e);
   if (bars.srcFirst) { out.srcFirst = bars.srcFirst.subarray(s, e); out.srcLast = bars.srcLast.subarray(s, e); }
   if (bars.tfMin) out.tfMin = bars.tfMin;
   return out;

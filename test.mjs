@@ -40,6 +40,7 @@ function synthBars(n, startMs = Date.UTC(2024, 0, 1), stepMs = 60000, px = 18000
   const ts = new Float64Array(n), O = new Float32Array(n), H = new Float32Array(n);
   const L = new Float32Array(n), C = new Float32Array(n), V = new Float32Array(n);
   const tday = new Int32Array(n);
+  const ctMin = new Int16Array(n);
   let p = px;
   for (let i = 0; i < n; i++) {
     const o = p;
@@ -49,9 +50,10 @@ function synthBars(n, startMs = Date.UTC(2024, 0, 1), stepMs = 60000, px = 18000
     ts[i] = startMs + i * stepMs; O[i] = o; H[i] = h; L[i] = l; C[i] = c;
     V[i] = Math.floor(rnd() * 500) + 1;
     tday[i] = Math.floor(ts[i] / 86400000);
+    ctMin[i] = Math.floor((ts[i] / 60000) % 1440);
     p = c;
   }
-  return { ts, open: O, high: H, low: L, close: C, volume: V, tday, count: n };
+  return { ts, open: O, high: H, low: L, close: C, volume: V, tday, ctMin, count: n };
 }
 
 // ══════════════════════════════ 1. INDICATORS ══════════════════════════════
@@ -421,6 +423,84 @@ t("only one position at a time", () => {
   }
 });
 
+// ── intraday-only session rules ──
+// Bars carry a Chicago minute-of-day; build a series that walks across the
+// 3:05 PM CT deadline so the rule can be checked at exact boundaries.
+function ctBars(startCt, count, price = 100) {
+  const b = bars(Array.from({ length: count }, () => [price, price + 1, price - 1, price]));
+  b.ctMin = new Int16Array(count);
+  for (let i = 0; i < count; i++) b.ctMin[i] = (startCt + i) % 1440;
+  return b;
+}
+const INTRA = { ...NOFEE, intradayOnly: true, flattenCt: 15 * 60 + 5, reopenCt: 17 * 60 };
+
+t("open position is flattened at the 3:05 PM CT deadline", () => {
+  const b = ctBars(15 * 60, 12);              // 15:00 CT onward
+  const sig = new Int8Array(12); sig[0] = 1;  // enter at 15:01
+  const { trades } = runBrackets(b, sig, flatAtr(12, 50), { ...INTRA, slAtrMult: 10, tpAtrMult: 10 });
+  eq(trades.length, 1);
+  eq(trades[0].reason, EXIT.FLAT, "exit reason:");
+  eq(b.ctMin[trades[0].exitIdx], 15 * 60 + 5, "flattened exactly at 15:05 CT:");
+});
+
+t("flatten outranks the bracket — it fires even when neither stop nor target hit", () => {
+  const b = ctBars(15 * 60, 12);
+  const sig = new Int8Array(12); sig[0] = 1;
+  // Enormous bracket that can never be reached inside the run.
+  const { trades } = runBrackets(b, sig, flatAtr(12, 1000), { ...INTRA, slAtrMult: 10, tpAtrMult: 10 });
+  eq(trades[0].reason, EXIT.FLAT);
+});
+
+t("no new entries during the flat window", () => {
+  const b = ctBars(15 * 60, 100);             // 15:00 -> 16:40 CT
+  const sig = new Int8Array(100).fill(1);     // signal on every bar
+  const { trades } = runBrackets(b, sig, flatAtr(100, 50), { ...INTRA, slAtrMult: 10, tpAtrMult: 10 });
+  for (const t2 of trades) {
+    const ct = b.ctMin[t2.entryIdx];
+    if (ct >= 15 * 60 + 5 && ct < 17 * 60) throw new Error(`entered at ${Math.floor(ct / 60)}:${String(ct % 60).padStart(2, "0")} CT, inside the flat window`);
+  }
+});
+
+t("trading resumes after the 5:00 PM CT reopen", () => {
+  const b = ctBars(16 * 60 + 55, 30);         // 16:55 CT across the 17:00 reopen
+  const sig = new Int8Array(30).fill(1);
+  const { trades } = runBrackets(b, sig, flatAtr(30, 50), { ...INTRA, slAtrMult: 10, tpAtrMult: 10 });
+  if (!trades.length) throw new Error("no trades taken after the reopen");
+  eq(b.ctMin[trades[0].entryIdx] >= 17 * 60, true, "first entry is at or after 17:00 CT:");
+});
+
+t("no position survives the deadline across a long run", () => {
+  const b = ctBars(0, 1440);                  // a whole day, minute by minute
+  const sig = new Int8Array(1440);
+  for (let i = 0; i < 1440; i += 7) sig[i] = i % 2 ? 1 : -1;
+  const { trades } = runBrackets(b, sig, flatAtr(1440, 200), { ...INTRA, slAtrMult: 8, tpAtrMult: 8 });
+  for (const t2 of trades) {
+    for (let i = t2.entryIdx; i <= t2.exitIdx; i++) {
+      const ct = b.ctMin[i];
+      if (i !== t2.exitIdx && ct >= 15 * 60 + 5 && ct < 17 * 60) {
+        throw new Error(`position open at ${Math.floor(ct / 60)}:${String(ct % 60).padStart(2, "0")} CT`);
+      }
+    }
+  }
+});
+
+t("noEntryMinsBeforeFlat stands aside before the deadline", () => {
+  const b = ctBars(14 * 60, 130);
+  const sig = new Int8Array(130).fill(1);
+  const { trades } = runBrackets(b, sig, flatAtr(130, 50), { ...INTRA, slAtrMult: 10, tpAtrMult: 10, noEntryMinsBeforeFlat: 30 });
+  for (const t2 of trades) {
+    const ct = b.ctMin[t2.entryIdx];
+    if (ct >= 15 * 60 + 5 - 30 && ct < 17 * 60) throw new Error(`entered at ${ct} CT, inside the 30-min blackout`);
+  }
+});
+
+t("intradayOnly:false restores overnight holding", () => {
+  const b = ctBars(15 * 60, 12);
+  const sig = new Int8Array(12); sig[0] = 1;
+  const { trades } = runBrackets(b, sig, flatAtr(12, 1000), { ...INTRA, intradayOnly: false, slAtrMult: 10, tpAtrMult: 10 });
+  if (trades[0].reason === EXIT.FLAT) throw new Error("flattened despite intradayOnly being off");
+});
+
 t("zero signals produce zero trades", () => {
   const b = synthBars(200);
   eq(runBrackets(b, new Int8Array(200), flatAtr(200, 10), NOFEE).trades.length, 0);
@@ -664,7 +744,8 @@ t("packBars round-trips through the browser parser byte-for-byte", () => {
   const f64 = (c) => { const a = new Float64Array(ab, off, c); off += c * 8; return a; };
   const f32 = (c) => { const a = new Float32Array(ab, off, c); off += c * 4; return a; };
   const i32 = (c) => { const a = new Int32Array(ab, off, c); off += c * 4; return a; };
-  const ts = f64(cnt), o = f32(cnt), h = f32(cnt), l = f32(cnt), c2 = f32(cnt), v = f32(cnt), td = i32(cnt);
+  const i16 = (c) => { const a = new Int16Array(ab, off, c); off += c * 2; return a; };
+  const ts = f64(cnt), o = f32(cnt), h = f32(cnt), l = f32(cnt), c2 = f32(cnt), v = f32(cnt), td = i32(cnt), ct = i16(cnt);
   for (let i = 0; i < cnt; i++) {
     eq(ts[i], b.ts[100 + i], `ts[${i}]:`);
     eq(o[i], b.open[100 + i], `open[${i}]:`);
@@ -673,6 +754,7 @@ t("packBars round-trips through the browser parser byte-for-byte", () => {
     eq(c2[i], b.close[100 + i], `close[${i}]:`);
     eq(v[i], b.volume[100 + i], `vol[${i}]:`);
     eq(td[i], b.tday[100 + i], `tday[${i}]:`);
+    eq(ct[i], b.ctMin[100 + i], `ctMin[${i}]:`);
   }
   eq(off, buf.length, "no trailing bytes:");
 });
@@ -810,6 +892,43 @@ if (bars_) {
         throw new Error(`${new Date(r.ms).toISOString()}: ${seam.toFixed(2)}pt jump across ${elapsedMin} minute(s)`);
       }
     }
+  });
+
+  t("Chicago minute-of-day is correct, including across DST", () => {
+    // Verified against Intl on a sample, and specifically around both changeover
+    // weekends where a fixed UTC offset would be an hour out.
+    const fmt = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", hour12: false, hour: "2-digit", minute: "2-digit" });
+    const ctOf = (ms) => {
+      const p = fmt.formatToParts(new Date(ms));
+      const h = Number(p.find((x) => x.type === "hour").value.replace("24", "0"));
+      return h * 60 + Number(p.find((x) => x.type === "minute").value);
+    };
+    let checked = 0;
+    for (let i = 0; i < B.count; i += 4001) {
+      eq(B.ctMin[i], ctOf(B.ts[i]), `bar ${i} (${new Date(B.ts[i]).toISOString()}):`);
+      checked++;
+    }
+    // DST changeovers specifically.
+    for (const [y, mo, d] of [[2024, 2, 10], [2024, 10, 3], [2025, 2, 9], [2025, 10, 2]]) {
+      const target = Date.UTC(y, mo, d, 12);
+      const i = indexAtOrAfter(B.ts, target);
+      if (i >= B.count) continue;
+      eq(B.ctMin[i], ctOf(B.ts[i]), `DST boundary ${y}-${mo + 1}-${d}:`);
+      checked++;
+    }
+    if (checked < 100) throw new Error(`only ${checked} samples checked`);
+  });
+
+  t("the 3:05 PM CT deadline sits inside a live session", () => {
+    // The rule is only meaningful if bars actually exist at that time; the CME
+    // halt runs 16:00-17:00 CT, so 15:05 must be tradeable.
+    let atDeadline = 0, inHalt = 0;
+    for (let i = 0; i < B.count; i += 97) {
+      if (B.ctMin[i] === 15 * 60 + 5) atDeadline++;
+      if (B.ctMin[i] >= 16 * 60 && B.ctMin[i] < 17 * 60) inHalt++;
+    }
+    if (atDeadline < 5) throw new Error(`only ${atDeadline} sampled bars at 15:05 CT`);
+    if (inHalt > 0) throw new Error(`${inHalt} sampled bars fall inside the 16:00-17:00 CT halt`);
   });
 
   t("no duplicate timestamps across 1.77M bars", () => {

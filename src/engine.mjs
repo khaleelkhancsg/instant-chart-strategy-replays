@@ -14,7 +14,27 @@
 // an opposite signal while in a position closes at this bar's open AND may
 // re-enter on the same bar. A stop/target exit, by contrast, ends the bar.
 
-export const EXIT = { SL: "SL", TP: "TP", FLIP: "FLIP", EOD: "EOD", TIME: "TIME" };
+export const EXIT = { SL: "SL", TP: "TP", FLIP: "FLIP", EOD: "EOD", TIME: "TIME", FLAT: "FLAT" };
+
+// Intraday-only session rules, in America/Chicago minutes-of-day.
+//
+// Many prop firms forbid holding overnight: you must be flat by a stated time
+// and may not re-enter until the session reopens. This is not a cosmetic filter —
+// it truncates exactly the long-running winners that a wide reward:risk target
+// depends on, so a book tuned without it will not survive being held to it.
+export const SESSION = {
+  flattenCt: 15 * 60 + 5,   // 3:05 PM CT — all positions closed
+  reopenCt: 17 * 60,        // 5:00 PM CT — trading may resume
+};
+
+// True while positions must be flat: from the flatten time until the reopen.
+// The two bounds sit inside the same calendar day here (15:05 -> 17:00), so a
+// plain range test is correct; a rule that wrapped past midnight would not be.
+function inFlatWindow(ctMin, flattenCt, reopenCt) {
+  return reopenCt > flattenCt
+    ? ctMin >= flattenCt && ctMin < reopenCt
+    : ctMin >= flattenCt || ctMin < reopenCt;
+}
 
 export const DEFAULT_EXEC = {
   contracts: 8,
@@ -40,6 +60,13 @@ export const DEFAULT_EXEC = {
   tpAtrMult: 12.0,
   atrPeriod: 14,
   maxBarsInTrade: 0,        // 0 = no time stop
+  // Intraday-only mode: flat by `flattenCt`, no re-entry until `reopenCt`.
+  intradayOnly: true,
+  flattenCt: SESSION.flattenCt,
+  reopenCt: SESSION.reopenCt,
+  // Optional: stop opening new trades this many minutes before the flatten time.
+  // Entering at 3:04 PM only to be flattened at 3:05 pays commission for nothing.
+  noEntryMinsBeforeFlat: 0,
 };
 
 export function resolveExec(cfg = {}) {
@@ -106,12 +133,21 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
     pos = 0;
   }
 
+  const CT = bars.ctMin;
+  const intraday = !!x.intradayOnly && !!CT;
+
   for (let i = 1; i < n; i++) {
     const s = sig[i - 1];
+    const flatNow = intraday && inFlatWindow(CT[i], x.flattenCt, x.reopenCt);
 
     if (pos !== 0) {
       if (H[i] > hiSeen) hiSeen = H[i];
       if (L[i] < loSeen) loSeen = L[i];
+
+      // The flatten deadline outranks the bracket: the position is closed at
+      // this bar's open regardless of where stop and target sit. Checking it
+      // first is what makes the run honest about overnight holds being banned.
+      if (flatNow) { close_(O[i], EXIT.FLAT, i); continue; }
 
       if (pos === 1) {
         const sl = ep - slDist, tp = ep + tpDist;
@@ -128,7 +164,13 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       if (s !== 0 && s !== pos) close_(O[i], EXIT.FLIP, i); // may re-enter below
     }
 
-    if (pos === 0 && s !== 0) {
+    if (pos === 0 && s !== 0 && !flatNow) {
+      // Optionally stand aside in the run-up to the deadline too, since a trade
+      // opened minutes before it can only be flattened for the cost of the fill.
+      const cutoff = x.flattenCt - (x.noEntryMinsBeforeFlat || 0);
+      const tooLate = intraday && x.noEntryMinsBeforeFlat > 0 &&
+                      inFlatWindow(CT[i], cutoff, x.reopenCt);
+      if (tooLate) { continue; }
       const a = atrArr[i - 1];
       if (Number.isFinite(a) && a > 0) {
         ep = O[i]; ei = i; pos = s;

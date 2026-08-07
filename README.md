@@ -124,6 +124,31 @@ comparable to that work. Everything is adjustable in the sidebar.
 | Your daily breaker | $150 | Your own tighter stop. The biggest pass-rate lever in this project's testing |
 | Consistency cap | 50% | No single day may exceed this share of total profit at payout |
 | Contract cap | 10 | Real firm limit |
+| No overnight positions | on | Flat by **3:05 PM CT**, no re-entry until the **5:00 PM CT** reopen |
+
+### The no-overnight rule changes everything
+
+Most funded accounts forbid holding through the close. This is enforced in the
+engine (Session rules panel), and it is not a minor filter — it invalidates the
+entire wide-reward:risk family of strategies this project has been built around:
+
+| | overnight allowed | intraday-only |
+|---|---|---|
+| `trend_neutev` (6:1) | 71.9% pass | **13.7%** |
+| `trend_vol_adaptive` (18:1) | 80.7% pass | **3.7%** |
+
+The reason is a timing asymmetry that the rule attacks directly. With overnight
+holds allowed, the incumbent's **winners take a median 6.5 hours** (90th
+percentile 18.3h) while its **losers resolve in a median 1.0 hour** — a tight
+2×ATR stop is hit quickly, but a 12×ATR target needs most of a day to develop.
+
+So a 3:05 PM CT deadline truncates **36.9% of winners but only 5.1% of losers**,
+and **$1.70M of the $3.97M gross profit sits in exactly those truncated winners**.
+The rule removes ~43% of gross profit and leaves the losses untouched.
+
+**If your account has this rule, both shipped strategies are unusable as tuned.**
+A viable intraday book needs a reward:risk that can resolve inside the hours
+actually available, not 6:1 or 18:1 — see `research/intraday_only.mjs`.
 
 Two deliberate deviations from `lib_challenge_v2`, both toward realism:
 

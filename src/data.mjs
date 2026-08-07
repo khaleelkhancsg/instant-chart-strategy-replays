@@ -17,7 +17,7 @@ export function loadBars(binPath = DEFAULT_BIN) {
   const buf = fs.readFileSync(binPath);
   if (buf.toString("latin1", 0, 4) !== "MNQB") throw new Error("Bad cache magic — rebuild with prepare.mjs");
   const version = buf.readUInt32LE(4);
-  if (version !== 1) throw new Error(`Cache version ${version} not supported — rebuild with prepare.mjs`);
+  if (version !== 2) throw new Error(`Cache version ${version} not supported (need 2) — rebuild with: node prepare.mjs`);
   const n = buf.readUInt32LE(8);
 
   // Views straight onto the file buffer: zero copy, zero parse.
@@ -36,6 +36,7 @@ export function loadBars(binPath = DEFAULT_BIN) {
     close: take(Float32Array, n),
     volume: take(Float32Array, n),
     tday: take(Int32Array, n),
+    ctMin: take(Int16Array, n),   // minute-of-day, America/Chicago
     count: n,
   };
 
@@ -48,13 +49,14 @@ export function loadBars(binPath = DEFAULT_BIN) {
 }
 
 // Pack a bar range into the wire format the browser expects.
-// Header (16B): "MNQW" | version | count | startIdx, then ts f64, OHLCV f32, tday i32.
+// Header (16B): "MNQW" | version | count | startIdx, then ts f64, OHLCV f32,
+// tday i32, ctMin i16.
 export function packBars(bars, s, e) {
   const n = Math.max(0, e - s);
-  const bytes = 16 + n * 8 + n * 4 * 5 + n * 4;
+  const bytes = 16 + n * 8 + n * 4 * 5 + n * 4 + n * 2;
   const out = Buffer.allocUnsafe(bytes);
   out.write("MNQW", 0, "latin1");
-  out.writeUInt32LE(1, 4);
+  out.writeUInt32LE(2, 4);
   out.writeUInt32LE(n, 8);
   out.writeUInt32LE(s, 12);
   let off = 16;
@@ -64,6 +66,6 @@ export function packBars(bars, s, e) {
     off += view.byteLength;
   };
   put(bars.ts); put(bars.open); put(bars.high); put(bars.low);
-  put(bars.close); put(bars.volume); put(bars.tday);
+  put(bars.close); put(bars.volume); put(bars.tday); put(bars.ctMin);
   return out;
 }

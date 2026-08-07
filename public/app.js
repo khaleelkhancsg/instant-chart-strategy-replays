@@ -28,6 +28,20 @@ const EXEC_PARAMS = [
   { key: "commissionPerSide", label: "Commission $/side/contract", type: "float", min: 0, max: 3, step: 0.05, default: 0.75 },
   { key: "commissionFlat", label: "Flat commission $/trade", type: "float", min: 0, max: 30, step: 0.5, default: 5 },
   { key: "slippageTicks", label: "Slippage (ticks/side)", type: "float", min: 0, max: 4, step: 0.25, default: 0 },
+  { key: "sizingMode", label: "Position sizing", type: "select", default: "fixed",
+    options: [["fixed", "Fixed contracts"], ["risk", "Constant $ risk per trade"]],
+    hint: "MNQ's ATR ran ~6 pts in 2019 and ~28 in 2026. Fixed size means one stop cost 11% of the drawdown then and 52% now." },
+  { key: "riskDollars", label: "Risk per trade $ (risk mode)", type: "int", min: 50, max: 1500, step: 25, default: 400 },
+];
+
+const SESSION_PARAMS = [
+  { key: "intradayOnly", label: "No overnight positions", type: "select", default: "on",
+    options: [["on", "Enforced — flat by deadline"], ["off", "Allow overnight holds"]],
+    hint: "Most funded accounts require this. It truncates long-running winners, so it changes results a lot." },
+  { key: "flattenCt", label: "Flatten by (CT)", type: "time", min: 0, max: 1439, step: 5, default: 15 * 60 + 5 },
+  { key: "reopenCt", label: "Resume from (CT)", type: "time", min: 0, max: 1439, step: 5, default: 17 * 60 },
+  { key: "noEntryMinsBeforeFlat", label: "No new entries (mins before flat)", type: "int", min: 0, max: 240, step: 5, default: 0,
+    hint: "Entering minutes before the deadline pays commission for a trade that cannot develop." },
 ];
 
 const RULES_PARAMS = [
@@ -82,9 +96,10 @@ function parseWindowBlob(ab) {
   const f64 = (c) => { const a = new Float64Array(ab, off, c); off += c * 8; return a; };
   const f32 = (c) => { const a = new Float32Array(ab, off, c); off += c * 4; return a; };
   const i32 = (c) => { const a = new Int32Array(ab, off, c); off += c * 4; return a; };
+  const i16 = (c) => { const a = new Int16Array(ab, off, c); off += c * 2; return a; };
   return {
     ts: f64(n), open: f32(n), high: f32(n), low: f32(n),
-    close: f32(n), volume: f32(n), tday: i32(n),
+    close: f32(n), volume: f32(n), tday: i32(n), ctMin: i16(n),
     count: n, startIdx,
   };
 }
@@ -111,6 +126,25 @@ function buildParamControl(d, value, onChange) {
     }
     sel.addEventListener("change", () => onChange(sel.value));
     wrap.appendChild(sel);
+  } else if (d.type === "time") {
+    // Minutes-of-day, shown as HH:MM so the control reads like the rule it encodes.
+    const hhmm = (v) => `${String(Math.floor(v / 60)).padStart(2, "0")}:${String(v % 60).padStart(2, "0")}`;
+    const val = document.createElement("span");
+    val.className = "param-val";
+    val.style.width = "62px";
+    val.textContent = hhmm(value);
+    head.appendChild(val);
+    wrap.appendChild(head);
+
+    const rng = document.createElement("input");
+    rng.type = "range";
+    rng.min = d.min; rng.max = d.max; rng.step = d.step; rng.value = value;
+    wrap.appendChild(rng);
+    rng.addEventListener("input", () => {
+      const v = Number(rng.value);
+      val.textContent = hhmm(v);
+      onChange(v);
+    });
   } else {
     const num = document.createElement("input");
     num.type = "number";
@@ -198,6 +232,17 @@ function renderSidebar() {
     }));
   }
   host.appendChild(ex);
+
+  const se = buildGroup("Session rules");
+  for (const d of SESSION_PARAMS) {
+    // intradayOnly is a boolean in the config but reads better as on/off here.
+    const cur = d.key === "intradayOnly" ? (S.exec.intradayOnly ? "on" : "off") : S.exec[d.key];
+    se.body.appendChild(buildParamControl(d, cur, (v) => {
+      S.exec[d.key] = d.key === "intradayOnly" ? v === "on" : v;
+      onParamsChanged();
+    }));
+  }
+  host.appendChild(se);
 
   const ru = buildGroup("Combine rules");
   for (const d of RULES_PARAMS) {

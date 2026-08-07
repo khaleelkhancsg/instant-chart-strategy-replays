@@ -138,6 +138,38 @@ function buildTradingDays(ts, n) {
   return out;
 }
 
+// Minute-of-day in America/Chicago (CME's own local time), 0..1439.
+//
+// Session rules are written in CT — "flat by 3:05 PM CT", "reopen 5:00 PM CT" —
+// so storing CT directly means the engine compares against the rule as written,
+// with no timezone arithmetic at the point of use. Intl is far too slow to call
+// per bar, but the UTC offset only changes at DST transitions, so it is resolved
+// once per UTC hour and the minutes within that hour are simple addition.
+const CT_FMT = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Chicago", hour12: false, hour: "2-digit", minute: "2-digit",
+});
+
+function ctMinuteOfDay(ms) {
+  let h = 0, m = 0;
+  for (const p of CT_FMT.formatToParts(ms)) {
+    if (p.type === "hour") h = +p.value;
+    else if (p.type === "minute") m = +p.value;
+  }
+  if (h === 24) h = 0;
+  return h * 60 + m;
+}
+
+function buildCtMinutes(ts, n) {
+  const out = new Int16Array(n);
+  let lastHour = -1, baseCt = 0;
+  for (let i = 0; i < n; i++) {
+    const hr = Math.floor(ts[i] / 3600000);
+    if (hr !== lastHour) { lastHour = hr; baseCt = ctMinuteOfDay(hr * 3600000); }
+    out[i] = (baseCt + Math.floor((ts[i] - hr * 3600000) / 60000)) % 1440;
+  }
+  return out;
+}
+
 // ─────────────────────────────── main ───────────────────────────────
 function arg(name, fallback) {
   const i = process.argv.indexOf(name);
@@ -468,16 +500,17 @@ function main() {
   // large to be one minute of trading indicates the spread was mis-measured.
   log(`  worst mid-session rollover seam: ${worstMid.toFixed(2)} pts (a 1-min market move)${worstMid > 30 ? ` !! implausibly large, at ${new Date(worstMidAt).toISOString()}` : ""}`);
 
-  // ── CME trading-day index ──
+  // ── CME trading-day index + Chicago wall-clock minute ──
   const tday = buildTradingDays(oTs, N);
+  const ctMin = buildCtMinutes(oTs, N);
 
   // ── write ──
-  // Layout: 16B header, then ts(f64), open/high/low/close/volume(f32), tday(i32).
-  // Float64 first keeps every subsequent array naturally aligned.
-  const bytes = 16 + N * 8 + N * 4 * 5 + N * 4;
+  // Layout: 16B header, ts(f64), open/high/low/close/volume(f32), tday(i32),
+  // ctMin(i16). Float64 first keeps every subsequent array naturally aligned.
+  const bytes = 16 + N * 8 + N * 4 * 5 + N * 4 + N * 2;
   const out = Buffer.allocUnsafe(bytes);
   out.write("MNQB", 0, "latin1");
-  out.writeUInt32LE(1, 4);
+  out.writeUInt32LE(2, 4);
   out.writeUInt32LE(N, 8);
   out.writeUInt32LE(0, 12);
   let off = 16;
@@ -485,7 +518,8 @@ function main() {
     Buffer.from(arr.buffer, arr.byteOffset, N * BPE).copy(out, off);
     off += N * BPE;
   };
-  put(oTs, 8); put(oO, 4); put(oH, 4); put(oL, 4); put(oC, 4); put(oV, 4); put(tday, 4);
+  put(oTs, 8); put(oO, 4); put(oH, 4); put(oL, 4); put(oC, 4); put(oV, 4);
+  put(tday, 4); put(ctMin, 2);
   fs.writeFileSync(outPath, out);
 
   const meta = {
