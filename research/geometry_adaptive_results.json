@@ -1,0 +1,551 @@
+{
+ "fixedBest": {
+  "label": "sl5 tp1.5 (incumbent)",
+  "p": 0,
+  "c": 10,
+  "is": 38.64247311827957,
+  "oos": 40.45045045045045
+ },
+ "adaptives": [
+  {
+   "label": "behind-schedule -> sl5 tp3 (patient)",
+   "patient": 2,
+   "quick": 0,
+   "nearFrac": 0,
+   "c": 10,
+   "is": 39.11290322580645,
+   "oos": 39.0990990990991
+  },
+  {
+   "label": "patient=sl5-tp3 quick=tp1.5 near0.6",
+   "patient": 2,
+   "quick": 0,
+   "nearFrac": 0.6,
+   "c": 10,
+   "is": 37.02956989247312,
+   "oos": 37.65765765765766
+  },
+  {
+   "label": "behind-schedule -> sl5 tp3 (patient)",
+   "patient": 2,
+   "quick": 0,
+   "nearFrac": 0,
+   "c": 8,
+   "is": 36.96236559139785,
+   "oos": 37.207207207207205
+  },
+  {
+   "label": "patient=sl5-tp3 quick=tp1.5 near0.6",
+   "patient": 2,
+   "quick": 0,
+   "nearFrac": 0.6,
+   "c": 8,
+   "is": 34.87903225806452,
+   "oos": 34.32432432432432
+  },
+  {
+   "label": "patient=sl5-tp3 quick=tp0.75 near0.6",
+   "patient": 2,
+   "quick": 1,
+   "nearFrac": 0.6,
+   "c": 10,
+   "is": 34.00537634408602,
+   "oos": 36.21621621621622
+  },
+  {
+   "label": "patient=scale:-half quick=tp1.5 near0.6",
+   "patient": 7,
+   "quick": 0,
+   "nearFrac": 0.6,
+   "c": 8,
+   "is": 34.00537634408602,
+   "oos": 37.65765765765766
+  },
+  {
+   "label": "patient=scale:-half quick=tp1.5 near0.6",
+   "patient": 7,
+   "quick": 0,
+   "nearFrac": 0.6,
+   "c": 10,
+   "is": 33.93817204301075,
+   "oos": 37.027027027027025
+  },
+  {
+   "label": "patient=sl5-tp3 quick=tp1.5 near0.4",
+   "patient": 2,
+   "quick": 0,
+   "nearFrac": 0.4,
+   "c": 8,
+   "is": 33.534946236559136,
+   "oos": 34.95495495495496
+  },
+  {
+   "label": "patient=sl5-tp3 quick=tp1.5 near0.4",
+   "patient": 2,
+   "quick": 0,
+   "nearFrac": 0.4,
+   "c": 10,
+   "is": 32.93010752688172,
+   "oos": 35.4054054054054
+  },
+  {
+   "label": "behind-schedule -> sl5 tp3 (patient)",
+   "patient": 2,
+   "quick": 0,
+   "nearFrac": 0,
+   "c": 6,
+   "is": 33.60215053763441,
+   "oos": 32.88288288288289
+  },
+  {
+   "label": "patient=sl5-tp3 quick=tp0.75 near0.4",
+   "patient": 2,
+   "quick": 1,
+   "nearFrac": 0.4,
+   "c": 10,
+   "is": 32.72849462365591,
+   "oos": 34.054054054054056
+  },
+  {
+   "label": "patient=scale:-half quick=tp1.5 near0.4",
+   "patient": 7,
+   "quick": 0,
+   "nearFrac": 0.4,
+   "c": 10,
+   "is": 32.66129032258064,
+   "oos": 36.846846846846844
+  },
+  {
+   "label": "patient=sl5-tp3 quick=tp0.75 near0.25",
+   "patient": 2,
+   "quick": 1,
+   "nearFrac": 0.25,
+   "c": 10,
+   "is": 32.795698924731184,
+   "oos": 32.432432432432435
+  },
+  {
+   "label": "patient=sl5-tp3 quick=tp1.5 near0.25",
+   "patient": 2,
+   "quick": 0,
+   "nearFrac": 0.25,
+   "c": 10,
+   "is": 31.989247311827956,
+   "oos": 35.765765765765764
+  },
+  {
+   "label": "patient=scale:-half quick=tp0.75 near0.4",
+   "patient": 7,
+   "quick": 1,
+   "nearFrac": 0.4,
+   "c": 10,
+   "is": 31.989247311827956,
+   "oos": 37.65765765765766
+  },
+  {
+   "label": "patient=scale:-half quick=tp1.5 near0.25",
+   "patient": 7,
+   "quick": 0,
+   "nearFrac": 0.25,
+   "c": 10,
+   "is": 31.85483870967742,
+   "oos": 37.567567567567565
+  },
+  {
+   "label": "patient=scale:-half quick=tp1.5 near0.4",
+   "patient": 7,
+   "quick": 0,
+   "nearFrac": 0.4,
+   "c": 8,
+   "is": 31.787634408602152,
+   "oos": 37.2972972972973
+  },
+  {
+   "label": "patient=scale:-half quick=tp1.5 near0.25",
+   "patient": 7,
+   "quick": 0,
+   "nearFrac": 0.25,
+   "c": 8,
+   "is": 31.653225806451612,
+   "oos": 36.3963963963964
+  },
+  {
+   "label": "patient=sl5-tp3 quick=tp1.5 near0.25",
+   "patient": 2,
+   "quick": 0,
+   "nearFrac": 0.25,
+   "c": 8,
+   "is": 31.451612903225808,
+   "oos": 34.5045045045045
+  },
+  {
+   "label": "patient=sl5-tp3 quick=tp1.5 near0.6",
+   "patient": 2,
+   "quick": 0,
+   "nearFrac": 0.6,
+   "c": 6,
+   "is": 32.39247311827957,
+   "oos": 30.99099099099099
+  },
+  {
+   "label": "patient=scale:-half quick=tp0.75 near0.25",
+   "patient": 7,
+   "quick": 1,
+   "nearFrac": 0.25,
+   "c": 8,
+   "is": 30.913978494623656,
+   "oos": 35.22522522522522
+  },
+  {
+   "label": "behind-schedule -> sl5 tp6 (very patient)",
+   "patient": 3,
+   "quick": 0,
+   "nearFrac": 0,
+   "c": 8,
+   "is": 30.913978494623656,
+   "oos": 31.71171171171171
+  },
+  {
+   "label": "behind-schedule -> sl5 tp6 (very patient)",
+   "patient": 3,
+   "quick": 0,
+   "nearFrac": 0,
+   "c": 10,
+   "is": 33.60215053763441,
+   "oos": 30.9009009009009
+  },
+  {
+   "label": "patient=scale:-half quick=tp0.75 near0.25",
+   "patient": 7,
+   "quick": 1,
+   "nearFrac": 0.25,
+   "c": 10,
+   "is": 30.77956989247312,
+   "oos": 39.369369369369366
+  },
+  {
+   "label": "patient=sl5-tp6 quick=tp1.5 near0.6",
+   "patient": 3,
+   "quick": 0,
+   "nearFrac": 0.6,
+   "c": 8,
+   "is": 31.048387096774192,
+   "oos": 30.720720720720724
+  },
+  {
+   "label": "patient=sl5-tp3 quick=tp1.5 near0.4",
+   "patient": 2,
+   "quick": 0,
+   "nearFrac": 0.4,
+   "c": 6,
+   "is": 30.376344086021508,
+   "oos": 32.16216216216216
+  },
+  {
+   "label": "patient=scale:-half quick=tp1.5 near0.6",
+   "patient": 7,
+   "quick": 0,
+   "nearFrac": 0.6,
+   "c": 6,
+   "is": 30.1747311827957,
+   "oos": 33.513513513513516
+  },
+  {
+   "label": "patient=sl5-tp3 quick=tp0.75 near0.4",
+   "patient": 2,
+   "quick": 1,
+   "nearFrac": 0.4,
+   "c": 8,
+   "is": 29.905913978494624,
+   "oos": 33.693693693693696
+  },
+  {
+   "label": "patient=scale:-half quick=tp0.75 near0.6",
+   "patient": 7,
+   "quick": 1,
+   "nearFrac": 0.6,
+   "c": 10,
+   "is": 29.838709677419356,
+   "oos": 36.21621621621622
+  },
+  {
+   "label": "patient=sl5-tp3 quick=tp1.5 near0.25",
+   "patient": 2,
+   "quick": 0,
+   "nearFrac": 0.25,
+   "c": 6,
+   "is": 29.771505376344088,
+   "oos": 31.53153153153153
+  },
+  {
+   "label": "patient=sl5-tp3 quick=tp0.75 near0.25",
+   "patient": 2,
+   "quick": 1,
+   "nearFrac": 0.25,
+   "c": 8,
+   "is": 29.70430107526882,
+   "oos": 33.513513513513516
+  },
+  {
+   "label": "patient=sl5-tp6 quick=tp1.5 near0.4",
+   "patient": 3,
+   "quick": 0,
+   "nearFrac": 0.4,
+   "c": 8,
+   "is": 29.63709677419355,
+   "oos": 31.17117117117117
+  },
+  {
+   "label": "patient=sl5-tp6 quick=tp1.5 near0.6",
+   "patient": 3,
+   "quick": 0,
+   "nearFrac": 0.6,
+   "c": 10,
+   "is": 32.526881720430104,
+   "oos": 29.45945945945946
+  },
+  {
+   "label": "behind-schedule -> sl5 tp6 (very patient)",
+   "patient": 3,
+   "quick": 0,
+   "nearFrac": 0,
+   "c": 6,
+   "is": 29.435483870967744,
+   "oos": 32.88288288288289
+  },
+  {
+   "label": "patient=scale:-half quick=tp0.75 near0.4",
+   "patient": 7,
+   "quick": 1,
+   "nearFrac": 0.4,
+   "c": 8,
+   "is": 29.368279569892476,
+   "oos": 36.03603603603604
+  },
+  {
+   "label": "patient=sl5-tp6 quick=tp1.5 near0.6",
+   "patient": 3,
+   "quick": 0,
+   "nearFrac": 0.6,
+   "c": 6,
+   "is": 29.0994623655914,
+   "oos": 33.33333333333333
+  },
+  {
+   "label": "patient=sl5-tp3 quick=tp0.75 near0.6",
+   "patient": 2,
+   "quick": 1,
+   "nearFrac": 0.6,
+   "c": 8,
+   "is": 28.763440860215056,
+   "oos": 31.17117117117117
+  },
+  {
+   "label": "patient=sl5-tp6 quick=tp1.5 near0.4",
+   "patient": 3,
+   "quick": 0,
+   "nearFrac": 0.4,
+   "c": 10,
+   "is": 28.897849462365592,
+   "oos": 28.468468468468465
+  },
+  {
+   "label": "patient=scale:-half quick=tp0.75 near0.6",
+   "patient": 7,
+   "quick": 1,
+   "nearFrac": 0.6,
+   "c": 8,
+   "is": 28.42741935483871,
+   "oos": 33.06306306306306
+  },
+  {
+   "label": "patient=sl5-tp3 quick=tp0.75 near0.25",
+   "patient": 2,
+   "quick": 1,
+   "nearFrac": 0.25,
+   "c": 6,
+   "is": 28.360215053763444,
+   "oos": 31.44144144144144
+  },
+  {
+   "label": "patient=scale:-half quick=tp1.5 near0.4",
+   "patient": 7,
+   "quick": 0,
+   "nearFrac": 0.4,
+   "c": 6,
+   "is": 27.21774193548387,
+   "oos": 34.41441441441441
+  },
+  {
+   "label": "patient=sl5-tp6 quick=tp1.5 near0.25",
+   "patient": 3,
+   "quick": 0,
+   "nearFrac": 0.25,
+   "c": 8,
+   "is": 27.1505376344086,
+   "oos": 30.54054054054054
+  },
+  {
+   "label": "patient=sl5-tp6 quick=tp1.5 near0.25",
+   "patient": 3,
+   "quick": 0,
+   "nearFrac": 0.25,
+   "c": 10,
+   "is": 27.083333333333332,
+   "oos": 29.639639639639643
+  },
+  {
+   "label": "patient=sl5-tp6 quick=tp1.5 near0.25",
+   "patient": 3,
+   "quick": 0,
+   "nearFrac": 0.25,
+   "c": 6,
+   "is": 26.948924731182792,
+   "oos": 32.072072072072075
+  },
+  {
+   "label": "patient=sl5-tp3 quick=tp0.75 near0.4",
+   "patient": 2,
+   "quick": 1,
+   "nearFrac": 0.4,
+   "c": 6,
+   "is": 26.814516129032256,
+   "oos": 32.072072072072075
+  },
+  {
+   "label": "patient=sl5-tp6 quick=tp1.5 near0.4",
+   "patient": 3,
+   "quick": 0,
+   "nearFrac": 0.4,
+   "c": 6,
+   "is": 26.747311827956988,
+   "oos": 31.08108108108108
+  },
+  {
+   "label": "patient=sl5-tp6 quick=tp0.75 near0.25",
+   "patient": 3,
+   "quick": 1,
+   "nearFrac": 0.25,
+   "c": 8,
+   "is": 25.806451612903224,
+   "oos": 28.37837837837838
+  },
+  {
+   "label": "patient=sl5-tp6 quick=tp0.75 near0.6",
+   "patient": 3,
+   "quick": 1,
+   "nearFrac": 0.6,
+   "c": 10,
+   "is": 26.411290322580644,
+   "oos": 25.585585585585584
+  },
+  {
+   "label": "patient=scale:-half quick=tp0.75 near0.4",
+   "patient": 7,
+   "quick": 1,
+   "nearFrac": 0.4,
+   "c": 6,
+   "is": 25.537634408602152,
+   "oos": 31.71171171171171
+  },
+  {
+   "label": "patient=sl5-tp6 quick=tp0.75 near0.4",
+   "patient": 3,
+   "quick": 1,
+   "nearFrac": 0.4,
+   "c": 10,
+   "is": 25.47043010752688,
+   "oos": 25.945945945945947
+  },
+  {
+   "label": "patient=sl5-tp6 quick=tp0.75 near0.25",
+   "patient": 3,
+   "quick": 1,
+   "nearFrac": 0.25,
+   "c": 6,
+   "is": 25.336021505376344,
+   "oos": 30
+  },
+  {
+   "label": "patient=sl5-tp6 quick=tp0.75 near0.4",
+   "patient": 3,
+   "quick": 1,
+   "nearFrac": 0.4,
+   "c": 6,
+   "is": 25.134408602150536,
+   "oos": 27.027027027027028
+  },
+  {
+   "label": "patient=scale:-half quick=tp0.75 near0.25",
+   "patient": 7,
+   "quick": 1,
+   "nearFrac": 0.25,
+   "c": 6,
+   "is": 25.134408602150536,
+   "oos": 33.78378378378378
+  },
+  {
+   "label": "patient=sl5-tp6 quick=tp0.75 near0.25",
+   "patient": 3,
+   "quick": 1,
+   "nearFrac": 0.25,
+   "c": 10,
+   "is": 24.596774193548388,
+   "oos": 27.47747747747748
+  },
+  {
+   "label": "patient=sl5-tp6 quick=tp0.75 near0.4",
+   "patient": 3,
+   "quick": 1,
+   "nearFrac": 0.4,
+   "c": 8,
+   "is": 24.39516129032258,
+   "oos": 27.927927927927925
+  },
+  {
+   "label": "patient=scale:-half quick=tp1.5 near0.25",
+   "patient": 7,
+   "quick": 0,
+   "nearFrac": 0.25,
+   "c": 6,
+   "is": 24.126344086021508,
+   "oos": 34.5045045045045
+  },
+  {
+   "label": "patient=sl5-tp3 quick=tp0.75 near0.6",
+   "patient": 2,
+   "quick": 1,
+   "nearFrac": 0.6,
+   "c": 6,
+   "is": 24.059139784946236,
+   "oos": 30.630630630630627
+  },
+  {
+   "label": "patient=scale:-half quick=tp0.75 near0.6",
+   "patient": 7,
+   "quick": 1,
+   "nearFrac": 0.6,
+   "c": 6,
+   "is": 23.387096774193548,
+   "oos": 32.16216216216216
+  },
+  {
+   "label": "patient=sl5-tp6 quick=tp0.75 near0.6",
+   "patient": 3,
+   "quick": 1,
+   "nearFrac": 0.6,
+   "c": 8,
+   "is": 23.31989247311828,
+   "oos": 24.864864864864867
+  },
+  {
+   "label": "patient=sl5-tp6 quick=tp0.75 near0.6",
+   "patient": 3,
+   "quick": 1,
+   "nearFrac": 0.6,
+   "c": 6,
+   "is": 22.379032258064516,
+   "oos": 26.216216216216214
+  }
+ ]
+}
