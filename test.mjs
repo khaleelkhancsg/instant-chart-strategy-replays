@@ -603,18 +603,37 @@ t("hitting the target PASSES and stops the replay", () => {
   close(r.stats.netPnl, 3100, 1e-9);
 });
 
-t("consistency rule blocks a pass built on one oversized day", () => {
-  // One +3200 day is 100% of profit; a 50% cap must refuse it.
-  const strict = replayWindow(tr([3200]), START, { ...BASE, consistencyPct: 50 });
-  eq(strict.outcome, OUTCOME.OPEN, "should not pass on a single dominant day:");
-  const loose = replayWindow(tr([3200]), START, { ...BASE, consistencyPct: 100 });
-  eq(loose.outcome, OUTCOME.PASS, "with no consistency cap it passes:");
+t("consistency blocks the pass only when configured to gate it", () => {
+  // One +3200 day is 100% of profit, over a 50% cap.
+  const gated = replayWindow(tr([3200]), START, { ...BASE, consistencyPct: 50, consistencyGatesPass: true });
+  eq(gated.outcome, OUTCOME.OPEN, "gating on: must dilute before passing:");
+  const ungated = replayWindow(tr([3200]), START, { ...BASE, consistencyPct: 50, consistencyGatesPass: false });
+  eq(ungated.outcome, OUTCOME.PASS, "gating off: target alone passes:");
+  eq(ungated.stats.consistencyBreached, true, "but the breach is still reported:");
 });
 
-t("consistency rule is satisfied once the best day is diluted", () => {
-  const r = replayWindow(tr([3200, 1000, 1000, 1000, 1000]), START, { ...BASE, consistencyPct: 50 });
+t("with gating on, the pass waits until the best day is diluted", () => {
+  const r = replayWindow(tr([3200, 1000, 1000, 1000, 1000]), START, { ...BASE, consistencyPct: 50, consistencyGatesPass: true });
   eq(r.outcome, OUTCOME.PASS);
   if (!(r.stats.maxDayPnl <= 0.5 * r.stats.netPnl + 1e-9)) throw new Error("passed while violating the cap");
+});
+
+t("the window ends the moment the target is reached (default)", () => {
+  // Five winning days; the target falls on the second. Nothing after it counts.
+  const r = replayWindow(tr([2000, 1500, 900, 900, 900]), START, BASE);
+  eq(r.outcome, OUTCOME.PASS);
+  eq(r.stats.trades, 2, "replay stops at the passing trade:");
+  close(r.stats.netPnl, 3500, 1e-9, "equity frozen at the pass:");
+  eq(r.passMs !== null, true, "pass timestamp recorded for the chart marker:");
+  eq(r.events[r.events.length - 1].pass, true, "passing event flagged:");
+});
+
+t("pass and breach both end the window symmetrically", () => {
+  const passed = replayWindow(tr([2000, 1500, 900, 900]), START, BASE);
+  const failed = replayWindow(tr([1500, -2100, 900, 900]), START, BASE);
+  eq(passed.stats.trades, 2, "pass stops after the resolving trade:");
+  eq(failed.stats.trades, 2, "breach stops after the resolving trade:");
+  eq(passed.passMs !== null && failed.failMs !== null, true, "both record a resolution time:");
 });
 
 t("daily loss limit is a SOFT lockout — skips trades, never fails", () => {

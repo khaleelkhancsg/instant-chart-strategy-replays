@@ -59,7 +59,10 @@ const RULES_PARAMS = [
   { key: "circuitBreaker", label: "Your daily breaker $", type: "int", min: 0, max: 2000, step: 25, default: 150,
     hint: "Your own tighter stop. The single biggest pass-rate lever in this project's testing. 0 = off." },
   { key: "consistencyPct", label: "Consistency cap %", type: "int", min: 0, max: 100, step: 5, default: 50,
-    hint: "No single day may exceed this share of total profit at payout." },
+    hint: "No single day may exceed this share of total profit." },
+  { key: "consistencyGatesPass", label: "Consistency blocks the pass", type: "select", default: "off",
+    options: [["off", "No — pass on target"], ["on", "Yes — must dilute first"]],
+    hint: "If it blocks, one oversized winning day forces you to keep trading to dilute it. Measured here: 95% of passing windows reach the target first and then trade ~10 more times." },
   { key: "minTradingDays", label: "Min trading days", type: "int", min: 0, max: 30, step: 1, default: 0 },
   { key: "windowDays", label: "Window length (days)", type: "int", min: 5, max: 90, step: 1, default: 30 },
 ];
@@ -246,9 +249,10 @@ function renderSidebar() {
 
   const ru = buildGroup("Combine rules");
   for (const d of RULES_PARAMS) {
-    ru.body.appendChild(buildParamControl(d, S.rules[d.key], (v) => {
+    const cur = d.key === "consistencyGatesPass" ? (S.rules.consistencyGatesPass ? "on" : "off") : S.rules[d.key];
+    ru.body.appendChild(buildParamControl(d, cur, (v) => {
       const needsReload = d.key === "windowDays";
-      S.rules[d.key] = v;
+      S.rules[d.key] = d.key === "consistencyGatesPass" ? v === "on" : v;
       if (needsReload) loadWindow(S.windowStart);
       else onParamsChanged();
     }));
@@ -429,6 +433,9 @@ function paintChart(res, replay) {
     // convert a 1-minute pixel budget into a sane sampling step.
     tfToLocal: { localIdx: tf.srcLast, stride: S.params.timeframeMin || 1 },
     lockX: replay.lockMs ? indexAtOrAfter(blob.ts, replay.lockMs) : null,
+    // Where the evaluation actually ended — pass or breach, whichever came first.
+    resolveX: (replay.passMs ?? replay.failMs) != null
+      ? indexAtOrAfter(blob.ts, replay.passMs ?? replay.failMs) : null,
     title: `MNQ · ${S.strategyDesc.name}`,
     initialView: [S.winStartLocal, blob.count],
   });
@@ -462,7 +469,7 @@ function paintStats(res, replay) {
     statCell("Expectancy", fmtUsd(st.expectancy, 2), sign(st.expectancy)) +
     statCell("Trading days", st.tradingDays) +
     statCell("Best day", fmtUsd(st.maxDayPnl), sign(st.maxDayPnl)) +
-    statCell("Consistency", st.netPnl > 0 ? st.consistencyRatio.toFixed(0) + "%" : "—",
+    statCell("Consistency", st.netPnl > 0 ? st.consistencyRatio.toFixed(0) + "%" + (st.consistencyBreached ? " ⚠" : "") : "—",
              st.netPnl > 0 && st.consistencyRatio > R.consistencyPct ? "neg" : "") +
     statCell("Closest to breach", st.minCushion == null ? "—" : fmtUsd(st.minCushion),
              st.minCushion != null && st.minCushion < 500 ? "neg" : "") +

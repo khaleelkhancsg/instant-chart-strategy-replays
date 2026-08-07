@@ -35,6 +35,20 @@ floor locks at breakeven.
 profit stop, your circuit breaker, and the firm's daily limit drawn as reference
 lines. Sessions that hit a lockout get a gold underline.
 
+**The window ends when it resolves.** 30 days is a maximum, not a duration — the
+evaluation is over the moment you hit the target or breach. A dashed marker shows
+where, everything after it is dimmed, and trades in the dead region are drawn
+faded because they never happened.
+
+Related and easy to miss: the **consistency rule can block a pass**. If it gates
+the evaluation, one oversized winning day forces you to keep trading to dilute it
+below the cap — measured here, 95% of passing windows reach the target *first* and
+then trade ~10 more times, which both delays the pass and re-exposes the account.
+The `Consistency blocks the pass` control chooses; the default is off (pass on
+target), and a pass that would violate the cap is flagged with ⚠ rather than
+silently accepted. Turning it on drops pass rate 78.8% → 71.9% and doubles the
+median time to pass from 6 days to 13.
+
 **Navigator** — every possible 30-day start across the 5 years, coloured by
 outcome. Click to jump. This is the difference between "this window passed" and
 "this passes 75% of the time".

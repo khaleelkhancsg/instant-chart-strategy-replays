@@ -33,7 +33,16 @@ export const DEFAULT_RULES = {
   dailyLossLimit: 1000,     // firm's soft daily lockout
   dailyProfitStop: 1500,    // stop trading once a day is up this much
   circuitBreaker: 150,      // your own tighter daily loss stop (0 = off)
-  consistencyPct: 50,       // max single-day share of total profit at pass
+  consistencyPct: 50,       // max single-day share of total profit
+  // Does the consistency rule BLOCK the pass, or only govern payout afterwards?
+  //
+  // Firms differ. If it gates the pass, a lone oversized winning day forces you
+  // to keep trading to dilute it — measured on this dataset, 95% of passing
+  // windows reach the target before they are allowed to pass, and then trade ~10
+  // more times, which both delays the pass and re-exposes the account to breach.
+  // With it off, the evaluation ends the moment the target is reached and the
+  // consistency ratio is reported as a warning instead.
+  consistencyGatesPass: false,
   minTradingDays: 0,
   windowDays: 30,
   evaluateOn: "realized",   // 'realized' | 'intraday'
@@ -82,6 +91,7 @@ export function replayWindow(trades, startMs, rules = {}) {
   const days = [];
   let outcome = OUTCOME.OPEN;
   let passMs = null, failMs = null, targetHitMs = null, lockMs = null;
+  let consistencyBreached = false;
 
   const floorNow = () => {
     if (locked) return 0;
@@ -174,9 +184,13 @@ export function replayWindow(trades, startMs, rules = {}) {
       ev.breachKind = breachedIntra ? "intraday" : "realized";
       break;
     }
-    if (cum >= R.profitTarget && maxDayPnl <= capPct * cum && tradingDays >= R.minTradingDays) {
+    const consistencyOk = !R.consistencyGatesPass || maxDayPnl <= capPct * cum;
+    if (cum >= R.profitTarget && consistencyOk && tradingDays >= R.minTradingDays) {
       outcome = OUTCOME.PASS;
       passMs = t.exitTime;
+      // Flag a pass that only stands because consistency is not gating it, so
+      // the UI can warn rather than quietly present it as clean.
+      consistencyBreached = maxDayPnl > capPct * cum;
       events[events.length - 1].pass = true;
       break;
     }
@@ -208,6 +222,7 @@ export function replayWindow(trades, startMs, rules = {}) {
       daysUsed,
       maxDayPnl,
       consistencyRatio: cum > 0 ? (maxDayPnl / cum) * 100 : 0,
+      consistencyBreached,
       minCushion: minCushion === Infinity ? null : minCushion,
       finalFloor: floorNow(),
       locked,

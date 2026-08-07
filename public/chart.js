@@ -19,6 +19,7 @@ const CSS = {
   target: "#26a69a",
   skip: "#4a5666",
   lock: "#c9a227",
+  session: "#d8b13a",
   crosshair: "#5a6b7d",
 };
 
@@ -147,11 +148,16 @@ export class ChartView {
       ctx.fillText("No data in this window.", 20, 40);
       return;
     }
-    this._drawSessionBands(ctx);
+    // Dimming goes UNDER the panes; the session and resolution markers go OVER
+    // them. At full zoom-out the candle wicks tile every pixel column, so an
+    // annotation drawn first is simply painted out by the price series.
     this._drawPricePane(ctx);
     this._drawSubPane(ctx);
     this._drawEquityPane(ctx);
     this._drawDailyPane(ctx);
+    this._drawDimAfterResolution(ctx);
+    this._drawSessionBands(ctx);
+    this._drawResolutionMarker(ctx);
     this._drawTimeAxis(ctx);
   }
 
@@ -160,8 +166,10 @@ export class ChartView {
     const { bars } = this.data;
     const span = this.i1 - this.i0;
     if (span > 60000) return;
-    ctx.strokeStyle = CSS.grid;
+    ctx.strokeStyle = CSS.session;
     ctx.lineWidth = 1;
+    ctx.setLineDash([2, 4]);
+    ctx.globalAlpha = 0.75;
     ctx.beginPath();
     const step = Math.max(1, Math.floor(span / 4000));
     let prev = bars.tday[Math.max(0, Math.floor(this.i0))];
@@ -174,6 +182,49 @@ export class ChartView {
       }
     }
     ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+  }
+
+  // A 30-day window is a maximum, not a duration: it ends the moment the account
+  // passes or breaches. Everything after that never happened, so it is dimmed and
+  // marked rather than drawn as if it were still part of the evaluation.
+  _drawDimAfterResolution(ctx) {
+    if (!this.data.replay || this.data.resolveX == null) return;
+    const rx = this.x(this.data.resolveX);
+    if (rx > this.plotR) return;
+    const x0 = Math.max(this.plotL, rx);
+    if (x0 >= this.plotR) return;
+    ctx.fillStyle = "rgba(6,9,13,0.62)";
+    ctx.fillRect(x0, PAD.t, this.plotR - x0, this.axisY - PAD.t);
+  }
+
+  _drawResolutionMarker(ctx) {
+    const R = this.data.replay;
+    if (!R || this.data.resolveX == null) return;
+    const rx = this.x(this.data.resolveX);
+    if (rx > this.plotR || rx < this.plotL) return;
+
+    const passed = R.outcome === "PASS";
+    const color = passed ? CSS.bull : CSS.bear;
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 3]);
+    ctx.beginPath();
+    ctx.moveTo(Math.round(rx) + 0.5, PAD.t);
+    ctx.lineTo(Math.round(rx) + 0.5, this.axisY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const label = passed ? "PASSED — window ends" : "BREACHED — window ends";
+    ctx.font = "bold 10px ui-sans-serif, system-ui";
+    const w = ctx.measureText(label).width + 10;
+    const lx = Math.min(rx + 4, this.plotR - w);
+    ctx.fillStyle = color;
+    ctx.fillRect(lx, PAD.t + 1, w, 14);
+    ctx.fillStyle = "#08111a";
+    ctx.fillText(label, lx + 5, PAD.t + 11);
   }
 
   // Bucket the visible range into pixel columns. Everything that needs candles
