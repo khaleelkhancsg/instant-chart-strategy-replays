@@ -9,7 +9,7 @@ import fs from "node:fs";
 import { ema, sma, atr, adx, rsi, donchian, rollingMeanStd, trueRange } from "./src/indicators.mjs";
 import { resample, sliceBars, indexAtOrAfter, indexAtOrBefore } from "./src/resample.mjs";
 import { runBrackets, tradeStats, EXIT } from "./src/engine.mjs";
-import { replayWindow, sweepWindows, OUTCOME } from "./src/challenge.mjs";
+import { replayWindow, sweepWindows, simulateFunded, sweepFunded, OUTCOME } from "./src/challenge.mjs";
 import { loadBars, packBars } from "./src/data.mjs";
 
 let pass = 0, fail = 0;
@@ -744,6 +744,91 @@ t("sweep rates sum to 100%", () => {
   const trades = tr(Array.from({ length: 80 }, () => (rnd() > 0.5 ? 800 : -600)));
   const s = sweepWindows(trades, START, trades[trades.length - 1].exitTime, { ...BASE, windowDays: 10 }, 2).summary;
   close(s.passRate + s.failRate + s.openRate, 100, 1e-9);
+});
+
+// ══════════════════════════════ 4b. FUNDED STAGE ══════════════════════════════
+section("4b. Funded stage payouts");
+
+const FBASE = { ...BASE, trailingDD: 999999 };   // isolate payout logic from breaches
+const FUND = { winDayThreshold: 150, winDaysRequired: 5, profitSplit: 100,
+               maxPayout: 0, minBuffer: 0, horizonDays: 180 };
+
+t("a payout unlocks after the required number of winning days", () => {
+  const r = simulateFunded(tr([200, 200, 200, 200, 200]), START, FBASE, FUND);
+  eq(r.payouts.length, 1, "five qualifying days = one payout:");
+  close(r.payouts[0].gross, 1000, 1e-9, "the whole balance is withdrawn:");
+});
+
+t("days under the threshold do not count toward a payout", () => {
+  // $149 is one dollar short on every day.
+  const r = simulateFunded(tr([149, 149, 149, 149, 149]), START, FBASE, FUND);
+  eq(r.payouts.length, 0, "no day qualifies:");
+  const r2 = simulateFunded(tr([150, 150, 150, 150, 150]), START, FBASE, FUND);
+  eq(r2.payouts.length, 1, "exactly at the threshold does qualify:");
+});
+
+t("losing days neither count nor reset the tally", () => {
+  const r = simulateFunded(tr([200, -100, 200, -100, 200, 200, 200]), START, FBASE, FUND);
+  eq(r.payouts.length, 1, "five winning days reached despite losses between:");
+});
+
+t("the win-day tally resets after a payout", () => {
+  const r = simulateFunded(tr(Array(10).fill(200)), START, FBASE, FUND);
+  eq(r.payouts.length, 2, "ten winning days = two payouts:");
+});
+
+t("profit split is applied to what the trader receives", () => {
+  const r = simulateFunded(tr([200, 200, 200, 200, 200]), START, FBASE, { ...FUND, profitSplit: 90 });
+  close(r.payouts[0].gross, 1000, 1e-9, "gross leaves the account:");
+  close(r.payouts[0].net, 900, 1e-9, "trader keeps 90%:");
+  close(r.netTotal, 900, 1e-9);
+});
+
+t("a payout cap limits the withdrawal and leaves the rest in", () => {
+  const r = simulateFunded(tr([500, 500, 500, 500, 500]), START, FBASE, { ...FUND, maxPayout: 1000 });
+  close(r.payouts[0].gross, 1000, 1e-9, "capped:");
+  close(r.finalProfit, 1500, 1e-9, "remainder stays in the account:");
+});
+
+t("minBuffer keeps profit in the account", () => {
+  const r = simulateFunded(tr([200, 200, 200, 200, 200]), START, FBASE, { ...FUND, minBuffer: 400 });
+  close(r.payouts[0].gross, 600, 1e-9, "1000 profit minus a 400 buffer:");
+  close(r.finalProfit, 400, 1e-9);
+});
+
+t("withdrawing does not put a still-trailing account into breach", () => {
+  // Trailing DD $2000, un-locked. Five +200 days -> peak 1000, floor -1000.
+  // Withdrawing all 1000 drops the balance to 0; if the floor did not come down
+  // with it the account would breach on its own payout.
+  const r = simulateFunded(tr([200, 200, 200, 200, 200, 100]), START,
+    { ...BASE, trailingDD: 2000, lockAtBreakeven: false }, FUND);
+  eq(r.payouts.length, 1);
+  eq(r.blownMs, null, "must not be blown by its own withdrawal:");
+});
+
+t("the trailing drawdown still kills a funded account", () => {
+  const r = simulateFunded(tr([1500, -2100, 500]), START, { ...BASE, trailingDD: 2000 }, FUND);
+  eq(r.survived, false, "breach ends the run:");
+  eq(r.payouts.length, 0);
+});
+
+t("the horizon bounds the run", () => {
+  const long = Array(60).fill(200);          // one winning day each
+  const short = simulateFunded(tr(long), START, FBASE, { ...FUND, horizonDays: 20 });
+  const full = simulateFunded(tr(long), START, FBASE, { ...FUND, horizonDays: 60 });
+  if (!(short.payouts.length < full.payouts.length)) throw new Error("horizon had no effect");
+});
+
+t("sweepFunded aggregates runs consistently", () => {
+  const trades = tr(Array.from({ length: 200 }, () => (rnd() > 0.4 ? 400 : -250)));
+  const end = trades[trades.length - 1].exitTime;
+  const sw = sweepFunded(trades, START, end, FBASE, { ...FUND, horizonDays: 30 }, 5);
+  if (!sw.runs.length) throw new Error("no runs produced");
+  const direct = simulateFunded(trades, sw.runs[0].startMs, FBASE, { ...FUND, horizonDays: 30 });
+  eq(sw.runs[0].payouts.length, direct.payouts.length, "run 0 matches a direct call:");
+  close(sw.summary.meanTotalPaid, sw.runs.reduce((a, r) => a + r.netTotal, 0) / sw.runs.length, 1e-9);
+  const paid = sw.runs.filter((r) => r.payouts.length).length;
+  close(sw.summary.reachedPayout, (paid / sw.runs.length) * 100, 1e-9);
 });
 
 // ══════════════════════════════ 5. WIRE FORMAT ══════════════════════════════

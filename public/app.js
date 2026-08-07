@@ -34,6 +34,20 @@ const EXEC_PARAMS = [
   { key: "riskDollars", label: "Risk per trade $ (risk mode)", type: "int", min: 50, max: 1500, step: 25, default: 400 },
 ];
 
+// Funded stage. No consistency requirement here — a payout is unlocked by
+// accumulating winning days worth more than a threshold.
+const FUNDED_PARAMS = [
+  { key: "winDayThreshold", label: "Winning day needs $", type: "int", min: 0, max: 2000, step: 25, default: 150 },
+  { key: "winDaysRequired", label: "Winning days per payout", type: "int", min: 1, max: 30, step: 1, default: 5 },
+  { key: "horizonDays", label: "Follow account for (days)", type: "int", min: 30, max: 730, step: 30, default: 180 },
+  { key: "profitSplit", label: "Profit split %", type: "int", min: 10, max: 100, step: 5, default: 100,
+    hint: "Assumed — set to your firm's actual split." },
+  { key: "maxPayout", label: "Payout cap $ (0 = none)", type: "int", min: 0, max: 20000, step: 250, default: 0,
+    hint: "Assumed — many firms cap early withdrawals." },
+  { key: "minBuffer", label: "Profit that must stay in $", type: "int", min: 0, max: 5000, step: 100, default: 0,
+    hint: "Assumed — some firms require a buffer above the starting balance." },
+];
+
 const SESSION_PARAMS = [
   { key: "intradayOnly", label: "No overnight positions", type: "select", default: "on",
     options: [["on", "Enforced — flat by deadline"], ["off", "Allow overnight holds"]],
@@ -60,9 +74,9 @@ const RULES_PARAMS = [
     hint: "Your own tighter stop. The single biggest pass-rate lever in this project's testing. 0 = off." },
   { key: "consistencyPct", label: "Consistency cap %", type: "int", min: 0, max: 100, step: 5, default: 50,
     hint: "No single day may exceed this share of total profit." },
-  { key: "consistencyGatesPass", label: "Consistency applies to", type: "select", default: "off",
-    options: [["off", "Payout only — pass on target"], ["on", "The evaluation too"]],
-    hint: "Your firm's spec says 'at payout', so it should not block the pass. Switching it on answers a different question — days to become WITHDRAWABLE, not days to pass — since one oversized day must be diluted before you can take money out. That costs ~10 extra trades and doubles median days (6 → 13)." },
+  { key: "consistencyGatesPass", label: "Consistency blocks the pass", type: "select", default: "on",
+    options: [["on", "Yes — must dilute first"], ["off", "No — pass on target"]],
+    hint: "The evaluation enforces this: reaching the target on one oversized day does not pass. Measured here, 95% of passing windows hit the target first and then need ~10 more trades. Payouts have no consistency rule — they gate on winning days instead." },
   { key: "minTradingDays", label: "Min trading days", type: "int", min: 0, max: 30, step: 1, default: 0 },
   { key: "windowDays", label: "Window length (days)", type: "int", min: 5, max: 90, step: 1, default: 30 },
 ];
@@ -76,6 +90,7 @@ const S = {
   params: {},
   exec: { ...DEFAULT_EXEC },
   rules: { ...DEFAULT_RULES },
+  funded: {},
   windowStart: null,
   blob: null,        // parsed window bars
   winStartLocal: 0,  // index of the window start inside the blob
@@ -212,6 +227,12 @@ function renderSidebar() {
   gSweep.body.innerHTML = `<div id="sweepPanel"></div>`;
   host.appendChild(gSweep);
 
+  // Passing the evaluation is a gate, not the goal — this is what the same book
+  // would actually pay out once funded.
+  const gFund = buildGroup("Funded stage — payouts");
+  gFund.body.innerHTML = `<div id="fundedPanel"></div>`;
+  host.appendChild(gFund);
+
   // Signal params, declared by the strategy itself.
   const sig = buildGroup("Signal");
   const tfDesc = {
@@ -258,7 +279,75 @@ function renderSidebar() {
     }));
   }
   host.appendChild(ru);
+
+  const fu = buildGroup("Funded stage rules", true);
+  for (const d of FUNDED_PARAMS) {
+    fu.body.appendChild(buildParamControl(d, S.funded[d.key], (v) => {
+      S.funded[d.key] = v;
+      onParamsChanged();
+    }));
+  }
+  host.appendChild(fu);
+
   paintSweepStats();
+  paintFundedStats();
+}
+
+// ───────────────────── funded-stage payout panel ─────────────────────
+function paintFundedStats() {
+  const host = $("fundedPanel");
+  if (!host) return;
+  const f = S.sweep && S.sweep.funded;
+  if (!f) {
+    host.innerHTML = `<div class="sweep-empty">${
+      S.sweeping ? "Simulating funded accounts…" : "Run the sweep to model payouts."
+    }</div>`;
+    return;
+  }
+
+  const F = S.funded;
+  const perMonth = f.meanTotalPaid / (f.horizonDays / 30.44);
+  const sign = (v) => (v > 0 ? "pos" : v < 0 ? "neg" : "");
+  const stillGoing = Math.max(0, 100 - f.reachedPayout - f.blownBeforeAnyPayout);
+
+  host.innerHTML = `
+    <div class="sweep-head ${S.sweepStale ? "stale" : ""}">
+      <div class="sweep-rate" style="color:${f.reachedPayout >= 50 ? "var(--bull)" : "var(--warn)"}">
+        ${f.reachedPayout.toFixed(0)}<span>%</span>
+      </div>
+      <div class="sweep-sub">
+        reach a payout<br>
+        <span class="k">${f.n} funded runs · ${f.horizonDays}d each</span>
+      </div>
+    </div>
+
+    <div class="stackbar" title="got paid / blown before any payout / neither yet">
+      <i class="sb-pass" style="width:${f.reachedPayout}%"></i>
+      <i class="sb-fail" style="width:${f.blownBeforeAnyPayout}%"></i>
+      <i class="sb-open" style="width:${stillGoing}%"></i>
+    </div>
+    <div class="stackkey">
+      <span><b class="sb-pass"></b>${f.reachedPayout.toFixed(1)}% got paid</span>
+      <span><b class="sb-fail"></b>${f.blownBeforeAnyPayout.toFixed(1)}% blown first</span>
+    </div>
+
+    <div class="statgrid" style="margin-top:9px">
+      ${statCell("Median days to 1st payout", f.medianDaysToFirstPayout ?? "—")}
+      ${statCell("Median 1st payout", f.medianFirstPayout == null ? "—" : fmtUsd(f.medianFirstPayout), "pos")}
+      ${statCell("Median payouts / run", f.medianPayoutCount ?? 0)}
+      ${statCell("Account survived", f.survived.toFixed(0) + "%")}
+      ${statCell("Median total paid", fmtUsd(f.medianTotalPaid), sign(f.medianTotalPaid))}
+      ${statCell("Mean total paid", fmtUsd(f.meanTotalPaid), sign(f.meanTotalPaid))}
+      ${statCell("Implied $ / month", fmtUsd(perMonth), sign(perMonth))}
+      ${statCell("Best run", fmtUsd(f.bestRun), "pos")}
+    </div>
+
+    <div class="sweep-foot">
+      ${F.winDaysRequired} winning days over ${fmtUsd(F.winDayThreshold)} unlock a payout ·
+      ${F.profitSplit}% split${F.maxPayout ? ` · capped ${fmtUsd(F.maxPayout)}` : ""}
+      <br><span class="warn">Split, cap and buffer are assumptions — set them to your firm's terms.</span>
+    </div>
+  `;
 }
 
 // ───────────────────── all-windows (sweep) panel ─────────────────────
@@ -519,7 +608,7 @@ function stepWindow(days) {
 
 // ──────────────────────── full-history sweep ────────────────────────
 function sweepKey() {
-  return JSON.stringify([S.strategyDesc.id, S.params, S.exec, S.rules]);
+  return JSON.stringify([S.strategyDesc.id, S.params, S.exec, S.rules, S.funded]);
 }
 
 function scheduleSweep() {
@@ -547,7 +636,7 @@ async function runSweep() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         strategyId: S.strategyDesc.id,
-        params: S.params, exec: S.exec, rules: S.rules,
+        params: S.params, exec: S.exec, rules: S.rules, funded: S.funded,
         stepDays: 1,
       }),
     }).then((x) => x.json());
@@ -559,6 +648,7 @@ async function runSweep() {
 
     S.nav.set(r.windows, [S.meta.startMs, S.meta.endMs], S.windowStart);
     paintSweepStats();
+    paintFundedStats();
     const s = r.summary;
     $("navSummary").innerHTML =
       `<span class="k">${s.n.toLocaleString()} × ${S.rules.windowDays}-day windows</span> · ` +
@@ -632,6 +722,7 @@ async function boot() {
   S.meta = await fetch("/api/meta").then((r) => r.json());
   S.exec = { ...S.meta.defaults.exec };
   S.rules = { ...S.meta.defaults.rules };
+  S.funded = { ...S.meta.defaults.funded };
 
   $("datasetInfo").textContent =
     `${S.meta.bars.toLocaleString()} 1-min bars · ${new Date(S.meta.startMs).toISOString().slice(0, 10)} → ${new Date(S.meta.endMs).toISOString().slice(0, 10)}`;
@@ -684,6 +775,7 @@ async function boot() {
     S.params = resolveParams(S.strategyMod, {});
     S.exec = { ...S.meta.defaults.exec };
     S.rules = { ...S.meta.defaults.rules };
+    S.funded = { ...S.meta.defaults.funded };
     renderSidebar();
     loadWindow(S.windowStart);
   };

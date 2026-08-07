@@ -19,7 +19,7 @@ import { loadBars, packBars } from "./src/data.mjs";
 import { loadStrategies, describe } from "./src/registry.mjs";
 import { runStrategy, resolveParams } from "./src/run.mjs";
 import { resolveExec, DEFAULT_EXEC } from "./src/engine.mjs";
-import { sweepWindows, DEFAULT_RULES, resolveRules } from "./src/challenge.mjs";
+import { sweepWindows, sweepFunded, DEFAULT_RULES, DEFAULT_FUNDED, resolveRules, resolveFunded } from "./src/challenge.mjs";
 import { indexAtOrAfter } from "./src/resample.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -135,7 +135,7 @@ const server = http.createServer(async (req, res) => {
         startMs: bars.ts[0],
         endMs: bars.ts[bars.count - 1],
         meta,
-        defaults: { exec: DEFAULT_EXEC, rules: DEFAULT_RULES },
+        defaults: { exec: DEFAULT_EXEC, rules: DEFAULT_RULES, funded: DEFAULT_FUNDED },
       });
     }
 
@@ -180,10 +180,21 @@ const server = http.createServer(async (req, res) => {
         run.trades, bars.ts[0], bars.ts[bars.count - 1], rules,
         Number(body.stepDays) || 1
       );
+      const sweepMs = Date.now() - tSweep;
+
+      // What the same book would earn AFTER passing — the number that actually
+      // matters, since the evaluation is a gate, not the goal.
+      const tF = Date.now();
+      const funded = sweepFunded(
+        run.trades, bars.ts[0], bars.ts[bars.count - 1],
+        rules, resolveFunded(body.funded), 7
+      );
       return sendJson(res, 200, {
         stats: run.stats,
         backtestMs: run.ms,
-        sweepMs: Date.now() - tSweep,
+        sweepMs,
+        fundedMs: Date.now() - tF,
+        funded: funded.summary,
         ...sweep,
       });
     }

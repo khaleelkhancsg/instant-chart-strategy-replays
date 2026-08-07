@@ -34,15 +34,14 @@ export const DEFAULT_RULES = {
   dailyProfitStop: 1500,    // stop trading once a day is up this much
   circuitBreaker: 150,      // your own tighter daily loss stop (0 = off)
   consistencyPct: 50,       // max single-day share of total profit
-  // Does the consistency rule BLOCK the pass, or only govern payout afterwards?
-  //
-  // Firms differ. If it gates the pass, a lone oversized winning day forces you
-  // to keep trading to dilute it — measured on this dataset, 95% of passing
-  // windows reach the target before they are allowed to pass, and then trade ~10
-  // more times, which both delays the pass and re-exposes the account to breach.
-  // With it off, the evaluation ends the moment the target is reached and the
-  // consistency ratio is reported as a warning instead.
-  consistencyGatesPass: false,
+  // The 50% consistency rule belongs to the EVALUATION: reaching the target with
+  // one oversized winning day does not pass the account, you must keep trading to
+  // dilute it below the cap. Measured here, 95% of passing windows reach the
+  // target first and then need ~10 more trades, which delays the pass and
+  // re-exposes the account to breach in the meantime — a real cost of the rule,
+  // not an artefact. (There is no consistency requirement on payouts; the funded
+  // stage gates withdrawals on winning days instead — see FUNDED below.)
+  consistencyGatesPass: true,
   minTradingDays: 0,
   windowDays: 30,
   evaluateOn: "realized",   // 'realized' | 'intraday'
@@ -227,6 +226,155 @@ export function replayWindow(trades, startMs, rules = {}) {
       finalFloor: floorNow(),
       locked,
       peak: eodTrail ? eodPeak : peak,
+    },
+  };
+}
+
+// ─────────────────────────── FUNDED STAGE ───────────────────────────
+//
+// Passing the evaluation is not the goal — getting paid is. The funded account
+// plays by different rules: there is NO consistency requirement, and instead a
+// payout is unlocked by accumulating winning days worth more than a threshold.
+//
+// What is modelled here, and what is assumed, stated plainly because the numbers
+// are only as good as these:
+//   MODELLED  — winning-day accrual, payout unlock, withdrawal reducing the
+//               balance, the trailing drawdown still killing the account, and
+//               the same soft daily lockouts as the evaluation.
+//   ASSUMED   — profit split, payout cap, and how much profit must stay in the
+//               account. All are exposed as parameters; set them to your firm's
+//               actual terms before trusting any figure.
+export const DEFAULT_FUNDED = {
+  winDayThreshold: 150,   // a day must clear this to count as a winning day
+  winDaysRequired: 5,     // winning days needed to unlock a payout
+  profitSplit: 100,       // % of withdrawn profit the trader keeps
+  maxPayout: 0,           // per-payout cap in $; 0 = uncapped
+  minBuffer: 0,           // profit that must remain in the account after a payout
+  horizonDays: 180,       // how long each simulated funded run is followed
+  resetWinDaysAfterPayout: true,
+};
+
+export function resolveFunded(f = {}) {
+  return { ...DEFAULT_FUNDED, ...f };
+}
+
+/**
+ * Follow one funded account from `startMs` until it is blown or the horizon ends.
+ * Returns every payout it earned along the way.
+ */
+export function simulateFunded(trades, startMs, rules = {}, funded = {}) {
+  const R = resolveRules(rules);
+  const F = resolveFunded(funded);
+  const endMs = startMs + F.horizonDays * 86400000;
+  const eodTrail = R.trailingMode === "eod";
+
+  let cum = 0, peak = 0, eodPeak = 0, locked = false;
+  let curDay = null, dayPnl = 0, winDays = 0, tradingDays = 0;
+  let blownMs = null;
+  const payouts = [];
+  const dayLog = [];
+
+  const floorNow = () => (locked ? 0 : (eodTrail ? eodPeak : peak) - R.trailingDD);
+
+  // Winning days only count once the session is complete, and a payout can only
+  // be requested between sessions — you cannot withdraw mid-trade.
+  const closeDay = (atMs) => {
+    if (curDay === null) return;
+    if (eodTrail) {
+      if (cum > eodPeak) eodPeak = cum;
+      if (R.lockAtBreakeven && !locked && eodPeak >= R.trailingDD) locked = true;
+    }
+    const isWin = dayPnl >= F.winDayThreshold;
+    if (isWin) winDays++;
+    dayLog.push({ day: curDay, pnl: dayPnl, isWin, winDays, cum });
+
+    if (winDays >= F.winDaysRequired && cum > F.minBuffer) {
+      const avail = cum - F.minBuffer;
+      const gross = F.maxPayout > 0 ? Math.min(avail, F.maxPayout) : avail;
+      cum -= gross;                                  // withdrawal leaves the account
+      // A withdrawal lowers the balance, so a still-trailing floor must come down
+      // with it or the account would be instantly in breach of its own payout.
+      if (!locked) { peak -= gross; eodPeak -= gross; }
+      payouts.push({ atMs, gross, net: gross * (F.profitSplit / 100), winDaysUsed: winDays });
+      if (F.resetWinDaysAfterPayout) winDays = 0;
+    }
+  };
+
+  const i0 = firstTradeAt(trades, startMs);
+  for (let k = i0; k < trades.length; k++) {
+    const t = trades[k];
+    if (t.entryTime >= endMs) break;
+
+    if (t.tday !== curDay) {
+      closeDay(t.entryTime);
+      curDay = t.tday;
+      dayPnl = 0;
+      tradingDays++;
+    }
+
+    // Same soft lockouts as the evaluation — they are house rules, not eval rules.
+    if (R.dailyProfitStop > 0 && dayPnl >= R.dailyProfitStop) continue;
+    if (R.circuitBreaker > 0 && dayPnl <= -R.circuitBreaker) continue;
+    if (R.dailyLossLimit > 0 && dayPnl <= -R.dailyLossLimit) continue;
+
+    cum += t.pnl;
+    dayPnl += t.pnl;
+    if (!eodTrail) {
+      if (cum > peak) peak = cum;
+      if (R.lockAtBreakeven && !locked && peak >= R.trailingDD) locked = true;
+    }
+    if (cum <= floorNow()) { blownMs = t.exitTime; break; }
+  }
+  if (!blownMs) closeDay(endMs);
+
+  const netTotal = payouts.reduce((a, p) => a + p.net, 0);
+  return {
+    startMs, endMs, blownMs, payouts, dayLog,
+    survived: blownMs === null,
+    netTotal,
+    firstPayoutMs: payouts.length ? payouts[0].atMs : null,
+    daysToFirstPayout: payouts.length ? Math.ceil((payouts[0].atMs - startMs) / 86400000) : null,
+    tradingDays,
+    finalProfit: cum,
+  };
+}
+
+/**
+ * Run many funded accounts from staggered start dates. One funded run is a single
+ * path through a noisy process; the distribution is what tells you what to expect.
+ */
+export function sweepFunded(trades, datasetStart, datasetEnd, rules = {}, funded = {}, stepDays = 7) {
+  const F = resolveFunded(funded);
+  const stepMs = Math.max(1, stepDays) * 86400000;
+  const lastStart = datasetEnd - F.horizonDays * 86400000;
+  const runs = [];
+  for (let s = datasetStart; s <= lastStart; s += stepMs) {
+    runs.push(simulateFunded(trades, s, rules, F));
+  }
+  if (!runs.length) return { runs: [], summary: null };
+
+  const med = (a) => {
+    if (!a.length) return null;
+    const b = a.slice().sort((x, y) => x - y);
+    return b[Math.floor(b.length / 2)];
+  };
+  const gotPaid = runs.filter((r) => r.payouts.length > 0);
+  const blownFirst = runs.filter((r) => !r.survived && r.payouts.length === 0);
+
+  return {
+    runs,
+    summary: {
+      n: runs.length,
+      horizonDays: F.horizonDays,
+      reachedPayout: (gotPaid.length / runs.length) * 100,
+      blownBeforeAnyPayout: (blownFirst.length / runs.length) * 100,
+      survived: (runs.filter((r) => r.survived).length / runs.length) * 100,
+      medianDaysToFirstPayout: med(gotPaid.map((r) => r.daysToFirstPayout)),
+      medianFirstPayout: med(gotPaid.map((r) => r.payouts[0].net)),
+      medianTotalPaid: med(runs.map((r) => r.netTotal)),
+      meanTotalPaid: runs.reduce((a, r) => a + r.netTotal, 0) / runs.length,
+      medianPayoutCount: med(runs.map((r) => r.payouts.length)),
+      bestRun: Math.max(...runs.map((r) => r.netTotal)),
     },
   };
 }

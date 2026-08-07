@@ -40,29 +40,47 @@ evaluation is over the moment you hit the target or breach. A dashed marker show
 where, everything after it is dimmed, and trades in the dead region are drawn
 faded because they never happened.
 
-Related and easy to miss: **when does the consistency rule bite?** The firm spec
-says "no single day may exceed 50% of total profit *at payout*" — a payout rule,
-not an evaluation rule. So the combine ends at the target, and consistency then
-governs whether you can withdraw.
+Related and easy to miss: the **50% consistency rule gates the evaluation**.
+Reaching $3,000 on one oversized winning day does not pass the account — you must
+keep trading to dilute that day below half of total profit. Measured here, 95% of
+passing windows hit the target *first* and then need ~10 more trades, which delays
+the pass and re-exposes the account to breach. That cost is real, and it is why
+median days-to-pass is 13 rather than 6.
 
-The `Consistency applies to` control switches between the two, and they answer
-genuinely different questions:
-
-| | ends when | median | pass rate |
-|---|---|---|---|
-| Payout only *(default, matches the spec)* | target reached | **6 days** | 78.8% |
-| The evaluation too | best day diluted below 50% | **13 days** | 71.9% |
-
-The second is not wrong — it is the honest answer to *"how long until the money is
-actually withdrawable?"*, because a lone oversized winning day has to be diluted
-before you can take anything out. Measured here, 95% of passing windows reach the
-target first and would then need ~10 more trades to become payout-eligible, which
-re-exposes the account to breach in the meantime. A pass carrying that problem is
-flagged ⚠ on the consistency stat rather than silently accepted.
+There is **no consistency rule on payouts** — the funded stage gates withdrawals
+on winning days instead.
 
 **Navigator** — every possible 30-day start across the 5 years, coloured by
 outcome. Click to jump. This is the difference between "this window passed" and
 "this passes 75% of the time".
+
+### Funded stage — the part that actually pays
+
+Passing is a gate, not the goal. The **Funded stage** panel follows the same book
+*after* it passes, under the funded rules: no consistency requirement, and a
+payout unlocked by **5 winning days over $150** each. It runs hundreds of funded
+accounts from staggered start dates and reports how many get paid, how fast, how
+much, and how many die first.
+
+It immediately exposed something worth knowing. Withdrawing your whole balance
+leaves the account sitting exactly on its locked $0 floor, so the next losing day
+kills it. Leaving a buffer in changes the outcome enormously (overnight holds
+allowed, 180-day horizon):
+
+| profit left in | survive 180d | median 1st payout | mean total paid |
+|---|---|---|---|
+| $0 | **0.0%** | $8,807 | $10,612 |
+| $1,500 | 11.4% | $7,307 | $34,232 |
+| $3,000 | **46.9%** | $5,811 | **$58,096** |
+
+A smaller first cheque for **5.5× more money overall**. Under the no-overnight
+rule the same book manages only 26.6% reaching any payout at all.
+
+> **Modelled vs assumed.** Winning-day accrual, payout unlock, withdrawals
+> lowering the balance, and the trailing drawdown still killing the account are
+> all modelled. The **profit split, payout cap, and required buffer are
+> assumptions** — they are exposed as parameters, so set them to your firm's
+> actual terms before trusting any figure here.
 
 **Sidebar** — two panels answering two different questions. *This window* is the
 anecdote in front of you, recomputed live as you drag sliders. *All windows* is
