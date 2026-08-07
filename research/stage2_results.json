@@ -1,0 +1,6981 @@
+{
+ "meta": {
+  "sims": 596706396,
+  "configs": 400062
+ },
+ "stageB": [
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 10,
+   "isPass": 37.163978494623656,
+   "oosPass": 37.65765765765766,
+   "trades": 1141
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 10,
+   "isPass": 37.096774193548384,
+   "oosPass": 37.11711711711712,
+   "trades": 1156
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 10,
+   "isPass": 37.096774193548384,
+   "oosPass": 37.11711711711712,
+   "trades": 1153
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 10,
+   "isPass": 37.02956989247312,
+   "oosPass": 36.846846846846844,
+   "trades": 1481
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 10,
+   "isPass": 37.096774193548384,
+   "oosPass": 36.75675675675676,
+   "trades": 1500
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 10,
+   "isPass": 37.096774193548384,
+   "oosPass": 36.75675675675676,
+   "trades": 1497
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 10,
+   "isPass": 36.626344086021504,
+   "oosPass": 39.63963963963964,
+   "trades": 1141
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 10,
+   "isPass": 36.424731182795696,
+   "oosPass": 39.63963963963964,
+   "trades": 1156
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 10,
+   "isPass": 36.424731182795696,
+   "oosPass": 39.63963963963964,
+   "trades": 1153
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 35.88709677419355,
+   "oosPass": 41.62162162162162,
+   "trades": 1141
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 38.844086021505376,
+   "oosPass": 35.85585585585586,
+   "trades": 1612
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 35.685483870967744,
+   "oosPass": 41.62162162162162,
+   "trades": 1156
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 35.685483870967744,
+   "oosPass": 41.62162162162162,
+   "trades": 1153
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 10,
+   "isPass": 35.81989247311828,
+   "oosPass": 35.67567567567568,
+   "trades": 1251
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 10,
+   "isPass": 35.81989247311828,
+   "oosPass": 35.67567567567568,
+   "trades": 1246
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 10,
+   "isPass": 36.693548387096776,
+   "oosPass": 35.67567567567568,
+   "trades": 1226
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 35.55107526881721,
+   "oosPass": 40.630630630630634,
+   "trades": 1141
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 35.55107526881721,
+   "oosPass": 39.81981981981982,
+   "trades": 1141
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 36.693548387096776,
+   "oosPass": 35.4954954954955,
+   "trades": 1623
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 35.55107526881721,
+   "oosPass": 35.4954954954955,
+   "trades": 1710
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 36.626344086021504,
+   "oosPass": 35.31531531531532,
+   "trades": 1571
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 35.14784946236559,
+   "oosPass": 40.630630630630634,
+   "trades": 1156
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 35.14784946236559,
+   "oosPass": 40.630630630630634,
+   "trades": 1153
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 35.14784946236559,
+   "oosPass": 36.21621621621622,
+   "trades": 1246
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 37.43279569892473,
+   "oosPass": 35.13513513513514,
+   "trades": 1479
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 35.08064516129033,
+   "oosPass": 39.81981981981982,
+   "trades": 1156
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 35.08064516129033,
+   "oosPass": 39.81981981981982,
+   "trades": 1153
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 35.08064516129033,
+   "oosPass": 35.945945945945944,
+   "trades": 1623
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 36.626344086021504,
+   "oosPass": 35.04504504504504,
+   "trades": 1623
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 35.013440860215056,
+   "oosPass": 36.21621621621622,
+   "trades": 1251
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 34.946236559139784,
+   "oosPass": 36.21621621621622,
+   "trades": 1226
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 34.946236559139784,
+   "oosPass": 35.67567567567568,
+   "trades": 1571
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 35.88709677419355,
+   "oosPass": 34.86486486486486,
+   "trades": 1487
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 10,
+   "isPass": 34.81182795698925,
+   "oosPass": 35.13513513513514,
+   "trades": 1226
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 35.08064516129033,
+   "oosPass": 34.77477477477478,
+   "trades": 1487
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 38.64247311827957,
+   "oosPass": 34.68468468468468,
+   "trades": 1479
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 34.67741935483871,
+   "oosPass": 36.21621621621622,
+   "trades": 1246
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 34.67741935483871,
+   "oosPass": 36.21621621621622,
+   "trades": 1226
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 9,
+   "isPass": 34.61021505376344,
+   "oosPass": 35.585585585585584,
+   "trades": 1481
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 34.61021505376344,
+   "oosPass": 36.21621621621622,
+   "trades": 1251
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 36.424731182795696,
+   "oosPass": 34.5945945945946,
+   "trades": 1601
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 36.76075268817204,
+   "oosPass": 34.5945945945946,
+   "trades": 1596
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 34.543010752688176,
+   "oosPass": 34.68468468468468,
+   "trades": 1479
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 34.74462365591398,
+   "oosPass": 34.5045045045045,
+   "trades": 1643
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 34.74462365591398,
+   "oosPass": 34.5045045045045,
+   "trades": 1640
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 9,
+   "isPass": 34.475806451612904,
+   "oosPass": 35.4954954954955,
+   "trades": 1500
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 9,
+   "isPass": 34.475806451612904,
+   "oosPass": 35.4954954954955,
+   "trades": 1497
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 37.70161290322581,
+   "oosPass": 34.41441441441441,
+   "trades": 1571
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 1.5,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 34.34139784946236,
+   "oosPass": 35.13513513513514,
+   "trades": 1623
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 10,
+   "isPass": 36.35752688172043,
+   "oosPass": 34.32432432432432,
+   "trades": 1615
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 10,
+   "isPass": 36.35752688172043,
+   "oosPass": 34.234234234234236,
+   "trades": 1634
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 37.903225806451616,
+   "oosPass": 34.234234234234236,
+   "trades": 1631
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 10,
+   "isPass": 36.35752688172043,
+   "oosPass": 34.234234234234236,
+   "trades": 1631
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 37.903225806451616,
+   "oosPass": 34.234234234234236,
+   "trades": 1628
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 36.155913978494624,
+   "oosPass": 34.14414414414414,
+   "trades": 1487
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 10,
+   "isPass": 37.903225806451616,
+   "oosPass": 34.14414414414414,
+   "trades": 1480
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 10,
+   "isPass": 37.56720430107527,
+   "oosPass": 34.14414414414414,
+   "trades": 1573
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 9,
+   "isPass": 34.07258064516129,
+   "oosPass": 37.747747747747745,
+   "trades": 1141
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 9,
+   "isPass": 34.07258064516129,
+   "oosPass": 34.77477477477478,
+   "trades": 1251
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 9,
+   "isPass": 34.07258064516129,
+   "oosPass": 34.77477477477478,
+   "trades": 1246
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 34.07258064516129,
+   "oosPass": 37.2972972972973,
+   "trades": 1226
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 37.76881720430107,
+   "oosPass": 34.054054054054056,
+   "trades": 1498
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 37.76881720430107,
+   "oosPass": 34.054054054054056,
+   "trades": 1495
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 37.02956989247312,
+   "oosPass": 34.054054054054056,
+   "trades": 1612
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 10,
+   "isPass": 35.215053763440864,
+   "oosPass": 34.054054054054056,
+   "trades": 1251
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 10,
+   "isPass": 35.215053763440864,
+   "oosPass": 34.054054054054056,
+   "trades": 1246
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 35.08064516129033,
+   "oosPass": 34.054054054054056,
+   "trades": 1601
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 35.215053763440864,
+   "oosPass": 34.054054054054056,
+   "trades": 1596
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 36.626344086021504,
+   "oosPass": 34.054054054054056,
+   "trades": 1710
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 9,
+   "isPass": 34.00537634408602,
+   "oosPass": 37.11711711711712,
+   "trades": 1156
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 9,
+   "isPass": 34.00537634408602,
+   "oosPass": 37.11711711711712,
+   "trades": 1153
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 34.00537634408602,
+   "oosPass": 37.2972972972973,
+   "trades": 1251
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 34.00537634408602,
+   "oosPass": 37.2972972972973,
+   "trades": 1246
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 9,
+   "isPass": 34.00537634408602,
+   "oosPass": 35.585585585585584,
+   "trades": 1226
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 35.954301075268816,
+   "oosPass": 33.96396396396396,
+   "trades": 1643
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 35.954301075268816,
+   "oosPass": 33.96396396396396,
+   "trades": 1640
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 39.516129032258064,
+   "oosPass": 33.96396396396396,
+   "trades": 1612
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 1.5,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 34.00537634408602,
+   "oosPass": 33.87387387387387,
+   "trades": 1643
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 1.5,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 34.00537634408602,
+   "oosPass": 33.87387387387387,
+   "trades": 1640
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 10,
+   "isPass": 36.895161290322584,
+   "oosPass": 33.87387387387387,
+   "trades": 1603
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 10,
+   "isPass": 36.895161290322584,
+   "oosPass": 33.87387387387387,
+   "trades": 1598
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 35.685483870967744,
+   "oosPass": 33.87387387387387,
+   "trades": 1740
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 35.81989247311828,
+   "oosPass": 33.87387387387387,
+   "trades": 1735
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 33.87096774193548,
+   "oosPass": 38.46846846846847,
+   "trades": 1141
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 34.206989247311824,
+   "oosPass": 33.78378378378378,
+   "trades": 1498
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 36.424731182795696,
+   "oosPass": 33.78378378378378,
+   "trades": 1498
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 34.206989247311824,
+   "oosPass": 33.78378378378378,
+   "trades": 1495
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 36.424731182795696,
+   "oosPass": 33.78378378378378,
+   "trades": 1495
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 37.23118279569893,
+   "oosPass": 33.693693693693696,
+   "trades": 1601
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 37.903225806451616,
+   "oosPass": 33.693693693693696,
+   "trades": 1596
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 1.5,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 33.66935483870967,
+   "oosPass": 34.5945945945946,
+   "trades": 1487
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 36.29032258064516,
+   "oosPass": 33.6036036036036,
+   "trades": 1643
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 36.29032258064516,
+   "oosPass": 33.6036036036036,
+   "trades": 1640
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 39.045698924731184,
+   "oosPass": 33.6036036036036,
+   "trades": 1612
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 9,
+   "isPass": 34.00537634408602,
+   "oosPass": 33.513513513513516,
+   "trades": 1573
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 36.424731182795696,
+   "oosPass": 33.513513513513516,
+   "trades": 1740
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 36.76075268817204,
+   "oosPass": 33.513513513513516,
+   "trades": 1735
+  },
+  {
+   "id": "gap_fade",
+   "tf": 5,
+   "ps": {
+    "direction": "fade",
+    "minGapAtr": 0.5,
+    "maxGapAtr": 4,
+    "entryCt": 510,
+    "windowMins": 60
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 10,
+   "isPass": 33.46774193548387,
+   "oosPass": 37.027027027027025,
+   "trades": 1275
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 33.46774193548387,
+   "oosPass": 38.46846846846847,
+   "trades": 1156
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 33.46774193548387,
+   "oosPass": 38.46846846846847,
+   "trades": 1153
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 33.46774193548387,
+   "oosPass": 35.22522522522522,
+   "trades": 1710
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 34.543010752688176,
+   "oosPass": 33.42342342342342,
+   "trades": 1507
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 35.14784946236559,
+   "oosPass": 33.42342342342342,
+   "trades": 1507
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 34.543010752688176,
+   "oosPass": 33.42342342342342,
+   "trades": 1504
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 35.14784946236559,
+   "oosPass": 33.42342342342342,
+   "trades": 1504
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 38.70967741935484,
+   "oosPass": 33.42342342342342,
+   "trades": 1479
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 38.373655913978496,
+   "oosPass": 33.42342342342342,
+   "trades": 1631
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 38.373655913978496,
+   "oosPass": 33.42342342342342,
+   "trades": 1628
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 34.206989247311824,
+   "oosPass": 33.42342342342342,
+   "trades": 1623
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 33.4005376344086,
+   "oosPass": 33.42342342342342,
+   "trades": 1533
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 33.4005376344086,
+   "oosPass": 33.96396396396396,
+   "trades": 1487
+  },
+  {
+   "id": "gap_fade",
+   "tf": 5,
+   "ps": {
+    "direction": "fade",
+    "minGapAtr": 0.5,
+    "maxGapAtr": 4,
+    "entryCt": 510,
+    "windowMins": 120
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 10,
+   "isPass": 33.33333333333333,
+   "oosPass": 39.27927927927928,
+   "trades": 1307
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 1.5,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 33.33333333333333,
+   "oosPass": 33.42342342342342,
+   "trades": 1507
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 1.5,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 33.33333333333333,
+   "oosPass": 33.42342342342342,
+   "trades": 1504
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 33.266129032258064,
+   "oosPass": 35.13513513513514,
+   "trades": 1142
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 8,
+   "isPass": 33.266129032258064,
+   "oosPass": 33.33333333333333,
+   "trades": 1141
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 1.5,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 33.266129032258064,
+   "oosPass": 36.21621621621622,
+   "trades": 1623
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 1.5,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 33.13172043010753,
+   "oosPass": 36.666666666666664,
+   "trades": 1487
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 38.104838709677416,
+   "oosPass": 33.06306306306306,
+   "trades": 1631
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 38.104838709677416,
+   "oosPass": 33.06306306306306,
+   "trades": 1628
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 9,
+   "isPass": 34.87903225806452,
+   "oosPass": 32.972972972972975,
+   "trades": 1480
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 32.93010752688172,
+   "oosPass": 38.108108108108105,
+   "trades": 1787
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 8,
+   "isPass": 32.93010752688172,
+   "oosPass": 33.33333333333333,
+   "trades": 1156
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 8,
+   "isPass": 32.93010752688172,
+   "oosPass": 33.33333333333333,
+   "trades": 1153
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 36.96236559139785,
+   "oosPass": 32.88288288288289,
+   "trades": 1631
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 36.96236559139785,
+   "oosPass": 32.88288288288289,
+   "trades": 1628
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 9,
+   "isPass": 32.86290322580645,
+   "oosPass": 39.45945945945946,
+   "trades": 1141
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 600,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 10,
+   "isPass": 32.795698924731184,
+   "oosPass": 33.87387387387387,
+   "trades": 1399
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 32.795698924731184,
+   "oosPass": 34.14414414414414,
+   "trades": 1740
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 32.795698924731184,
+   "oosPass": 34.14414414414414,
+   "trades": 1735
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 35.81989247311828,
+   "oosPass": 32.79279279279279,
+   "trades": 1507
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 10,
+   "isPass": 37.5,
+   "oosPass": 32.79279279279279,
+   "trades": 1499
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 37.76881720430107,
+   "oosPass": 32.79279279279279,
+   "trades": 1498
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 35.81989247311828,
+   "oosPass": 32.79279279279279,
+   "trades": 1504
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 10,
+   "isPass": 37.5,
+   "oosPass": 32.79279279279279,
+   "trades": 1496
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 37.76881720430107,
+   "oosPass": 32.79279279279279,
+   "trades": 1495
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 9,
+   "isPass": 32.72849462365591,
+   "oosPass": 33.153153153153156,
+   "trades": 1141
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 4,
+   "c": 5,
+   "isPass": 33.534946236559136,
+   "oosPass": 32.7027027027027,
+   "trades": 2028
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 33.803763440860216,
+   "oosPass": 32.7027027027027,
+   "trades": 1561
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 33.803763440860216,
+   "oosPass": 32.7027027027027,
+   "trades": 1558
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 9,
+   "isPass": 33.803763440860216,
+   "oosPass": 32.7027027027027,
+   "trades": 1603
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 9,
+   "isPass": 33.803763440860216,
+   "oosPass": 32.7027027027027,
+   "trades": 1598
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 37.76881720430107,
+   "oosPass": 32.7027027027027,
+   "trades": 1710
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 32.66129032258064,
+   "oosPass": 35.13513513513514,
+   "trades": 1158
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 32.66129032258064,
+   "oosPass": 35.13513513513514,
+   "trades": 1155
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 32.66129032258064,
+   "oosPass": 41.8018018018018,
+   "trades": 1141
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 32.594086021505376,
+   "oosPass": 38.108108108108105,
+   "trades": 1781
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 8,
+   "isPass": 32.594086021505376,
+   "oosPass": 35.67567567567568,
+   "trades": 2028
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 32.594086021505376,
+   "oosPass": 41.8018018018018,
+   "trades": 1156
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 32.594086021505376,
+   "oosPass": 41.8018018018018,
+   "trades": 1153
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 1.5,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 32.594086021505376,
+   "oosPass": 34.86486486486486,
+   "trades": 1643
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 1.5,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 32.594086021505376,
+   "oosPass": 34.86486486486486,
+   "trades": 1640
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 32.526881720430104,
+   "oosPass": 36.126126126126124,
+   "trades": 2085
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 10,
+   "isPass": 36.895161290322584,
+   "oosPass": 32.52252252252252,
+   "trades": 1572
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 10,
+   "isPass": 32.45967741935484,
+   "oosPass": 33.33333333333333,
+   "trades": 2085
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 32.45967741935484,
+   "oosPass": 36.126126126126124,
+   "trades": 2079
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 32.45967741935484,
+   "oosPass": 33.153153153153156,
+   "trades": 1774
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 9,
+   "isPass": 32.45967741935484,
+   "oosPass": 33.153153153153156,
+   "trades": 1156
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 9,
+   "isPass": 32.45967741935484,
+   "oosPass": 33.153153153153156,
+   "trades": 1153
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 10,
+   "isPass": 32.45967741935484,
+   "oosPass": 37.567567567567565,
+   "trades": 1141
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 32.45967741935484,
+   "oosPass": 34.95495495495496,
+   "trades": 1571
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 32.526881720430104,
+   "oosPass": 32.432432432432435,
+   "trades": 1806
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 32.526881720430104,
+   "oosPass": 32.432432432432435,
+   "trades": 1803
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 33.33333333333333,
+   "oosPass": 32.432432432432435,
+   "trades": 1507
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 33.33333333333333,
+   "oosPass": 32.432432432432435,
+   "trades": 1504
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 9,
+   "isPass": 34.81182795698925,
+   "oosPass": 32.432432432432435,
+   "trades": 1634
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 9,
+   "isPass": 34.81182795698925,
+   "oosPass": 32.432432432432435,
+   "trades": 1631
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 9,
+   "isPass": 34.74462365591398,
+   "oosPass": 32.432432432432435,
+   "trades": 1615
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 9,
+   "isPass": 35.08064516129033,
+   "oosPass": 32.432432432432435,
+   "trades": 1572
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 9,
+   "isPass": 32.39247311827957,
+   "oosPass": 39.45945945945946,
+   "trades": 1156
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 10,
+   "isPass": 32.39247311827957,
+   "oosPass": 37.567567567567565,
+   "trades": 1156
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 9,
+   "isPass": 32.39247311827957,
+   "oosPass": 39.45945945945946,
+   "trades": 1153
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 10,
+   "isPass": 32.39247311827957,
+   "oosPass": 37.567567567567565,
+   "trades": 1153
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 32.39247311827957,
+   "oosPass": 36.126126126126124,
+   "trades": 2241
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 9,
+   "isPass": 32.39247311827957,
+   "oosPass": 35.13513513513514,
+   "trades": 1226
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 4,
+   "c": 5,
+   "isPass": 32.93010752688172,
+   "oosPass": 32.34234234234235,
+   "trades": 2084
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 4,
+   "c": 5,
+   "isPass": 32.93010752688172,
+   "oosPass": 32.34234234234235,
+   "trades": 2078
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 8,
+   "isPass": 32.325268817204304,
+   "oosPass": 34.77477477477478,
+   "trades": 2084
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 8,
+   "isPass": 32.325268817204304,
+   "oosPass": 34.77477477477478,
+   "trades": 2078
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 7,
+   "isPass": 32.325268817204304,
+   "oosPass": 36.03603603603604,
+   "trades": 1141
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 1.5,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 32.325268817204304,
+   "oosPass": 35.4954954954955,
+   "trades": 1507
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 1.5,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 32.325268817204304,
+   "oosPass": 35.4954954954955,
+   "trades": 1504
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 32.325268817204304,
+   "oosPass": 36.126126126126124,
+   "trades": 2231
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 10,
+   "isPass": 32.25806451612903,
+   "oosPass": 35.13513513513514,
+   "trades": 1786
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 8,
+   "isPass": 32.25806451612903,
+   "oosPass": 32.52252252252252,
+   "trades": 1226
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 6,
+   "isPass": 33.46774193548387,
+   "oosPass": 32.25225225225225,
+   "trades": 1612
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 8,
+   "isPass": 32.325268817204304,
+   "oosPass": 32.25225225225225,
+   "trades": 1251
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 8,
+   "isPass": 32.325268817204304,
+   "oosPass": 32.25225225225225,
+   "trades": 1246
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 32.25806451612903,
+   "oosPass": 32.25225225225225,
+   "trades": 1609
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 33.19892473118279,
+   "oosPass": 32.25225225225225,
+   "trades": 1583
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 8,
+   "isPass": 32.594086021505376,
+   "oosPass": 32.25225225225225,
+   "trades": 1572
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 37.23118279569893,
+   "oosPass": 32.25225225225225,
+   "trades": 1740
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 37.903225806451616,
+   "oosPass": 32.25225225225225,
+   "trades": 1735
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 32.19086021505376,
+   "oosPass": 37.11711711711712,
+   "trades": 1787
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 6,
+   "isPass": 32.19086021505376,
+   "oosPass": 36.846846846846844,
+   "trades": 1929
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 32.19086021505376,
+   "oosPass": 37.11711711711712,
+   "trades": 2029
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 32.123655913978496,
+   "oosPass": 35.585585585585584,
+   "trades": 1142
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 6,
+   "isPass": 32.123655913978496,
+   "oosPass": 32.79279279279279,
+   "trades": 1479
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 6,
+   "isPass": 32.123655913978496,
+   "oosPass": 33.96396396396396,
+   "trades": 1623
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 10,
+   "isPass": 32.056451612903224,
+   "oosPass": 33.33333333333333,
+   "trades": 2079
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 10,
+   "isPass": 32.056451612903224,
+   "oosPass": 33.513513513513516,
+   "trades": 2029
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 4,
+   "c": 6,
+   "isPass": 32.056451612903224,
+   "oosPass": 32.16216216216216,
+   "trades": 2028
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 8,
+   "isPass": 32.056451612903224,
+   "oosPass": 32.7027027027027,
+   "trades": 1613
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 9,
+   "isPass": 32.056451612903224,
+   "oosPass": 35.13513513513514,
+   "trades": 1961
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 9,
+   "isPass": 32.056451612903224,
+   "oosPass": 35.4054054054054,
+   "trades": 2241
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 9,
+   "isPass": 32.056451612903224,
+   "oosPass": 35.4054054054054,
+   "trades": 2231
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 7,
+   "isPass": 31.989247311827956,
+   "oosPass": 36.846846846846844,
+   "trades": 2084
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 7,
+   "isPass": 31.989247311827956,
+   "oosPass": 36.846846846846844,
+   "trades": 2078
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 6,
+   "isPass": 31.989247311827956,
+   "oosPass": 38.1981981981982,
+   "trades": 2028
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 7,
+   "isPass": 31.989247311827956,
+   "oosPass": 38.01801801801802,
+   "trades": 2028
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 9,
+   "isPass": 31.989247311827956,
+   "oosPass": 35.13513513513514,
+   "trades": 1951
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 9,
+   "isPass": 31.989247311827956,
+   "oosPass": 32.79279279279279,
+   "trades": 1226
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 34.206989247311824,
+   "oosPass": 31.98198198198198,
+   "trades": 1643
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 6,
+   "isPass": 32.86290322580645,
+   "oosPass": 31.98198198198198,
+   "trades": 1630
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 34.206989247311824,
+   "oosPass": 31.98198198198198,
+   "trades": 1640
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 6,
+   "isPass": 32.86290322580645,
+   "oosPass": 31.98198198198198,
+   "trades": 1627
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 6,
+   "isPass": 32.86290322580645,
+   "oosPass": 31.98198198198198,
+   "trades": 1611
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 10,
+   "isPass": 37.29838709677419,
+   "oosPass": 31.98198198198198,
+   "trades": 1602
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 10,
+   "isPass": 37.29838709677419,
+   "oosPass": 31.98198198198198,
+   "trades": 1597
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 10,
+   "isPass": 31.922043010752688,
+   "oosPass": 35.13513513513514,
+   "trades": 1780
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 31.922043010752688,
+   "oosPass": 37.83783783783784,
+   "trades": 1737
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 10,
+   "isPass": 31.922043010752688,
+   "oosPass": 35.765765765765764,
+   "trades": 1736
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 6,
+   "isPass": 31.922043010752688,
+   "oosPass": 38.37837837837838,
+   "trades": 1735
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 31.922043010752688,
+   "oosPass": 33.42342342342342,
+   "trades": 2088
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 6,
+   "isPass": 31.922043010752688,
+   "oosPass": 32.7027027027027,
+   "trades": 1643
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 6,
+   "isPass": 31.922043010752688,
+   "oosPass": 32.7027027027027,
+   "trades": 1640
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 34.07258064516129,
+   "oosPass": 31.891891891891895,
+   "trades": 1568
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 34.07258064516129,
+   "oosPass": 31.891891891891895,
+   "trades": 1565
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 33.60215053763441,
+   "oosPass": 31.891891891891895,
+   "trades": 1538
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 31.989247311827956,
+   "oosPass": 31.891891891891895,
+   "trades": 1890
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 7,
+   "isPass": 34.13978494623656,
+   "oosPass": 31.891891891891895,
+   "trades": 1478
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 36.35752688172043,
+   "oosPass": 31.891891891891895,
+   "trades": 1478
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 10,
+   "isPass": 38.03763440860215,
+   "oosPass": 31.891891891891895,
+   "trades": 1613
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 31.85483870967742,
+   "oosPass": 37.11711711711712,
+   "trades": 1781
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 7,
+   "isPass": 31.85483870967742,
+   "oosPass": 38.288288288288285,
+   "trades": 1735
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 4,
+   "c": 6,
+   "isPass": 31.85483870967742,
+   "oosPass": 32.432432432432435,
+   "trades": 1735
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 31.85483870967742,
+   "oosPass": 33.42342342342342,
+   "trades": 2082
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 7,
+   "isPass": 31.85483870967742,
+   "oosPass": 36.03603603603604,
+   "trades": 1156
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 7,
+   "isPass": 31.85483870967742,
+   "oosPass": 36.03603603603604,
+   "trades": 1153
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 600,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 10,
+   "isPass": 31.85483870967742,
+   "oosPass": 33.87387387387387,
+   "trades": 1410
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 600,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 10,
+   "isPass": 31.85483870967742,
+   "oosPass": 33.87387387387387,
+   "trades": 1409
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 31.85483870967742,
+   "oosPass": 32.25225225225225,
+   "trades": 1614
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 32.19086021505376,
+   "oosPass": 31.801801801801805,
+   "trades": 1922
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 32.19086021505376,
+   "oosPass": 31.801801801801805,
+   "trades": 1919
+  },
+  {
+   "id": "gap_fade",
+   "tf": 5,
+   "ps": {
+    "direction": "fade",
+    "minGapAtr": 1,
+    "maxGapAtr": 4,
+    "entryCt": 510,
+    "windowMins": 60
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 10,
+   "isPass": 31.787634408602152,
+   "oosPass": 31.801801801801805,
+   "trades": 1123
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 31.787634408602152,
+   "oosPass": 36.57657657657658,
+   "trades": 1988
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 10,
+   "isPass": 31.787634408602152,
+   "oosPass": 33.513513513513516,
+   "trades": 1986
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 31.787634408602152,
+   "oosPass": 35.585585585585584,
+   "trades": 1158
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 31.787634408602152,
+   "oosPass": 35.585585585585584,
+   "trades": 1155
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 9,
+   "isPass": 31.787634408602152,
+   "oosPass": 38.108108108108105,
+   "trades": 1141
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 7,
+   "isPass": 31.72043010752688,
+   "oosPass": 38.1981981981982,
+   "trades": 1785
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 7,
+   "isPass": 31.72043010752688,
+   "oosPass": 38.1981981981982,
+   "trades": 1779
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 31.72043010752688,
+   "oosPass": 36.57657657657658,
+   "trades": 1982
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 31.72043010752688,
+   "oosPass": 31.801801801801805,
+   "trades": 1774
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 9,
+   "isPass": 31.72043010752688,
+   "oosPass": 38.108108108108105,
+   "trades": 1156
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 9,
+   "isPass": 31.72043010752688,
+   "oosPass": 38.108108108108105,
+   "trades": 1153
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 600,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 31.72043010752688,
+   "oosPass": 34.77477477477478,
+   "trades": 1397
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 31.72043010752688,
+   "oosPass": 36.03603603603604,
+   "trades": 1961
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 9,
+   "isPass": 31.72043010752688,
+   "oosPass": 35.13513513513514,
+   "trades": 1251
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 0.75,
+   "c": 9,
+   "isPass": 31.72043010752688,
+   "oosPass": 35.13513513513514,
+   "trades": 1246
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 9,
+   "isPass": 31.72043010752688,
+   "oosPass": 32.79279279279279,
+   "trades": 1246
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 33.19892473118279,
+   "oosPass": 31.71171171171171,
+   "trades": 1756
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 33.60215053763441,
+   "oosPass": 31.71171171171171,
+   "trades": 1751
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 33.803763440860216,
+   "oosPass": 31.71171171171171,
+   "trades": 1725
+  },
+  {
+   "id": "gap_fade",
+   "tf": 5,
+   "ps": {
+    "direction": "fade",
+    "minGapAtr": 1,
+    "maxGapAtr": 4,
+    "entryCt": 510,
+    "windowMins": 120
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 10,
+   "isPass": 31.653225806451612,
+   "oosPass": 33.693693693693696,
+   "trades": 1157
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 4,
+   "c": 5,
+   "isPass": 31.653225806451612,
+   "oosPass": 32.16216216216216,
+   "trades": 1785
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 6,
+   "isPass": 31.653225806451612,
+   "oosPass": 36.666666666666664,
+   "trades": 1985
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 6,
+   "isPass": 31.653225806451612,
+   "oosPass": 36.666666666666664,
+   "trades": 1979
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 7,
+   "isPass": 31.653225806451612,
+   "oosPass": 37.65765765765766,
+   "trades": 1929
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 31.653225806451612,
+   "oosPass": 32.79279279279279,
+   "trades": 2088
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 5,
+   "isPass": 31.653225806451612,
+   "oosPass": 36.93693693693694,
+   "trades": 2084
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 9,
+   "isPass": 31.653225806451612,
+   "oosPass": 32.79279279279279,
+   "trades": 1251
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 31.653225806451612,
+   "oosPass": 37.83783783783784,
+   "trades": 1226
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 9,
+   "isPass": 34.543010752688176,
+   "oosPass": 31.62162162162162,
+   "trades": 1499
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 9,
+   "isPass": 34.543010752688176,
+   "oosPass": 31.62162162162162,
+   "trades": 1496
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 32.86290322580645,
+   "oosPass": 31.62162162162162,
+   "trades": 1251
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 32.93010752688172,
+   "oosPass": 31.62162162162162,
+   "trades": 1246
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 33.19892473118279,
+   "oosPass": 31.62162162162162,
+   "trades": 1226
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 31.586021505376344,
+   "oosPass": 38.108108108108105,
+   "trades": 1737
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 31.586021505376344,
+   "oosPass": 36.306306306306304,
+   "trades": 1986
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 10,
+   "isPass": 31.586021505376344,
+   "oosPass": 34.234234234234236,
+   "trades": 1930
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 9,
+   "isPass": 31.586021505376344,
+   "oosPass": 35.585585585585584,
+   "trades": 2126
+  },
+  {
+   "id": "gap_fade",
+   "tf": 5,
+   "ps": {
+    "direction": "fade",
+    "minGapAtr": 0.5,
+    "maxGapAtr": 4,
+    "entryCt": 510,
+    "windowMins": 60
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 31.518817204301076,
+   "oosPass": 36.486486486486484,
+   "trades": 1275
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 31.518817204301076,
+   "oosPass": 36.306306306306304,
+   "trades": 1980
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 31.518817204301076,
+   "oosPass": 36.846846846846844,
+   "trades": 1932
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 31.518817204301076,
+   "oosPass": 36.486486486486484,
+   "trades": 1930
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 31.518817204301076,
+   "oosPass": 34.054054054054056,
+   "trades": 2032
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 31.518817204301076,
+   "oosPass": 33.96396396396396,
+   "trades": 1561
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 31.518817204301076,
+   "oosPass": 33.96396396396396,
+   "trades": 1558
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 6,
+   "isPass": 31.518817204301076,
+   "oosPass": 31.891891891891895,
+   "trades": 1498
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 6,
+   "isPass": 31.518817204301076,
+   "oosPass": 31.891891891891895,
+   "trades": 1495
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 1.5,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 31.518817204301076,
+   "oosPass": 38.648648648648646,
+   "trades": 1487
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 1.5,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 31.518817204301076,
+   "oosPass": 38.46846846846847,
+   "trades": 1623
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 10,
+   "isPass": 31.518817204301076,
+   "oosPass": 34.77477477477478,
+   "trades": 1961
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 31.518817204301076,
+   "oosPass": 33.78378378378378,
+   "trades": 1601
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 31.518817204301076,
+   "oosPass": 33.78378378378378,
+   "trades": 1596
+  },
+  {
+   "id": "gap_fade",
+   "tf": 5,
+   "ps": {
+    "direction": "fade",
+    "minGapAtr": 0.5,
+    "maxGapAtr": 4,
+    "entryCt": 510,
+    "windowMins": 60
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 9,
+   "isPass": 31.451612903225808,
+   "oosPass": 35.945945945945944,
+   "trades": 1275
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 31.451612903225808,
+   "oosPass": 38.108108108108105,
+   "trades": 1786
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 7,
+   "isPass": 31.451612903225808,
+   "oosPass": 37.207207207207205,
+   "trades": 1985
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 7,
+   "isPass": 31.451612903225808,
+   "oosPass": 37.207207207207205,
+   "trades": 1979
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 31.451612903225808,
+   "oosPass": 32.072072072072075,
+   "trades": 1774
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 7,
+   "isPass": 31.451612903225808,
+   "oosPass": 40.81081081081081,
+   "trades": 1156
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 7,
+   "isPass": 31.451612903225808,
+   "oosPass": 40.81081081081081,
+   "trades": 1153
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 600,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 31.451612903225808,
+   "oosPass": 34.77477477477478,
+   "trades": 1408
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 600,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 31.451612903225808,
+   "oosPass": 34.77477477477478,
+   "trades": 1407
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 4,
+   "c": 5,
+   "isPass": 31.653225806451612,
+   "oosPass": 31.44144144144144,
+   "trades": 1929
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 31.653225806451612,
+   "oosPass": 31.44144144144144,
+   "trades": 1806
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 31.653225806451612,
+   "oosPass": 31.44144144144144,
+   "trades": 1803
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 9,
+   "isPass": 35.483870967741936,
+   "oosPass": 31.44144144144144,
+   "trades": 1602
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 9,
+   "isPass": 35.483870967741936,
+   "oosPass": 31.44144144144144,
+   "trades": 1597
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 31.384408602150536,
+   "oosPass": 38.01801801801802,
+   "trades": 1787
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 31.384408602150536,
+   "oosPass": 38.108108108108105,
+   "trades": 1780
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 10,
+   "isPass": 31.384408602150536,
+   "oosPass": 33.513513513513516,
+   "trades": 1980
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 8,
+   "isPass": 31.384408602150536,
+   "oosPass": 36.126126126126124,
+   "trades": 1929
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 6,
+   "isPass": 31.384408602150536,
+   "oosPass": 38.01801801801802,
+   "trades": 2084
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 4,
+   "c": 6,
+   "isPass": 31.384408602150536,
+   "oosPass": 31.53153153153153,
+   "trades": 2084
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 6,
+   "isPass": 31.384408602150536,
+   "oosPass": 38.01801801801802,
+   "trades": 2078
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 4,
+   "c": 6,
+   "isPass": 31.384408602150536,
+   "oosPass": 31.53153153153153,
+   "trades": 2078
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 600,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 31.384408602150536,
+   "oosPass": 32.432432432432435,
+   "trades": 1397
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 9,
+   "isPass": 31.384408602150536,
+   "oosPass": 34.77477477477478,
+   "trades": 2145
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 9,
+   "isPass": 31.384408602150536,
+   "oosPass": 34.77477477477478,
+   "trades": 2135
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 10,
+   "isPass": 31.384408602150536,
+   "oosPass": 35.04504504504504,
+   "trades": 2241
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 31.384408602150536,
+   "oosPass": 33.96396396396396,
+   "trades": 1228
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 3,
+   "c": 7,
+   "isPass": 32.19086021505376,
+   "oosPass": 31.351351351351354,
+   "trades": 1808
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 3,
+   "c": 7,
+   "isPass": 31.787634408602152,
+   "oosPass": 31.351351351351354,
+   "trades": 1802
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 3,
+   "c": 7,
+   "isPass": 32.123655913978496,
+   "oosPass": 31.351351351351354,
+   "trades": 1756
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 33.064516129032256,
+   "oosPass": 31.351351351351354,
+   "trades": 1568
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 33.064516129032256,
+   "oosPass": 31.351351351351354,
+   "trades": 1565
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 32.997311827956985,
+   "oosPass": 31.351351351351354,
+   "trades": 1538
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 8,
+   "isPass": 31.317204301075268,
+   "oosPass": 35.67567567567568,
+   "trades": 1785
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 31.317204301075268,
+   "oosPass": 38.01801801801802,
+   "trades": 1781
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 8,
+   "isPass": 31.317204301075268,
+   "oosPass": 35.67567567567568,
+   "trades": 1779
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 8,
+   "isPass": 31.317204301075268,
+   "oosPass": 36.75675675675676,
+   "trades": 1735
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 31.317204301075268,
+   "oosPass": 36.03603603603604,
+   "trades": 1988
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 7,
+   "isPass": 31.317204301075268,
+   "oosPass": 37.027027027027025,
+   "trades": 2085
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 31.317204301075268,
+   "oosPass": 32.79279279279279,
+   "trades": 2082
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 7,
+   "isPass": 31.317204301075268,
+   "oosPass": 37.027027027027025,
+   "trades": 2079
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 9,
+   "isPass": 31.317204301075268,
+   "oosPass": 31.53153153153153,
+   "trades": 1922
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 9,
+   "isPass": 31.317204301075268,
+   "oosPass": 31.53153153153153,
+   "trades": 1919
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 7,
+   "isPass": 31.317204301075268,
+   "oosPass": 40.81081081081081,
+   "trades": 1141
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 31.317204301075268,
+   "oosPass": 36.486486486486484,
+   "trades": 2126
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 31.518817204301076,
+   "oosPass": 31.261261261261264,
+   "trades": 1806
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 31.518817204301076,
+   "oosPass": 31.261261261261264,
+   "trades": 1803
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 8,
+   "isPass": 31.586021505376344,
+   "oosPass": 31.261261261261264,
+   "trades": 1632
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 8,
+   "isPass": 31.586021505376344,
+   "oosPass": 31.261261261261264,
+   "trades": 1629
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 2,
+   "c": 6,
+   "isPass": 32.19086021505376,
+   "oosPass": 31.261261261261264,
+   "trades": 1623
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 8,
+   "isPass": 32.86290322580645,
+   "oosPass": 31.261261261261264,
+   "trades": 1602
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 8,
+   "isPass": 32.86290322580645,
+   "oosPass": 31.261261261261264,
+   "trades": 1597
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 4,
+   "c": 5,
+   "isPass": 31.25,
+   "oosPass": 32.16216216216216,
+   "trades": 1779
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 4,
+   "c": 5,
+   "isPass": 31.25,
+   "oosPass": 32.34234234234235,
+   "trades": 1735
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 5,
+   "isPass": 31.25,
+   "oosPass": 36.93693693693694,
+   "trades": 2078
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 3,
+   "c": 6,
+   "isPass": 31.25,
+   "oosPass": 32.88288288288289,
+   "trades": 2069
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 31.25,
+   "oosPass": 34.77477477477478,
+   "trades": 1533
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 6,
+   "isPass": 31.25,
+   "oosPass": 34.14414414414414,
+   "trades": 1487
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 1.5,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 31.25,
+   "oosPass": 36.93693693693694,
+   "trades": 1643
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 1.5,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 31.25,
+   "oosPass": 36.93693693693694,
+   "trades": 1640
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 31.25,
+   "oosPass": 37.83783783783784,
+   "trades": 1251
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 31.25,
+   "oosPass": 37.83783783783784,
+   "trades": 1246
+  },
+  {
+   "id": "gap_fade",
+   "tf": 5,
+   "ps": {
+    "direction": "fade",
+    "minGapAtr": 0.5,
+    "maxGapAtr": 4,
+    "entryCt": 510,
+    "windowMins": 120
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 9,
+   "isPass": 31.182795698924732,
+   "oosPass": 38.288288288288285,
+   "trades": 1307
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 31.182795698924732,
+   "oosPass": 38.108108108108105,
+   "trades": 1736
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 31.182795698924732,
+   "oosPass": 36.846846846846844,
+   "trades": 1932
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 31.182795698924732,
+   "oosPass": 33.6036036036036,
+   "trades": 2088
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 31.182795698924732,
+   "oosPass": 33.6036036036036,
+   "trades": 2082
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 10,
+   "isPass": 31.182795698924732,
+   "oosPass": 33.153153153153156,
+   "trades": 2032
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 9,
+   "isPass": 31.182795698924732,
+   "oosPass": 34.41441441441441,
+   "trades": 2029
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 31.182795698924732,
+   "oosPass": 34.41441441441441,
+   "trades": 1561
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 31.182795698924732,
+   "oosPass": 34.41441441441441,
+   "trades": 1558
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 600,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 10,
+   "isPass": 31.182795698924732,
+   "oosPass": 34.5945945945946,
+   "trades": 1242
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 31.182795698924732,
+   "oosPass": 36.03603603603604,
+   "trades": 1951
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 9,
+   "isPass": 31.182795698924732,
+   "oosPass": 34.95495495495496,
+   "trades": 1857
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 31.451612903225808,
+   "oosPass": 31.17117117117117,
+   "trades": 1568
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 31.451612903225808,
+   "oosPass": 31.17117117117117,
+   "trades": 1565
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 540,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 7,
+   "isPass": 31.182795698924732,
+   "oosPass": 31.17117117117117,
+   "trades": 1538
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 10,
+   "isPass": 32.056451612903224,
+   "oosPass": 31.17117117117117,
+   "trades": 1156
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 10,
+   "isPass": 32.056451612903224,
+   "oosPass": 31.17117117117117,
+   "trades": 1153
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 10,
+   "isPass": 32.25806451612903,
+   "oosPass": 31.17117117117117,
+   "trades": 1141
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 7,
+   "isPass": 33.60215053763441,
+   "oosPass": 31.17117117117117,
+   "trades": 1497
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 7,
+   "isPass": 33.60215053763441,
+   "oosPass": 31.17117117117117,
+   "trades": 1494
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 10,
+   "isPass": 37.5,
+   "oosPass": 31.17117117117117,
+   "trades": 1632
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 10,
+   "isPass": 37.5,
+   "oosPass": 31.17117117117117,
+   "trades": 1629
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 31.72043010752688,
+   "oosPass": 31.17117117117117,
+   "trades": 1614
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 31.989247311827956,
+   "oosPass": 31.17117117117117,
+   "trades": 1609
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 32.66129032258064,
+   "oosPass": 31.17117117117117,
+   "trades": 1583
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 5,
+   "isPass": 31.115591397849464,
+   "oosPass": 35.4054054054054,
+   "trades": 1985
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 660,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 8,
+   "isPass": 31.115591397849464,
+   "oosPass": 34.95495495495496,
+   "trades": 1142
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 6,
+   "isPass": 31.115591397849464,
+   "oosPass": 32.7027027027027,
+   "trades": 1507
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 1.5,
+   "c": 6,
+   "isPass": 31.115591397849464,
+   "oosPass": 32.7027027027027,
+   "trades": 1504
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 600,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 31.115591397849464,
+   "oosPass": 32.432432432432435,
+   "trades": 1408
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 600,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1.5,
+   "c": 9,
+   "isPass": 31.115591397849464,
+   "oosPass": 32.432432432432435,
+   "trades": 1407
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 7,
+   "isPass": 31.115591397849464,
+   "oosPass": 36.57657657657658,
+   "trades": 1961
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 7,
+   "isPass": 31.115591397849464,
+   "oosPass": 36.57657657657658,
+   "trades": 1951
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 525,
+    "entryEndCt": 660,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 10,
+   "isPass": 31.115591397849464,
+   "oosPass": 34.77477477477478,
+   "trades": 1951
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 510,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 2,
+   "c": 8,
+   "isPass": 31.115591397849464,
+   "oosPass": 36.21621621621622,
+   "trades": 2145
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 4,
+   "c": 5,
+   "isPass": 31.115591397849464,
+   "oosPass": 31.08108108108108,
+   "trades": 1985
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 780,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 4,
+   "c": 5,
+   "isPass": 31.115591397849464,
+   "oosPass": 31.08108108108108,
+   "trades": 1979
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 0,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 3,
+   "c": 7,
+   "isPass": 32.39247311827957,
+   "oosPass": 31.08108108108108,
+   "trades": 2127
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 10,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 3,
+   "c": 7,
+   "isPass": 31.85483870967742,
+   "oosPass": 31.08108108108108,
+   "trades": 2121
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 525,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 2,
+   "tp": 3,
+   "c": 7,
+   "isPass": 32.45967741935484,
+   "oosPass": 31.08108108108108,
+   "trades": 2069
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 1,
+   "c": 9,
+   "isPass": 35.61827956989247,
+   "oosPass": 31.08108108108108,
+   "trades": 1613
+  },
+  {
+   "id": "orb",
+   "tf": 15,
+   "ps": {
+    "orStartCt": 450,
+    "orEndCt": 570,
+    "entryEndCt": 840,
+    "minRangePts": 25,
+    "direction": "break"
+   },
+   "sl": 3,
+   "tp": 3,
+   "c": 6,
+   "isPass": 34.07258064516129,
+   "oosPass": 31.08108108108108,
+   "trades": 1611
+  }
+ ],
+ "portfolios": [
+  {
+   "a": "orb",
+   "ca": 8,
+   "b": "prior_day_break",
+   "cb": 2,
+   "isPass": 35.752688172043015,
+   "oosPass": 36.486486486486484,
+   "trades": 4409
+  },
+  {
+   "a": "orb",
+   "ca": 7,
+   "b": "prior_day_break",
+   "cb": 2,
+   "isPass": 34.07258064516129,
+   "oosPass": 33.24324324324324,
+   "trades": 4409
+  },
+  {
+   "a": "orb",
+   "ca": 2,
+   "b": "gap_fade",
+   "cb": 8,
+   "isPass": 31.384408602150536,
+   "oosPass": 36.306306306306304,
+   "trades": 2416
+  },
+  {
+   "a": "orb",
+   "ca": 2,
+   "b": "prior_day_break",
+   "cb": 7,
+   "isPass": 32.123655913978496,
+   "oosPass": 30.720720720720724,
+   "trades": 4409
+  },
+  {
+   "a": "orb",
+   "ca": 3,
+   "b": "gap_fade",
+   "cb": 7,
+   "isPass": 30.309139784946236,
+   "oosPass": 36.486486486486484,
+   "trades": 2416
+  },
+  {
+   "a": "orb",
+   "ca": 3,
+   "b": "prior_day_break",
+   "cb": 7,
+   "isPass": 32.594086021505376,
+   "oosPass": 30.270270270270274,
+   "trades": 4409
+  },
+  {
+   "a": "orb",
+   "ca": 3,
+   "b": "gap_fade",
+   "cb": 6,
+   "isPass": 30.241935483870968,
+   "oosPass": 34.14414414414414,
+   "trades": 2416
+  },
+  {
+   "a": "orb",
+   "ca": 4,
+   "b": "gap_fade",
+   "cb": 6,
+   "isPass": 30.040322580645164,
+   "oosPass": 38.288288288288285,
+   "trades": 2416
+  },
+  {
+   "a": "orb",
+   "ca": 7,
+   "b": "prior_day_break",
+   "cb": 3,
+   "isPass": 36.155913978494624,
+   "oosPass": 29.81981981981982,
+   "trades": 4409
+  },
+  {
+   "a": "orb",
+   "ca": 2,
+   "b": "prior_day_break",
+   "cb": 8,
+   "isPass": 34.40860215053764,
+   "oosPass": 29.72972972972973,
+   "trades": 4409
+  },
+  {
+   "a": "orb",
+   "ca": 3,
+   "b": "prior_day_break",
+   "cb": 6,
+   "isPass": 30.510752688172044,
+   "oosPass": 29.009009009009006,
+   "trades": 4409
+  },
+  {
+   "a": "orb",
+   "ca": 4,
+   "b": "prior_day_break",
+   "cb": 6,
+   "isPass": 32.325268817204304,
+   "oosPass": 28.1981981981982,
+   "trades": 4409
+  },
+  {
+   "a": "orb",
+   "ca": 6,
+   "b": "prior_day_break",
+   "cb": 2,
+   "isPass": 31.653225806451612,
+   "oosPass": 28.01801801801802,
+   "trades": 4409
+  },
+  {
+   "a": "orb",
+   "ca": 5,
+   "b": "prior_day_break",
+   "cb": 5,
+   "isPass": 32.86290322580645,
+   "oosPass": 27.65765765765766,
+   "trades": 4409
+  },
+  {
+   "a": "orb",
+   "ca": 5,
+   "b": "prior_day_break",
+   "cb": 4,
+   "isPass": 32.72849462365591,
+   "oosPass": 27.297297297297295,
+   "trades": 4409
+  },
+  {
+   "a": "orb",
+   "ca": 4,
+   "b": "prior_day_break",
+   "cb": 5,
+   "isPass": 30.846774193548388,
+   "oosPass": 26.756756756756754,
+   "trades": 4409
+  },
+  {
+   "a": "orb",
+   "ca": 6,
+   "b": "prior_day_break",
+   "cb": 4,
+   "isPass": 35.685483870967744,
+   "oosPass": 26.666666666666668,
+   "trades": 4409
+  },
+  {
+   "a": "orb",
+   "ca": 6,
+   "b": "prior_day_break",
+   "cb": 3,
+   "isPass": 32.86290322580645,
+   "oosPass": 26.126126126126124,
+   "trades": 4409
+  },
+  {
+   "a": "orb",
+   "ca": 5,
+   "b": "prior_day_break",
+   "cb": 3,
+   "isPass": 30.712365591397848,
+   "oosPass": 23.423423423423422,
+   "trades": 4409
+  }
+ ]
+}
