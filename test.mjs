@@ -6,7 +6,8 @@
 // proves nothing, so the references here are deliberately independent.
 
 import fs from "node:fs";
-import { ema, sma, atr, adx, rsi, donchian, rollingMeanStd, trueRange } from "./src/indicators.mjs";
+import { ema, sma, atr, adx, rsi, donchian, rollingMeanStd, trueRange, efficiencyRatio } from "./src/indicators.mjs";
+import { buildFilterContext, applyFilters, countSurviving } from "./src/filters.mjs";
 import { resample, sliceBars, indexAtOrAfter, indexAtOrBefore } from "./src/resample.mjs";
 import { runBrackets, tradeStats, EXIT } from "./src/engine.mjs";
 import { replayWindow, sweepWindows, simulateFunded, sweepFunded, OUTCOME } from "./src/challenge.mjs";
@@ -879,6 +880,86 @@ t("sweepFunded aggregates runs consistently", () => {
   close(sw.summary.meanTotalPaid, sw.runs.reduce((a, r) => a + r.netTotal, 0) / sw.runs.length, 1e-9);
   const paid = sw.runs.filter((r) => r.payouts.length).length;
   close(sw.summary.reachedPayout, (paid / sw.runs.length) * 100, 1e-9);
+});
+
+// ══════════════════════════════ 4c. SIGNAL FILTERS ══════════════════════════════
+section("4c. Signal filters");
+
+t("a filter with nothing set changes nothing", () => {
+  const b = synthBars(3000);
+  const ctx = buildFilterContext(b);
+  const sig = new Int8Array(3000);
+  for (let i = 0; i < 3000; i += 3) sig[i] = i % 2 ? 1 : -1;
+  arrClose(applyFilters(sig, ctx, {}), sig, 0);
+});
+
+t("session window keeps only bars inside it", () => {
+  const b = synthBars(3000);
+  const ctx = buildFilterContext(b);
+  const sig = new Int8Array(3000).fill(1);
+  const out = applyFilters(sig, ctx, { startCt: 500, endCt: 700 });
+  for (let i = 0; i < 3000; i++) {
+    const inside = b.ctMin[i] >= 500 && b.ctMin[i] < 700;
+    eq(out[i] !== 0, inside, `bar ${i} (ct ${b.ctMin[i]}):`);
+  }
+});
+
+t("a session window that wraps past midnight works", () => {
+  const b = synthBars(3000);
+  const ctx = buildFilterContext(b);
+  const sig = new Int8Array(3000).fill(1);
+  const out = applyFilters(sig, ctx, { startCt: 1380, endCt: 120 });   // 23:00 -> 02:00
+  for (let i = 0; i < 3000; i++) {
+    const inside = b.ctMin[i] >= 1380 || b.ctMin[i] < 120;
+    eq(out[i] !== 0, inside, `bar ${i} (ct ${b.ctMin[i]}):`);
+  }
+});
+
+t("regime bands gate on the indicator value", () => {
+  const b = synthBars(4000);
+  const ctx = buildFilterContext(b);
+  const sig = new Int8Array(4000).fill(1);
+  const out = applyFilters(sig, ctx, { adxMin: 25 });
+  let kept = 0;
+  for (let i = 0; i < 4000; i++) {
+    if (out[i]) { kept++; if (!(ctx.adx[i] >= 25)) throw new Error(`kept bar ${i} with adx ${ctx.adx[i]}`); }
+  }
+  if (kept === 0) throw new Error("gate removed everything");
+});
+
+t("an unwarmed indicator FAILS an active band rather than passing", () => {
+  // The first bars have no efficiency-ratio reading. They must be excluded, not
+  // waved through — a NaN silently passing a filter is a classic way to leak
+  // untradeable bars into a backtest.
+  const b = synthBars(500);
+  const ctx = buildFilterContext(b);
+  const sig = new Int8Array(500).fill(1);
+  const out = applyFilters(sig, ctx, { effMin: 0.1 });
+  for (let i = 0; i < 500; i++) {
+    if (!Number.isFinite(ctx.eff[i]) && out[i] !== 0) throw new Error(`bar ${i} passed on a NaN reading`);
+  }
+});
+
+t("filters compose — each one only ever removes signals", () => {
+  const b = synthBars(4000);
+  const ctx = buildFilterContext(b);
+  const sig = new Int8Array(4000).fill(1);
+  const a1 = applyFilters(sig, ctx, { adxMin: 20 });
+  const a2 = applyFilters(sig, ctx, { adxMin: 20, startCt: 400, endCt: 900 });
+  for (let i = 0; i < 4000; i++) {
+    if (a2[i] !== 0 && a1[i] === 0) throw new Error(`adding a filter ADDED signal at ${i}`);
+  }
+  eq(countSurviving(sig, ctx, { adxMin: 20 }) >= countSurviving(sig, ctx, { adxMin: 20, startCt: 400, endCt: 900 }), true);
+});
+
+t("efficiency ratio is bounded 0..1 and 1 on a straight line", () => {
+  const up = new Float64Array(200);
+  for (let i = 0; i < 200; i++) up[i] = 100 + i;      // perfectly linear
+  const e = efficiencyRatio(up, 20);
+  close(e[100], 1, 1e-9, "straight line:");
+  for (const v of efficiencyRatio(synthBars(1000).close, 20)) {
+    if (Number.isFinite(v) && (v < -1e-9 || v > 1 + 1e-9)) throw new Error(`out of range: ${v}`);
+  }
 });
 
 // ══════════════════════════════ 5. WIRE FORMAT ══════════════════════════════

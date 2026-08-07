@@ -10,6 +10,7 @@ import { ChartView, Navigator, fmtUsd } from "/chart.js";
 import { runStrategy, resolveParams } from "/src/run.mjs";
 import { replayWindow, DEFAULT_RULES } from "/src/challenge.mjs";
 import { DEFAULT_EXEC } from "/src/engine.mjs";
+import { NO_FILTER } from "/src/filters.mjs";
 import { indexAtOrAfter } from "/src/resample.mjs";
 
 const $ = (id) => document.getElementById(id);
@@ -46,6 +47,25 @@ const FUNDED_PARAMS = [
     hint: "Assumed — many firms cap early withdrawals." },
   { key: "minBuffer", label: "Profit that must stay in $", type: "int", min: 0, max: 5000, step: 100, default: 0,
     hint: "Assumed — some firms require a buffer above the starting balance." },
+];
+
+// Signal gates, applied to any strategy. Defaults are off; the hints carry what
+// the 198M-simulation filter search actually measured for each dimension.
+const FILTER_PARAMS = [
+  { key: "startCt", label: "Trade from (CT)", type: "time", min: 0, max: 1439, step: 5, default: 0, group: "Filters",
+    hint: "Measured best-worst-half by window: RTH 08:30-15:00 36.2%, morning 35.4%, unrestricted 32.0%, afternoon 29.4%, late 12:30-15:00 only 20.9%." },
+  { key: "endCt", label: "Trade until (CT)", type: "time", min: 0, max: 1440, step: 5, default: 1440, group: "Filters" },
+  { key: "adxMin", label: "ADX minimum (0 = off)", type: "int", min: 0, max: 60, step: 1, default: 0, group: "Filters",
+    hint: "adx>35 measured 35.4%, versus 34.2% with no regime gate at all." },
+  { key: "adxMax", label: "ADX maximum (0 = off)", type: "int", min: 0, max: 60, step: 1, default: 0, group: "Filters" },
+  { key: "effMin", label: "Efficiency ratio min", type: "float", min: 0, max: 1, step: 0.05, default: 0, group: "Filters",
+    hint: "Kaufman ratio: net move / total path. 1 = a straight line, 0 = pure chop. The best single gate found — eff>0.5 scored 36.2%." },
+  { key: "effMax", label: "Efficiency ratio max", type: "float", min: 0, max: 1, step: 0.05, default: 0, group: "Filters" },
+  { key: "volMin", label: "ATR / its average, min", type: "float", min: 0, max: 3, step: 0.1, default: 0, group: "Filters" },
+  { key: "volMax", label: "ATR / its average, max", type: "float", min: 0, max: 3, step: 0.1, default: 0, group: "Filters",
+    hint: "Capping volatility HURT badly (25.1%) — it removes the dollar throughput needed to reach the target." },
+  { key: "chopMin", label: "Choppiness min", type: "int", min: 0, max: 100, step: 1, default: 0, group: "Filters" },
+  { key: "chopMax", label: "Choppiness max", type: "int", min: 0, max: 100, step: 1, default: 0, group: "Filters" },
 ];
 
 const SESSION_PARAMS = [
@@ -91,6 +111,7 @@ const S = {
   exec: { ...DEFAULT_EXEC },
   rules: { ...DEFAULT_RULES },
   funded: {},
+  filter: { ...NO_FILTER },
   windowStart: null,
   blob: null,        // parsed window bars
   winStartLocal: 0,  // index of the window start inside the blob
@@ -256,6 +277,15 @@ function renderSidebar() {
     }));
   }
   host.appendChild(ex);
+
+  const fi = buildGroup("Signal filters", true);
+  for (const d of FILTER_PARAMS) {
+    fi.body.appendChild(buildParamControl(d, S.filter[d.key], (v) => {
+      S.filter[d.key] = v;
+      onParamsChanged();
+    }));
+  }
+  host.appendChild(fi);
 
   const se = buildGroup("Session rules");
   for (const d of SESSION_PARAMS) {
@@ -464,7 +494,7 @@ function recompute() {
   if (!S.blob || !S.strategyMod) return;
   const t0 = performance.now();
 
-  const res = runStrategy(S.blob, S.strategyMod, S.params, S.exec, { fromMs: S.windowStart });
+  const res = runStrategy(S.blob, S.strategyMod, S.params, S.exec, { fromMs: S.windowStart, filter: S.filter });
   const replay = replayWindow(res.trades, S.windowStart, S.rules);
   const ms = performance.now() - t0;
 
@@ -473,7 +503,8 @@ function recompute() {
   paintStats(res, replay);
 
   $("perf").innerHTML =
-    `<b>${ms.toFixed(1)} ms</b> local re-run<br>${res.tf.close.length.toLocaleString()} × ${S.params.timeframeMin}m bars`;
+    `<b>${ms.toFixed(1)} ms</b> local re-run<br>${res.tf.close.length.toLocaleString()} × ${S.params.timeframeMin}m bars` +
+    (res.signalsGated ? `<br><span style="color:var(--warn)">${res.signalsGated} signals gated</span>` : "");
 }
 
 function paintChart(res, replay) {
@@ -608,7 +639,7 @@ function stepWindow(days) {
 
 // ──────────────────────── full-history sweep ────────────────────────
 function sweepKey() {
-  return JSON.stringify([S.strategyDesc.id, S.params, S.exec, S.rules, S.funded]);
+  return JSON.stringify([S.strategyDesc.id, S.params, S.exec, S.rules, S.funded, S.filter]);
 }
 
 function scheduleSweep() {
@@ -636,7 +667,7 @@ async function runSweep() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         strategyId: S.strategyDesc.id,
-        params: S.params, exec: S.exec, rules: S.rules, funded: S.funded,
+        params: S.params, exec: S.exec, rules: S.rules, funded: S.funded, filter: S.filter,
         stepDays: 1,
       }),
     }).then((x) => x.json());
@@ -723,6 +754,7 @@ async function boot() {
   S.exec = { ...S.meta.defaults.exec };
   S.rules = { ...S.meta.defaults.rules };
   S.funded = { ...S.meta.defaults.funded };
+  S.filter = { ...NO_FILTER };
 
   $("datasetInfo").textContent =
     `${S.meta.bars.toLocaleString()} 1-min bars · ${new Date(S.meta.startMs).toISOString().slice(0, 10)} → ${new Date(S.meta.endMs).toISOString().slice(0, 10)}`;
@@ -776,6 +808,7 @@ async function boot() {
     S.exec = { ...S.meta.defaults.exec };
     S.rules = { ...S.meta.defaults.rules };
     S.funded = { ...S.meta.defaults.funded };
+  S.filter = { ...NO_FILTER };
     renderSidebar();
     loadWindow(S.windowStart);
   };

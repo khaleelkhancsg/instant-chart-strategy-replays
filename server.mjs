@@ -38,19 +38,19 @@ console.log(`  ${strategies.size} strategies: ${[...strategies.keys()].join(", "
 const runCache = new Map();
 const RUN_CACHE_MAX = 8;
 
-function cacheKey(strategyId, params, exec) {
-  return JSON.stringify([strategyId, params, exec]);
+function cacheKey(strategyId, params, exec, filter) {
+  return JSON.stringify([strategyId, params, exec, filter]);
 }
 
-function fullRun(strategyId, params, exec) {
-  const key = cacheKey(strategyId, params, exec);
+function fullRun(strategyId, params, exec, filter) {
+  const key = cacheKey(strategyId, params, exec, filter);
   const hit = runCache.get(key);
   if (hit) return hit;
 
   const s = strategies.get(strategyId);
   if (!s) throw new Error(`Unknown strategy: ${strategyId}`);
   const t = Date.now();
-  const res = runStrategy(bars, s, params, exec);
+  const res = runStrategy(bars, s, params, exec, { filter });
   res.ms = Date.now() - t;
 
   runCache.set(key, res);
@@ -174,7 +174,7 @@ const server = http.createServer(async (req, res) => {
       const exec = resolveExec(body.exec);
       const rules = resolveRules(body.rules);
 
-      const run = fullRun(body.strategyId, params, exec);
+      const run = fullRun(body.strategyId, params, exec, body.filter);
       const tSweep = Date.now();
       const sweep = sweepWindows(
         run.trades, bars.ts[0], bars.ts[bars.count - 1], rules,
