@@ -116,6 +116,62 @@ never repaint 30,000 candles.
 
 ---
 
+## The strategy library
+
+14 strategies ship in `strategies/`. **Three are templates** built to be tuned
+rather than traded as-is — each collapses a whole family of ideas onto sliders:
+
+| Template | What its parameters span |
+|---|---|
+| `tpl_ma_cross` | EMA or SMA, hold-the-state or trade-the-cross, optional long-MA trend filter and ADX gate |
+| `tpl_channel` | Donchian / Bollinger / Keltner, and **`direction` flips it between momentum and mean reversion** — the same channel, two opposite theories |
+| `tpl_oscillator` | RSI / Stochastic / z-score, fade or follow, fire on the level or on the cross back |
+
+The rest are ports and structural ideas: `orb`, `session_range_fade`,
+`vwap_fade`, `macd_cross`, `supertrend`, `zscore_fade`, `adx_di_trend`,
+`triple_ema`, `momentum_roc`, plus the two originals.
+
+`momentum_roc` is deliberately crude — bare rate-of-change, no smoothing. It is
+the baseline: if an elaborate book cannot beat it, the elaboration is not paying
+for itself.
+
+A useful sanity check fell out of this: `tpl_channel` at its defaults (Donchian
+30, ADX 25, breakout) reproduces `trend_neutev` **exactly** — same 11,011 trades,
+same PF 0.984, same 14.5% pass rate. The template genuinely generalises the
+shipped book rather than approximating it.
+
+### All 14 at default parameters, under the real rules
+
+No overnight holds, flat 3:05 PM CT, consistency gating the evaluation:
+
+| strategy | trades | PF | exp $/trade | eval pass | reach payout |
+|---|---|---|---|---|---|
+| **`orb`** | 2,236 | **1.034** | **+$21.07** | 14.8% | **29.1%** |
+| `tpl_channel` / `trend_neutev` | 11,011 | 0.984 | −$5.69 | 14.5% | 26.6% |
+| `momentum_roc` | 9,792 | 0.987 | −$5.85 | 14.0% | 20.9% |
+| `trend_vol_adaptive` | 14,111 | 0.981 | −$5.82 | 8.9% | 20.6% |
+| `triple_ema` | 14,259 | 0.964 | −$11.47 | 12.1% | 24.0% |
+| `vwap_fade` | 14,876 | 0.944 | −$17.30 | 14.5% | 21.4% |
+| `supertrend` | 11,909 | 0.944 | −$17.89 | 8.6% | 20.0% |
+| `tpl_oscillator` | 12,022 | 0.955 | −$18.11 | 8.9% | 16.3% |
+| `macd_cross` | 35,406 | 0.861 | −$30.37 | 9.1% | 8.6% |
+| `tpl_ma_cross` | 20,429 | 0.882 | −$30.58 | 6.7% | 10.0% |
+| `adx_di_trend` | 24,401 | 0.830 | −$39.68 | 7.5% | 9.4% |
+| `zscore_fade` | 781 | 0.866 | −$47.89 | 1.9% | 22.3% |
+| `session_range_fade` | 1,980 | 0.838 | −$90.27 | 5.4% | 18.9% |
+
+**`orb` is the only one with a positive edge**, and that is not a coincidence —
+it is the only book here that is intraday *by construction*. Every other strategy
+was conceived holding positions through the close, and the 3:05 PM CT deadline
+removes ~43% of their gross profit. ORB opens after the bell and is meant to
+resolve the same session, so the deadline barely touches it.
+
+Two caveats before reading too much into that table. These are **default
+parameters, untuned** — the point of the templates is that you tune them, and
+several of these will look very different after a pass through the sliders. And
+a positive profit factor at defaults is not validation: `orb` still needs a
+walk-forward check before it means anything.
+
 ## Adding a strategy
 
 Drop a file in `strategies/`, click **Reload strategies**. No registration.

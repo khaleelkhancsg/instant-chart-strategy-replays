@@ -167,6 +167,80 @@ export function macd(C, fast = 12, slow = 26, signal = 9) {
   return { line, signal: sig, hist };
 }
 
+// Rolling min/max INCLUDING the current bar. (donchian() excludes it, because a
+// breakout channel must not contain the bar being tested against it.) O(n) via
+// monotonic deques.
+export function rollingMinMax(H, L, p) {
+  const n = H.length;
+  const hh = new Float64Array(n).fill(NaN);
+  const ll = new Float64Array(n).fill(NaN);
+  const qh = new Int32Array(n), ql = new Int32Array(n);
+  let hs = 0, he = 0, ls = 0, le = 0;
+  for (let i = 0; i < n; i++) {
+    while (he > hs && H[qh[he - 1]] <= H[i]) he--;
+    qh[he++] = i;
+    while (le > ls && L[ql[le - 1]] >= L[i]) le--;
+    ql[le++] = i;
+    while (qh[hs] <= i - p) hs++;
+    while (ql[ls] <= i - p) ls++;
+    if (i >= p - 1) { hh[i] = H[qh[hs]]; ll[i] = L[ql[ls]]; }
+  }
+  return { high: hh, low: ll };
+}
+
+// Stochastic oscillator. %K is where price sits inside its recent range.
+export function stochastic(H, L, C, kPeriod = 14, dPeriod = 3) {
+  const { high: hh, low: ll } = rollingMinMax(H, L, kPeriod);
+  const n = C.length;
+  const k = new Float64Array(n).fill(NaN);
+  for (let i = 0; i < n; i++) {
+    const range = hh[i] - ll[i];
+    if (Number.isFinite(range)) k[i] = range === 0 ? 50 : ((C[i] - ll[i]) / range) * 100;
+  }
+  return { k, d: sma(k, dPeriod) };
+}
+
+// Keltner channel: an EMA with ATR-scaled bands. Unlike Bollinger it widens with
+// true range rather than with closing dispersion, so gaps register.
+export function keltner(H, L, C, period = 20, mult = 2, atrPeriod = 14) {
+  const mid = ema(C, period);
+  const a = atr(H, L, C, atrPeriod);
+  const n = C.length;
+  const upper = new Float64Array(n), lower = new Float64Array(n);
+  for (let i = 0; i < n; i++) { upper[i] = mid[i] + mult * a[i]; lower[i] = mid[i] - mult * a[i]; }
+  return { mid, upper, lower };
+}
+
+// Rate of change, in percent, over `p` bars.
+export function roc(C, p = 10) {
+  const n = C.length;
+  const out = new Float64Array(n).fill(NaN);
+  for (let i = p; i < n; i++) out[i] = C[i - p] === 0 ? 0 : ((C[i] - C[i - p]) / C[i - p]) * 100;
+  return out;
+}
+
+// Supertrend: ATR-banded trend state, +1 up / -1 down.
+export function supertrend(H, L, C, period = 10, mult = 3) {
+  const n = C.length;
+  const a = atr(H, L, C, period);
+  const upper = new Float64Array(n), lower = new Float64Array(n);
+  const trend = new Int8Array(n);
+  for (let i = 0; i < n; i++) {
+    const hl2 = (H[i] + L[i]) / 2;
+    upper[i] = hl2 + mult * a[i];
+    lower[i] = hl2 - mult * a[i];
+  }
+  if (n) trend[0] = 1;
+  for (let i = 1; i < n; i++) {
+    lower[i] = lower[i] > lower[i - 1] || C[i - 1] < lower[i - 1] ? lower[i] : lower[i - 1];
+    upper[i] = upper[i] < upper[i - 1] || C[i - 1] > upper[i - 1] ? upper[i] : upper[i - 1];
+    if (trend[i - 1] === -1 && C[i] > upper[i]) trend[i] = 1;
+    else if (trend[i - 1] === 1 && C[i] < lower[i]) trend[i] = -1;
+    else trend[i] = trend[i - 1];
+  }
+  return { trend, upper, lower };
+}
+
 export function bollinger(C, p = 20, mult = 2) {
   const { mean, std } = rollingMeanStd(C, p);
   const upper = new Float64Array(C.length).fill(NaN);
