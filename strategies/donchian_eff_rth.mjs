@@ -35,8 +35,15 @@
 //    risk control.
 //
 // 4. A TIGHTER DAILY PROFIT STOP. $750, not the $1500 inherited from the other
-//    repo. Capping a day at $750 keeps it under 50% of the $3000 target, which
-//    satisfies the consistency rule far sooner. Worth +1.8pp on its own.
+//    repo. NOT because $750 is "under 50% of $3000" — $1500 is exactly 50%, so
+//    that reasoning is empty. The real reason is that a profit stop does not CAP
+//    the day: it blocks new entries, while the trade that crossed the threshold
+//    overshoots and any open position runs to its bracket. So a $1500 stop still
+//    leaves 50.3% of windows with a day over $1500, against 6.4% at $750 — and
+//    at a total near $3000 that breaks the 50% consistency test, delaying 67.0%
+//    of passes rather than 5.9%. Turning the consistency rule off reverses the
+//    ranking entirely ($1500 then wins 43.3% to 42.1%), which is the proof that
+//    consistency is the whole mechanism. Worth +4.0pp with the rule in force.
 //
 // ── THE THING TO UNDERSTAND BEFORE TUNING IT ─────────────────────────────
 // Pass rate correlates with expectancy x trades/day (0.512) far more than with

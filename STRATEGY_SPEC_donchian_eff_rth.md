@@ -208,9 +208,37 @@ zero-edge book; it is not one here. Keep it as cheap insurance.*
 Once **realised** P&L for the day reaches +$750, stop opening new trades until the
 next reset.
 
-**This value matters.** $750 beats $1,500 by 1.8 percentage points, because
-capping a day at $750 keeps it under 50% of the $3,000 target and satisfies the
-consistency rule far sooner.
+**This value matters, and the reason is subtle enough to be worth stating
+carefully — it is not that "$750 is under 50% of $3,000".** $1,500 is *exactly*
+50% of $3,000, so on that arithmetic a $1,500 stop should be fine.
+
+The catch is that **a profit stop does not cap the day.** It blocks *new* entries
+once the threshold is crossed; the trade that crosses it overshoots, and any
+position already open keeps running to its bracket. So the realised day lands
+*above* the stop, not at it:
+
+| Profit stop | Windows with a day > $1,500 | Passes delayed by consistency |
+|---|---|---|
+| $750 | 95 (6.4%) | 37 (5.9%) |
+| $1,500 | **749 (50.3%)** | **432 (67.0%)** |
+
+With a $1,500 stop, half of all windows still print a day over $1,500, and at a
+total near $3,000 that breaks the 50% test — so the account reaches the target and
+then has to keep grinding to dilute the day before it can pass.
+
+Proof that consistency is the whole mechanism — turning the rule off reverses the
+ranking:
+
+| Profit stop | Consistency ON | Consistency OFF |
+|---|---|---|
+| off | 28.7% | 42.9% |
+| **$750** | **41.7%** | 42.1% |
+| $1,500 | 37.7% | **43.3%** |
+
+Note the corollary: **without the consistency rule the profit stop is nearly
+worthless** (42.9% with no stop at all versus 43.3% at $1,500). Its entire value
+is navigating consistency. If your firm has no consistency requirement on the
+evaluation, drop the stop and size the day freely.
 
 ### 7.4 Trading-day boundary
 
