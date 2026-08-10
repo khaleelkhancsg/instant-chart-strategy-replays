@@ -57,5 +57,10 @@ export function describe(s) {
     // stop width, target, and sizing change the outcome more than the signal does.
     // Strategies may therefore ship execution defaults, applied when selected.
     execDefaults: s.execDefaults || null,
+    // Same reasoning for the regime/session gate and the daily overlays: a config
+    // measured with a particular filter and a particular profit stop does not
+    // reproduce without them.
+    filterDefaults: s.filterDefaults || null,
+    rulesDefaults: s.rulesDefaults || null,
   };
 }

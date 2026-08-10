@@ -738,8 +738,11 @@ async function selectStrategy(id) {
   S.strategyMod = mod.default;
   S.params = resolveParams(S.strategyMod, {});
   // Adopt the strategy's own risk envelope if it ships one, since stop width and
-  // sizing are part of the result, not incidental settings around it.
+  // sizing are part of the result, not incidental settings around it. Same for
+  // its regime gate and daily overlays — a config does not reproduce without them.
   S.exec = { ...S.meta.defaults.exec, ...(S.strategyDesc.execDefaults || {}) };
+  S.filter = { ...NO_FILTER, ...(S.strategyDesc.filterDefaults || {}) };
+  S.rules = { ...S.meta.defaults.rules, ...(S.strategyDesc.rulesDefaults || {}) };
   // Old sweep belongs to a different strategy — drop it rather than show numbers
   // that no longer describe anything on screen.
   S.sweep = null;
