@@ -3,13 +3,34 @@
 Everything needed to reimplement this exactly in Python, including the details
 that will otherwise cause silent divergence.
 
-**Measured result:** 44.0% in-sample (2019-05→2023-06) / 43.9% out-of-sample
-(2023-06→2026-07), under no-overnight rules with a 3:05 PM CT flatten, a hard
-$1,500 unrealised daily profit stop and a soft $1,000 entry block. See §7.3a —
-using only one of those two stops costs 2-4 percentage points.
+**Measured result:** 43.9% of all 2,598 thirty-day windows passed — 44.0%
+in-sample (2019-05→2023-06), 43.9% out-of-sample (2023-06→2026-07) — under
+no-overnight rules with a 3:05 PM CT flatten, a hard $1,500 unrealised daily
+profit stop and a soft $1,000 entry block.
 
-> **Read the [Honest limitations](#10-honest-limitations) section before trading
-> this.** Commission is 47% of gross profit and slippage is modelled as zero.
+> ## ⚠ This configuration LOSES MONEY long-run
+>
+> It passes 43.9% of combines while being **net −$81,299 over 7.2 years**
+> (profit factor 0.949, −$14.46 per trade). That is not a contradiction, it is
+> the point: a combine is a 30-day sprint that **stops the moment you pass**, so
+> a book that wins small and often — and occasionally loses enormously — reaches
+> +$3,000 before −$2,000 more often than a genuinely profitable book, while the
+> catastrophic losses land in windows that were going to fail anyway.
+>
+> **There is a direct trade-off, and you should choose deliberately:**
+>
+> | Setup | Pass rate | Profit factor | Net over 7.2 years |
+> |---|---|---|---|
+> | Hard $1,500 + soft $1,000 | **43.9%** | 0.949 | **−$81,299** |
+> | Soft $1,000 only (no hard cap) | 41.9% | **1.047** | **+$91,640** |
+>
+> Two extra percentage points of pass rate cost you the entire edge. If you plan
+> to **trade the funded account**, take the profitable version. If you plan to
+> **pass evaluations and reset cheaply**, the higher pass rate is defensible.
+> See §9a.
+>
+> Also read [Honest limitations](#10-honest-limitations): commission alone
+> exceeds gross profit here, and slippage is modelled as zero.
 
 ---
 
@@ -167,18 +188,24 @@ No trailing stop. No breakeven move. No scale-out (measured: scaling out cost
 **Ten contracts. Flat. Always.**
 
 Do not use Kelly, volatility targeting, or risk-a-fraction-of-equity. Measured on
-this exact book:
+this exact book, with both daily stops in force:
 
-| Sizing | Pass rate |
-|---|---|
-| **Flat 10 lots** | **41.9%** |
-| Risk a fixed % of surviving cushion | **0.0%** |
-| Flat 6 lots | 28.8% |
-| Flat 1 lot | 0.0% |
+| Contracts | IS | OOS | worst |
+|---|---|---|---|
+| 1 | 0.0% | 0.9% | **0.0%** |
+| 4 | 22.6% | 24.5% | 22.6% |
+| 6 | 33.4% | 38.8% | 33.4% |
+| 8 | 42.1% | 42.8% | 42.1% |
+| 9 | 44.2% | 43.6% | 43.6% |
+| **10** | **44.0%** | **43.9%** | **43.9%** |
 
-Risk-fraction sizing collapses the position to 1–2 lots, and a **fixed $3,000
-target** then becomes unreachable inside 30 days. Against a fixed-dollar target on
-a deadline, throughput beats risk control.
+Also measured: risking a fixed % of the surviving cushion scores **0.0%**, because
+it collapses the position to 1–2 lots — and at 1 lot the pass rate *is* 0.0%. A
+**fixed $3,000 target** is simply unreachable at that size inside 30 days.
+
+Against a fixed-dollar target on a deadline, **throughput beats risk control**.
+The curve is nearly flat from 9 to 10 lots, so 9 is a reasonable choice if you
+want a little margin against the contract cap.
 
 ---
 
@@ -330,18 +357,58 @@ minutes, 75.0% of exits at target.
 
 ### Resulting trade profile
 
-| | |
-|---|---|
-| Trades | 5,342 over 7.2 years (**2.03/day**) |
-| Win rate | **75.8%** |
-| Average win | $500.09 |
-| Average loss | −$1,493.62 |
-| Profit factor | 1.047 |
-| Expectancy | **$17.15/trade** at 10 lots |
-| Exits | TP 75.0% · SL 16.4% · flatten 6.2% · flip 2.4% |
-| Mean hold | 43 minutes |
+As shipped (hard $1,500 cap + soft $1,000 block, 10 lots):
 
-Many small wins, occasional large losses. That is the correct shape here.
+| | Shipped (both stops) | Soft block only |
+|---|---|---|
+| Trades | 5,623 (**2.14/day**) | 5,342 (2.03/day) |
+| Win rate | **62.8%** | 75.8% |
+| Average win | $426.49 | $500.09 |
+| Average loss | −$757.59 | −$1,493.62 |
+| Largest loss | **−$10,995** | −$10,995 |
+| Profit factor | 0.949 | **1.047** |
+| Expectancy | −$14.46 | **+$17.15** |
+| Exits | TP 54.9% · **DAYCAP 24.9%** · SL 13.6% · flatten 4.9% · flip 1.8% | TP 75.0% · SL 16.4% · flatten 6.2% · flip 2.4% |
+| Mean hold | 35 min | 43 min |
+| Pass rate | **43.9%** | 41.9% |
+
+Many small wins, occasional very large losses. Note the largest single loss is
+**−$10,995** — over five times the entire drawdown limit. It happens because the
+stop is 5×ATR wide and a gap can blow straight through it; a window containing one
+of those is simply dead. That is the cost of the inverted geometry.
+
+Note also that the hard cap converts a quarter of all exits into DAYCAP closes,
+which is precisely the mechanism that trades edge for pass rate.
+
+### 9a. Passing versus profiting — they are different objectives
+
+This is the single most important thing to understand before deploying it.
+
+Everything in this project was optimised for **pass rate**, which is
+P(+$3,000 before −$2,000 within 30 days). That is *not* the same as making money,
+and at the margin the two conflict:
+
+| | Pass rate | Profit factor | Net, 7.2 years |
+|---|---|---|---|
+| Hard cap + soft block | **43.9%** | 0.949 | **−$81,299** |
+| Soft block only | 41.9% | **1.047** | **+$91,640** |
+
+The combine **stops the moment you pass**, so a book that wins small and often
+banks the target before its rare catastrophic loss arrives. Those losses then land
+in windows that fail — which costs you 2 points of pass rate but destroys
+long-run P&L.
+
+**Decide which you are doing:**
+
+- **Passing evaluations to collect funded accounts** → the higher pass rate is
+  defensible, provided a reset is cheap relative to a payout.
+- **Trading the funded account** → use the profitable version. Disable the hard
+  cap, keep the soft $1,000 entry block, accept 41.9%.
+
+Measured funded outcomes are close either way over 180 days (50.0% vs 52.9% reach
+a payout; mean $2,093 vs $2,061), but that horizon is too short for a negative
+per-trade edge to fully express itself. Over a long funded run, profit factor is
+what decides the outcome.
 
 ### What to optimise if you tune it
 
@@ -364,29 +431,37 @@ factor.**
 
 ## 10. Honest limitations
 
-**Commission is 47% of gross profit.** $80,130 paid against $91,640 net (gross
-$171,770) at $0.75/side/contract. At double commission this book is unprofitable.
-Use your broker's real per-contract rate, not a flat per-trade figure.
+**Commission exceeds gross profit as shipped.** $84,345 paid against $3,046 gross,
+for **−$81,299 net**, at $0.75/side/contract across 5,623 trades. Without the hard
+cap the same book is +$91,640 net on $171,770 gross, with commission at 47%.
+Either way this is a high-turnover book whose viability is decided by execution
+cost — use your broker's real per-contract rate, never a flat per-trade figure.
 
-**Slippage is modelled as ZERO.** Across 5,342 trades at 10 lots, one tick per
-side costs roughly **$53,000** — more than half the net profit. Measure your real
-fills before trusting anything here.
+**Slippage is modelled as ZERO.** Across 5,623 trades at 10 lots, **one tick per
+side costs roughly $56,000**. That is larger than the entire gross profit of the
+shipped configuration. Measure your real fills before trusting any number here;
+this is the assumption most likely to be wrong and most likely to be fatal.
+
+**A single loss can be five times the drawdown limit.** Largest observed:
+−$10,995 against a $2,000 limit, because a 5×ATR stop can be gapped straight
+through. Any window containing one is dead regardless of everything else.
 
 **Regime still dominates a single attempt:**
 
 | 2019 | 2020 | 2021 | 2022 | 2023 | 2024 | 2025 | 2026 |
 |---|---|---|---|---|---|---|---|
-| 18% | 33% | 49% | 53% | 46% | 38% | 50% | 37% |
+| 22% | 31% | 55% | 50% | 47% | 39% | 57% | 42% |
 
-**41.9% is not 70%.** Under these account rules nothing in ~2.2 billion window
+**43.9% is not 70%.** Under these account rules nothing in ~2.2 billion window
 simulations reached 70%. The identical search with **overnight holds allowed**
 reached **83%**. The flatten rule, not the strategy, is the binding constraint —
 if that rule is negotiable, it is worth about 45 percentage points.
 
-**Funded stage:** 52.9% of runs reach a payout, median 11 days to first, median
-first payout $2,365, mean $2,061 per 180 days. Leave profit in the account —
+**Funded stage:** 50.0% of runs reach a payout, median 11 days to first, median
+first payout $2,806, mean $2,093 per 180 days. Leave profit in the account —
 withdrawing everything parks you on the locked $0 floor and the next losing day
-ends it.
+ends it. And note §9a: over a horizon longer than 180 days, a profit factor below
+1.0 will assert itself.
 
 ---
 
@@ -409,10 +484,20 @@ ends it.
 
 ## 12. Reference implementation
 
-`strategies/donchian_eff_rth.mjs` in this repo. Verified through the server API:
-5,342 trades, PF 1.047, $17.15/trade, 2.03/day, 41.9% pass over 2,598 windows —
-identical to the research script.
+`strategies/donchian_eff_rth.mjs` in this repo, which ships this exact
+configuration: 5,623 trades, PF 0.949, −$14.46/trade, 2.14/day, **43.9% pass**
+over 2,598 windows (44.0% IS / 43.9% OOS), median 8 days to pass.
 
 To reproduce interactively: select **"MNQ Donchian + Efficiency Gate"** in the
 sidebar. It ships its own execution, filter and rule defaults, so selecting it
-applies the whole configuration.
+applies the whole configuration — including both daily stops.
+
+**To run the profitable variant instead** (41.9%, PF 1.047, +$91,640): set
+`dayProfitStopUsd` to 0 in the Execution panel, leaving the soft $1,000 block in
+Combine rules.
+
+### Worked example
+
+A passing window, 2019-05-08: passed in **9 days**, 15 trades taken and 3 skipped
+by daily rules, net $3,084, best day $1,189 (39% of profit, inside the 50% cap),
+and the closest it came to the trailing floor was $1,695.
