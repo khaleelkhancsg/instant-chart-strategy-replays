@@ -45,18 +45,25 @@
 //    reverses the ranking, which proves consistency is the mechanism.
 //
 //    HARD (platform stop on UNREALISED P&L, `dayProfitStopUsd`) — closes the
-//    position the instant realised+open P&L touches the number. It does cap the
-//    day exactly, and 0.0% of windows then exceed it. But it is WORSE overall,
-//    because it truncates winners at an arbitrary dollar level while leaving
-//    losses untouched: profit factor falls 1.047 -> 0.949 and expectancy goes
-//    +$17.2 -> -$14.5 per trade. Best achievable is 39.7% (hard $1500 at NINE
-//    lots — smaller size makes the cap bite less often, since $1500 then needs a
-//    larger move) against 41.7% with the soft stop.
+//    position the instant realised+open P&L touches the number, so the day is
+//    capped exactly and 0.0% of windows exceed it. It costs edge, because it
+//    truncates winners at an arbitrary dollar level while leaving losses alone
+//    (profit factor 1.047 -> 0.949 at $1500). Crucially the two kinds want
+//    OPPOSITE values, so the setting cannot be carried across:
 //
-//    This is the same asymmetry that the 3:05 PM flatten and scale-out both
-//    exhibit: anything that cuts winners short but not losses costs edge.
-//    If your platform's profit stop can be set to block new orders rather than
-//    flatten, do that. If it cannot, use $1500 at 9 lots and accept ~2pp.
+//      SOFT   $750 41.7%  >  $1500 37.7%     lower is better
+//      HARD   $1500 39.7% >  $750  25.9%     higher is better
+//
+//    A hard cap below $1500 truncates winners for no benefit; above it,
+//    consistency violations reappear (passes delayed: 0.0% at $1500, 15.8% at
+//    $1550, 37.9% at $1600). $1500 is exactly the largest cap that cannot
+//    violate the 50% rule against a $3000 target, and the sweep peaks there.
+//
+// 5. BOTH, LAYERED. The best configuration uses them together: the hard $1500
+//    cap prevents any consistency violation, while a soft $1000 entry-block
+//    stops new risk late in a good day WITHOUT truncating a position already
+//    running. That reaches 44.0% IS / 43.9% OOS, against 39.7% for the hard cap
+//    alone and 41.7% for the soft stop alone.
 //
 // ── THE THING TO UNDERSTAND BEFORE TUNING IT ─────────────────────────────
 // Pass rate correlates with expectancy x trades/day (0.512) far more than with
@@ -94,9 +101,17 @@ export default {
     intradayOnly: true, flattenCt: 15 * 60 + 5, reopenCt: 17 * 60,
     noEntryMinsBeforeFlat: 10,
     commissionModel: "per-contract", commissionPerSide: 0.75, slippageTicks: 0,
+    // Platform-level hard stop on unrealised P&L. $1500 is not arbitrary: it is
+    // the LARGEST daily cap that can never breach the 50% consistency rule
+    // against a $3000 target, and the sweep peaks there sharply — at $1550 the
+    // proportion of passes delayed by consistency jumps from 0.0% to 15.8%.
+    dayProfitStopUsd: 1500,
   },
   filterDefaults: { startCt: 8 * 60 + 30, endCt: 15 * 60, effMin: 0.5 },
-  rulesDefaults: { circuitBreaker: 150, dailyProfitStop: 750 },
+  // The soft entry-block sits ON TOP of the hard cap and is a different rule:
+  // stop OPENING trades after $1000 realised, but let a position already running
+  // continue to the $1500 hard cap. Together they beat either alone.
+  rulesDefaults: { circuitBreaker: 150, dailyProfitStop: 1000 },
 
   params: [
     { key: "period", label: "Donchian lookback", type: "int", min: 5, max: 200, step: 1, default: 30, group: "Signal" },

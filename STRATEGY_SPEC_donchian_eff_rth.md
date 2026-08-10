@@ -3,9 +3,10 @@
 Everything needed to reimplement this exactly in Python, including the details
 that will otherwise cause silent divergence.
 
-**Measured result:** 41.9% pass across all 2,598 thirty-day windows
-(42.1% in-sample 2019-05→2023-06, 41.7% out-of-sample 2023-06→2026-07),
-under no-overnight rules with a 3:05 PM CT flatten.
+**Measured result:** 44.0% in-sample (2019-05→2023-06) / 43.9% out-of-sample
+(2023-06→2026-07), under no-overnight rules with a 3:05 PM CT flatten, a hard
+$1,500 unrealised daily profit stop and a soft $1,000 entry block. See §7.3a —
+using only one of those two stops costs 2-4 percentage points.
 
 > **Read the [Honest limitations](#10-honest-limitations) section before trading
 > this.** Commission is 47% of gross profit and slippage is modelled as zero.
@@ -203,10 +204,11 @@ until the next reset. Let an open position finish at its bracket.
 book averages 2 trades/day. It was the single biggest lever in an earlier
 zero-edge book; it is not one here. Keep it as cheap insurance.*
 
-### 7.3 Daily profit stop — +$750
+### 7.3 Daily profit stop — +$1,000 soft, +$1,500 hard
 
-Once **realised** P&L for the day reaches +$750, stop opening new trades until the
-next reset.
+Once **realised** P&L for the day reaches **+$1,000**, stop opening new trades
+until the next reset. Separately, the platform closes any open position the
+instant realised+unrealised P&L touches **+$1,500**. Both are needed — see §7.3a.
 
 **This value matters, and the reason is subtle enough to be worth stating
 carefully — it is not that "$750 is under 50% of $3,000".** $1,500 is *exactly*
@@ -240,33 +242,55 @@ worthless** (42.9% with no stop at all versus 43.3% at $1,500). Its entire value
 is navigating consistency. If your firm has no consistency requirement on the
 evaluation, drop the stop and size the day freely.
 
-### 7.3a Soft stop vs a hard platform stop — they behave oppositely
+### 7.3a Use BOTH stops — they are different rules and want opposite values
 
-Everything above assumes a **soft** stop that blocks new *entries* on *realised*
-P&L. Many platforms instead offer a **hard** stop on *unrealised* P&L that
-flattens the position the instant the number is touched (`dayProfitStopUsd` in
-this engine). The two are not interchangeable:
+There are two distinct mechanisms, and confusing them will cost you several
+percentage points:
 
-| Stop | Days capped exactly? | Profit factor | Expectancy | Best pass rate |
-|---|---|---|---|---|
-| Soft $750, 10 lots | no (6.4% exceed $1,500) | **1.047** | **+$17.15** | **41.7%** |
-| Hard $1,500, 10 lots | **yes** (0.0% exceed) | 0.949 | −$14.50 | 38.0% |
-| Hard $1,500, **9 lots** | yes | — | — | **39.7%** |
+| | What it does | Acts on |
+|---|---|---|
+| **Hard cap** (`dayProfitStopUsd`) | **Closes** the open position | realised + **unrealised** |
+| **Soft block** (`dailyProfitStop`) | Stops **opening** new trades | **realised** only |
 
-The hard stop does exactly what it promises — no day ever exceeds the cap, so
-consistency is never violated. It is still worse, because it **truncates winners
-at an arbitrary dollar level while leaving losses untouched**. That is the same
-asymmetry as the 3:05 PM flatten (37% of winners cut vs 5% of losers) and as
-scale-out. Anything that clips the upside but not the downside costs edge.
+**They want opposite values.** The setting cannot be carried from one to the
+other:
 
-Two practical consequences:
+| | $750 | $1,500 |
+|---|---|---|
+| Soft block | **41.7%** | 37.7% |
+| Hard cap | 25.9% | **39.7%** |
 
-- **If your platform's profit stop can be configured to block new orders rather
-  than flatten, do that.** It is worth about 2 percentage points.
-- **If it cannot, run 9 contracts rather than 10.** Under a fixed-dollar cap a
-  smaller position needs a *larger* price move to reach it, so the cap bites less
-  often and more winners reach their real target. Measured: 39.7% at 9 lots
-  versus 38.0% at 10.
+**$1,500 is exactly the right hard cap**, and not by coincidence: it is the
+largest daily cap that can *never* violate the 50% consistency rule against a
+$3,000 target. The sweep peaks there sharply:
+
+| Hard cap | Pass rate (9 lots) | Passes delayed by consistency |
+|---|---|---|
+| $1,300 | 37.0% | 0.0% |
+| $1,400 | 38.9% | 0.0% |
+| **$1,500** | **39.7%** | **0.0%** |
+| $1,550 | 39.1% | 15.8% |
+| $1,600 | 37.7% | 37.9% |
+| $2,000 | 33.8% | 73.6% |
+
+Below $1,500 the cap truncates winners for no consistency benefit. Above it,
+violations reappear immediately.
+
+### The best configuration uses both
+
+| Setup | IS | OOS |
+|---|---|---|
+| Hard $1,500 alone, 9 lots | 39.7% | 40.8% |
+| Soft $750 alone, 10 lots | 42.1% | 41.7% |
+| **Hard $1,500 + soft $1,000, 10 lots** | **44.0%** | **43.9%** |
+
+The two do different jobs and compose. The hard cap guarantees no day ever breaks
+consistency; the soft block stops you taking *new* risk late in a good day
+**without truncating a position already running** — it can still ride to the
+$1,500 cap. Neither alone gets there.
+
+To implement: keep the platform's hard $1,500 unrealised stop, and add a rule in
+the bot that **stops opening new trades once realised day P&L reaches +$1,000**.
 
 ### 7.4 Trading-day boundary
 
