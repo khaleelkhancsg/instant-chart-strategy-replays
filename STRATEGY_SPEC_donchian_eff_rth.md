@@ -17,20 +17,18 @@ profit stop and a soft $1,000 entry block.
 > +$3,000 before −$2,000 more often than a genuinely profitable book, while the
 > catastrophic losses land in windows that were going to fail anyway.
 >
-> **There is a direct trade-off, and you should choose deliberately:**
+> **There is a trade-off, but it mostly evaporates under realistic fills:**
 >
-> | Setup | Pass rate | Profit factor | Net over 7.2 years |
-> |---|---|---|---|
-> | Hard $1,500 + soft $1,000 | **43.9%** | 0.949 | **−$81,299** |
-> | Soft $1,000 only (no hard cap) | 41.9% | **1.047** | **+$91,640** |
+> | Setup | Pass @ 0 ticks | Pass @ 1 tick | Profit factor | Net over 7.2 years |
+> |---|---|---|---|---|
+> | Hard $1,500 + soft $1,000 | **43.9%** | 41.3% | 0.949 | **−$81,299** |
+> | Soft $1,000 only | 41.4% | **41.0%** | **1.047** | **+$91,640** |
 >
-> Two extra percentage points of pass rate cost you the entire edge. If you plan
-> to **trade the funded account**, take the profitable version. If you plan to
-> **pass evaluations and reset cheaply**, the higher pass rate is defensible.
-> See §9a.
+> The hard cap's 2pp advantage depends on perfect fills. At one tick of slippage
+> the two are within 0.3pp, while the P&L difference remains enormous.
 >
-> Also read [Honest limitations](#10-honest-limitations): commission alone
-> exceeds gross profit here, and slippage is modelled as zero.
+> **Recommended: run the profitable variant** — set `dayProfitStopUsd: 0` and
+> keep the soft $1,000 entry block. See §9a and §10.
 
 ---
 
@@ -398,17 +396,30 @@ banks the target before its rare catastrophic loss arrives. Those losses then la
 in windows that fail — which costs you 2 points of pass rate but destroys
 long-run P&L.
 
-**Decide which you are doing:**
+Long-run P&L is genuinely the **wrong lens for the evaluation itself**. A combine
+is pass/fail, attempts are independent, and negative live expectancy does not
+disqualify a book whose only job is to reach $3,000 once. That reasoning is
+correct as far as it goes.
 
-- **Passing evaluations to collect funded accounts** → the higher pass rate is
-  defensible, provided a reset is cheap relative to a payout.
-- **Trading the funded account** → use the profitable version. Disable the hard
-  cap, keep the soft $1,000 entry block, accept 41.9%.
+**But it stops applying the moment you are funded** — and it turns out the
+trade-off dissolves anyway once fills are realistic:
 
-Measured funded outcomes are close either way over 180 days (50.0% vs 52.9% reach
-a payout; mean $2,093 vs $2,061), but that horizon is too short for a negative
-per-trade edge to fully express itself. Over a long funded run, profit factor is
-what decides the outcome.
+| Ticks/side | Hard cap + soft block | Soft block only |
+|---|---|---|
+| 0 (assumed) | **43.9%** | 41.4% |
+| **1 (realistic)** | **41.3%** | **41.0%** |
+
+At one tick of slippage the two are within 0.3pp, because the hard cap's edge
+comes from perfect fills it will not get. So the 2pp premium is largely
+imaginary, while the −$81,299 versus +$91,640 difference is not.
+
+**Recommendation:** run the profitable variant — disable the hard cap, keep the
+soft $1,000 entry block. You give up almost nothing on pass rate at realistic
+execution and you get a book that does not bleed once funded.
+
+Measured funded outcomes over 180 days are close either way (50.0% vs 52.9% reach
+a payout; mean $2,093 vs $2,061), but that horizon is too short for a profit
+factor below 1.0 to fully express itself.
 
 ### What to optimise if you tune it
 
@@ -437,10 +448,36 @@ cap the same book is +$91,640 net on $171,770 gross, with commission at 47%.
 Either way this is a high-turnover book whose viability is decided by execution
 cost — use your broker's real per-contract rate, never a flat per-trade figure.
 
-**Slippage is modelled as ZERO.** Across 5,623 trades at 10 lots, **one tick per
-side costs roughly $56,000**. That is larger than the entire gross profit of the
-shipped configuration. Measure your real fills before trusting any number here;
-this is the assumption most likely to be wrong and most likely to be fatal.
+**Slippage is modelled as ZERO — but it costs less than a lifetime total
+suggests.** One tick per side at 10 lots is $10 round trip, and a window takes a
+median of **16 trades**, so a combine carries about **$150** of slippage against
+a $3,000 target. Measured effect on pass rate:
+
+| Ticks/side | $/trade | Cost per combine | Pass rate | vs zero |
+|---|---|---|---|---|
+| 0 | $0 | $0 | 43.9% | — |
+| 0.5 | $5 | $80 | 42.7% | −1.1pp |
+| **1** | **$10** | **$150** | **41.3%** | **−2.5pp** |
+| 2 | $20 | $300 | 38.3% | −5.6pp |
+| 3 | $30 | $420 | 37.1% | −6.8pp |
+
+Real but not disqualifying. The correct denominator is *one combine*, not the
+5,623 trades across 7.2 years you will never take consecutively — combines are
+independent attempts and each one only has to reach the target once.
+
+**This changes which variant to run.** Slippage hurts the shipped configuration
+more than the profitable one, because the latter has genuine edge to absorb it:
+
+| Ticks/side | Hard cap + soft block | Soft block only |
+|---|---|---|
+| 0 | **43.9%** | 41.4% |
+| 1 | 41.3% | 41.0% |
+| 2 | 38.3% | 38.2% |
+
+**At a realistic one tick the two are within 0.3pp** — so the hard cap's entire
+advantage is an artefact of assuming perfect fills. Given the profitable variant
+is +$91,640 rather than −$81,299 over the same period, it is the better choice at
+any slippage you are likely to actually get.
 
 **A single loss can be five times the drawdown limit.** Largest observed:
 −$10,995 against a $2,000 limit, because a 5×ATR stop can be gapped straight
