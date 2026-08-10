@@ -14,7 +14,7 @@
 // an opposite signal while in a position closes at this bar's open AND may
 // re-enter on the same bar. A stop/target exit, by contrast, ends the bar.
 
-export const EXIT = { SL: "SL", TP: "TP", FLIP: "FLIP", EOD: "EOD", TIME: "TIME", FLAT: "FLAT" };
+export const EXIT = { SL: "SL", TP: "TP", FLIP: "FLIP", EOD: "EOD", TIME: "TIME", FLAT: "FLAT", DAYCAP: "DAYCAP" };
 
 // Intraday-only session rules, in America/Chicago minutes-of-day.
 //
@@ -83,6 +83,21 @@ export const DEFAULT_EXEC = {
   // Optional: stop opening new trades this many minutes before the flatten time.
   // Entering at 3:04 PM only to be flattened at 3:05 pays commission for nothing.
   noEntryMinsBeforeFlat: 0,
+  // HARD daily profit stop on UNREALISED P&L, in dollars. 0 = off.
+  //
+  // This is what trading platforms actually enforce, and it is a different thing
+  // from the rules-layer `dailyProfitStop`, which only blocks new ENTRIES once
+  // REALISED P&L crosses a line. A platform-level unrealised stop closes the open
+  // position the instant realised+open P&L touches the threshold, so the day is
+  // capped AT the number rather than overshooting past it.
+  //
+  // The distinction matters: with entry-blocking alone, a $1500 stop still left
+  // 50.3% of windows with a day above $1500. A hard unrealised stop leaves none.
+  //
+  // Note this breaks the "contracts are just a P&L multiplier" shortcut — the
+  // threshold is an absolute dollar amount, so the size actually traded decides
+  // when it triggers. Searches over contract count must re-run the engine.
+  dayProfitStopUsd: 0,
 };
 
 export function resolveExec(cfg = {}) {
@@ -118,6 +133,10 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
   let hiSeen = -Infinity, loSeen = Infinity;
   let qCur = q;   // contracts for the OPEN trade (varies under 'risk' sizing)
   let lastStopMs = -Infinity, lastStopDir = 0;   // for cooldownAfterStopMins
+  // Day state for the hard unrealised profit stop. Realised P&L is tracked from
+  // this engine's own closed trades, at the size actually traded.
+  const dayCap = x.dayProfitStopUsd || 0;
+  let curTday = -2147483648, dayRealised = 0, dayCapHit = false;
 
   function close_(rawExit, reason, i) {
     // Slippage always works against the position on both legs.
@@ -148,6 +167,10 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       reason,
     });
     if (reason === EXIT.SL) { lastStopMs = TS[i]; lastStopDir = pos; }
+    if (dayCap > 0) {
+      dayRealised += gross - fees;
+      if (dayRealised >= dayCap) dayCapHit = true;   // done trading for the day
+    }
     pos = 0;
   }
 
@@ -157,6 +180,9 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
   for (let i = 1; i < n; i++) {
     const s = sig[i - 1];
     const flatNow = intraday && inFlatWindow(CT[i], x.flattenCt, x.reopenCt);
+    if (dayCap > 0 && bars.tday[i] !== curTday) {
+      curTday = bars.tday[i]; dayRealised = 0; dayCapHit = false;
+    }
 
     if (pos !== 0) {
       if (H[i] > hiSeen) hiSeen = H[i];
@@ -172,17 +198,29 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       // OPEN — a price that occurred BEFORE the mid-bar stop-out — which is not
       // a sequence that could actually be traded. lib_faithful_eval in the other
       // repo does allow it, so the flag exists to reproduce those numbers.
+      // A hard unrealised day-profit stop behaves exactly like a second, closer
+      // take-profit: the price at which realised+open P&L reaches the threshold.
+      // Whichever profit level is nearer gets hit first as price advances.
+      let capPx = 0;
+      if (dayCap > 0 && !dayCapHit) {
+        capPx = ep + pos * ((dayCap - dayRealised) / (pv * qCur));
+      }
+
       let exited = false;
       if (pos === 1) {
-        const sl = ep - slDist, tp = ep + tpDist;
+        const sl = ep - slDist;
+        const tp = capPx > 0 ? Math.min(ep + tpDist, capPx) : ep + tpDist;
+        const isCap = capPx > 0 && tp === capPx && capPx < ep + tpDist;
         if (O[i] <= sl) { close_(O[i], EXIT.SL, i); exited = true; }
         else if (L[i] <= sl) { close_(sl, EXIT.SL, i); exited = true; }
-        else if (H[i] >= tp) { close_(tp, EXIT.TP, i); exited = true; }
+        else if (H[i] >= tp) { close_(tp, isCap ? EXIT.DAYCAP : EXIT.TP, i); exited = true; }
       } else {
-        const sl = ep + slDist, tp = ep - tpDist;
+        const sl = ep + slDist;
+        const tp = capPx > 0 ? Math.max(ep - tpDist, capPx) : ep - tpDist;
+        const isCap = capPx > 0 && tp === capPx && capPx > ep - tpDist;
         if (O[i] >= sl) { close_(O[i], EXIT.SL, i); exited = true; }
         else if (H[i] >= sl) { close_(sl, EXIT.SL, i); exited = true; }
-        else if (L[i] <= tp) { close_(tp, EXIT.TP, i); exited = true; }
+        else if (L[i] <= tp) { close_(tp, isCap ? EXIT.DAYCAP : EXIT.TP, i); exited = true; }
       }
       if (exited && !x.sameBarReentry) continue;
       if (maxBars > 0 && i - ei >= maxBars) { close_(O[i], EXIT.TIME, i); continue; }
@@ -190,7 +228,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       if (pos !== 0) continue;   // still holding: no entry logic this bar
     }
 
-    if (pos === 0 && s !== 0 && !flatNow) {
+    if (pos === 0 && s !== 0 && !flatNow && !dayCapHit) {
       // Optionally stand aside in the run-up to the deadline too, since a trade
       // opened minutes before it can only be flattened for the cost of the fill.
       const cutoff = x.flattenCt - (x.noEntryMinsBeforeFlat || 0);

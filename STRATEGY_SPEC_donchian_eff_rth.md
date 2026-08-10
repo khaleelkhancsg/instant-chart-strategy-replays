@@ -240,6 +240,34 @@ worthless** (42.9% with no stop at all versus 43.3% at $1,500). Its entire value
 is navigating consistency. If your firm has no consistency requirement on the
 evaluation, drop the stop and size the day freely.
 
+### 7.3a Soft stop vs a hard platform stop — they behave oppositely
+
+Everything above assumes a **soft** stop that blocks new *entries* on *realised*
+P&L. Many platforms instead offer a **hard** stop on *unrealised* P&L that
+flattens the position the instant the number is touched (`dayProfitStopUsd` in
+this engine). The two are not interchangeable:
+
+| Stop | Days capped exactly? | Profit factor | Expectancy | Best pass rate |
+|---|---|---|---|---|
+| Soft $750, 10 lots | no (6.4% exceed $1,500) | **1.047** | **+$17.15** | **41.7%** |
+| Hard $1,500, 10 lots | **yes** (0.0% exceed) | 0.949 | −$14.50 | 38.0% |
+| Hard $1,500, **9 lots** | yes | — | — | **39.7%** |
+
+The hard stop does exactly what it promises — no day ever exceeds the cap, so
+consistency is never violated. It is still worse, because it **truncates winners
+at an arbitrary dollar level while leaving losses untouched**. That is the same
+asymmetry as the 3:05 PM flatten (37% of winners cut vs 5% of losers) and as
+scale-out. Anything that clips the upside but not the downside costs edge.
+
+Two practical consequences:
+
+- **If your platform's profit stop can be configured to block new orders rather
+  than flatten, do that.** It is worth about 2 percentage points.
+- **If it cannot, run 9 contracts rather than 10.** Under a fixed-dollar cap a
+  smaller position needs a *larger* price move to reach it, so the cap bites less
+  often and more winners reach their real target. Measured: 39.7% at 9 lots
+  versus 38.0% at 10.
+
 ### 7.4 Trading-day boundary
 
 A trading day starts at **17:00 America/New_York** (5 pm ET, DST-aware). Track

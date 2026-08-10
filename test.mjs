@@ -440,6 +440,59 @@ t("cooldownAfterStopMins blocks same-direction re-entry only", () => {
   }
 });
 
+t("a hard unrealised day cap closes the position AT the threshold", () => {
+  // Long from 100 at 1 lot, $2/pt, ATR 10. Bracket target is 5xATR = +50 (price
+  // 150). The $50 cap is reached at +25 points (price 125), which is NEARER, so
+  // the platform stop fires first and the day lands exactly on $50.
+  const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [100, 100, 100, 100], [100, 200, 99, 200]]);
+  const sig = new Int8Array(4); sig[1] = 1;
+  const { trades } = runBrackets(b, sig, flatAtr(4, 10), {
+    ...NOFEE, contracts: 1, slAtrMult: 5, tpAtrMult: 5, dayProfitStopUsd: 50,
+  });
+  eq(trades[0].reason, EXIT.DAYCAP, "exit reason:");
+  close(trades[0].exitPrice, 125, 1e-6, "exit exactly where day P&L hits $50:");
+  close(trades[0].pnl, 50, 1e-6, "day capped AT the threshold, not past it:");
+});
+
+t("the bracket target still wins when it is nearer than the cap", () => {
+  const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [100, 100, 100, 100], [100, 140, 99, 140]]);
+  const sig = new Int8Array(4); sig[1] = 1;
+  const { trades } = runBrackets(b, sig, flatAtr(4, 10), {
+    ...NOFEE, contracts: 1, slAtrMult: 5, tpAtrMult: 1, dayProfitStopUsd: 500,
+  });
+  eq(trades[0].reason, EXIT.TP, "a $500 cap is far away, so the target fires:");
+  close(trades[0].exitPrice, 110, 1e-6);
+});
+
+t("no further entries once the day cap is hit, and it resets next session", () => {
+  const rows = [];
+  for (let i = 0; i < 40; i++) rows.push([100, 140, 99, 140]);   // every bar can hit a cap
+  const b = bars(rows);
+  for (let i = 20; i < 40; i++) b.tday[i] += 1;                  // second session
+  const sig = new Int8Array(40).fill(1);
+  const { trades } = runBrackets(b, sig, flatAtr(40, 10), {
+    ...NOFEE, contracts: 1, slAtrMult: 5, tpAtrMult: 50, dayProfitStopUsd: 50,
+  });
+  const day0 = trades.filter((t2) => b.tday[t2.entryIdx] === b.tday[0]);
+  const day1 = trades.filter((t2) => b.tday[t2.entryIdx] !== b.tday[0]);
+  eq(day0.length, 1, "one trade caps day one:");
+  eq(day1.length >= 1, true, "and trading resumes the next session:");
+});
+
+t("the cap scales with contracts — it is an absolute dollar amount", () => {
+  const mk = (q) => {
+    const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [100, 100, 100, 100], [100, 300, 99, 300]]);
+    const sig = new Int8Array(4); sig[1] = 1;
+    // Bracket target at 20xATR = +200 so the cap is always the nearer level.
+    return runBrackets(b, sig, flatAtr(4, 10), { ...NOFEE, contracts: q, slAtrMult: 5, tpAtrMult: 20, dayProfitStopUsd: 100 }).trades[0];
+  };
+  // $100 at 1 lot needs +50 points; at 10 lots only +5.
+  close(mk(1).exitPrice, 150, 1e-6, "1 lot:");
+  close(mk(10).exitPrice, 105, 1e-6, "10 lots:");
+  close(mk(1).pnl, 100, 1e-6);
+  close(mk(10).pnl, 100, 1e-6);
+});
+
 t("MAE/MFE capture the worst and best excursion in dollars", () => {
   const b = bars([
     [100, 101, 99, 100], [100, 101, 99, 100],

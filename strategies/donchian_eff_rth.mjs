@@ -34,16 +34,29 @@
 //    unreachable. Against a fixed-dollar target on a deadline, throughput beats
 //    risk control.
 //
-// 4. A TIGHTER DAILY PROFIT STOP. $750, not the $1500 inherited from the other
-//    repo. NOT because $750 is "under 50% of $3000" — $1500 is exactly 50%, so
-//    that reasoning is empty. The real reason is that a profit stop does not CAP
-//    the day: it blocks new entries, while the trade that crossed the threshold
-//    overshoots and any open position runs to its bracket. So a $1500 stop still
-//    leaves 50.3% of windows with a day over $1500, against 6.4% at $750 — and
-//    at a total near $3000 that breaks the 50% consistency test, delaying 67.0%
-//    of passes rather than 5.9%. Turning the consistency rule off reverses the
-//    ranking entirely ($1500 then wins 43.3% to 42.1%), which is the proof that
-//    consistency is the whole mechanism. Worth +4.0pp with the rule in force.
+// 4. THE DAILY PROFIT STOP, and WHICH KIND OF STOP IT IS. This matters more than
+//    its value, and the two kinds behave oppositely:
+//
+//    SOFT (blocks new ENTRIES on REALISED P&L) — the default here. It does not
+//    cap the day: the trade that crosses the line overshoots and open positions
+//    run to their bracket. At $1500 that still leaves 50.3% of windows with a day
+//    over $1500, breaking the 50% consistency test and delaying 67.0% of passes.
+//    At $750 only 6.4% do, so $750 wins by 4.0pp. Turning consistency off
+//    reverses the ranking, which proves consistency is the mechanism.
+//
+//    HARD (platform stop on UNREALISED P&L, `dayProfitStopUsd`) — closes the
+//    position the instant realised+open P&L touches the number. It does cap the
+//    day exactly, and 0.0% of windows then exceed it. But it is WORSE overall,
+//    because it truncates winners at an arbitrary dollar level while leaving
+//    losses untouched: profit factor falls 1.047 -> 0.949 and expectancy goes
+//    +$17.2 -> -$14.5 per trade. Best achievable is 39.7% (hard $1500 at NINE
+//    lots — smaller size makes the cap bite less often, since $1500 then needs a
+//    larger move) against 41.7% with the soft stop.
+//
+//    This is the same asymmetry that the 3:05 PM flatten and scale-out both
+//    exhibit: anything that cuts winners short but not losses costs edge.
+//    If your platform's profit stop can be set to block new orders rather than
+//    flatten, do that. If it cannot, use $1500 at 9 lots and accept ~2pp.
 //
 // ── THE THING TO UNDERSTAND BEFORE TUNING IT ─────────────────────────────
 // Pass rate correlates with expectancy x trades/day (0.512) far more than with
