@@ -454,6 +454,72 @@ t("a hard unrealised day cap closes the position AT the threshold", () => {
   close(trades[0].pnl, 50, 1e-6, "day capped AT the threshold, not past it:");
 });
 
+t("a hard day-LOSS stop caps the stop distance in dollars", () => {
+  // 5xATR = 50 points at ATR 10, so a $30 cap must bite first and land the exit
+  // exactly where realised+open P&L reaches -$30, not at the 5xATR stop.
+  const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [100, 100, 100, 100], [100, 101, 60, 60]]);
+  const sig = new Int8Array(4); sig[1] = 1;
+  const { trades } = runBrackets(b, sig, flatAtr(4, 10), {
+    ...NOFEE, contracts: 1, slAtrMult: 5, tpAtrMult: 50, dayLossStopUsd: 30,
+  });
+  eq(trades[0].reason, EXIT.DAYLOSS, "exit reason:");
+  close(trades[0].exitPrice, 85, 1e-6, "exit exactly where day P&L hits -$30:");
+  close(trades[0].pnl, -30, 1e-6, "loss capped AT the threshold:");
+});
+
+t("the day-loss stop does nothing when the bracket stop is nearer", () => {
+  const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [100, 100, 100, 100], [100, 101, 40, 40]]);
+  const sig = new Int8Array(4); sig[1] = 1;
+  const { trades } = runBrackets(b, sig, flatAtr(4, 10), {
+    ...NOFEE, contracts: 1, slAtrMult: 5, tpAtrMult: 50, dayLossStopUsd: 500,
+  });
+  eq(trades[0].reason, EXIT.SL, "a $500 cap is far away, so the 5xATR stop fires:");
+  close(trades[0].exitPrice, 50, 1e-6);
+});
+
+t("the day-loss stop nets off profit already banked that session", () => {
+  // Win +$20 first (10 points at $2/point); the remaining allowance is then
+  // 30 + 20 = $50 of open loss, i.e. 25 points below the 120 entry.
+  const b = bars([
+    [100, 101, 99, 100], [100, 101, 99, 100], [100, 130, 99, 130],   // +$20 at tp 110
+    [120, 121, 119, 120], [120, 121, 119, 120], [120, 121, 40, 40],
+  ]);
+  const sig = new Int8Array(6); sig[1] = 1; sig[3] = 1;
+  const { trades } = runBrackets(b, sig, flatAtr(6, 10), {
+    ...NOFEE, contracts: 1, slAtrMult: 5, tpAtrMult: 1, dayLossStopUsd: 30,
+  });
+  eq(trades.length, 2, "two trades:");
+  close(trades[0].pnl, 20, 1e-6, "first banks +$20:");
+  eq(trades[1].reason, EXIT.DAYLOSS, "second is cut by the cap:");
+  close(trades[1].pnl, -50, 1e-6, "allowed to lose the banked $20 plus the $30 cap:");
+});
+
+t("no further entries once the day-loss stop fires, and it resets next session", () => {
+  const rows = [];
+  for (let i = 0; i < 40; i++) rows.push([100, 101, 40, 40]);      // every bar can cap out
+  const b = bars(rows);
+  for (let i = 20; i < 40; i++) b.tday[i] += 1;
+  const sig = new Int8Array(40).fill(1);
+  const { trades } = runBrackets(b, sig, flatAtr(40, 10), {
+    ...NOFEE, contracts: 1, slAtrMult: 5, tpAtrMult: 50, dayLossStopUsd: 30,
+  });
+  const day0 = trades.filter((t2) => b.tday[t2.entryIdx] === b.tday[0]);
+  const day1 = trades.filter((t2) => b.tday[t2.entryIdx] !== b.tday[0]);
+  eq(day0.length, 1, "one trade caps day one:");
+  eq(day1.length, 1, "and the next session trades again:");
+});
+
+t("the day-loss stop is OFF by default and changes nothing at 0", () => {
+  const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [100, 100, 100, 100], [100, 101, 40, 40]]);
+  const sig = new Int8Array(4); sig[1] = 1;
+  const cfg = { ...NOFEE, contracts: 1, slAtrMult: 5, tpAtrMult: 50 };
+  const a = runBrackets(b, sig, flatAtr(4, 10), cfg).trades[0];
+  const c = runBrackets(b, sig, flatAtr(4, 10), { ...cfg, dayLossStopUsd: 0 }).trades[0];
+  eq(a.reason, c.reason, "same exit reason:");
+  close(a.pnl, c.pnl, 1e-9, "same P&L:");
+  eq(a.reason, EXIT.SL, "and it is the plain 5xATR stop:");
+});
+
 t("the bracket target still wins when it is nearer than the cap", () => {
   const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [100, 100, 100, 100], [100, 140, 99, 140]]);
   const sig = new Int8Array(4); sig[1] = 1;

@@ -14,7 +14,7 @@
 // an opposite signal while in a position closes at this bar's open AND may
 // re-enter on the same bar. A stop/target exit, by contrast, ends the bar.
 
-export const EXIT = { SL: "SL", TP: "TP", FLIP: "FLIP", EOD: "EOD", TIME: "TIME", FLAT: "FLAT", DAYCAP: "DAYCAP" };
+export const EXIT = { SL: "SL", TP: "TP", FLIP: "FLIP", EOD: "EOD", TIME: "TIME", FLAT: "FLAT", DAYCAP: "DAYCAP", DAYLOSS: "DAYLOSS" };
 
 // Intraday-only session rules, in America/Chicago minutes-of-day.
 //
@@ -98,6 +98,16 @@ export const DEFAULT_EXEC = {
   // threshold is an absolute dollar amount, so the size actually traded decides
   // when it triggers. Searches over contract count must re-run the engine.
   dayProfitStopUsd: 0,
+  // HARD daily LOSS stop on UNREALISED P&L, in dollars. 0 = off. The exact mirror
+  // of the above, and again a different thing from the rules-layer
+  // `circuitBreaker` / `dailyLossLimit`, which only block new ENTRIES once
+  // REALISED P&L crosses a line and can never touch a trade already running.
+  //
+  // Because it closes on unrealised P&L it effectively CAPS THE STOP DISTANCE in
+  // dollars, which changes the bracket geometry the strategy was measured on.
+  // At 10 lots a $1000 cap is 50 points, i.e. 3.7xATR at the median ATR of 13.56
+  // rather than the configured 5xATR — a different strategy, not a safety net.
+  dayLossStopUsd: 0,
 };
 
 export function resolveExec(cfg = {}) {
@@ -136,7 +146,9 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
   // Day state for the hard unrealised profit stop. Realised P&L is tracked from
   // this engine's own closed trades, at the size actually traded.
   const dayCap = x.dayProfitStopUsd || 0;
-  let curTday = -2147483648, dayRealised = 0, dayCapHit = false;
+  const dayLoss = x.dayLossStopUsd || 0;
+  const dayTracked = dayCap > 0 || dayLoss > 0;
+  let curTday = -2147483648, dayRealised = 0, dayCapHit = false, dayLossHit = false;
 
   function close_(rawExit, reason, i) {
     // Slippage always works against the position on both legs.
@@ -167,9 +179,10 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       reason,
     });
     if (reason === EXIT.SL) { lastStopMs = TS[i]; lastStopDir = pos; }
-    if (dayCap > 0) {
+    if (dayTracked) {
       dayRealised += gross - fees;
-      if (dayRealised >= dayCap) dayCapHit = true;   // done trading for the day
+      if (dayCap > 0 && dayRealised >= dayCap) dayCapHit = true;    // done for the day
+      if (dayLoss > 0 && dayRealised <= -dayLoss) dayLossHit = true;
     }
     pos = 0;
   }
@@ -180,8 +193,8 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
   for (let i = 1; i < n; i++) {
     const s = sig[i - 1];
     const flatNow = intraday && inFlatWindow(CT[i], x.flattenCt, x.reopenCt);
-    if (dayCap > 0 && bars.tday[i] !== curTday) {
-      curTday = bars.tday[i]; dayRealised = 0; dayCapHit = false;
+    if (dayTracked && bars.tday[i] !== curTday) {
+      curTday = bars.tday[i]; dayRealised = 0; dayCapHit = false; dayLossHit = false;
     }
 
     if (pos !== 0) {
@@ -205,21 +218,32 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       if (dayCap > 0 && !dayCapHit) {
         capPx = ep + pos * ((dayCap - dayRealised) / (pv * qCur));
       }
+      // A platform loss stop is the exact mirror: the price at which
+      // realised + open P&L reaches -dayLoss. Whichever stop is NEARER gets hit
+      // first as price falls, so it can only ever TIGHTEN the bracket.
+      let lossPx = 0;
+      if (dayLoss > 0 && !dayLossHit) {
+        lossPx = ep - pos * ((dayLoss + dayRealised) / (pv * qCur));
+      }
 
       let exited = false;
       if (pos === 1) {
-        const sl = ep - slDist;
+        const rawSl = ep - slDist;
+        const sl = lossPx > 0 ? Math.max(rawSl, lossPx) : rawSl;
+        const isLossCap = lossPx > 0 && sl === lossPx && lossPx > rawSl;
         const tp = capPx > 0 ? Math.min(ep + tpDist, capPx) : ep + tpDist;
         const isCap = capPx > 0 && tp === capPx && capPx < ep + tpDist;
-        if (O[i] <= sl) { close_(O[i], EXIT.SL, i); exited = true; }
-        else if (L[i] <= sl) { close_(sl, EXIT.SL, i); exited = true; }
+        if (O[i] <= sl) { close_(O[i], isLossCap ? EXIT.DAYLOSS : EXIT.SL, i); exited = true; }
+        else if (L[i] <= sl) { close_(sl, isLossCap ? EXIT.DAYLOSS : EXIT.SL, i); exited = true; }
         else if (H[i] >= tp) { close_(tp, isCap ? EXIT.DAYCAP : EXIT.TP, i); exited = true; }
       } else {
-        const sl = ep + slDist;
+        const rawSl = ep + slDist;
+        const sl = lossPx > 0 ? Math.min(rawSl, lossPx) : rawSl;
+        const isLossCap = lossPx > 0 && sl === lossPx && lossPx < rawSl;
         const tp = capPx > 0 ? Math.max(ep - tpDist, capPx) : ep - tpDist;
         const isCap = capPx > 0 && tp === capPx && capPx > ep - tpDist;
-        if (O[i] >= sl) { close_(O[i], EXIT.SL, i); exited = true; }
-        else if (H[i] >= sl) { close_(sl, EXIT.SL, i); exited = true; }
+        if (O[i] >= sl) { close_(O[i], isLossCap ? EXIT.DAYLOSS : EXIT.SL, i); exited = true; }
+        else if (H[i] >= sl) { close_(sl, isLossCap ? EXIT.DAYLOSS : EXIT.SL, i); exited = true; }
         else if (L[i] <= tp) { close_(tp, isCap ? EXIT.DAYCAP : EXIT.TP, i); exited = true; }
       }
       if (exited && !x.sameBarReentry) continue;
@@ -228,7 +252,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       if (pos !== 0) continue;   // still holding: no entry logic this bar
     }
 
-    if (pos === 0 && s !== 0 && !flatNow && !dayCapHit) {
+    if (pos === 0 && s !== 0 && !flatNow && !dayCapHit && !dayLossHit) {
       // Optionally stand aside in the run-up to the deadline too, since a trade
       // opened minutes before it can only be flattened for the cost of the fill.
       const cutoff = x.flattenCt - (x.noEntryMinsBeforeFlat || 0);
