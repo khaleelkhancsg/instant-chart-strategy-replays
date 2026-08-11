@@ -58,6 +58,34 @@ position, which is the whole point):
     intend to trade funded. The bot warns about this at startup; see
     `platform_hard_profit_stop_disabled` below.
 
+⚠️  A HIGH WIN RATE IS NOT EVIDENCE THIS BOT IS WORKING.
+    A 5xATR stop against a 1.5xATR target wins 5/6.5 = 76.9% of the time on a
+    PURE COIN FLIP, and resolves in a*b/sigma^2 = 38 minutes. Those are exact
+    results for a driftless random walk, not estimates. The backtested book is
+    75.8% and 43 minutes. So the two statistics you will watch every session are
+    what the BRACKET dictates and carry no information about edge at all.
+    A losing week at a 76% win rate is the expected shape of this book, not a
+    malfunction. Judge it on dollars per day, never on win rate.
+
+    A 10,000-window Monte Carlo (research/monte_carlo.mjs) that simulates prices
+    instead of replaying the book puts the ZERO-EDGE pass rate at 30.1%. The
+    rules and the geometry deliver 30 of the backtested 42.6 points on their own;
+    the entire measured edge is worth roughly 7-12 more. If that edge is even
+    partly overfit, this lands nearer 30% than 42.6%.
+
+ON SIZING — tested and rejected, do not "fix" this.
+    The same Monte Carlo found a sharp cliff wherever one stop-out exceeds the
+    $2,000 trailing drawdown: pass rate rises to 43.5% at ATR 19 and falls to
+    34.5% at ATR 20, and the identical cliff appears on the CONTRACTS lever at
+    the same dollar threshold. That implies scaling size down in volatile
+    regimes. It was then tested against the real 5-year book as sizingMode
+    'risk' capped at 10 lots, and it LOST: 38.6% at $1,900 of risk against 41.0%
+    for flat 10 lots. The model overstates the effect because it has no jumps —
+    real losses reach -$10,995, far beyond 5xATR at any plausible ATR, so real
+    stops are gapped THROUGH rather than touched, which blunts the threshold.
+    Flat 10 lots stands. (Sizing to a small fixed risk is separately dead: $400
+    scores 1.6%.)
+
 KNOWN LIMITATIONS (measured, not speculative):
   • COMMISSION IS 47% OF GROSS PROFIT. At double commission the book is
     unprofitable. This is the first thing to check against your real fills.
@@ -165,6 +193,10 @@ CONFIG = {
     "daily_profit_block": 1000.0,        # spec: the single largest lever
     "circuit_breaker": 150.0,            # spec: self-imposed daily loss stop (positive number)
     "firm_daily_loss": 1000.0,           # firm's own limit, for the warning banner only
+    "trailing_drawdown": 2000.0,         # firm's trailing drawdown. REPORTING ONLY — the bot
+                                         # does not track cushion or resize against it. Sizing
+                                         # against the drawdown was tested on real data and
+                                         # LOST (see the sizing note in the header).
 
     # ⚠ Set this True ONLY after you have actually turned the unrealised profit
     #   stop OFF in the trading platform. It gates nothing — it exists so the
@@ -196,7 +228,15 @@ CONFIG = {
     "max_bar_age_s": 300,                # refuse to trade on a feed this stale
     "max_entry_delay_s": 40,             # skip entries whose signal bar closed longer ago
     "flatten_poll_s": 10,                # position-check cadence inside the flatten window
-    "slip_warn_ticks": 4.0,              # warn past this many ticks of |deviation|
+    # Warn past this many ticks of |deviation|. Tightened from 4.0: the Monte
+    # Carlo (research/monte_carlo.mjs) puts 3 ticks per side AT the zero-edge
+    # null — 29.4% against a 30.1% null — meaning slippage alone has eaten the
+    # entire edge by then. 2 ticks already costs ~6pp. A warning at 4 fires only
+    # after the strategy has stopped being worth running.
+    # NOTE this metric runs ~1 tick hot: it measures the fill against the SIGNAL
+    # BAR'S CLOSE, so it includes crossing the spread, which the backtest never
+    # charged. Read 3.0 here as roughly 2 ticks of true slippage.
+    "slip_warn_ticks": 3.0,
     "state_file": "donchian_bot_state.json",
 }
 
@@ -899,6 +939,14 @@ class DonchianBot:
             log.info("   ↳ this single trade risks $%.0f against a $%.0f breaker — one loss "
                      "ends the day. Intended; priced into the 42.6%%.",
                      risk, CONFIG["circuit_breaker"])
+        # The single most consequential number in the whole run, and the one the
+        # daily rules CANNOT protect: both are entry blocks, so neither can stop
+        # a trade already running from taking out the account.
+        dd = CONFIG["trailing_drawdown"]
+        if dd > 0:
+            log.info("   ↳ stop is %.0f%% of the $%.0f trailing drawdown%s",
+                     100.0 * risk / dd, dd,
+                     "  ⚠ ONE LOSS EXCEEDS THE DRAWDOWN" if risk >= dd else "")
 
         self._balance_at_entry = self.api.balance
         self._save_state()

@@ -75,6 +75,44 @@ Two daily rules, both **entry blocks on realised P&L that never close a
 position**: +$1,000 profit block (the single largest lever in the configuration,
 worth 26.7% → 41.0%) and a −$150 circuit breaker. Day rolls at 17:00 ET.
 
+## A high win rate is not evidence it is working
+
+A 5×ATR stop against a 1.5×ATR target wins **5/6.5 = 76.9% on a pure coin flip**,
+and resolves in a·b/σ² = 38 minutes. Those are exact results for a driftless
+random walk. The backtested book is 75.8% and 43 minutes — so the two statistics
+you will watch every session are what the *bracket* dictates, and carry no
+information about edge.
+
+A losing week at a 76% win rate is the expected shape of this book, not a
+malfunction. **Judge it on dollars per day, never on win rate.**
+
+A 10,000-window Monte Carlo ([`../research/monte_carlo.mjs`](../research/monte_carlo.mjs))
+that simulates prices instead of replaying the book puts the **zero-edge pass rate
+at 30.1%**. The rules and geometry deliver 30 of the backtested 42.6 points on
+their own; the whole measured edge is worth roughly 7–12 more. If that edge is
+even partly overfit, this lands nearer 30% than 42.6%.
+
+## Sizing: tested and rejected
+
+The same Monte Carlo found a sharp cliff wherever one stop-out exceeds the $2,000
+trailing drawdown — pass rate climbs to 43.5% at ATR 19 then falls to 34.5% at
+ATR 20, with the identical cliff on the contracts lever at the same dollar
+threshold. That implies scaling size down in volatile regimes.
+
+Tested against the real 5-year book as `sizingMode: 'risk'` capped at 10 lots, it
+**lost**: 38.6% at $1,900 of risk against 41.0% for flat 10 lots (1 tick).
+
+| sizing | pass (worst of IS/OOS) | pf | net |
+|---|---|---|---|
+| **flat 10 lots (shipped)** | **41.0%** | 1.020 | $38,220 |
+| risk $1,900 (MC-implied) | 38.6% | 1.025 | $38,462 |
+| risk $2,500 | 40.4% | 1.029 | $50,387 |
+| risk $400 | 1.6% | 1.006 | $2,660 |
+
+The model overstates the effect because it has no jumps: real losses reach
+−$10,995, far beyond 5×ATR at any plausible ATR, so real stops get gapped
+*through* rather than touched. Flat 10 lots stands.
+
 ## Things worth knowing before running it
 
 - **Commission is 47% of gross profit.** At double commission the book is
