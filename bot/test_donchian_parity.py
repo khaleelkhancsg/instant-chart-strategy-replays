@@ -499,10 +499,27 @@ def run_live_path_tests(fx, bars):
                   f"size={size}")
             check("...stop wider than target (inverted geometry)", sl_t > tp_t,
                   f"sl={sl_t}t tp={tp_t}t")
-            ratio = sl_t / tp_t
-            want = bot.CONFIG["sl_atr_mult"] / bot.CONFIG["tp_atr_mult"]
-            check("...bracket ratio matches 5xATR / 1.5xATR",
-                  abs(ratio - want) < 0.02, f"{ratio:.3f} vs {want:.3f}")
+            # The bracket must be the NEARER of the designed 5xATR stop and the
+            # distance the platform's hard dollar cap allows. Placing it beyond
+            # the cap would be a stop that never fills, and would make every risk
+            # figure the bot logs fiction.
+            atr_at_signal = fx["indicators"]["atr"][sig_idx]
+            designed = bot.CONFIG["sl_atr_mult"] * atr_at_signal
+            cap = bot.CONFIG["platform_hard_loss_stop"]
+            cap_pts = cap / (2.0 * bot.CONFIG["contracts"])   # $/point = tick_value/tick_size
+            want_sl = min(designed, cap_pts)
+            check("...stop is the nearer of 5xATR and the platform cap",
+                  abs(sl_t * 0.25 - want_sl) < 0.3,
+                  f"{sl_t * 0.25:.2f} pts vs expected {want_sl:.2f} "
+                  f"(designed {designed:.2f}, cap {cap_pts:.2f})")
+            check("...and never risks more than the cap allows",
+                  sl_t * 0.25 * 2.0 * bot.CONFIG["contracts"] <= cap + 1,
+                  f"${sl_t * 0.25 * 2.0 * bot.CONFIG['contracts']:.0f} > ${cap:.0f}")
+            if designed <= cap_pts:
+                ratio = sl_t / tp_t
+                want = bot.CONFIG["sl_atr_mult"] / bot.CONFIG["tp_atr_mult"]
+                check("...uncapped, the ratio is the designed one",
+                      abs(ratio - want) < 0.02, f"{ratio:.3f} vs {want:.3f}")
 
         # b) the entry cutoff
         _, api = run(bot.CONFIG["no_entry_ct"])

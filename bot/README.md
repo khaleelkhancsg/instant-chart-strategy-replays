@@ -7,7 +7,7 @@ The strategy itself, and how it was arrived at, is in
 | | |
 |---|---|
 | `mnq_donchian_bot.py` | the bot |
-| `test_donchian_parity.py` | 79 checks that the port matches the JS engine |
+| `test_donchian_parity.py` | 80 checks that the port matches the JS engine |
 | `fixture_donchian.json` | golden output from that engine (25 days, 39 trades) |
 | `run_donchian_bot.bat` | launcher — runs the parity checks first, refuses to start if they fail |
 
@@ -45,9 +45,9 @@ to 0.851 and from +$38k to −$215k. The bot warns at startup until you set
 
 | | pass | pf | net |
 |---|---|---|---|
-| **8 lots, high-volatility windows** | **43.4%** | 1.055 | +$62,024 |
-| 8 lots, later half of those (out-of-sample) | 41.5% | | |
-| 8 lots, all 2,598 windows 2019–2026 | 31.9% | | |
+| **8 lots, high-vol regime — early half / late half** | **41.5% / 41.2%** | 1.077 | +$90,247 |
+| 8 lots, 2026 only (~6 independent windows) | 38.2% | | |
+| 8 lots, all 2,598 windows 2019–2026 | 30.5% | | |
 | 10 lots, all windows, same rules and cap | 29.9% | 1.044 | |
 
 ### Why 8 contracts
@@ -61,18 +61,27 @@ Going smaller does **not** keep helping: 4 lots scores 34.5% and 2 lots 10.9%,
 because throughput collapses against a fixed $3,000 target on a deadline. 8 is a
 measured optimum, not a compromise.
 
-### Do not retune the geometry for the cap
+### Why 5×ATR / 1.75×ATR
 
-Tightening 5×1.5 to 3.5/2.5 scores better on average (44.8% vs 43.4%) and is
-fitted — it splits 53.9% early / 35.8% late. The shipped 5/1.5 splits 45.3% /
-41.5%, the most stable pair in the grid. The average was the trap; the split is
-the evidence.
+The cap pins the stop at 62.5 points on every trade above ATR 12.5, and 2026's
+median is 23.7 — so in this regime `sl_atr_mult` is close to a dead parameter and
+the **target is the only geometry lever still live**.
+
+1.75 is pass-rate neutral against the old 1.5 (41.2% vs 41.5% on the worse half,
+inside the noise) and materially more profitable: pf 1.055 → 1.077, net $62,024
+→ $90,247 over 4,463 trades. It also holds up better on 2026, 38.2% vs 30.9%.
+
+**Do not tighten to 1.25** because it ranks higher on the worse half (43.3%): it
+scores 21.8% on 2026, i.e. it is fitted to the pre-2026 stretch. Same trap as
+3.5/2.5, which scored best on the *average* (44.8%) while splitting 53.9% early
+against 35.8% late. Rank on the worse half and check the recent slice; never on
+the average.
 
 ## Verifying the port
 
 ```bash
 node ../research/export_bot_fixture.mjs   # regenerate the fixture
-python test_donchian_parity.py            # 79 checks
+python test_donchian_parity.py            # 80 checks
 ```
 
 The harness asserts the Python reproduces the JS **stage by stage** — 2-minute
@@ -90,24 +99,24 @@ path** — that is what the launcher does automatically.
 
 2-minute clock-aligned bars. Donchian-30 breakout (channel excludes the current
 bar), ADX(14) ≥ 25, and Kaufman efficiency(20) > 0.5, taken only between 08:30
-and 15:00 CT. **8 contracts**, 5×ATR stop and 1.5×ATR target — the inverted
+and 15:00 CT. **8 contracts**, 5×ATR stop and 1.75×ATR target — the inverted
 geometry is deliberate and is what makes trades resolve before the flatten.
 Flips on an opposite signal. Flat by 15:04 CT against a firm 15:05 deadline.
 
 Two daily rules, both **entry blocks on realised P&L that never close a
-position**: a +$750 profit block and a −$750 circuit breaker. Both were retuned
+position**: a +$750 profit block and a −$500 circuit breaker. Both were retuned
 for the capped regime — with the platform bounding the day at −$1,000 anyway, the
 old −$150 breaker just ended days early. Worth +1.6pp. Day rolls at 17:00 ET.
 
 ## A high win rate is not evidence it is working
 
-A 5×ATR stop against a 1.5×ATR target wins **5/6.5 = 76.9% on a pure coin flip**,
-and resolves in a·b/σ² = 38 minutes. Those are exact results for a driftless
-random walk. The backtested book is 72.5% and 43 minutes — so the two statistics
+A 5×ATR stop against a 1.75×ATR target wins **5/6.75 = 74.1% on a pure coin
+flip**, and resolves in a·b/σ² = 45 minutes. Those are exact results for a driftless
+random walk. The backtested book lands right on that — so the two statistics
 you will watch every session are what the *bracket* dictates, and carry no
 information about edge.
 
-A losing week at a 72% win rate is the expected shape of this book, not a
+A losing week at a 74% win rate is the expected shape of this book, not a
 malfunction. **Judge it on dollars per day, never on win rate.**
 
 A 10,000-window Monte Carlo ([`../research/monte_carlo.mjs`](../research/monte_carlo.mjs))
@@ -134,7 +143,7 @@ and picking one size that suits the regime (8 lots).
 
 - **Commission is a large share of gross profit.** Check your real fills first;
   at double commission the book does not survive.
-- **One loss ends the day.** A capped loss is ~$1,000 against a −$750 breaker,
+- **One loss ends the day.** A capped loss is ~$1,000 against a −$500 breaker,
   so one loser closes the session. Intended, and priced in.
 - **A trade can still end the account, cap or no cap.** 50 trades in the book
   lose more than the entire $2,000 trailing drawdown, worst −$8,782, because the
@@ -152,8 +161,8 @@ and picking one size that suits the regime (8 lots).
   volatility collapses back toward 2019–2021 levels, re-run
   [`../research/regime_sizing.mjs`](../research/regime_sizing.mjs) before starting
   an evaluation, because the right size moves with the regime.
-- **40%+ needs the current regime.** Across all 2,598 windows this scores 31.9%.
-  The 43.4% is high-volatility windows specifically. Do not quote the two
+- **40%+ needs the current regime.** Across all 2,598 windows this scores 30.5%.
+  The ~41% is high-volatility windows specifically. Do not quote the two
   interchangeably.
 
 ## Differences from the backtest, and why

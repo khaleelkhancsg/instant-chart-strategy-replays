@@ -14,14 +14,16 @@ treated as non-negotiable, and it is not free: it costs about 6 points of pass
 rate, because it caps the stop in DOLLARS and so silently tightens the bracket
 the whole book depends on. Everything below is measured WITH it on.
 
-MEASURED (8 contracts, 1 tick of slippage, hard -$1000 cap, breaker -$750,
-profit block $750):
-  - 43.4% pass in HIGH-VOLATILITY windows, the regime being traded now
-  - 41.5% on the LATER HALF of those windows (2024-09 to 2026-06). This is the
-    honest number: it is out-of-sample relative to where the size was chosen.
-  - 31.9% across all 2,598 windows 2019-2026, dragged down by quiet years the
+MEASURED (8 contracts, 5xATR/1.75xATR, 1 tick of slippage, hard -$1000 cap,
+breaker -$500, profit block $750):
+  - 41.5% early / 41.2% late across the two halves of the HIGH-VOLATILITY
+    regime. The balance matters more than the level: configurations that score
+    higher on one half score much worse on the other.
+  - 38.2% on 2026 alone, but that slice holds ~6 independent windows and cannot
+    carry weight by itself.
+  - 30.5% across all 2,598 windows 2019-2026, dragged down by quiet years the
     strategy is not suited to and which are not the current market
-  - pf 1.055, 72.5% win rate, 4,463 trades, net +$62,024
+  - pf 1.077, 4,463 trades, net +$90,247
   - worst single loss -$8,782, and 50 trades still exceed the $2,000 trailing
     drawdown. THE CAP DOES NOT PREVENT THIS: a gap jumps the stop rather than
     touching it, and no stop of any kind helps there.
@@ -67,7 +69,7 @@ STRATEGY (2-minute bars, clock-aligned):
 
 DAILY RULES (both are ENTRY BLOCKS on REALISED P&L — neither ever closes a
 position, which is the whole point):
-  • +$750 soft profit block and a -$750 circuit breaker. Both retuned for the
+  • +$750 soft profit block and a -$500 circuit breaker. Both retuned for the
     capped regime: with the platform bounding the day at -$1,000 anyway, the old
     -$150 breaker just ended days early, and $1,000 of realised profit was past
     where new risk should stop. Measured worth of the move: +1.6pp.
@@ -203,7 +205,17 @@ CONFIG = {
     # research/regime_sizing.mjs.
     "contracts": 8,
     "sl_atr_mult": 5.0,
-    "tp_atr_mult": 1.5,
+    # 1.75, not the 1.5 the uncapped book used. With the platform cap pinning the
+    # stop at 62.5 points on every trade above ATR 12.5, the stop is no longer a
+    # free parameter and the TARGET is the only geometry lever left. 1.75 is
+    # pass-rate neutral against 1.5 (41.2% vs 41.5% on the worse half of the
+    # high-volatility regime, inside the noise) and materially more profitable:
+    # pf 1.055 -> 1.077, net $62,024 -> $90,247 over 4,463 trades. It also holds
+    # up better on 2026 (38.2% vs 30.9%), though that slice has ~6 independent
+    # windows and cannot carry weight on its own.
+    # Do NOT tighten to 1.25 because it ranks higher on the worse half (43.3%):
+    # it scores 21.8% on 2026, i.e. it is fitted to the pre-2026 stretch.
+    "tp_atr_mult": 1.75,
     "flip_on_opposite": True,
 
     # session, CT minutes past midnight
@@ -226,7 +238,8 @@ CONFIG = {
     # profit is past where the day should stop opening new risk. Measured grid in
     # research/capped_search.mjs: -$750 / $750 is worth +1.6pp over -$150 / $1000.
     "daily_profit_block": 750.0,
-    "circuit_breaker": 750.0,            # self-imposed daily loss stop (positive number)
+    "circuit_breaker": 500.0,            # self-imposed daily loss stop (positive number).
+                                         # Mid-plateau: -$300 to -$750 all score 40.9-41.2%.
     "firm_daily_loss": 1000.0,           # firm's own limit, for the warning banner only
     # The platform's hard stop on UNREALISED daily P&L. The bot does NOT enforce
     # this — the platform does, and it will close a position out from under the
@@ -968,10 +981,57 @@ class DonchianBot:
                 if oid is not None:
                     await self.api.cancel_order(oid)
 
+    # ---- the bracket the platform will actually allow ----
+    def _bracket_points(self, atr_v: float):
+        """Return (stop_points, target_points, capped, cap_points).
+
+        The platform liquidates at a fixed DOLLAR loss for the day, so the widest
+        stop it will ever honour is (cap + realised day P&L) / ($ per point).
+        Placing a bracket at a raw 5xATR beyond that is not a wider stop, it is a
+        stop that never fills — the platform gets there first, and any risk figure
+        computed from it is fiction. The bot places the NEARER of the two, which
+        is also exactly what the backtest models (engine.mjs dayLossStopUsd), so
+        live behaviour matches the run that measured this configuration instead of
+        depending on the firm's liquidation to save it.
+        """
+        raw_sl = max(CONFIG["sl_atr_mult"] * atr_v, TICK)
+        tp = max(CONFIG["tp_atr_mult"] * atr_v, TICK)
+        cap = CONFIG.get("platform_hard_loss_stop", 0.0)
+        if cap <= 0:
+            return raw_sl, tp, False, float("inf")
+        # Room left today: a day already in profit has more, one already down has
+        # less. Mirrors the engine's realised-P&L-aware cap.
+        room = cap + self._day_pnl()
+        cap_pts = max(TICK, room / (self._pv * CONFIG["contracts"]))
+        if raw_sl <= cap_pts:
+            return raw_sl, tp, False, cap_pts
+        return cap_pts, tp, True, cap_pts
+
+    def _warn_if_capped(self, sl_pts, tp_pts, atr_v, capped) -> None:
+        """The cap does not merely cut the loss, it changes the STRATEGY.
+
+        Win rate follows the bracket identity S/(S+T). This book was measured at
+        5.0/1.5 = 3.33:1, about 77% on a coin flip. When the cap bites, the ratio
+        collapses and the win rate follows it down — at high ATR that lands well
+        outside anything that was ever backtested.
+        """
+        if not capped:
+            return
+        ratio = sl_pts / max(tp_pts, 1e-9)
+        implied = 100.0 * sl_pts / (sl_pts + tp_pts)
+        design = CONFIG["sl_atr_mult"] / CONFIG["tp_atr_mult"]
+        log.warning("⚠  PLATFORM CAP BINDS: stop cut from %.1fxATR to %.2fxATR (%.1f pts). "
+                    "Ratio %.2f:1 against the designed %.2f:1, so the implied coin-flip "
+                    "win rate is %.0f%% not %.0f%%.",
+                    CONFIG["sl_atr_mult"], sl_pts / max(atr_v, 1e-9), sl_pts,
+                    ratio, design, implied, 100.0 * design / (design + 1))
+        if ratio < 2.0:
+            log.warning("   ↳ ATR %.1f is high enough that this is NOT the book that was "
+                        "backtested. Consider standing down until volatility falls.", atr_v)
+
     # ---- entry ----
     async def _place_entry(self, sig: int, atr_v: float, ref_px: float) -> None:
-        sl_pts = max(CONFIG["sl_atr_mult"] * atr_v, TICK)
-        tp_pts = max(CONFIG["tp_atr_mult"] * atr_v, TICK)
+        sl_pts, tp_pts, capped, cap_pts = self._bracket_points(atr_v)
         sl_ticks = max(1, round(sl_pts / TICK))
         tp_ticks = max(1, round(tp_pts / TICK))
         qty = CONFIG["contracts"]
@@ -981,9 +1041,11 @@ class DonchianBot:
         sl_px = ref_px - sig * sl_pts
         tp_px = ref_px + sig * tp_pts
 
-        log.info("🚀 ENTRY %-5s x%d | ref %.2f | SL %.2f (%dt, -$%.0f)  TP %.2f (%dt, +$%.0f)",
+        log.info("🚀 ENTRY %-5s x%d | ref %.2f | SL %.2f (%dt, -$%.0f%s)  TP %.2f (%dt, +$%.0f)",
                  "LONG" if sig == 1 else "SHORT", qty, ref_px,
-                 sl_px, sl_ticks, risk, tp_px, tp_ticks, reward)
+                 sl_px, sl_ticks, risk, " CAPPED" if capped else "",
+                 tp_px, tp_ticks, reward)
+        self._warn_if_capped(sl_pts, tp_pts, atr_v, capped)
         if risk > CONFIG["circuit_breaker"] * 2:
             log.info("   ↳ this single trade risks $%.0f against a $%.0f breaker — one loss "
                      "ends the day. Intended; priced into the 43.4%%.",
@@ -1098,16 +1160,19 @@ class DonchianBot:
         # The live bot fills at the NEXT bar's open; the virtual book has no next
         # bar yet, so it uses this close as the reference. That is a ~1 bar
         # optimism in the dry run ONLY — the real fill is measured by _log_fill.
-        sl_pts = max(CONFIG["sl_atr_mult"] * atr_v, TICK)
-        tp_pts = max(CONFIG["tp_atr_mult"] * atr_v, TICK)
+        # The paper book must respect the platform cap too, or its P&L is fiction:
+        # it would print losses of $2,400 that the platform would never allow.
+        sl_pts, tp_pts, capped, _ = self._bracket_points(atr_v)
         self._v_pos, self._v_entry = sig, bar.close
         self._v_sl = bar.close - sig * sl_pts
         self._v_tp = bar.close + sig * tp_pts
-        log.info("🧪 DRY ENTRY %-5s x%d @ %.2f | SL %.2f  TP %.2f | risk $%.0f / reward $%.0f",
+        log.info("🧪 DRY ENTRY %-5s x%d @ %.2f | SL %.2f  TP %.2f | risk $%.0f%s / reward $%.0f",
                  "LONG" if sig == 1 else "SHORT", CONFIG["contracts"], bar.close,
                  self._v_sl, self._v_tp,
                  CONFIG["contracts"] * sl_pts * self._pv,
+                 " CAPPED" if capped else "",
                  CONFIG["contracts"] * tp_pts * self._pv)
+        self._warn_if_capped(sl_pts, tp_pts, atr_v, capped)
 
     def _dry_exit(self, px: float, reason: str) -> None:
         fees = 2 * CONFIG["commission_per_side"] * CONFIG["contracts"]
