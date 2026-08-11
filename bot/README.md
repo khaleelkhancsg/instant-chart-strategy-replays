@@ -45,9 +45,10 @@ to 0.851 and from +$38k to −$215k. The bot warns at startup until you set
 
 | | pass | pf | net |
 |---|---|---|---|
-| **8 lots, high-vol regime — early half / late half** | **41.5% / 41.2%** | 1.077 | +$90,247 |
+| **8 lots, high-vol regime (772 windows)** | **41.3%** | 1.077 | +$90,247 |
+|   early half / late half | 41.5% / 41.2% | | |
 | 8 lots, 2026 only (~6 independent windows) | 38.2% | | |
-| 8 lots, all 2,598 windows 2019–2026 | 30.5% | | |
+| 8 lots, all 2,598 windows 2019–2026 | 30.4% | | |
 | 10 lots, all windows, same rules and cap | 29.9% | 1.044 | |
 
 ### Why 8 contracts
@@ -126,6 +127,29 @@ rules and geometry, not edge. That null has not been re-run for this
 configuration, but the principle carries: if the edge is even partly overfit,
 expect something much nearer the null than the headline.
 
+## Volatility drives the pass rate more than anything else
+
+Measured on every window, real engine, by volatility decile:
+
+| decile | window ATR | pass | stop | reward | ratio |
+|---|---|---|---|---|---|
+| 1 | 2.4–6.2 | 14.7% | $357 | $125 | 2.86:1 |
+| 4 | 10.9–12.1 | 31.5% | $925 | $324 | 2.86:1 |
+| 7 | 14.3–15.6 | 30.8% | $1,000 | $416 | 2.40:1 |
+| **9** | **18.3–21.9** | **50.0%** | $1,000 | $563 | 1.78:1 |
+| 10 | 21.9–36.3 | 45.4% | $1,000 | $699 | 1.43:1 |
+
+Bottom five deciles average 24.5%, top five 36.3% — an **11.8pp** spread, and
+35pp between the extremes. The stop:target ratio *falls* from 2.86:1 to 1.43:1
+as volatility rises, which looks alarming, but the pass rate goes the other way:
+above ATR 12.5 the cap fixes risk at $1,000 while reward keeps scaling, so a
+volatile window simply pays more for the same risk. Against a fixed $3,000 target
+on a deadline, that is what matters. Quiet markets fail because the trades are
+too small to get there.
+
+This is the single largest determinant of whether an evaluation passes — larger
+than any parameter in the config. Check the regime before starting one.
+
 ## Sizing: how this got to 8, so it is not re-litigated
 
 The Monte Carlo found a cliff wherever one stop-out exceeds the $2,000 trailing
@@ -161,7 +185,7 @@ and picking one size that suits the regime (8 lots).
   volatility collapses back toward 2019–2021 levels, re-run
   [`../research/regime_sizing.mjs`](../research/regime_sizing.mjs) before starting
   an evaluation, because the right size moves with the regime.
-- **40%+ needs the current regime.** Across all 2,598 windows this scores 30.5%.
+- **40%+ needs the current regime.** Across all 2,598 windows this scores 30.4%.
   The ~41% is high-volatility windows specifically. Do not quote the two
   interchangeably.
 

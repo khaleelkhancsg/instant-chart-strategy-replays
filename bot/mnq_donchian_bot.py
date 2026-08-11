@@ -16,14 +16,16 @@ the whole book depends on. Everything below is measured WITH it on.
 
 MEASURED (8 contracts, 5xATR/1.75xATR, 1 tick of slippage, hard -$1000 cap,
 breaker -$500, profit block $750):
-  - 41.5% early / 41.2% late across the two halves of the HIGH-VOLATILITY
+  - 41.3% in HIGH-VOLATILITY windows: 41.5% early / 41.2% late across the two
+    halves. Confirmed on the real challenge.mjs engine, not the fast sweep.
+    Balance across the two halves of the HIGH-VOLATILITY
     regime. The balance matters more than the level: configurations that score
     higher on one half score much worse on the other.
   - 38.2% on 2026 alone, but that slice holds ~6 independent windows and cannot
     carry weight by itself.
   - 30.5% across all 2,598 windows 2019-2026, dragged down by quiet years the
     strategy is not suited to and which are not the current market
-  - pf 1.077, 4,463 trades, net +$90,247
+  - pf 1.077, 69.7% win rate, 4,188 trades, net +$90,247
   - worst single loss -$8,782, and 50 trades still exceed the $2,000 trailing
     drawdown. THE CAP DOES NOT PREVENT THIS: a gap jumps the stop rather than
     touching it, and no stop of any kind helps there.
