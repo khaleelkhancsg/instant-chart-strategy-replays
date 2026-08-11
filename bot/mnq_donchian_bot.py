@@ -67,6 +67,19 @@ KNOWN LIMITATIONS (measured, not speculative):
   • ONE LOSS TRIPS THE DAY. A 5xATR stop on 10 lots typically risks $1,000-$3,000
     against a -$150 breaker, so the breaker is effectively "one loser and you are
     done". That is intended and is priced into the 42.6%.
+  • ONE TRADE CAN END THE ACCOUNT. Measured over all 5,342 trades, the loser
+    distribution is median $1,295, p90 $2,763, p99 $5,194, worst $10,995:
+
+        loss > $1000   1 in 6 trades
+        loss > $2000   1 in 18 trades      <-- the ENTIRE trailing drawdown
+        loss > $3000   1 in 50 trades
+
+    73.7% of 30-day windows contain at least one loss bigger than the $2,000
+    trailing drawdown. Such a trade is fatal whenever it lands before enough
+    cushion has been built, and NEITHER daily rule can prevent it — both are
+    entry blocks, and neither can touch a position already running. This is not
+    a flaw to fix; it is the cost of the size that makes the target reachable,
+    and it is the main reason the pass rate is 42.6% rather than higher.
   • Per year: 2019 18%, 2020 33%, 2021 49%, 2022 53%, 2023 46%, 2024 38%,
     2025 50%, 2026 37%. Regime dominates any single attempt.
 

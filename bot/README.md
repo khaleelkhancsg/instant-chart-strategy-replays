@@ -81,6 +81,21 @@ worth 26.7% → 41.0%) and a −$150 circuit breaker. Day rolls at 17:00 ET.
   unprofitable. Check your real fills first.
 - **One loss ends the day.** A 5×ATR stop on 10 lots risks $1,000–$3,000 against
   a $150 breaker. Intended, and priced into the 42.6%.
+- **One trade can end the account.** Across all 5,342 trades the losers run
+  median $1,295, p90 $2,763, p99 $5,194, worst $10,995:
+
+  | single-trade loss | frequency |
+  |---|---|
+  | > $1,000 | 1 in 6 trades |
+  | > $2,000 — *the whole trailing drawdown* | 1 in 18 trades |
+  | > $3,000 | 1 in 50 trades |
+
+  73.7% of 30-day windows contain at least one loss larger than the $2,000
+  trailing drawdown, and it is fatal whenever it lands before enough cushion has
+  been built. **Neither daily rule can prevent this** — both are entry blocks and
+  neither can touch a position already running. That is the cost of the size that
+  makes a $3,000 target reachable on a deadline, and it is the main reason the
+  pass rate is 42.6% rather than higher.
 - **The headline assumed zero slippage.** One tick per side is ≈$150 per combine
   and ≈2.5pp. The bot logs realised entry slippage every fill and warns past 4
   ticks of mean absolute deviation — judge on `|avg|`, not the signed number.
