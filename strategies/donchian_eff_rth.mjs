@@ -101,16 +101,17 @@ export default {
     intradayOnly: true, flattenCt: 15 * 60 + 5, reopenCt: 17 * 60,
     noEntryMinsBeforeFlat: 10,
     commissionModel: "per-contract", commissionPerSide: 0.75, slippageTicks: 0,
-    // Platform-level hard stop on unrealised P&L. $1500 is not arbitrary: it is
-    // the LARGEST daily cap that can never breach the 50% consistency rule
-    // against a $3000 target, and the sweep peaks there sharply — at $1550 the
-    // proportion of passes delayed by consistency jumps from 0.0% to 15.8%.
-    dayProfitStopUsd: 1500,
+    // Platform hard stop on unrealised P&L, DELIBERATELY OFF. Setting it to 1500
+    // buys +1.3pp of pass rate at one tick of slippage and costs the entire edge
+    // (profit factor 1.047 -> 0.964, net +$91,640 -> -$52,778). Not worth it
+    // unless you are farming resets and never intend to trade funded.
+    dayProfitStopUsd: 0,
   },
   filterDefaults: { startCt: 8 * 60 + 30, endCt: 15 * 60, effMin: 0.5 },
-  // The soft entry-block sits ON TOP of the hard cap and is a different rule:
-  // stop OPENING trades after $1000 realised, but let a position already running
-  // continue to the $1500 hard cap. Together they beat either alone.
+  // The soft entry-block is the single largest lever in the whole configuration:
+  // at 10 lots and one tick of slippage it is worth 26.7% -> 41.0%. It stops
+  // OPENING trades after $1000 realised without touching a position already
+  // running, so it costs no edge at all.
   rulesDefaults: { circuitBreaker: 150, dailyProfitStop: 1000 },
 
   params: [

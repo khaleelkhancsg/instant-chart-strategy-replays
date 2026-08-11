@@ -3,32 +3,33 @@
 Everything needed to reimplement this exactly in Python, including the details
 that will otherwise cause silent divergence.
 
-**Measured result:** 43.9% of all 2,598 thirty-day windows passed — 44.0%
-in-sample (2019-05→2023-06), 43.9% out-of-sample (2023-06→2026-07) — under
-no-overnight rules with a 3:05 PM CT flatten, a hard $1,500 unrealised daily
-profit stop and a soft $1,000 entry block.
+## The configuration in one table
 
-> ## ⚠ This configuration LOSES MONEY long-run
->
-> It passes 43.9% of combines while being **net −$81,299 over 7.2 years**
-> (profit factor 0.949, −$14.46 per trade). That is not a contradiction, it is
-> the point: a combine is a 30-day sprint that **stops the moment you pass**, so
-> a book that wins small and often — and occasionally loses enormously — reaches
-> +$3,000 before −$2,000 more often than a genuinely profitable book, while the
-> catastrophic losses land in windows that were going to fail anyway.
->
-> **There is a trade-off, but it mostly evaporates under realistic fills:**
->
-> | Setup | Pass @ 0 ticks | Pass @ 1 tick | Profit factor | Net over 7.2 years |
-> |---|---|---|---|---|
-> | Hard $1,500 + soft $1,000 | **43.9%** | 41.3% | 0.949 | **−$81,299** |
-> | Soft $1,000 only | 41.4% | **41.0%** | **1.047** | **+$91,640** |
->
-> The hard cap's 2pp advantage depends on perfect fills. At one tick of slippage
-> the two are within 0.3pp, while the P&L difference remains enormous.
->
-> **Recommended: run the profitable variant** — set `dayProfitStopUsd: 0` and
-> keep the soft $1,000 entry block. See §9a and §10.
+| | |
+|---|---|
+| Instrument | MNQ, continuous front month |
+| Signal bars | 2-minute, clock-aligned |
+| Signal | Donchian-30 breakout, **with** the break, `ADX ≥ 25` |
+| Regime gate | Kaufman efficiency ratio **> 0.5** |
+| Session gate | **08:30–15:00 America/Chicago** |
+| Stop / target | **5 × ATR** / **1.5 × ATR** (≈ 0.3 : 1) |
+| Size | **10 contracts, flat** |
+| Daily profit block | **+$1,000 realised**, blocks *new entries* only |
+| Daily circuit breaker | **−$150 realised** |
+| Platform hard profit stop | **off** — see §7.3a |
+| Flatten | **15:05 CT**, no entries after 14:55 CT |
+
+**Measured:** **42.6%** of all 2,598 thirty-day windows passed, median **8 days**
+to pass. In-sample 43.5% / out-of-sample 41.4% assuming perfect fills; **41.3% /
+41.0% at one tick of slippage per side**, which is the number to plan against.
+
+Over the same 7.2 years the book is **profit factor 1.047, +$17.15 per trade,
++$91,640 net**.
+
+> **Before you trade it, read [§9a](#9a-passing-versus-profiting) and
+> [§10](#10-honest-limitations).** A higher pass rate is available (42.3% at one
+> tick) but only by turning this into a book that loses $52,778 — §7.3a explains
+> the trade and why it is declined here.
 
 ---
 
@@ -118,6 +119,9 @@ ER[i] = |Close[i] - Close[i-20]| / sum(|Close[j] - Close[j-1]| for j in i-19..i)
 Net travel divided by total path length. `1.0` = a straight line, `~0` = pure
 chop. Undefined for `i < 20`. **A NaN reading must FAIL the gate, never pass it.**
 
+This gate keeps only **9.5%** of raw signal bars, and it is what makes the book
+work at all.
+
 ---
 
 ## 4. Entry
@@ -185,25 +189,21 @@ No trailing stop. No breakeven move. No scale-out (measured: scaling out cost
 
 **Ten contracts. Flat. Always.**
 
-Do not use Kelly, volatility targeting, or risk-a-fraction-of-equity. Measured on
-this exact book, with both daily stops in force:
+Measured at one tick of slippage, in the recommended configuration:
 
 | Contracts | IS | OOS | worst |
 |---|---|---|---|
-| 1 | 0.0% | 0.9% | **0.0%** |
-| 4 | 22.6% | 24.5% | 22.6% |
-| 6 | 33.4% | 38.8% | 33.4% |
-| 8 | 42.1% | 42.8% | 42.1% |
-| 9 | 44.2% | 43.6% | 43.6% |
-| **10** | **44.0%** | **43.9%** | **43.9%** |
+| 6 | 30.6% | 37.2% | 30.6% |
+| 8 | 40.0% | 38.3% | 38.3% |
+| 9 | 42.2% | 40.1% | 40.1% |
+| **10** | **41.3%** | **41.0%** | **41.0%** |
 
-Also measured: risking a fixed % of the surviving cushion scores **0.0%**, because
-it collapses the position to 1–2 lots — and at 1 lot the pass rate *is* 0.0%. A
-**fixed $3,000 target** is simply unreachable at that size inside 30 days.
+Do not use Kelly, volatility targeting, or risk-a-fraction-of-equity. Risking a
+fixed % of the surviving cushion scores **0.0%**, because it collapses the
+position to 1–2 lots — and at 1 lot the pass rate *is* 0.0%. A **fixed $3,000
+target** is simply unreachable at that size inside 30 days.
 
 Against a fixed-dollar target on a deadline, **throughput beats risk control**.
-The curve is nearly flat from 9 to 10 lots, so 9 is a reasonable choice if you
-want a little margin against the contract cap.
 
 ---
 
@@ -220,74 +220,50 @@ want a little margin against the contract cap.
 The flatten outranks the bracket: it fires regardless of where stop and target
 sit.
 
-### 7.2 Daily circuit breaker — −$150
+### 7.2 Daily circuit breaker — −$150 realised
 
 Once **realised** P&L for the trading day reaches −$150, stop opening new trades
 until the next reset. Let an open position finish at its bracket.
 
-*Note: measured impact here is small (it skips only ~8% of trades) because this
-book averages 2 trades/day. It was the single biggest lever in an earlier
-zero-edge book; it is not one here. Keep it as cheap insurance.*
+*Measured impact here is small — it skips only ~8% of trades, because this book
+averages 2 trades/day and rarely gets the second trade in a day that the breaker
+needs in order to bite. It was the single biggest lever in an earlier zero-edge
+book; it is not one here. Keep it as cheap insurance.*
 
-### 7.3 Daily profit stop — +$1,000 soft, +$1,500 hard
+### 7.3 Daily profit block — +$1,000 realised
 
 Once **realised** P&L for the day reaches **+$1,000**, stop opening new trades
-until the next reset. Separately, the platform closes any open position the
-instant realised+unrealised P&L touches **+$1,500**. Both are needed — see §7.3a.
+until the next reset. **Do not close the open position** — let it run to its
+bracket.
 
-**This value matters, and the reason is subtle enough to be worth stating
-carefully — it is not that "$750 is under 50% of $3,000".** $1,500 is *exactly*
-50% of $3,000, so on that arithmetic a $1,500 stop should be fine.
+**This is the single largest lever in the whole configuration.** At 10 lots and
+one tick of slippage:
 
-The catch is that **a profit stop does not cap the day.** It blocks *new* entries
-once the threshold is crossed; the trade that crosses it overshoots, and any
-position already open keeps running to its bracket. So the realised day lands
-*above* the stop, not at it:
+| Block | Pass rate |
+|---|---|
+| off | **26.7%** |
+| $750 | 39.3% |
+| **$1,000** | **41.0%** |
+| $1,250 | 40.3% |
 
-| Profit stop | Windows with a day > $1,500 | Passes delayed by consistency |
-|---|---|---|
-| $750 | 95 (6.4%) | 37 (5.9%) |
-| $1,500 | **749 (50.3%)** | **432 (67.0%)** |
+It works by keeping any single day under 50% of total profit, which is what the
+consistency rule requires (§8). And it costs nothing in edge, because it only
+prevents *new* risk — it never truncates a trade already working.
 
-With a $1,500 stop, half of all windows still print a day over $1,500, and at a
-total near $3,000 that breaks the 50% test — so the account reaches the target and
-then has to keep grinding to dilute the day before it can pass.
+### 7.3a Why the platform's hard profit stop is switched OFF
 
-Proof that consistency is the whole mechanism — turning the rule off reverses the
-ranking:
-
-| Profit stop | Consistency ON | Consistency OFF |
-|---|---|---|
-| off | 28.7% | 42.9% |
-| **$750** | **41.7%** | 42.1% |
-| $1,500 | 37.7% | **43.3%** |
-
-Note the corollary: **without the consistency rule the profit stop is nearly
-worthless** (42.9% with no stop at all versus 43.3% at $1,500). Its entire value
-is navigating consistency. If your firm has no consistency requirement on the
-evaluation, drop the stop and size the day freely.
-
-### 7.3a Use BOTH stops — they are different rules and want opposite values
-
-There are two distinct mechanisms, and confusing them will cost you several
-percentage points:
+Most platforms also offer a stop on **unrealised** P&L that *flattens* the
+position the instant realised+open touches a number. That is a different rule
+from §7.3 and it behaves differently:
 
 | | What it does | Acts on |
 |---|---|---|
-| **Hard cap** (`dayProfitStopUsd`) | **Closes** the open position | realised + **unrealised** |
-| **Soft block** (`dailyProfitStop`) | Stops **opening** new trades | **realised** only |
+| **Soft block** (§7.3) | Stops **opening** new trades | realised only |
+| **Hard cap** | **Closes** the open position | realised + **unrealised** |
 
-**They want opposite values.** The setting cannot be carried from one to the
-other:
-
-| | $750 | $1,500 |
-|---|---|---|
-| Soft block | **41.7%** | 37.7% |
-| Hard cap | 25.9% | **39.7%** |
-
-**$1,500 is exactly the right hard cap**, and not by coincidence: it is the
-largest daily cap that can *never* violate the 50% consistency rule against a
-$3,000 target. The sweep peaks there sharply:
+If you use a hard cap, **$1,500 is the correct value** — it is the largest daily
+cap that can never violate the 50% consistency rule against a $3,000 target, and
+the sweep peaks there sharply:
 
 | Hard cap | Pass rate (9 lots) | Passes delayed by consistency |
 |---|---|---|
@@ -296,31 +272,26 @@ $3,000 target. The sweep peaks there sharply:
 | **$1,500** | **39.7%** | **0.0%** |
 | $1,550 | 39.1% | 15.8% |
 | $1,600 | 37.7% | 37.9% |
-| $2,000 | 33.8% | 73.6% |
 
-Below $1,500 the cap truncates winners for no consistency benefit. Above it,
-violations reappear immediately.
+**But it is switched off here**, because it truncates winners at an arbitrary
+dollar level while leaving losses untouched. At one tick of slippage:
 
-### The best configuration uses both
+| Setup | Pass @ 1 tick | Profit factor | Net over 7.2 years |
+|---|---|---|---|
+| Hard $1,500 + soft $1,000, 9 lots | **42.3%** | 0.964 | **−$52,778** |
+| **Soft $1,000 only, 10 lots** | 41.0% | **1.047** | **+$91,640** |
 
-| Setup | IS | OOS |
-|---|---|---|
-| Hard $1,500 alone, 9 lots | 39.7% | 40.8% |
-| Soft $750 alone, 10 lots | 42.1% | 41.7% |
-| **Hard $1,500 + soft $1,000, 10 lots** | **44.0%** | **43.9%** |
-
-The two do different jobs and compose. The hard cap guarantees no day ever breaks
-consistency; the soft block stops you taking *new* risk late in a good day
-**without truncating a position already running** — it can still ride to the
-$1,500 cap. Neither alone gets there.
-
-To implement: keep the platform's hard $1,500 unrealised stop, and add a rule in
-the bot that **stops opening new trades once realised day P&L reaches +$1,000**.
+**1.3 percentage points of pass rate, for the difference between making $91,640
+and losing $52,778.** Declined. Turn the hard cap on only if you are farming
+resets and will never trade the funded account.
 
 ### 7.4 Trading-day boundary
 
 A trading day starts at **17:00 America/New_York** (5 pm ET, DST-aware). Track
 realised P&L since the last 17:00 ET reset.
+
+Note the two timezones: the **session window is CT**, the **P&L reset is ET**.
+They diverge if you hardcode offsets.
 
 ---
 
@@ -350,76 +321,44 @@ this project started with (6:1 and 18:1 targets):
 - the deadline therefore truncated **36.9% of winners** but only **5.1% of losers**
 - **$1.70M of $3.97M gross profit** sat in exactly those truncated winners
 
-Inverting the geometry produces a book that **resolves**: mean hold time 43
-minutes, 75.0% of exits at target.
+Inverting the geometry produces a book that **resolves**.
 
 ### Resulting trade profile
 
-As shipped (hard $1,500 cap + soft $1,000 block, 10 lots):
+| | |
+|---|---|
+| Trades | 5,342 over 7.2 years (**2.03/day**) |
+| Win rate | **75.8%** |
+| Average win | $500 |
+| Average loss | −$1,494 |
+| **Largest loss** | **−$10,995** |
+| Profit factor | **1.047** |
+| Expectancy | **+$17.15/trade** |
+| Exits | TP 75.0% · SL 16.4% · flatten 6.2% · flip 2.4% |
+| Mean hold | **43 minutes** |
+| Net / commission | +$91,640 / $80,130 |
 
-| | Shipped (both stops) | Soft block only |
-|---|---|---|
-| Trades | 5,623 (**2.14/day**) | 5,342 (2.03/day) |
-| Win rate | **62.8%** | 75.8% |
-| Average win | $426.49 | $500.09 |
-| Average loss | −$757.59 | −$1,493.62 |
-| Largest loss | **−$10,995** | −$10,995 |
-| Profit factor | 0.949 | **1.047** |
-| Expectancy | −$14.46 | **+$17.15** |
-| Exits | TP 54.9% · **DAYCAP 24.9%** · SL 13.6% · flatten 4.9% · flip 1.8% | TP 75.0% · SL 16.4% · flatten 6.2% · flip 2.4% |
-| Mean hold | 35 min | 43 min |
-| Pass rate | **43.9%** | 41.9% |
+Many small wins, occasional very large losses. The largest single loss is
+**−$10,995 — over five times the entire drawdown limit**, because a 5×ATR stop
+can be gapped straight through. A window containing one of those is dead
+regardless of everything else. That is the price of this geometry.
 
-Many small wins, occasional very large losses. Note the largest single loss is
-**−$10,995** — over five times the entire drawdown limit. It happens because the
-stop is 5×ATR wide and a gap can blow straight through it; a window containing one
-of those is simply dead. That is the cost of the inverted geometry.
-
-Note also that the hard cap converts a quarter of all exits into DAYCAP closes,
-which is precisely the mechanism that trades edge for pass rate.
-
-### 9a. Passing versus profiting — they are different objectives
-
-This is the single most important thing to understand before deploying it.
+### 9a. Passing versus profiting
 
 Everything in this project was optimised for **pass rate**, which is
 P(+$3,000 before −$2,000 within 30 days). That is *not* the same as making money,
-and at the margin the two conflict:
+and at the margin the two conflict.
 
-| | Pass rate | Profit factor | Net, 7.2 years |
-|---|---|---|---|
-| Hard cap + soft block | **43.9%** | 0.949 | **−$81,299** |
-| Soft block only | 41.9% | **1.047** | **+$91,640** |
-
-The combine **stops the moment you pass**, so a book that wins small and often
-banks the target before its rare catastrophic loss arrives. Those losses then land
-in windows that fail — which costs you 2 points of pass rate but destroys
-long-run P&L.
-
-Long-run P&L is genuinely the **wrong lens for the evaluation itself**. A combine
+Long-run P&L is genuinely the **wrong lens for the evaluation itself**: a combine
 is pass/fail, attempts are independent, and negative live expectancy does not
-disqualify a book whose only job is to reach $3,000 once. That reasoning is
-correct as far as it goes.
+disqualify a book whose only job is to reach $3,000 once.
 
-**But it stops applying the moment you are funded** — and it turns out the
-trade-off dissolves anyway once fills are realistic:
+**But it stops applying the moment you are funded** — and as §7.3a shows, the
+trade-off nearly dissolves anyway under realistic fills. Buying 1.3pp by turning
++$91,640 into −$52,778 is a bad deal unless resets are your business model.
 
-| Ticks/side | Hard cap + soft block | Soft block only |
-|---|---|---|
-| 0 (assumed) | **43.9%** | 41.4% |
-| **1 (realistic)** | **41.3%** | **41.0%** |
-
-At one tick of slippage the two are within 0.3pp, because the hard cap's edge
-comes from perfect fills it will not get. So the 2pp premium is largely
-imaginary, while the −$81,299 versus +$91,640 difference is not.
-
-**Recommendation:** run the profitable variant — disable the hard cap, keep the
-soft $1,000 entry block. You give up almost nothing on pass rate at realistic
-execution and you get a book that does not bleed once funded.
-
-Measured funded outcomes over 180 days are close either way (50.0% vs 52.9% reach
-a payout; mean $2,093 vs $2,061), but that horizon is too short for a profit
-factor below 1.0 to fully express itself.
+The recommended configuration is therefore the one that both passes at ~41% and
+makes money.
 
 ### What to optimise if you tune it
 
@@ -431,9 +370,10 @@ Across 79 configurations, correlation with pass rate:
 | Trades per day | −0.381 |
 | **Expectancy × trades/day (= $/day)** | **0.512** |
 
-Neither edge nor frequency predicts much alone — their **product** does. This
-book has the *lowest* profit factor of the qualifying candidates and the *highest*
-pass rate, because 2.03 trades/day at PF 1.047 beats 0.74/day at PF 1.148.
+Neither edge nor frequency predicts much alone — their **product** does. Raw
+frequency without edge is actively bad (a 47.96 trades/day book at PF 0.930 scored
+12.6%); high edge with too few trades is equally useless (PF 1.347 at 0.48/day
+scored 36.7%).
 
 **Tune toward dollars per day at maximum legal size, not toward a prettier profit
 factor.**
@@ -442,63 +382,45 @@ factor.**
 
 ## 10. Honest limitations
 
-**Commission exceeds gross profit as shipped.** $84,345 paid against $3,046 gross,
-for **−$81,299 net**, at $0.75/side/contract across 5,623 trades. Without the hard
-cap the same book is +$91,640 net on $171,770 gross, with commission at 47%.
-Either way this is a high-turnover book whose viability is decided by execution
-cost — use your broker's real per-contract rate, never a flat per-trade figure.
+**Commission is 47% of gross profit.** $80,130 paid against $171,770 gross, for
++$91,640 net, at $0.75/side/contract across 5,342 trades. This is a high-turnover
+book whose viability is decided by execution cost — use your broker's real
+per-contract rate, never a flat per-trade figure. **At double commission it is
+unprofitable.**
 
-**Slippage is modelled as ZERO — but it costs less than a lifetime total
-suggests.** One tick per side at 10 lots is $10 round trip, and a window takes a
-median of **16 trades**, so a combine carries about **$150** of slippage against
-a $3,000 target. Measured effect on pass rate:
+**Slippage costs about $150 per combine.** One tick per side at 10 lots is $10
+round trip, and a window takes a median of 16 trades:
 
-| Ticks/side | $/trade | Cost per combine | Pass rate | vs zero |
-|---|---|---|---|---|
-| 0 | $0 | $0 | 43.9% | — |
-| 0.5 | $5 | $80 | 42.7% | −1.1pp |
-| **1** | **$10** | **$150** | **41.3%** | **−2.5pp** |
-| 2 | $20 | $300 | 38.3% | −5.6pp |
-| 3 | $30 | $420 | 37.1% | −6.8pp |
+| Ticks/side | Cost per combine | Pass rate | vs zero |
+|---|---|---|---|
+| 0 | $0 | 41.4% | — |
+| 0.5 | $80 | — | — |
+| **1** | **$150** | **41.0%** | **−0.4pp** |
+| 2 | $300 | 38.2% | −3.2pp |
 
-Real but not disqualifying. The correct denominator is *one combine*, not the
-5,623 trades across 7.2 years you will never take consecutively — combines are
-independent attempts and each one only has to reach the target once.
+Note this configuration is **more robust to slippage than the hard-cap variant**
+(−0.4pp vs −2.6pp at one tick), because it has genuine edge to absorb the cost.
+The right denominator is *one combine*, not the 5,342 trades across 7.2 years you
+will never take consecutively.
 
-**This changes which variant to run.** Slippage hurts the shipped configuration
-more than the profitable one, because the latter has genuine edge to absorb it:
+**A single loss can be five times the drawdown limit** (−$10,995 observed against
+a $2,000 limit). Any window containing one is dead.
 
-| Ticks/side | Hard cap + soft block | Soft block only |
-|---|---|---|
-| 0 | **43.9%** | 41.4% |
-| 1 | 41.3% | 41.0% |
-| 2 | 38.3% | 38.2% |
-
-**At a realistic one tick the two are within 0.3pp** — so the hard cap's entire
-advantage is an artefact of assuming perfect fills. Given the profitable variant
-is +$91,640 rather than −$81,299 over the same period, it is the better choice at
-any slippage you are likely to actually get.
-
-**A single loss can be five times the drawdown limit.** Largest observed:
-−$10,995 against a $2,000 limit, because a 5×ATR stop can be gapped straight
-through. Any window containing one is dead regardless of everything else.
-
-**Regime still dominates a single attempt:**
+**Regime dominates a single attempt:**
 
 | 2019 | 2020 | 2021 | 2022 | 2023 | 2024 | 2025 | 2026 |
 |---|---|---|---|---|---|---|---|
-| 22% | 31% | 55% | 50% | 47% | 39% | 57% | 42% |
+| 22% | 31% | 54% | 50% | 47% | 37% | 51% | 41% |
 
-**43.9% is not 70%.** Under these account rules nothing in ~2.2 billion window
+**~41% is not 70%.** Under these account rules nothing in ~2.2 billion window
 simulations reached 70%. The identical search with **overnight holds allowed**
 reached **83%**. The flatten rule, not the strategy, is the binding constraint —
-if that rule is negotiable, it is worth about 45 percentage points.
+if it is ever negotiable, it is worth about 45 percentage points.
 
-**Funded stage:** 50.0% of runs reach a payout, median 11 days to first, median
-first payout $2,806, mean $2,093 per 180 days. Leave profit in the account —
+**Funded stage:** 49.7% of runs reach a payout, median 11 days to first, median
+first payout $2,820, mean $2,148 per 180 days. **Leave profit in the account** —
 withdrawing everything parks you on the locked $0 floor and the next losing day
-ends it. And note §9a: over a horizon longer than 180 days, a profit factor below
-1.0 will assert itself.
+ends it.
 
 ---
 
@@ -512,26 +434,29 @@ ends it. And note §9a: over a horizon longer than 180 days, a profit factor bel
 5. **Stop-before-target** priority; gap-through fills at the open.
 6. **No re-entry on the bar a trade exited.**
 7. **A NaN efficiency ratio fails the gate**, never passes it.
-8. **`zoneinfo`, not fixed offsets** — the session window is CT and the P&L reset
-   is ET, and they diverge across DST if you hardcode.
+8. **`zoneinfo`, not fixed offsets** — session window is CT, P&L reset is ET.
 9. **Flatten outranks the bracket** and blocks entries until the reopen.
-10. **Ten contracts flat.** Resist every instinct to make sizing clever.
+10. **The $1,000 daily profit rule blocks new ENTRIES only** — it must not close
+    an open position. If your platform's daily profit target flattens instead,
+    turn it off and implement the block in the bot. See §7.3a.
+11. **Ten contracts flat.** Resist every instinct to make sizing clever.
 
 ---
 
 ## 12. Reference implementation
 
-`strategies/donchian_eff_rth.mjs` in this repo, which ships this exact
-configuration: 5,623 trades, PF 0.949, −$14.46/trade, 2.14/day, **43.9% pass**
-over 2,598 windows (44.0% IS / 43.9% OOS), median 8 days to pass.
+`strategies/donchian_eff_rth.mjs` in this repo ships this exact configuration:
+5,342 trades, PF 1.047, +$17.15/trade, 2.03/day, **42.6% pass** across all 2,598
+windows (43.5% IS / 41.4% OOS at zero slippage; 41.3% / 41.0% at one tick),
+median 8 days to pass.
 
 To reproduce interactively: select **"MNQ Donchian + Efficiency Gate"** in the
 sidebar. It ships its own execution, filter and rule defaults, so selecting it
-applies the whole configuration — including both daily stops.
+applies the whole configuration.
 
-**To run the profitable variant instead** (41.9%, PF 1.047, +$91,640): set
-`dayProfitStopUsd` to 0 in the Execution panel, leaving the soft $1,000 block in
-Combine rules.
+**To run the maximum-pass-rate variant instead** (42.3% at one tick, but PF 0.964
+and −$52,778): set `dayProfitStopUsd` to 1500 and `contracts` to 9 in the
+Execution panel.
 
 ### Worked example
 

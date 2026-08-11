@@ -20,6 +20,7 @@ import { loadStrategies, describe } from "./src/registry.mjs";
 import { runStrategy, resolveParams } from "./src/run.mjs";
 import { resolveExec, DEFAULT_EXEC } from "./src/engine.mjs";
 import { sweepWindows, sweepFunded, DEFAULT_RULES, DEFAULT_FUNDED, resolveRules, resolveFunded } from "./src/challenge.mjs";
+import { NO_FILTER } from "./src/filters.mjs";
 import { indexAtOrAfter } from "./src/resample.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -170,11 +171,16 @@ const server = http.createServer(async (req, res) => {
       const s = strategies.get(body.strategyId);
       if (!s) return sendJson(res, 400, { error: `Unknown strategy: ${body.strategyId}` });
 
+      // A strategy's own defaults are the BASE, with the request layered on top.
+      // Without this the API silently ignores the gate and risk envelope a
+      // strategy ships with, and returns numbers that do not match the UI —
+      // which is exactly how a spec ends up quoting figures nothing reproduces.
       const params = resolveParams(s, body.params);
-      const exec = resolveExec(body.exec);
-      const rules = resolveRules(body.rules);
+      const exec = resolveExec({ ...(s.execDefaults || {}), ...(body.exec || {}) });
+      const rules = resolveRules({ ...(s.rulesDefaults || {}), ...(body.rules || {}) });
+      const filter = { ...NO_FILTER, ...(s.filterDefaults || {}), ...(body.filter || {}) };
 
-      const run = fullRun(body.strategyId, params, exec, body.filter);
+      const run = fullRun(body.strategyId, params, exec, filter);
       const tSweep = Date.now();
       const sweep = sweepWindows(
         run.trades, bars.ts[0], bars.ts[bars.count - 1], rules,
