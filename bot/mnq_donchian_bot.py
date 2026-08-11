@@ -1025,9 +1025,17 @@ class DonchianBot:
                     "win rate is %.0f%% not %.0f%%.",
                     CONFIG["sl_atr_mult"], sl_pts / max(atr_v, 1e-9), sl_pts,
                     ratio, design, implied, 100.0 * design / (design + 1))
+        # Deliberately NOT advising a stand-down. The first version of this said
+        # to, and the numbers do not support it: the cap holds risk at a constant
+        # $1,000 while the target keeps scaling with ATR, so the gap between the
+        # geometric win rate and the break-even win rate is roughly CONSTANT
+        # across volatility (-1.9pp at ATR 10, -1.1pp at ATR 30). High ATR is not
+        # structurally worse here, and the high-volatility regime is where this
+        # book scores best. The warning is information, not a signal to stop.
         if ratio < 2.0:
-            log.warning("   ↳ ATR %.1f is high enough that this is NOT the book that was "
-                        "backtested. Consider standing down until volatility falls.", atr_v)
+            log.info("   ↳ risk is now fixed at the cap while reward keeps scaling with ATR, "
+                     "so this is expected in a volatile regime and is inside the measured "
+                     "numbers. Not a reason to stand down.")
 
     # ---- entry ----
     async def _place_entry(self, sig: int, atr_v: float, ref_px: float) -> None:
