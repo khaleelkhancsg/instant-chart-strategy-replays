@@ -1,0 +1,1247 @@
+#!/usr/bin/env python3
+"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MNQ DONCHIAN + EFFICIENCY-GATE BOT  —  TopstepX / ProjectX REST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Live port of `mnq_chart_lab/strategies/donchian_eff_rth.mjs`, the best
+configuration found in that project. Full derivation and rationale:
+    ../STRATEGY_SPEC_donchian_eff_rth.md
+
+MEASURED EXPECTATIONS (10 contracts, 2,598 rolling 30-day windows, 2019-2026):
+  • 42.6% pass rate           (43.5% in-sample / 41.4% out-of-sample)
+  • 41.3% / 41.0% at ONE TICK of slippage per side   <-- plan on this column
+  • pf 1.047, 75.8% win rate, $17.15 expectancy, 2.03 trades/day
+  • net +$91,640 over the full history, of which $80,130 went to commission
+  • 49.7% of passing accounts go on to a funded payout, median 8 days to pass
+  • largest single loss -$10,995. This is a TEN-LOT book with a 5xATR stop.
+
+  42.6% is not 70%. Under a no-overnight account rule nothing in ~2.2 billion
+  window simulations reached 70%; the same search WITH overnight holds reached
+  83%. The 3:05 PM flatten, not the strategy, is the binding constraint.
+
+STRATEGY (2-minute bars, clock-aligned):
+  • Donchian-30 breakout, taken WITH the break. The channel EXCLUDES the current
+    bar, so it is a genuine break of prior structure.
+  • ADX(14) >= 25 on the signal bar.
+  • Kaufman efficiency ratio(20) > 0.5 — price must be travelling, not
+    oscillating. This keeps only ~9.5% of raw signal bars and is the single
+    most important gate.
+  • Session 08:30-15:00 CT for SIGNALS. Late afternoon is poison: a 12:30-15:00
+    window scored 20.9% against 36.2% for full RTH.
+  • INVERTED GEOMETRY: 5.0xATR stop, 1.5xATR target (~0.3:1 reward:risk). Under a
+    hard flatten a wide target never arrives — the wide-target books needed a
+    median 6.5h for winners and 1.0h for losers, so the deadline truncated 37% of
+    winners and 5% of losers. Inverting it gives a 75.8% win rate and a 43-minute
+    mean hold. DO NOT "fix" this ratio because it looks wrong.
+  • FLIPS ALLOWED: an opposite signal while in a position reverses it.
+  • 10 contracts, FLAT. Risking a fixed fraction of the cushion scored 0.0% —
+    it collapses size to 1-2 lots and a fixed $3,000 target becomes unreachable.
+    Against a fixed-dollar target on a deadline, throughput beats risk control.
+
+DAILY RULES (both are ENTRY BLOCKS on REALISED P&L — neither ever closes a
+position, which is the whole point):
+  • +$1,000 soft profit block. THE SINGLE LARGEST LEVER in the configuration:
+    at 10 lots and one tick it is worth 26.7% -> 41.0%. It costs no edge at all
+    because it only prevents new risk; a trade already running is untouched.
+  • -$150 circuit breaker. Nearly free — it skips only ~8% of trades.
+  • Day boundary is 17:00 ET, matching the firm.
+
+⚠️  TURN OFF YOUR PLATFORM'S $1,500 UNREALISED PROFIT STOP.
+    A HARD cap (closing on unrealised P&L) is a different animal from the soft
+    block above, and the two want opposite values. Measured at one tick:
+        hard $1500 + soft $1000, 9 lots   42.3%   pf 0.964   -$52,778
+        hard OFF  + soft $1000, 10 lots   41.0%   pf 1.047   +$91,640
+    1.3pp of pass rate for the difference between making $91,640 and losing
+    $52,778. The hard cap truncates winners at an arbitrary dollar level while
+    leaving losses alone. Only keep it if you are farming resets and never
+    intend to trade funded. The bot warns about this at startup; see
+    `platform_hard_profit_stop_disabled` below.
+
+KNOWN LIMITATIONS (measured, not speculative):
+  • COMMISSION IS 47% OF GROSS PROFIT. At double commission the book is
+    unprofitable. This is the first thing to check against your real fills.
+  • Slippage was modelled as ZERO in the headline. One tick per side costs ~$150
+    per combine (~16 trades) and about 2.5pp of pass rate — survivable, but the
+    bot measures it so you can see if yours is worse.
+  • ONE LOSS TRIPS THE DAY. A 5xATR stop on 10 lots typically risks $1,000-$3,000
+    against a -$150 breaker, so the breaker is effectively "one loser and you are
+    done". That is intended and is priced into the 42.6%.
+  • Per year: 2019 18%, 2020 33%, 2021 49%, 2022 53%, 2023 46%, 2024 38%,
+    2025 50%, 2026 37%. Regime dominates any single attempt.
+
+IMPLEMENTATION NOTES:
+  1. Bars are fetched at 1-MINUTE resolution and aggregated to 2 minutes HERE,
+     clock-aligned on the epoch (floor(ms / 120000)) — identical to
+     src/resample.mjs. The exchange's own 2-minute aggregation is not used
+     because its alignment is unverified, and a half-bar offset would silently
+     make this a different strategy.
+  2. ATR and ADX use a plain EMA (alpha = 2/(span+1)), NOT Wilder's smoothing.
+     Wilder is the textbook default and would be wrong here.
+  3. Every stage is checked against a golden fixture exported from the JS engine:
+         node research/export_bot_fixture.mjs
+         python bot/test_donchian_parity.py
+     Run that after ANY edit to the maths below.
+  4. Requires env vars PROJECT_X_USERNAME and PROJECT_X_API_KEY (.env auto-loaded).
+  5. Run on a DEDICATED account — the flatten cleanup cancels ALL working orders.
+  6. Update `contract_id` on every roll.
+"""
+
+import asyncio
+import json
+import logging
+import math
+import os
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Dict, List, Optional, Sequence, Tuple
+
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:                                     # pragma: no cover
+    from backports.zoneinfo import ZoneInfo             # type: ignore
+
+CT_TZ = ZoneInfo("America/Chicago")
+ET_TZ = ZoneInfo("America/New_York")
+
+# ─────────────────────────────────────────────────────────────
+#  CONFIG
+# ─────────────────────────────────────────────────────────────
+# Values marked "spec" are part of the measured 42.6% result, not suggestions.
+CONFIG = {
+    # instrument / account
+    "contract_id": "CON.F.US.MNQ.U26",   # ⚠ update on roll; must match account type
+    "live_account": False,               # False = sim/practice, True = live/funded
+    "dry_run": True,                     # >>> SHIPS IN DRY-RUN <<< run one full session
+                                         # paper-only, confirm the session gates, the
+                                         # 15:04 flatten and the fill log look right,
+                                         # THEN set False to arm it.
+    "tick_size": 0.25,                   # MNQ price increment (points)
+    "tick_value": 0.50,                  # $ per tick (= $2.00/point)
+
+    # signal (spec) — see donchian_eff_rth.mjs
+    "timeframe_min": 2,
+    "period": 30,                        # Donchian lookback, channel excludes current bar
+    "adx_min": 25,
+    "adx_period": 14,
+    "atr_period": 14,
+    "cooldown_bars": 1,                  # bars between signals (1 == no-op, kept for parity)
+    "eff_period": 20,
+    "eff_min": 0.5,                      # Kaufman efficiency ratio floor. NaN FAILS the gate.
+
+    # execution (spec)
+    "contracts": 10,
+    "sl_atr_mult": 5.0,
+    "tp_atr_mult": 1.5,
+    "flip_on_opposite": True,
+
+    # session, CT minutes past midnight
+    "signal_start_ct": 8 * 60 + 30,      # 08:30 — first bar whose signal counts
+    "signal_end_ct": 15 * 60,            # 15:00 — signal bars gated below this
+    "no_entry_ct": 14 * 60 + 55,         # 14:55 — no NEW entries at/after this
+    "flatten_ct": 15 * 60 + 4,           # 15:04 — force-flat. The firm deadline is 15:05
+                                         # and the backtest models the first 2-min bucket
+                                         # at/after 15:05 (i.e. 15:06); acting at 15:04
+                                         # puts the fill safely INSIDE the deadline. The
+                                         # cost is at most 2 minutes of one trade's life.
+    "reopen_ct": 17 * 60,                # 17:00 — session reopens (no entries before then;
+                                         # academic here, the gate stops at 15:00 anyway)
+    "reset_hour_et": 17,                 # trading-day boundary (5pm ET), matches the firm
+
+    # daily rules — ENTRY BLOCKS on REALISED day P&L. Neither closes a position.
+    "daily_profit_block": 1000.0,        # spec: the single largest lever
+    "circuit_breaker": 150.0,            # spec: self-imposed daily loss stop (positive number)
+    "firm_daily_loss": 1000.0,           # firm's own limit, for the warning banner only
+
+    # ⚠ Set this True ONLY after you have actually turned the unrealised profit
+    #   stop OFF in the trading platform. It gates nothing — it exists so the
+    #   startup banner stops nagging, and so "did I remember?" has an answer that
+    #   survives a two-week gap. See the header.
+    "platform_hard_profit_stop_disabled": False,
+
+    # costs — reporting only; the broker charges what it charges
+    "commission_per_side": 0.75,         # $ per contract per side
+
+    # data / loop
+    "fetch_days": 5,                     # 1-min history fetched each cycle. Five days of
+                                         # 1-min bars exceeds the endpoint's 5000-row limit,
+                                         # so the response is truncated — deliberately. The
+                                         # truncation favours RECENT bars (mnq_macd_bot_v2
+                                         # has run live on a 4-day window for weeks), and
+                                         # five days is what keeps a Monday after a holiday
+                                         # Friday above the warm-up floor. If the assumption
+                                         # is ever wrong the newest bar goes stale and
+                                         # `max_bar_age_s` refuses to trade — a loud failure,
+                                         # not a quiet one.
+    "warmup_bars_2m": 600,               # 2-min bars retained for indicators. The backtest
+                                         # warms up with 900. Measured convergence against a
+                                         # full-history run: 600 bars puts ATR within 1.4e-7
+                                         # points and ADX within 6.6e-4, with identical
+                                         # signals. The real floor is ~150 bars (still inside
+                                         # 0.005 of a tick); 600 is chosen for margin, not
+                                         # because it is needed.
+    "max_bar_age_s": 300,                # refuse to trade on a feed this stale
+    "max_entry_delay_s": 40,             # skip entries whose signal bar closed longer ago
+    "flatten_poll_s": 10,                # position-check cadence inside the flatten window
+    "slip_warn_ticks": 4.0,              # warn past this many ticks of |deviation|
+    "state_file": "donchian_bot_state.json",
+}
+
+TICK = CONFIG["tick_size"]
+BUCKET_MS = CONFIG["timeframe_min"] * 60_000
+
+# ─────────────────────────────────────────────────────────────
+#  LOGGING
+# ─────────────────────────────────────────────────────────────
+logging.basicConfig(level=logging.INFO,
+                    format="%(asctime)s  %(levelname)-7s  %(message)s",
+                    datefmt="%Y-%m-%d %H:%M:%S")
+log = logging.getLogger("MNQ-DONCH")
+_log_dir = Path(os.environ.get("MNQ_LOG_DIR", "logs"))
+_log_dir.mkdir(parents=True, exist_ok=True)
+_fh = logging.FileHandler(_log_dir / f"donchian_{datetime.now():%Y%m%d_%H%M%S}.log",
+                          encoding="utf-8")
+_fh.setFormatter(logging.Formatter("%(asctime)s  %(levelname)-7s  %(message)s",
+                                   "%Y-%m-%d %H:%M:%S"))
+logging.getLogger().addHandler(_fh)
+DIV = "─" * 60
+
+
+# ═════════════════════════════════════════════════════════════
+#  PURE MATHS — mirrors src/indicators.mjs and src/resample.mjs
+#  Every function here is asserted against the JS engine by
+#  bot/test_donchian_parity.py. Change nothing without re-running it.
+# ═════════════════════════════════════════════════════════════
+def ema(values: Sequence[float], span: int) -> List[float]:
+    """EMA seeded on the first value. NOT Wilder — see header note 2."""
+    n = len(values)
+    if n == 0:
+        return []
+    a = 2.0 / (span + 1)
+    b = 1.0 - a
+    out = [float(values[0])]
+    for i in range(1, n):
+        out.append(a * values[i] + b * out[-1])
+    return out
+
+
+def true_range(H: Sequence[float], L: Sequence[float], C: Sequence[float]) -> List[float]:
+    n = len(C)
+    if n == 0:
+        return []
+    tr = [H[0] - L[0]]
+    for i in range(1, n):
+        pc = C[i - 1]
+        tr.append(max(H[i] - L[i], abs(H[i] - pc), abs(L[i] - pc)))
+    return tr
+
+
+def atr_series(H, L, C, period: int) -> List[float]:
+    return ema(true_range(H, L, C), period)
+
+
+def adx_series(H, L, C, period: int) -> List[float]:
+    """Directional index smoothed with an EMA at every stage."""
+    n = len(C)
+    if n == 0:
+        return []
+    tr = [0.0] * n
+    pdm = [0.0] * n
+    ndm = [0.0] * n
+    tr[0] = H[0] - L[0]
+    for i in range(1, n):
+        pc = C[i - 1]
+        tr[i] = max(H[i] - L[i], abs(H[i] - pc), abs(L[i] - pc))
+        up = H[i] - H[i - 1]
+        dn = L[i - 1] - L[i]
+        pdm[i] = up if (up > dn and up > 0) else 0.0
+        ndm[i] = dn if (dn > up and dn > 0) else 0.0
+    atr_e = ema(tr, period)
+    pdi_e = ema(pdm, period)
+    ndi_e = ema(ndm, period)
+    dx = [0.0] * n
+    for i in range(n):
+        a = atr_e[i]
+        pdi = 0.0 if a == 0 else 100.0 * pdi_e[i] / a
+        ndi = 0.0 if a == 0 else 100.0 * ndi_e[i] / a
+        s = pdi + ndi
+        dx[i] = 0.0 if s == 0 else 100.0 * abs(pdi - ndi) / s
+    return ema(dx, period)
+
+
+def donchian(H: Sequence[float], L: Sequence[float], p: int) -> Tuple[List[float], List[float]]:
+    """Rolling extremes of the PREVIOUS p bars — the current bar is excluded, so a
+    close beyond the channel is a break of prior structure and not a bar being
+    compared against itself. NaN until p bars of history exist."""
+    n = len(H)
+    hh = [math.nan] * n
+    ll = [math.nan] * n
+    qh: List[int] = []   # indices, decreasing highs
+    ql: List[int] = []   # indices, increasing lows
+    for i in range(n):
+        if i > 0:
+            j = i - 1
+            while qh and H[qh[-1]] <= H[j]:
+                qh.pop()
+            qh.append(j)
+            while ql and L[ql[-1]] >= L[j]:
+                ql.pop()
+            ql.append(j)
+            while qh[0] < i - p:
+                qh.pop(0)
+            while ql[0] < i - p:
+                ql.pop(0)
+        if i >= p:
+            hh[i] = H[qh[0]]
+            ll[i] = L[ql[0]]
+    return hh, ll
+
+
+def efficiency_ratio(C: Sequence[float], p: int = 20) -> List[float]:
+    """Kaufman efficiency ratio: net displacement over total path travelled.
+    1.0 = a straight line, ~0 = pure chop. NaN until p bars exist."""
+    n = len(C)
+    out = [math.nan] * n
+    path = 0.0
+    for i in range(1, n):
+        path += abs(C[i] - C[i - 1])
+        if i > p:
+            path -= abs(C[i - p] - C[i - p - 1])
+        if i >= p:
+            out[i] = 0.0 if path == 0 else abs(C[i] - C[i - p]) / path
+    return out
+
+
+class Bar2m:
+    """A clock-aligned 2-minute bar. `ct_min` is the CT minute the bar OPENS at,
+    which is what every session rule keys off — matching src/resample.mjs."""
+    __slots__ = ("ts", "open", "high", "low", "close", "volume", "ct_min", "tday")
+
+    def __init__(self, ts: int, o: float, h: float, l: float, c: float, v: float):
+        self.ts = ts
+        self.open = o
+        self.high = h
+        self.low = l
+        self.close = c
+        self.volume = v
+        self.ct_min = 0
+        self.tday = 0
+
+    def __repr__(self) -> str:                                   # pragma: no cover
+        return (f"Bar2m({datetime.fromtimestamp(self.ts / 1000, timezone.utc):%Y-%m-%d %H:%M} "
+                f"O{self.open} H{self.high} L{self.low} C{self.close})")
+
+
+def aggregate_2m(bars1m: Sequence[dict], now_utc: Optional[datetime] = None) -> List[Bar2m]:
+    """Aggregate 1-minute bars into clock-aligned 2-minute bars.
+
+    Bucketing is floor(epoch_ms / 120000), identical to src/resample.mjs. Buckets
+    are formed from whatever 1-minute bars exist, so a quiet minute with no
+    prints does not shift the grid — which is exactly why the alignment must come
+    from the clock and not from counting bars.
+
+    The final bucket is DROPPED unless wall-clock time has passed its end. A
+    bucket can legitimately contain a single 1-minute bar (the other minute had
+    no trades), so completeness has to be judged on time, never on bar count.
+    """
+    out: List[Bar2m] = []
+    cur = -1
+    for b in bars1m:
+        ts = _bar_ms(b)
+        if ts is None:
+            continue
+        o, h, l, c = _ohlc(b)
+        bucket = ts // BUCKET_MS
+        if bucket != cur:
+            cur = bucket
+            out.append(Bar2m(bucket * BUCKET_MS, o, h, l, c, 0.0))
+        cell = out[-1]
+        if h > cell.high:
+            cell.high = h
+        if l < cell.low:
+            cell.low = l
+        cell.close = c
+        cell.volume += _vol(b)
+
+    if out:
+        now = now_utc or datetime.now(timezone.utc)
+        end_ms = out[-1].ts + BUCKET_MS
+        if now.timestamp() * 1000 < end_ms:
+            out.pop()
+
+    for cell in out:
+        dt = datetime.fromtimestamp(cell.ts / 1000, timezone.utc)
+        ct = dt.astimezone(CT_TZ)
+        cell.ct_min = ct.hour * 60 + ct.minute
+        cell.tday = trading_day_of(dt)
+    return out
+
+
+def raw_signals(bars: Sequence[Bar2m], cfg: dict) -> Tuple[List[int], List[float]]:
+    """Ungated Donchian breakout + ADX floor. Mirrors donchian_eff_rth.mjs
+    `compute()`. Returns (signals, ATR series).
+
+    Kept separate from the gate so each stage can be diffed against the JS
+    engine on its own — a mismatch then names the stage instead of just moving
+    the trade count.
+    """
+    H = [b.high for b in bars]
+    L = [b.low for b in bars]
+    C = [b.close for b in bars]
+    n = len(C)
+
+    a = atr_series(H, L, C, cfg["atr_period"])
+    adx = adx_series(H, L, C, cfg["adx_period"])
+    dh, dl = donchian(H, L, cfg["period"])
+
+    sig = [0] * n
+    last = -(10 ** 9)
+    for i in range(cfg["period"], n):
+        if i - last < cfg["cooldown_bars"]:
+            continue
+        if adx[i] < cfg["adx_min"]:
+            continue
+        # The channel excludes the current bar, so this is a genuine break of
+        # prior structure rather than a bar comparing against itself.
+        if C[i] > dh[i]:
+            sig[i] = 1
+            last = i
+        elif C[i] < dl[i]:
+            sig[i] = -1
+            last = i
+    return sig, a
+
+
+def apply_gate(sig: List[int], bars: Sequence[Bar2m], cfg: dict) -> List[int]:
+    """Session + efficiency gate. Mirrors src/filters.mjs `applyFilters` with
+    {startCt, endCt, effMin}. Returns a NEW list; `sig` is left alone.
+
+    This gate is the strategy. It keeps roughly 9.5% of raw signal bars, and on
+    a short sample it subsumes the ADX floor entirely — every breakout with an
+    efficiency ratio above 0.5 in RTH already has ADX above 25. Do not read that
+    as ADX being useless; read it as the efficiency ratio doing the work.
+    """
+    out = list(sig)
+    start, end = cfg["signal_start_ct"], cfg["signal_end_ct"]
+    emin = cfg["eff_min"]
+    eff = efficiency_ratio([b.close for b in bars], cfg["eff_period"])
+    for i in range(len(out)):
+        if out[i] == 0:
+            continue
+        ct = bars[i].ct_min
+        in_window = (start <= ct < end) if end >= start else (ct >= start or ct < end)
+        if not in_window:
+            out[i] = 0
+            continue
+        # A NaN reading FAILS an active band — an unknown regime is not a
+        # qualifying one. (src/filters.mjs inBand)
+        e = eff[i]
+        if emin > 0 and (not math.isfinite(e) or e < emin):
+            out[i] = 0
+    return out
+
+
+def compute_signals(bars: Sequence[Bar2m], cfg: dict) -> Tuple[List[int], List[float]]:
+    """Return (gated signals, ATR series) for every bar — what the bot trades."""
+    sig, a = raw_signals(bars, cfg)
+    return apply_gate(sig, bars, cfg), a
+
+
+def trading_day_of(dt_utc: datetime) -> int:
+    """Days since epoch for the CME trading day, which rolls at 17:00 ET.
+    Matches nyTradingDay() in prepare.mjs — the daily rules bucket on this."""
+    et = dt_utc.astimezone(ET_TZ)
+    d = et.date()
+    if et.hour >= CONFIG["reset_hour_et"]:
+        d = d + timedelta(days=1)
+    return (d - datetime(1970, 1, 1).date()).days
+
+
+def trading_day_key(now_utc: datetime) -> str:
+    et = now_utc.astimezone(ET_TZ)
+    d = et.date()
+    if et.hour >= CONFIG["reset_hour_et"]:
+        d = d + timedelta(days=1)
+    return d.isoformat()
+
+
+# ─────────────────────────────────────────────────────────────
+#  BAR PARSING (the history endpoint's field names vary)
+# ─────────────────────────────────────────────────────────────
+def _ohlc(bar: dict) -> Tuple[float, float, float, float]:
+    def g(keys):
+        for k in keys:
+            if k in bar and bar[k] is not None:
+                return float(bar[k])
+        return 0.0
+    return (g(("open", "o", "Open")), g(("high", "h", "High")),
+            g(("low", "l", "Low")), g(("close", "c", "Close")))
+
+
+def _vol(bar: dict) -> float:
+    for k in ("volume", "v", "Volume"):
+        if k in bar and bar[k] is not None:
+            try:
+                return float(bar[k])
+            except (TypeError, ValueError):
+                return 0.0
+    return 0.0
+
+
+def _ts(bar: dict) -> Optional[str]:
+    for k in ("t", "timestamp", "datetime", "time"):
+        if k in bar and bar[k] is not None:
+            return str(bar[k])
+    return None
+
+
+def _bar_utc(bar: dict) -> Optional[datetime]:
+    raw = _ts(bar)
+    if raw is None:
+        return None
+    s = raw.strip().replace("Z", "+00:00")
+    try:
+        dt = datetime.fromisoformat(s)
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _bar_ms(bar: dict) -> Optional[int]:
+    if "ms" in bar and bar["ms"] is not None:      # fixture / test convenience
+        return int(bar["ms"])
+    dt = _bar_utc(bar)
+    return None if dt is None else int(dt.timestamp() * 1000)
+
+
+# ═════════════════════════════════════════════════════════════
+#  TOPSTEPX REST CLIENT
+#  Same client as mnq_macd_bot_v2.py, including the signed-bracket-ticks
+#  behaviour confirmed live 2026-07-21.
+# ═════════════════════════════════════════════════════════════
+import httpx                                                     # noqa: E402
+from dotenv import load_dotenv                                   # noqa: E402
+
+load_dotenv()
+
+
+class TopstepXClient:
+    BASE = "https://api.topstepx.com/api"
+    TOKEN_TTL_S = 23 * 3600
+
+    def __init__(self) -> None:
+        self._token: Optional[str] = None
+        self._token_time: Optional[datetime] = None
+        self._account_id: Optional[int] = None
+        self._balance: float = 0.0
+
+    async def connect(self) -> None:
+        await self._login()
+        await self._resolve_account()
+
+    async def _login(self) -> None:
+        username = os.environ.get("PROJECT_X_USERNAME", "")
+        api_key = os.environ.get("PROJECT_X_API_KEY", "")
+        if not username or not api_key:
+            raise EnvironmentError("PROJECT_X_USERNAME and PROJECT_X_API_KEY must be set")
+        data = await self._raw_post("/Auth/loginKey",
+                                    {"userName": username, "apiKey": api_key}, auth=False)
+        token = data.get("token") or data.get("sessionToken")
+        if not token:
+            raise RuntimeError(f"Auth failed: {data.get('errorMessage', 'no token')}")
+        self._token = token
+        self._token_time = datetime.now(timezone.utc)
+        log.info("✅ Authenticated (TopstepX REST)")
+
+    async def _ensure_token(self) -> None:
+        now = datetime.now(timezone.utc)
+        if (self._token is None or self._token_time is None or
+                (now - self._token_time).total_seconds() > self.TOKEN_TTL_S):
+            await self._login()
+
+    async def _resolve_account(self) -> None:
+        data = await self._post("/Account/search", {"onlyActiveAccounts": True})
+        accounts = data.get("accounts", [])
+        if not accounts:
+            raise RuntimeError("No active accounts found")
+        acct = accounts[0]                                        # CHANGE ACCOUNT NUMBER HERE
+        self._account_id = acct["id"]
+        self._balance = float(acct.get("balance", 0))
+        log.info("✅ Account: %s (id=%s bal=%.2f)",
+                 acct.get("name", ""), self._account_id, self._balance)
+
+    async def _raw_post(self, path: str, body: dict, auth: bool = True) -> dict:
+        headers = {"Content-Type": "application/json", "Accept": "text/plain"}
+        if auth and self._token:
+            headers["Authorization"] = f"Bearer {self._token}"
+        async with httpx.AsyncClient(timeout=15.0) as http:
+            resp = await http.post(f"{self.BASE}{path}", json=body, headers=headers)
+            resp.raise_for_status()
+            return resp.json()
+
+    async def _post(self, path: str, body: dict) -> dict:
+        await self._ensure_token()
+        for attempt in range(3):
+            try:
+                return await self._raw_post(path, body)
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 401:
+                    log.warning("401 on %s — refreshing token", path)
+                    await self._login()
+                    continue
+                raise
+            except Exception as e:
+                if attempt == 2:
+                    raise
+                log.warning("%s attempt %d failed: %s", path, attempt + 1, e)
+                await asyncio.sleep(1.5 * (attempt + 1))
+        raise RuntimeError(f"All retries exhausted for {path}")
+
+    async def refresh_balance(self) -> float:
+        try:
+            data = await self._post("/Account/search", {"onlyActiveAccounts": True})
+            accts = data.get("accounts", [])
+            if accts:
+                self._balance = float(accts[0].get("balance", self._balance))
+        except Exception as exc:
+            log.debug("Balance refresh failed: %s", exc)
+        return self._balance
+
+    @property
+    def balance(self) -> float:
+        return self._balance
+
+    async def get_bars_1m(self, days: int = 5) -> List[dict]:
+        """Native 1-minute bars. Aggregation to 2 minutes happens locally —
+        see aggregate_2m() and header note 1."""
+        end = datetime.now(timezone.utc)
+        start = end - timedelta(days=days)
+        body = {
+            "contractId": CONFIG["contract_id"],
+            "live": CONFIG["live_account"],
+            "startTime": start.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "endTime": end.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "unit": 2,               # Minute
+            "unitNumber": 1,         # native 1-min
+            "limit": 5000,
+            "includePartialBar": False,
+        }
+        for attempt in range(3):
+            try:
+                data = await self._post("/History/retrieveBars", body)
+                bars = data.get("bars") or []
+                bars.sort(key=lambda b: str(b.get("t", "")))
+                return bars
+            except Exception as exc:
+                log.warning("get_bars attempt %d: %s", attempt + 1, exc)
+                await asyncio.sleep(1.5 * (attempt + 1))
+        return []
+
+    async def place_bracket_order(self, side: int, size: int,
+                                  sl_ticks: int, tp_ticks: int) -> Optional[int]:
+        """side: 0=Buy, 1=Sell.  SL bracket type=4 (Stop), TP type=1 (Limit).
+
+        ProjectX bracket `ticks` are SIGNED offsets from the FILL price, which is
+        exactly what the backtest measures the bracket from. LONG: SL negative /
+        TP positive; SHORT: SL positive / TP negative. Callers pass magnitudes.
+        """
+        sl_signed = -abs(sl_ticks) if side == 0 else abs(sl_ticks)
+        tp_signed = abs(tp_ticks) if side == 0 else -abs(tp_ticks)
+        body = {
+            "accountId": self._account_id,
+            "contractId": CONFIG["contract_id"],
+            "type": 2,          # Market
+            "side": side,
+            "size": size,
+            "limitPrice": None, "stopPrice": None, "trailPrice": None, "customTag": None,
+            "stopLossBracket": {"ticks": sl_signed, "type": 4},
+            "takeProfitBracket": {"ticks": tp_signed, "type": 1},
+        }
+        try:
+            data = await self._post("/Order/place", body)
+            if not data.get("success", False):
+                log.error("Order rejected: %s", data.get("errorMessage"))
+                return None
+            oid = data.get("orderId")
+            log.info("✅ Bracket placed | orderId=%s side=%d size=%d sl=%+dt tp=%+dt",
+                     oid, side, size, sl_signed, tp_signed)
+            return oid
+        except Exception as exc:
+            log.error("place_bracket_order failed: %s", exc)
+            return None
+
+    async def get_open_positions(self) -> List[dict]:
+        try:
+            data = await self._post("/Position/searchOpen", {"accountId": self._account_id})
+            return data.get("positions", [])
+        except Exception as exc:
+            log.warning("get_open_positions failed: %s", exc)
+            return []
+
+    async def close_position(self) -> bool:
+        try:
+            data = await self._post("/Position/closeContract",
+                                    {"accountId": self._account_id,
+                                     "contractId": CONFIG["contract_id"]})
+            return bool(data.get("success", False))
+        except Exception as exc:
+            log.error("close_position failed: %s", exc)
+            return False
+
+    async def get_open_orders(self) -> List[dict]:
+        try:
+            data = await self._post("/Order/searchOpen", {"accountId": self._account_id})
+            return data.get("orders", [])
+        except Exception as exc:
+            log.debug("get_open_orders failed: %s", exc)
+            return []
+
+    async def cancel_order(self, order_id) -> bool:
+        try:
+            data = await self._post("/Order/cancel",
+                                    {"accountId": self._account_id, "orderId": order_id})
+            return bool(data.get("success", False))
+        except Exception as exc:
+            log.warning("cancel_order %s failed: %s", order_id, exc)
+            return False
+
+
+# ═════════════════════════════════════════════════════════════
+#  BOT
+# ═════════════════════════════════════════════════════════════
+class DonchianBot:
+    def __init__(self, api: TopstepXClient) -> None:
+        self.api = api
+        self.in_position = False
+        self._pos_dir = 0
+        self._last_bar_ts: Optional[int] = None
+        self._session_key: Optional[str] = None
+        self._day_start_balance: float = 0.0
+        self._balance_at_entry: Optional[float] = None
+        self._state_path = Path(CONFIG["state_file"])
+        self._pv = CONFIG["tick_value"] / CONFIG["tick_size"]     # $/point/contract (= 2.0)
+        # entry-slippage measurement — single fills are noise, the mean is not
+        self._slip_sum = 0.0
+        self._slip_abs_sum = 0.0
+        self._slip_n = 0
+        # dry-run virtual book
+        self._v_pos = 0
+        self._v_entry = 0.0
+        self._v_sl = 0.0
+        self._v_tp = 0.0
+        self._v_day_pnl = 0.0
+        self._v_trades = 0
+        self._v_wins = 0
+
+    # ---- persistence ----
+    def _load_state(self) -> None:
+        try:
+            if self._state_path.exists():
+                s = json.loads(self._state_path.read_text())
+                self._session_key = s.get("session_key")
+                self._day_start_balance = float(s.get("day_start_balance", 0.0))
+                be = s.get("balance_at_entry")
+                self._balance_at_entry = float(be) if be is not None else None
+        except Exception as exc:
+            log.debug("state load failed: %s", exc)
+
+    def _save_state(self) -> None:
+        try:
+            self._state_path.write_text(json.dumps({
+                "session_key": self._session_key,
+                "day_start_balance": self._day_start_balance,
+                "balance_at_entry": self._balance_at_entry,
+            }))
+        except Exception as exc:
+            log.debug("state save failed: %s", exc)
+
+    def _roll_session_if_needed(self) -> None:
+        key = trading_day_key(datetime.now(timezone.utc))
+        if key == self._session_key:
+            return
+        if self._slip_n:
+            log.info("📊 previous session entry slippage: signed %+.2ft, |avg| %.2ft "
+                     "over %d fills (judge on |avg| — the sign is just drift)",
+                     self._slip_sum / self._slip_n,
+                     self._slip_abs_sum / self._slip_n, self._slip_n)
+        self._session_key = key
+        self._day_start_balance = self.api.balance
+        self._v_day_pnl = 0.0
+        self._slip_sum = self._slip_abs_sum = 0.0
+        self._slip_n = 0
+        self._save_state()
+        log.info("🗓  New trading day %s | start balance = %.2f", key, self._day_start_balance)
+
+    # ---- daily rules ----
+    def _day_pnl(self) -> float:
+        if CONFIG["dry_run"]:
+            return self._v_day_pnl
+        return self.api.balance - self._day_start_balance
+
+    def _entry_blocked(self) -> Tuple[bool, str]:
+        """Both rules are ENTRY blocks on REALISED day P&L. Neither closes an open
+        position — that distinction is the whole reason the profit block costs no
+        edge (spec §7). Check order matches challenge.mjs."""
+        p = self._day_pnl()
+        cap = CONFIG["daily_profit_block"]
+        brk = CONFIG["circuit_breaker"]
+        if cap > 0 and p >= cap:
+            return True, f"daily profit block (realised {p:+.0f} >= {cap:+.0f})"
+        if brk > 0 and p <= -brk:
+            return True, f"circuit breaker (realised {p:+.0f} <= {-brk:+.0f})"
+        return False, ""
+
+    # ---- session helpers ----
+    @staticmethod
+    def _ct_now() -> int:
+        ct = datetime.now(timezone.utc).astimezone(CT_TZ)
+        return ct.hour * 60 + ct.minute
+
+    @staticmethod
+    def _in_flat_window(ct: int) -> bool:
+        f, r = CONFIG["flatten_ct"], CONFIG["reopen_ct"]
+        return (f <= ct < r) if r > f else (ct >= f or ct < r)
+
+    def _entry_allowed_now(self, ct: int) -> Tuple[bool, str]:
+        if self._in_flat_window(ct):
+            return False, "flatten window"
+        if self._in_flat_window_from(ct, CONFIG["no_entry_ct"]):
+            return False, (f"no new entries within "
+                           f"{CONFIG['flatten_ct'] - CONFIG['no_entry_ct']}m of the flatten")
+        return True, ""
+
+    @staticmethod
+    def _in_flat_window_from(ct: int, cutoff: int) -> bool:
+        r = CONFIG["reopen_ct"]
+        return (cutoff <= ct < r) if r > cutoff else (ct >= cutoff or ct < r)
+
+    # ---- position sync ----
+    async def _sync_position(self) -> None:
+        positions = await self.api.get_open_positions()
+        open_sz, ptype = 0, 0
+        for p in positions:
+            if abs(p.get("size", 0)) <= 0:
+                continue
+            pcid = p.get("contractId")
+            if pcid is not None and pcid != CONFIG["contract_id"]:
+                continue
+            open_sz = p.get("size", 0)
+            ptype = p.get("type", 0)
+            break
+        was_open = self.in_position
+        self.in_position = open_sz != 0
+        if ptype == 1:
+            self._pos_dir = 1
+        elif ptype == 2:
+            self._pos_dir = -1
+        else:
+            self._pos_dir = 1 if open_sz > 0 else (-1 if open_sz < 0 else 0)
+        if was_open and not self.in_position:
+            realised = (self.api.balance - self._balance_at_entry
+                        if self._balance_at_entry is not None else None)
+            log.info("🔄 closed → flat | realised %s | day P&L %+.0f",
+                     ("%+.0f" % realised) if realised is not None else "unknown",
+                     self._day_pnl())
+            self._balance_at_entry = None
+            self._save_state()
+
+    # ---- flatten ----
+    async def _enforce_flatten(self) -> None:
+        """Firm rule: no overnight positions, flat by 3:05 PM CT. This outranks
+        the bracket unconditionally — the backtest closes at the flatten bar's
+        open regardless of where stop and target sit, and so does this."""
+        if CONFIG["dry_run"] or not self._in_flat_window(self._ct_now()):
+            return
+        await self._sync_position()
+        if self.in_position:
+            log.info("🕓 FLATTEN: closing position (firm deadline 15:05 CT, acting at %02d:%02d)",
+                     CONFIG["flatten_ct"] // 60, CONFIG["flatten_ct"] % 60)
+            await self.api.close_position()
+            await self._sync_position()
+        if not self.in_position:
+            for o in await self.api.get_open_orders():
+                oid = o.get("id", o.get("orderId"))
+                if oid is not None:
+                    await self.api.cancel_order(oid)
+
+    # ---- entry ----
+    async def _place_entry(self, sig: int, atr_v: float, ref_px: float) -> None:
+        sl_pts = max(CONFIG["sl_atr_mult"] * atr_v, TICK)
+        tp_pts = max(CONFIG["tp_atr_mult"] * atr_v, TICK)
+        sl_ticks = max(1, round(sl_pts / TICK))
+        tp_ticks = max(1, round(tp_pts / TICK))
+        qty = CONFIG["contracts"]
+        side = 0 if sig == 1 else 1
+        risk = qty * sl_pts * self._pv
+        reward = qty * tp_pts * self._pv
+        sl_px = ref_px - sig * sl_pts
+        tp_px = ref_px + sig * tp_pts
+
+        log.info("🚀 ENTRY %-5s x%d | ref %.2f | SL %.2f (%dt, -$%.0f)  TP %.2f (%dt, +$%.0f)",
+                 "LONG" if sig == 1 else "SHORT", qty, ref_px,
+                 sl_px, sl_ticks, risk, tp_px, tp_ticks, reward)
+        if risk > CONFIG["circuit_breaker"] * 2:
+            log.info("   ↳ this single trade risks $%.0f against a $%.0f breaker — one loss "
+                     "ends the day. Intended; priced into the 42.6%%.",
+                     risk, CONFIG["circuit_breaker"])
+
+        self._balance_at_entry = self.api.balance
+        self._save_state()
+        oid = await self.api.place_bracket_order(side, qty, sl_ticks, tp_ticks)
+        if oid is None:
+            log.error("❌ entry failed — staying flat")
+            self._balance_at_entry = None
+            self._save_state()
+            return
+        await asyncio.sleep(2)
+        await self._sync_position()
+        if not self.in_position:
+            log.warning("⚠  order placed but no position visible — check the platform")
+            return
+        await self._log_fill(sig, ref_px)
+
+    async def _log_fill(self, sig: int, ref_px: float) -> None:
+        """Deviation of the actual fill from the SIGNAL BAR'S CLOSE.
+
+        That reference is deliberate. The backtest fills at the next bar's open,
+        which has not been published yet at the moment the order goes out, so it
+        cannot be compared against directly. Measuring from the close captures
+        the close-to-open gap AND the true slippage together — which is the whole
+        cost of acting on the signal, and the number the 41.0%-at-one-tick column
+        should be judged against.
+
+        Judge on |avg|: the sign is only which way price drifted in the seconds
+        to order arrival, so signed fills cancel out and flatter you."""
+        fill = None
+        for p in await self.api.get_open_positions():
+            pcid = p.get("contractId")
+            if pcid is not None and pcid != CONFIG["contract_id"]:
+                continue
+            for k in ("averagePrice", "avgPrice", "price"):
+                if p.get(k) is not None:
+                    fill = float(p[k])
+                    break
+            break
+        if fill is None:
+            return
+        dev_ticks = (fill - ref_px) * sig / TICK          # + = paid up, adverse
+        self._slip_sum += dev_ticks
+        self._slip_abs_sum += abs(dev_ticks)
+        self._slip_n += 1
+        log.info("📐 FILL %.2f vs ref %.2f | %+.1ft ($%+.0f) | session |avg| %.2ft over %d",
+                 fill, ref_px, dev_ticks, -dev_ticks * CONFIG["tick_value"] * CONFIG["contracts"],
+                 self._slip_abs_sum / self._slip_n, self._slip_n)
+        if self._slip_n >= 5 and self._slip_abs_sum / self._slip_n > CONFIG["slip_warn_ticks"]:
+            log.warning("⚠  |avg| slippage %.2ft exceeds %.1ft. The headline assumed ZERO and "
+                        "was still only 41.0%% at ONE tick — measure before trusting it.",
+                        self._slip_abs_sum / self._slip_n, CONFIG["slip_warn_ticks"])
+
+    # ---- dry-run virtual book ----
+    def _dry_step(self, bar: Bar2m, sig: int, atr_v: float) -> None:
+        # 1) resolve an open virtual position on this bar, stop BEFORE target and
+        #    gap-throughs filled at the open — matching src/engine.mjs ordering.
+        if self._v_pos != 0:
+            o, h, l = bar.open, bar.high, bar.low
+            px = reason = None
+            if self._v_pos == 1:
+                if o <= self._v_sl:
+                    px, reason = o, "SL(gap)"
+                elif l <= self._v_sl:
+                    px, reason = self._v_sl, "SL"
+                elif h >= self._v_tp:
+                    px, reason = self._v_tp, "TP"
+            else:
+                if o >= self._v_sl:
+                    px, reason = o, "SL(gap)"
+                elif h >= self._v_sl:
+                    px, reason = self._v_sl, "SL"
+                elif l <= self._v_tp:
+                    px, reason = self._v_tp, "TP"
+            if px is not None:
+                self._dry_exit(px, reason)
+        # 2) flatten outranks the bracket
+        if self._v_pos != 0 and self._in_flat_window(bar.ct_min):
+            self._dry_exit(bar.open, "FLAT")
+
+        blocked, why = self._entry_blocked()
+        log.info("%s", DIV)
+        log.info("[2m %s CT] O=%.2f H=%.2f L=%.2f C=%.2f | ATR=%.2f | sig=%+d | %s | dayP&L=%+.0f",
+                 f"{bar.ct_min // 60:02d}:{bar.ct_min % 60:02d}",
+                 bar.open, bar.high, bar.low, bar.close, atr_v, sig,
+                 ("VPOS " + ("▲" if self._v_pos == 1 else "▼")) if self._v_pos else "flat",
+                 self._v_day_pnl)
+
+        # 3) flip
+        if self._v_pos != 0 and CONFIG["flip_on_opposite"] and sig != 0 and sig != self._v_pos:
+            self._dry_exit(bar.close, "FLIP")
+        if self._v_pos != 0 or sig == 0 or atr_v <= 0:
+            return
+        ok, gate = self._entry_allowed_now(bar.ct_min)
+        if not ok:
+            log.info("⏸  DRY entry suppressed: %s", gate)
+            return
+        if blocked:
+            log.info("⏸  DRY entry suppressed: %s", why)
+            return
+        # The live bot fills at the NEXT bar's open; the virtual book has no next
+        # bar yet, so it uses this close as the reference. That is a ~1 bar
+        # optimism in the dry run ONLY — the real fill is measured by _log_fill.
+        sl_pts = max(CONFIG["sl_atr_mult"] * atr_v, TICK)
+        tp_pts = max(CONFIG["tp_atr_mult"] * atr_v, TICK)
+        self._v_pos, self._v_entry = sig, bar.close
+        self._v_sl = bar.close - sig * sl_pts
+        self._v_tp = bar.close + sig * tp_pts
+        log.info("🧪 DRY ENTRY %-5s x%d @ %.2f | SL %.2f  TP %.2f | risk $%.0f / reward $%.0f",
+                 "LONG" if sig == 1 else "SHORT", CONFIG["contracts"], bar.close,
+                 self._v_sl, self._v_tp,
+                 CONFIG["contracts"] * sl_pts * self._pv,
+                 CONFIG["contracts"] * tp_pts * self._pv)
+
+    def _dry_exit(self, px: float, reason: str) -> None:
+        fees = 2 * CONFIG["commission_per_side"] * CONFIG["contracts"]
+        pnl = (px - self._v_entry) * self._v_pos * self._pv * CONFIG["contracts"] - fees
+        self._v_day_pnl += pnl
+        self._v_trades += 1
+        if pnl > 0:
+            self._v_wins += 1
+        log.info("🧪 DRY EXIT  %-5s @ %.2f (%s) | %+.0f | day %+.0f | %d trades, %.0f%% win",
+                 "LONG" if self._v_pos == 1 else "SHORT", px, reason, pnl, self._v_day_pnl,
+                 self._v_trades, 100.0 * self._v_wins / max(1, self._v_trades))
+        self._v_pos = 0
+
+    # ---- main cycle ----
+    async def _evaluate(self) -> bool:
+        """One decision at a 2-minute boundary. Returns False if no new completed
+        bar was available, so the caller retries.
+
+        CAUSALITY: the signal is read from the bar that JUST CLOSED and filled at
+        the open of the bar now beginning — which is right now. Nothing here ever
+        looks at a price that had not printed when the decision was made.
+        """
+        raw = await self.api.get_bars_1m(days=CONFIG["fetch_days"])
+        bars = aggregate_2m(raw)
+        need = max(CONFIG["warmup_bars_2m"], CONFIG["period"] + CONFIG["eff_period"] + 5)
+        if len(bars) < need:
+            log.info("warming up (%d/%d 2-min bars)", len(bars), need)
+            return False
+        bars = bars[-CONFIG["warmup_bars_2m"]:]
+
+        last = bars[-1]
+        if last.ts == self._last_bar_ts:
+            return False                       # no new completed bar yet — retry
+        now = datetime.now(timezone.utc)
+        age_s = now.timestamp() - (last.ts + BUCKET_MS) / 1000.0
+        if age_s > CONFIG["max_bar_age_s"]:
+            log.error("🛑 STALE FEED: newest completed bar closed %.0fs ago (> %ds). "
+                      "Not trading on this.", age_s, CONFIG["max_bar_age_s"])
+            return False
+        self._last_bar_ts = last.ts
+
+        sig, atr_arr = compute_signals(bars, CONFIG)
+        s = sig[-1]
+        atr_v = atr_arr[-1]
+
+        if s != 0 and age_s > CONFIG["max_entry_delay_s"]:
+            log.warning("⏱  STALE SIGNAL: bar closed %.0fs ago (> %ds) — entry skipped",
+                        age_s, CONFIG["max_entry_delay_s"])
+            s = 0
+
+        await self.api.refresh_balance()
+        self._roll_session_if_needed()
+
+        if CONFIG["dry_run"]:
+            self._dry_step(last, s, atr_v)
+            return True
+
+        await self._enforce_flatten()
+        await self._sync_position()
+
+        blocked, why = self._entry_blocked()
+        log.info("%s", DIV)
+        log.info("[2m %02d:%02d CT] O=%.2f H=%.2f L=%.2f C=%.2f V=%.0f | ATR=%.2f | sig=%+d "
+                 "| %s | dayP&L=%+.0f bal=%.2f",
+                 last.ct_min // 60, last.ct_min % 60,
+                 last.open, last.high, last.low, last.close, last.volume, atr_v, s,
+                 ("IN POS " + ("▲" if self._pos_dir == 1 else "▼")) if self.in_position else "flat",
+                 self._day_pnl(), self.api.balance)
+
+        # ── flip: an opposite signal reverses the position ──
+        if self.in_position:
+            # Inside the flatten window there is nothing to reverse INTO, and
+            # _enforce_flatten above has already tried to close. Reaching here
+            # means that close failed, so retry it as a close rather than
+            # logging a reversal that can never open its second leg.
+            if self._in_flat_window(self._ct_now()):
+                log.warning("⚠  still in position inside the flatten window — closing")
+                await self.api.close_position()
+                await self._sync_position()
+                return True
+            if not (CONFIG["flip_on_opposite"] and s != 0 and s != self._pos_dir):
+                return True
+            log.info("🔃 FLIP: %s signal against a %s position — closing to reverse",
+                     "LONG" if s == 1 else "SHORT", "LONG" if self._pos_dir == 1 else "SHORT")
+            await self.api.close_position()
+            for o in await self.api.get_open_orders():
+                oid = o.get("id", o.get("orderId"))
+                if oid is not None:
+                    await self.api.cancel_order(oid)
+            await asyncio.sleep(2)
+            await self.api.refresh_balance()
+            await self._sync_position()
+            if self.in_position:
+                log.warning("⚠  flip close did not complete — no reversal this bar")
+                return True
+            # Re-test the daily rules AFTER settling: the backtest evaluates the
+            # reversal with the closed trade's P&L already in the day, so a flip
+            # that crosses +$1,000 must not open the other side.
+            blocked, why = self._entry_blocked()
+
+        if s == 0 or atr_v <= 0 or not math.isfinite(atr_v):
+            return True
+        ok, gate = self._entry_allowed_now(self._ct_now())
+        if not ok:
+            log.info("⏸  entry suppressed: %s", gate)
+            return True
+        if blocked:
+            log.info("⏸  entry suppressed: %s", why)
+            return True
+        await self._place_entry(s, atr_v, last.close)
+        return True
+
+    # ---- loop ----
+    @staticmethod
+    def _secs_to_next_bar() -> float:
+        """Wake ~2s after each 2-minute boundary. Buckets are clock-aligned on
+        the epoch, so a boundary is any even minute with zero seconds."""
+        now = datetime.now(timezone.utc)
+        into = (now.minute % CONFIG["timeframe_min"]) * 60 + now.second + now.microsecond / 1e6
+        return max(CONFIG["timeframe_min"] * 60 - into + 2.0, 1.0)
+
+    async def _sleep_to_next_bar(self) -> None:
+        """Sleep to the next bar, but wake early enough to hit the flatten
+        deadline. A 2-minute cadence would otherwise let a position live up to
+        two minutes past 15:05, which is the one rule that must never slip."""
+        deadline = datetime.now(timezone.utc) + timedelta(seconds=self._secs_to_next_bar())
+        while True:
+            remaining = (deadline - datetime.now(timezone.utc)).total_seconds()
+            if remaining <= 0:
+                return
+            near_flatten = (not CONFIG["dry_run"] and self.in_position and
+                            CONFIG["no_entry_ct"] <= self._ct_now() < CONFIG["reopen_ct"])
+            if not near_flatten:
+                await asyncio.sleep(remaining)
+                return
+            await asyncio.sleep(min(CONFIG["flatten_poll_s"], remaining))
+            try:
+                await self._enforce_flatten()
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                log.exception("flatten check error: %s", exc)
+
+    async def _seed(self) -> None:
+        await self.api.refresh_balance()
+        self._load_state()
+        self._roll_session_if_needed()
+        if not CONFIG["dry_run"]:
+            await self._sync_position()
+        log.info("Seeded | bal=%.2f  in_position=%s  session=%s  dayP&L=%+.0f",
+                 self.api.balance, self.in_position, self._session_key, self._day_pnl())
+
+    @staticmethod
+    def _startup_checks() -> None:
+        if not CONFIG["platform_hard_profit_stop_disabled"]:
+            log.warning("⚠  PLATFORM HARD PROFIT STOP — is it OFF?")
+            log.warning("   The recommended configuration replaces a $1,500 unrealised stop "
+                        "with the +$1,000 REALISED entry block this bot enforces itself. "
+                        "Measured at one tick: hard-cap ON = 42.3%% pass but pf 0.964 and "
+                        "-$52,778; hard-cap OFF = 41.0%% pass, pf 1.047 and +$91,640.")
+            log.warning("   Turn it off in the platform, then set "
+                        "platform_hard_profit_stop_disabled=True to silence this.")
+        if CONFIG["daily_profit_block"] <= 0:
+            log.warning("⚠  daily_profit_block is OFF. It is the single largest lever in this "
+                        "configuration (26.7%% -> 41.0%% at 10 lots and one tick).")
+        risk_hint = CONFIG["contracts"] * CONFIG["sl_atr_mult"]
+        log.info("Risk: %d lots x %.1fxATR stop = %.0f x ATR points of exposure "
+                 "($%.0f per ATR point). One loss trips the $%.0f breaker.",
+                 CONFIG["contracts"], CONFIG["sl_atr_mult"], risk_hint,
+                 risk_hint * CONFIG["tick_value"] / CONFIG["tick_size"],
+                 CONFIG["circuit_breaker"])
+
+    async def run(self) -> None:
+        log.info("=" * 60)
+        log.info("MNQ DONCHIAN + EFFICIENCY-GATE BOT | contract=%s live=%s dry=%s",
+                 CONFIG["contract_id"], CONFIG["live_account"], CONFIG["dry_run"])
+        log.info("signal: Donchian-%d break (excl. current bar), ADX(%d)>=%d, "
+                 "efficiency(%d)>%.2f, %d-min bars",
+                 CONFIG["period"], CONFIG["adx_period"], CONFIG["adx_min"],
+                 CONFIG["eff_period"], CONFIG["eff_min"], CONFIG["timeframe_min"])
+        log.info("session CT: signals %02d:%02d-%02d:%02d | last entry %02d:%02d | flatten %02d:%02d",
+                 CONFIG["signal_start_ct"] // 60, CONFIG["signal_start_ct"] % 60,
+                 CONFIG["signal_end_ct"] // 60, CONFIG["signal_end_ct"] % 60,
+                 CONFIG["no_entry_ct"] // 60, CONFIG["no_entry_ct"] % 60,
+                 CONFIG["flatten_ct"] // 60, CONFIG["flatten_ct"] % 60)
+        log.info("exec: %d contracts, SL %.1fxATR / TP %.1fxATR, flips %s",
+                 CONFIG["contracts"], CONFIG["sl_atr_mult"], CONFIG["tp_atr_mult"],
+                 "ON" if CONFIG["flip_on_opposite"] else "OFF")
+        log.info("daily (ENTRY BLOCKS on realised P&L, never closes): profit +%.0f / breaker -%.0f "
+                 "| reset %02d:00 ET", CONFIG["daily_profit_block"], CONFIG["circuit_breaker"],
+                 CONFIG["reset_hour_et"])
+        self._startup_checks()
+        log.info("=" * 60)
+        await self._seed()
+
+        first = True
+        while True:
+            if not first:
+                await self._sleep_to_next_bar()
+            first = False
+            try:
+                await self._enforce_flatten()
+            except Exception as exc:
+                log.exception("flatten check error: %s", exc)
+            # Retry until the just-closed bar is available (the feed can lag a
+            # few seconds after the boundary).
+            for _ in range(15):
+                try:
+                    if await self._evaluate():
+                        break
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    log.exception("evaluate error: %s", exc)
+                await asyncio.sleep(2)
+
+
+# ─────────────────────────────────────────────────────────────
+#  MAIN (reconnect loop)
+# ─────────────────────────────────────────────────────────────
+async def main() -> None:
+    if not os.environ.get("PROJECT_X_API_KEY") or not os.environ.get("PROJECT_X_USERNAME"):
+        raise EnvironmentError("Set PROJECT_X_API_KEY and PROJECT_X_USERNAME")
+    attempt = 0
+    while True:
+        attempt += 1
+        if attempt > 1:
+            log.info("🔄 reconnect #%d in 30s ...", attempt)
+            await asyncio.sleep(30)
+        api = TopstepXClient()
+        bot = DonchianBot(api)
+        try:
+            await api.connect()
+            await bot.run()
+            break
+        except asyncio.CancelledError:
+            log.info("Cancelled.")
+            raise
+        except Exception as exc:
+            log.exception("fatal: %s", exc)
+
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        log.info("Stopped by user.")

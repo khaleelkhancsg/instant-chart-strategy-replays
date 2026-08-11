@@ -11,3 +11,12 @@ node_modules/
 # OS noise
 Thumbs.db
 .DS_Store
+
+# Live bot: credentials, session logs and runtime state
+bot/.env
+bot/logs/
+bot/logs_test/
+bot/*_state.json
+*_state.json
+__pycache__/
+*.pyc
