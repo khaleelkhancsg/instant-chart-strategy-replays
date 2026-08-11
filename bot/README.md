@@ -34,9 +34,19 @@ Then edit `CONFIG` at the top of `mnq_donchian_bot.py`:
 
 **A hard -$1,000 stop on unrealised daily P&L is assumed to be in force.** The
 bot does not enforce it — the platform does, and it will close positions out from
-under the bot. It costs about 6 points of pass rate, because capping the loss in
-*dollars* silently tightens the 5×ATR bracket the book depends on. Everything
-below is measured with it on.
+under the bot. Everything below is measured with it on.
+
+It is expensive. Same config, only the cap toggled:
+
+| hard stop | high-vol | 2026 | all windows | pf | net |
+|---|---|---|---|---|---|
+| **−$1,000 ON** | **41.3%** | 38.2% | 30.4% | 1.077 | $90,247 |
+| OFF | 50.6% | 41.2% | 35.5% | 1.033 | $53,297 |
+
+**9.3 points** in the high-volatility regime and 5.1 across all history — it costs
+more in volatile markets because that is where it binds hardest. It does buy
+something back: profit factor 1.033 → 1.077 and net $53,297 → $90,247, because it
+removes the worst tail. If it is ever negotiable, turning it off is worth ~9pp.
 
 **Turn off the platform's unrealised *profit* stop.** That is a different setting
 and it is not free either: a $1,000 hard profit stop takes the book from pf 1.020

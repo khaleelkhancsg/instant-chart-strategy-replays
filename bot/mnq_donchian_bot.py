@@ -10,9 +10,14 @@ configuration found in that project. Full derivation and rationale:
 
 CONFIGURED FOR THE CURRENT REGIME, WITH A PLATFORM HARD STOP IN FORCE.
 The platform enforces a hard -$1,000 stop on UNREALISED daily P&L. That is
-treated as non-negotiable, and it is not free: it costs about 6 points of pass
-rate, because it caps the stop in DOLLARS and so silently tightens the bracket
-the whole book depends on. Everything below is measured WITH it on.
+treated as non-negotiable, and it is expensive: measured on the same config with
+only the cap toggled, it costs 9.3 points in the high-volatility regime
+(50.6% -> 41.3%) and 5.1 across all history (35.5% -> 30.4%). It caps the stop in
+DOLLARS and so silently tightens the bracket the whole book depends on, and it
+costs MORE in the volatile regime because that is where it binds hardest.
+It does pay for itself in one respect: profit factor 1.033 -> 1.077 and net
+$53,297 -> $90,247, because it removes the worst tail. Everything below is
+measured WITH it on.
 
 MEASURED (8 contracts, 5xATR/1.75xATR, 1 tick of slippage, hard -$1000 cap,
 breaker -$500, profit block $750):
