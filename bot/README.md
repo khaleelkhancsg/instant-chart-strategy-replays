@@ -32,18 +32,41 @@ Then edit `CONFIG` at the top of `mnq_donchian_bot.py`:
 
 ## Before you arm it
 
-**Turn off the platform's $1,500 unrealised profit stop.** That hard cap and the
-`+$1,000` soft block this bot enforces are different mechanisms and want opposite
-values. Measured at one tick of slippage:
+**A hard -$1,000 stop on unrealised daily P&L is assumed to be in force.** The
+bot does not enforce it — the platform does, and it will close positions out from
+under the bot. It costs about 6 points of pass rate, because capping the loss in
+*dollars* silently tightens the 5×ATR bracket the book depends on. Everything
+below is measured with it on.
 
-| | pass | profit factor | net |
+**Turn off the platform's unrealised *profit* stop.** That is a different setting
+and it is not free either: a $1,000 hard profit stop takes the book from pf 1.020
+to 0.851 and from +$38k to −$215k. The bot warns at startup until you set
+`platform_hard_profit_stop_disabled=True`.
+
+| | pass | pf | net |
 |---|---|---|---|
-| hard $1500 + soft $1000, 9 lots | 42.3% | 0.964 | −$52,778 |
-| **hard off + soft $1000, 10 lots** | **41.0%** | **1.047** | **+$91,640** |
+| **8 lots, high-volatility windows** | **43.4%** | 1.055 | +$62,024 |
+| 8 lots, later half of those (out-of-sample) | 41.5% | | |
+| 8 lots, all 2,598 windows 2019–2026 | 31.9% | | |
+| 10 lots, all windows, same rules and cap | 29.9% | 1.044 | |
 
-1.3pp of pass rate for the difference between making $91,640 and losing $52,778.
-The bot warns at startup until you set `platform_hard_profit_stop_disabled=True`,
-which is a note to yourself, not a control — it changes nothing in the platform.
+### Why 8 contracts
+
+The all-history sweep picks 10, but it averages 2019 (median 2-min ATR 4.8) with
+2026 (23.7) — not a market anyone trades. Conditioning on the current
+high-volatility regime and validating on the **later half** of it, 8 lots scores
+41.5% against 10 lots' 35.0%, and wins head-to-head on all history too.
+
+Going smaller does **not** keep helping: 4 lots scores 34.5% and 2 lots 10.9%,
+because throughput collapses against a fixed $3,000 target on a deadline. 8 is a
+measured optimum, not a compromise.
+
+### Do not retune the geometry for the cap
+
+Tightening 5×1.5 to 3.5/2.5 scores better on average (44.8% vs 43.4%) and is
+fitted — it splits 53.9% early / 35.8% late. The shipped 5/1.5 splits 45.3% /
+41.5%, the most stable pair in the grid. The average was the trap; the split is
+the evidence.
 
 ## Verifying the port
 
@@ -67,78 +90,71 @@ path** — that is what the launcher does automatically.
 
 2-minute clock-aligned bars. Donchian-30 breakout (channel excludes the current
 bar), ADX(14) ≥ 25, and Kaufman efficiency(20) > 0.5, taken only between 08:30
-and 15:00 CT. 10 contracts, 5×ATR stop and 1.5×ATR target — the inverted
+and 15:00 CT. **8 contracts**, 5×ATR stop and 1.5×ATR target — the inverted
 geometry is deliberate and is what makes trades resolve before the flatten.
 Flips on an opposite signal. Flat by 15:04 CT against a firm 15:05 deadline.
 
 Two daily rules, both **entry blocks on realised P&L that never close a
-position**: +$1,000 profit block (the single largest lever in the configuration,
-worth 26.7% → 41.0%) and a −$150 circuit breaker. Day rolls at 17:00 ET.
+position**: a +$750 profit block and a −$750 circuit breaker. Both were retuned
+for the capped regime — with the platform bounding the day at −$1,000 anyway, the
+old −$150 breaker just ended days early. Worth +1.6pp. Day rolls at 17:00 ET.
 
 ## A high win rate is not evidence it is working
 
 A 5×ATR stop against a 1.5×ATR target wins **5/6.5 = 76.9% on a pure coin flip**,
 and resolves in a·b/σ² = 38 minutes. Those are exact results for a driftless
-random walk. The backtested book is 75.8% and 43 minutes — so the two statistics
+random walk. The backtested book is 72.5% and 43 minutes — so the two statistics
 you will watch every session are what the *bracket* dictates, and carry no
 information about edge.
 
-A losing week at a 76% win rate is the expected shape of this book, not a
+A losing week at a 72% win rate is the expected shape of this book, not a
 malfunction. **Judge it on dollars per day, never on win rate.**
 
 A 10,000-window Monte Carlo ([`../research/monte_carlo.mjs`](../research/monte_carlo.mjs))
 that simulates prices instead of replaying the book puts the **zero-edge pass rate
-at 30.1%**. The rules and geometry deliver 30 of the backtested 42.6 points on
-their own; the whole measured edge is worth roughly 7–12 more. If that edge is
-even partly overfit, this lands nearer 30% than 42.6%.
+at 30.1%** for the uncapped 10-lot configuration. Most of a headline pass rate is
+rules and geometry, not edge. That null has not been re-run for this
+configuration, but the principle carries: if the edge is even partly overfit,
+expect something much nearer the null than the headline.
 
-## Sizing: tested and rejected
+## Sizing: how this got to 8, so it is not re-litigated
 
-The same Monte Carlo found a sharp cliff wherever one stop-out exceeds the $2,000
-trailing drawdown — pass rate climbs to 43.5% at ATR 19 then falls to 34.5% at
-ATR 20, with the identical cliff on the contracts lever at the same dollar
-threshold. That implies scaling size down in volatile regimes.
+The Monte Carlo found a cliff wherever one stop-out exceeds the $2,000 trailing
+drawdown, on both the ATR and the contracts lever. Tested on the real book as
+`sizingMode: 'risk'` it **lost** — 38.6% at $1,900 of risk against 41.0% flat —
+because the model has no jumps and real stops get gapped *through* rather than
+touched. **Dollar-risk sizing is dead.**
 
-Tested against the real 5-year book as `sizingMode: 'risk'` capped at 10 lots, it
-**lost**: 38.6% at $1,900 of risk against 41.0% for flat 10 lots (1 tick).
-
-| sizing | pass (worst of IS/OOS) | pf | net |
-|---|---|---|---|
-| **flat 10 lots (shipped)** | **41.0%** | 1.020 | $38,220 |
-| risk $1,900 (MC-implied) | 38.6% | 1.025 | $38,462 |
-| risk $2,500 | 40.4% | 1.029 | $50,387 |
-| risk $400 | 1.6% | 1.006 | $2,660 |
-
-The model overstates the effect because it has no jumps: real losses reach
-−$10,995, far beyond 5×ATR at any plausible ATR, so real stops get gapped
-*through* rather than touched. Flat 10 lots stands.
+What was not dead was the underlying point, once the regime was separated from
+the 8-year average: a *fixed* smaller size chosen for current volatility does
+win. That is the difference between sizing every trade to a risk budget (dead)
+and picking one size that suits the regime (8 lots).
 
 ## Things worth knowing before running it
 
-- **Commission is 47% of gross profit.** At double commission the book is
-  unprofitable. Check your real fills first.
-- **One loss ends the day.** A 5×ATR stop on 10 lots risks $1,000–$3,000 against
-  a $150 breaker. Intended, and priced into the 42.6%.
-- **One trade can end the account.** Across all 5,342 trades the losers run
-  median $1,295, p90 $2,763, p99 $5,194, worst $10,995:
-
-  | single-trade loss | frequency |
-  |---|---|
-  | > $1,000 | 1 in 6 trades |
-  | > $2,000 — *the whole trailing drawdown* | 1 in 18 trades |
-  | > $3,000 | 1 in 50 trades |
-
-  73.7% of 30-day windows contain at least one loss larger than the $2,000
-  trailing drawdown, and it is fatal whenever it lands before enough cushion has
-  been built. **Neither daily rule can prevent this** — both are entry blocks and
-  neither can touch a position already running. That is the cost of the size that
-  makes a $3,000 target reachable on a deadline, and it is the main reason the
-  pass rate is 42.6% rather than higher.
-- **The headline assumed zero slippage.** One tick per side is ≈$150 per combine
-  and ≈2.5pp. The bot logs realised entry slippage every fill and warns past 4
-  ticks of mean absolute deviation — judge on `|avg|`, not the signed number.
-- **42.6% is not 70%.** Under a no-overnight rule nothing in ~2.2 billion window
-  simulations reached 70%. The flatten, not the strategy, is the constraint.
+- **Commission is a large share of gross profit.** Check your real fills first;
+  at double commission the book does not survive.
+- **One loss ends the day.** A capped loss is ~$1,000 against a −$750 breaker,
+  so one loser closes the session. Intended, and priced in.
+- **A trade can still end the account, cap or no cap.** 50 trades in the book
+  lose more than the entire $2,000 trailing drawdown, worst −$8,782, because the
+  platform stop only fires on a price it is shown and a gap jumps it. The cap
+  cuts these from 297 to 50 — a large improvement, not immunity. Neither daily
+  rule helps: both are entry blocks and neither can touch a trade already
+  running.
+- **Slippage.** The bot logs realised entry slippage every fill and warns past 3
+  ticks of mean absolute deviation — judge on `|avg|`, not the signed number. The
+  Monte Carlo puts 3 ticks per side *at* the zero-edge null, and the metric runs
+  about a tick hot because it measures against the signal bar's close and so
+  includes crossing the spread.
+- **Quiet regimes are where this book dies, not volatile ones.** 2019 scores 8%
+  at a median ATR of 4.8. This configuration is tuned for ATR around 20–24; if
+  volatility collapses back toward 2019–2021 levels, re-run
+  [`../research/regime_sizing.mjs`](../research/regime_sizing.mjs) before starting
+  an evaluation, because the right size moves with the regime.
+- **40%+ needs the current regime.** Across all 2,598 windows this scores 31.9%.
+  The 43.4% is high-volatility windows specifically. Do not quote the two
+  interchangeably.
 
 ## Differences from the backtest, and why
 
