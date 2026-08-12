@@ -11,6 +11,14 @@
 // selected on high-volatility EARLY windows and reported on LATE, so a re-tuned
 // MACD cannot win on a number the Donchian book was never allowed to quote.
 //
+// ⚠ READ THE RECENT-REGIME SECTION BEFORE QUOTING ANYTHING FROM THIS FILE.
+// The full-history verdict below ("pf 0.874, loses money") is driven by 2019-2024.
+// Mean daily P&L by year at 2 lots inverted: 2019 -$104, 2020 -$123, 2021 -$107,
+// 2022 -$105, 2023 -$77, 2024 -$102, 2025 +$10, 2026 -$13, and the last 40
+// sessions in the data run +$187/day. The book stopped losing around 2025.
+// Quoting the 7-year aggregate for the market being traded now is exactly the
+// error this project keeps having to correct elsewhere.
+//
 // Background worth carrying: this strategy's ~85% headline in the other repo came
 // from a non-causal evaluator that re-entered on the same bar as an exit. 91% of
 // its trades were such re-entries, contributing $357,338 while every other trade
