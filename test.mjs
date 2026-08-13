@@ -509,6 +509,36 @@ t("no further entries once the day-loss stop fires, and it resets next session",
   eq(day1.length, 1, "and the next session trades again:");
 });
 
+t("dayLossStopMode 'exact' caps the day AT the threshold even through a gap", () => {
+  // Bar 3 opens at 40, far below the -$30 cap price of 85. Under 'price' the fill
+  // is the open and the day loses far more than the cap; under 'exact' a
+  // continuously-tracked platform liquidation lands the day on exactly -$30.
+  const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [100, 100, 100, 100], [40, 41, 39, 40]]);
+  const sig = new Int8Array(4); sig[1] = 1;
+  const cfg = { ...NOFEE, contracts: 1, slAtrMult: 5, tpAtrMult: 50, dayLossStopUsd: 30 };
+  const priced = runBrackets(b, sig, flatAtr(4, 10), cfg).trades[0];
+  const exact = runBrackets(b, sig, flatAtr(4, 10), { ...cfg, dayLossStopMode: "exact" }).trades[0];
+  eq(priced.reason, EXIT.DAYLOSS, "price mode still labels it a day-loss exit:");
+  eq(priced.pnl < -30, true, `price mode gaps through (${priced.pnl.toFixed(2)} vs -30):`);
+  eq(exact.reason, EXIT.DAYLOSS, "exact mode labels it a day-loss exit:");
+  close(exact.pnl, -30, 1e-9, "exact mode lands the day ON the cap:");
+});
+
+t("dayLossStopMode 'exact' still nets off profit already banked that session", () => {
+  const b = bars([
+    [100, 101, 99, 100], [100, 101, 99, 100], [100, 130, 99, 130],
+    [120, 121, 119, 120], [120, 121, 119, 120], [40, 41, 39, 40],
+  ]);
+  const sig = new Int8Array(6); sig[1] = 1; sig[3] = 1;
+  const { trades } = runBrackets(b, sig, flatAtr(6, 10), {
+    ...NOFEE, contracts: 1, slAtrMult: 5, tpAtrMult: 1, dayLossStopUsd: 30, dayLossStopMode: "exact",
+  });
+  eq(trades.length, 2, "two trades:");
+  close(trades[0].pnl, 20, 1e-9, "first banks +$20:");
+  close(trades[1].pnl, -50, 1e-9, "second loses the banked $20 plus the $30 cap:");
+  close(trades[0].pnl + trades[1].pnl, -30, 1e-9, "day lands exactly on the cap:");
+});
+
 t("the day-loss stop is OFF by default and changes nothing at 0", () => {
   const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [100, 100, 100, 100], [100, 101, 40, 40]]);
   const sig = new Int8Array(4); sig[1] = 1;

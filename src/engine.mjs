@@ -108,6 +108,21 @@ export const DEFAULT_EXEC = {
   // At 10 lots a $1000 cap is 50 points, i.e. 3.7xATR at the median ATR of 13.56
   // rather than the configured 5xATR — a different strategy, not a safety net.
   dayLossStopUsd: 0,
+  // How the platform's day-loss stop behaves when price moves through it.
+  //
+  //   'price' — it is a resting stop ORDER at the implied price. A bar that
+  //             opens beyond it fills at the open, so the day can lose MORE than
+  //             the cap. This is how a bar-based backtest naturally models it.
+  //   'exact' — the platform tracks unrealised P&L continuously and liquidates
+  //             at the threshold, so the day's loss is EXACTLY the cap and
+  //             trading stops. Correct for a fast platform-side auto-liquidation,
+  //             which is not a resting order and does not queue behind a gap.
+  //
+  // The distinction is not cosmetic. Under 'price' the worst day is -$2,116 at
+  // every cap from $1000 to $2000, because gap-throughs dominate the tail and
+  // the cap never binds it — which makes a tight cap look like all cost and no
+  // protection. Under 'exact' the cap actually bounds the day.
+  dayLossStopMode: "price",   // 'price' | 'exact'
 };
 
 export function resolveExec(cfg = {}) {
@@ -148,14 +163,24 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
   const dayCap = x.dayProfitStopUsd || 0;
   const dayLoss = x.dayLossStopUsd || 0;
   const dayTracked = dayCap > 0 || dayLoss > 0;
+  const exactLoss = x.dayLossStopMode === "exact";
   let curTday = -2147483648, dayRealised = 0, dayCapHit = false, dayLossHit = false;
 
-  function close_(rawExit, reason, i) {
+  function close_(rawExit, reason, i, exactNet) {
     // Slippage always works against the position on both legs.
-    const exitPrice = pos === 1 ? rawExit - slip : rawExit + slip;
     const entryFill = pos === 1 ? ep + slip : ep - slip;
-    const gross = (exitPrice - entryFill) * pos * pv * qCur;
     const fees = roundTripCost(x, qCur);
+    // `exactNet` pins the trade's NET P&L, used by the 'exact' day-loss mode
+    // where a platform liquidation lands on the threshold rather than on a
+    // price. The exit price is back-solved so the trade record stays coherent.
+    let exitPrice, gross;
+    if (exactNet !== undefined) {
+      gross = exactNet + fees;
+      exitPrice = entryFill + gross / (pos * pv * qCur);
+    } else {
+      exitPrice = pos === 1 ? rawExit - slip : rawExit + slip;
+      gross = (exitPrice - entryFill) * pos * pv * qCur;
+    }
     const mfe = (pos === 1 ? hiSeen - entryFill : entryFill - loSeen) * pv * qCur;
     const mae = (pos === 1 ? loSeen - entryFill : entryFill - hiSeen) * pv * qCur;
     trades.push({
@@ -221,6 +246,10 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       // A platform loss stop is the exact mirror: the price at which
       // realised + open P&L reaches -dayLoss. Whichever stop is NEARER gets hit
       // first as price falls, so it can only ever TIGHTEN the bracket.
+      // In 'exact' mode a day-loss liquidation lands the DAY on exactly -dayLoss,
+      // so this trade's net must be whatever closes the gap from dayRealised.
+      const exactCut = (isCap) =>
+        (isCap && exactLoss) ? -dayLoss - dayRealised : undefined;
       let lossPx = 0;
       if (dayLoss > 0 && !dayLossHit) {
         lossPx = ep - pos * ((dayLoss + dayRealised) / (pv * qCur));
@@ -233,8 +262,8 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
         const isLossCap = lossPx > 0 && sl === lossPx && lossPx > rawSl;
         const tp = capPx > 0 ? Math.min(ep + tpDist, capPx) : ep + tpDist;
         const isCap = capPx > 0 && tp === capPx && capPx < ep + tpDist;
-        if (O[i] <= sl) { close_(O[i], isLossCap ? EXIT.DAYLOSS : EXIT.SL, i); exited = true; }
-        else if (L[i] <= sl) { close_(sl, isLossCap ? EXIT.DAYLOSS : EXIT.SL, i); exited = true; }
+        if (O[i] <= sl) { close_(O[i], isLossCap ? EXIT.DAYLOSS : EXIT.SL, i, exactCut(isLossCap)); exited = true; }
+        else if (L[i] <= sl) { close_(sl, isLossCap ? EXIT.DAYLOSS : EXIT.SL, i, exactCut(isLossCap)); exited = true; }
         else if (H[i] >= tp) { close_(tp, isCap ? EXIT.DAYCAP : EXIT.TP, i); exited = true; }
       } else {
         const rawSl = ep + slDist;
@@ -242,8 +271,8 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
         const isLossCap = lossPx > 0 && sl === lossPx && lossPx < rawSl;
         const tp = capPx > 0 ? Math.max(ep - tpDist, capPx) : ep - tpDist;
         const isCap = capPx > 0 && tp === capPx && capPx > ep - tpDist;
-        if (O[i] >= sl) { close_(O[i], isLossCap ? EXIT.DAYLOSS : EXIT.SL, i); exited = true; }
-        else if (H[i] >= sl) { close_(sl, isLossCap ? EXIT.DAYLOSS : EXIT.SL, i); exited = true; }
+        if (O[i] >= sl) { close_(O[i], isLossCap ? EXIT.DAYLOSS : EXIT.SL, i, exactCut(isLossCap)); exited = true; }
+        else if (H[i] >= sl) { close_(sl, isLossCap ? EXIT.DAYLOSS : EXIT.SL, i, exactCut(isLossCap)); exited = true; }
         else if (L[i] <= tp) { close_(tp, isCap ? EXIT.DAYCAP : EXIT.TP, i); exited = true; }
       }
       if (exited && !x.sameBarReentry) continue;
