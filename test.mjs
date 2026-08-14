@@ -509,6 +509,74 @@ t("no further entries once the day-loss stop fires, and it resets next session",
   eq(day1.length, 1, "and the next session trades again:");
 });
 
+t("scale-in is OFF by default and changes nothing", () => {
+  const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [100, 100, 100, 100], [100, 130, 99, 130]]);
+  const sig = new Int8Array(4); sig[1] = 1;
+  const cfg = { ...NOFEE, contracts: 8, slAtrMult: 5, tpAtrMult: 2 };
+  const a = runBrackets(b, sig, flatAtr(4, 10), cfg).trades[0];
+  const c = runBrackets(b, sig, flatAtr(4, 10), { ...cfg, scaleInFrac: 0 }).trades[0];
+  eq(a.contracts, 8, "full size:");
+  close(a.pnl, c.pnl, 1e-9, "identical P&L:");
+});
+
+t("scale-in starts at a fraction and adds on favourable movement", () => {
+  // ATR 10, trigger 0.5xATR = 5 points above the 100 entry. Bar 3 reaches 130.
+  const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [100, 100, 100, 100], [100, 130, 99, 130]]);
+  const sig = new Int8Array(4); sig[1] = 1;
+  const { trades } = runBrackets(b, sig, flatAtr(4, 10), {
+    ...NOFEE, contracts: 8, slAtrMult: 5, tpAtrMult: 2,
+    scaleInFrac: 0.5, scaleInTrigger: 0.5, scaleInWindowBars: 10,
+  });
+  eq(trades[0].contracts, 8, "ends at full size after the add:");
+  // 4 lots at 100, 4 at 105 -> average 102.5; target 2xATR = 20 above the SIGNAL
+  // entry of 100, so it exits at 120 for (120-102.5)*2*8 = $280.
+  close(trades[0].pnl, 280, 1e-6, "P&L uses the weighted average entry:");
+});
+
+t("scale-in stays small when the trigger is never reached", () => {
+  const rows = [[100, 101, 99, 100], [100, 101, 99, 100]];
+  for (let i = 0; i < 30; i++) rows.push([100, 100.5, 99.5, 100]);   // never moves
+  rows.push([100, 101, 40, 40]);                                     // then stops out
+  const b = bars(rows);
+  const sig = new Int8Array(rows.length); sig[1] = 1;
+  const { trades } = runBrackets(b, sig, flatAtr(rows.length, 10), {
+    ...NOFEE, contracts: 8, slAtrMult: 5, tpAtrMult: 2,
+    scaleInFrac: 0.5, scaleInTrigger: 0.5, scaleInWindowBars: 10,
+  });
+  eq(trades[0].contracts, 4, "never added, so the loss is taken at HALF size:");
+  close(trades[0].pnl, (50 - 100) * 2 * 4, 1e-6, "loss is half what full size would cost:");
+});
+
+t("scale-in charges slippage on BOTH tranches", () => {
+  const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [100, 100, 100, 100], [100, 130, 99, 130]]);
+  const sig = new Int8Array(4); sig[1] = 1;
+  const cfg = { ...NOFEE, contracts: 8, slAtrMult: 5, tpAtrMult: 2,
+                scaleInFrac: 0.5, scaleInTrigger: 0.5, scaleInWindowBars: 10 };
+  const clean = runBrackets(b, sig, flatAtr(4, 10), cfg).trades[0];
+  const slipped = runBrackets(b, sig, flatAtr(4, 10), { ...cfg, slippageTicks: 1 }).trades[0];
+  // 1 tick on each of two entry tranches and one exit = 3 tick-legs of 0.25 at
+  // $2/point on 8 lots, but the entry legs are on 4 lots each: 2*(0.25*2*4) plus
+  // the exit 0.25*2*8 = $4 + $4 = ... expressed as the difference in P&L.
+  const expected = (0.25 * 2 * 4) + (0.25 * 2 * 4) + (0.25 * 2 * 8);
+  close(clean.pnl - slipped.pnl, expected, 1e-6,
+        "both entry tranches and the exit each pay slippage:");
+});
+
+t("scaleInOrder 'after' refuses the add on a bar that also stops out", () => {
+  // Bar 3 spans from 40 (through the stop at 50) up to 130 (through the add at
+  // 105). 'before' adds then stops; 'after' assumes the stop printed first.
+  const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [100, 100, 100, 100], [100, 130, 40, 60]]);
+  const sig = new Int8Array(4); sig[1] = 1;
+  const cfg = { ...NOFEE, contracts: 8, slAtrMult: 5, tpAtrMult: 20,
+                scaleInFrac: 0.5, scaleInTrigger: 0.5, scaleInWindowBars: 10 };
+  const before = runBrackets(b, sig, flatAtr(4, 10), { ...cfg, scaleInOrder: "before" }).trades[0];
+  const after = runBrackets(b, sig, flatAtr(4, 10), { ...cfg, scaleInOrder: "after" }).trades[0];
+  eq(before.contracts, 8, "'before' adds then stops out at full size:");
+  eq(after.contracts, 4, "'after' stops out at half size:");
+  eq(after.pnl > before.pnl, true,
+     `pessimistic ordering loses less here (${after.pnl.toFixed(0)} vs ${before.pnl.toFixed(0)}):`);
+});
+
 t("dayLossStopMode 'exact' caps the day AT the threshold even through a gap", () => {
   // Bar 3 opens at 40, far below the -$30 cap price of 85. Under 'price' the fill
   // is the open and the day loses far more than the cap; under 'exact' a

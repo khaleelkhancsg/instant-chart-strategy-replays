@@ -123,6 +123,27 @@ export const DEFAULT_EXEC = {
   // the cap never binds it — which makes a tight cap look like all cost and no
   // protection. Under 'exact' the cap actually bounds the day.
   dayLossStopMode: "price",   // 'price' | 'exact'
+  // SCALE-IN (pyramiding). 0 = off; otherwise the FRACTION of `contracts` taken
+  // at the signal, with the remainder added only once price has moved
+  // `scaleInTrigger` x ATR in the trade's FAVOUR, within `scaleInWindowBars`.
+  //
+  // Measured, this behaves as a SOFT STOP rather than as better averaging: about
+  // 15% of trades never move a quarter-ATR the right way, they average heavily
+  // negative, and starting at half size means only half the position is exposed
+  // to them. Adding on ADVERSE moves — the intuitive "buy the dip" version — does
+  // the opposite and tests clearly worse, because a breakout that retraces is the
+  // one that failed.
+  //
+  // Both tranches pay entry slippage, so the average fill is computed from the
+  // slipped price of each, not from a mid-point. That matters: an uncosted
+  // version of this overstates the benefit.
+  scaleInFrac: 0,             // e.g. 0.5 = half now, half on follow-through
+  scaleInTrigger: 0.25,       // xATR of favourable movement required to add
+  scaleInWindowBars: 10,      // give up on adding after this many bars
+  // Resolve the add BEFORE or AFTER the bracket within the same bar. 'after' is
+  // the pessimistic reading — if a bar both triggers the add and hits the stop,
+  // assume the stop printed first and no add happened.
+  scaleInOrder: "before",     // 'before' | 'after'
 };
 
 export function resolveExec(cfg = {}) {
@@ -155,6 +176,10 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
 
   const trades = [];
   let pos = 0, ep = 0, ei = 0, slDist = 0, tpDist = 0;
+  // Scale-in state. `entryNotional` accumulates price*qty using each tranche's
+  // SLIPPED fill, so the average entry already carries its true cost.
+  const scaleFrac = x.scaleInFrac > 0 && x.scaleInFrac < 1 ? x.scaleInFrac : 0;
+  let pendQty = 0, addPx = 0, addBy = -1, entryNotional = 0;
   let hiSeen = -Infinity, loSeen = Infinity;
   let qCur = q;   // contracts for the OPEN trade (varies under 'risk' sizing)
   let lastStopMs = -Infinity, lastStopDir = 0;   // for cooldownAfterStopMins
@@ -168,7 +193,10 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
 
   function close_(rawExit, reason, i, exactNet) {
     // Slippage always works against the position on both legs.
-    const entryFill = pos === 1 ? ep + slip : ep - slip;
+    // With scale-in, the fill is the size-weighted average of the tranches, each
+    // already slipped. Without it this reduces to the single slipped entry.
+    const entryFill = entryNotional > 0 ? entryNotional / qCur
+                                        : (pos === 1 ? ep + slip : ep - slip);
     const fees = roundTripCost(x, qCur);
     // `exactNet` pins the trade's NET P&L, used by the 'exact' day-loss mode
     // where a platform liquidation lands on the threshold rather than on a
@@ -204,6 +232,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       reason,
     });
     if (reason === EXIT.SL) { lastStopMs = TS[i]; lastStopDir = pos; }
+    pendQty = 0; addBy = -1; entryNotional = 0;
     if (dayTracked) {
       dayRealised += gross - fees;
       if (dayCap > 0 && dayRealised >= dayCap) dayCapHit = true;    // done for the day
@@ -222,9 +251,22 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       curTday = bars.tday[i]; dayRealised = 0; dayCapHit = false; dayLossHit = false;
     }
 
+    // Add the pending tranche once price has moved far enough the right way.
+    // The fill is the trigger price plus slippage, and it is folded into the
+    // weighted average entry so every later calculation sees the true cost.
+    const tryAdd = (bar) => {
+      if (pendQty <= 0 || bar > addBy) return;
+      const reached = pos === 1 ? H[bar] >= addPx : L[bar] <= addPx;
+      if (!reached) return;
+      entryNotional += (pos === 1 ? addPx + slip : addPx - slip) * pendQty;
+      qCur += pendQty;
+      pendQty = 0;
+    };
+
     if (pos !== 0) {
       if (H[i] > hiSeen) hiSeen = H[i];
       if (L[i] < loSeen) loSeen = L[i];
+      if (x.scaleInOrder !== "after") tryAdd(i);
 
       // The flatten deadline outranks the bracket: the position is closed at
       // this bar's open regardless of where stop and target sit. Checking it
@@ -276,6 +318,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
         else if (L[i] <= tp) { close_(tp, isCap ? EXIT.DAYCAP : EXIT.TP, i); exited = true; }
       }
       if (exited && !x.sameBarReentry) continue;
+      if (x.scaleInOrder === "after") tryAdd(i);
       if (maxBars > 0 && i - ei >= maxBars) { close_(O[i], EXIT.TIME, i); continue; }
       if (x.flipOnOpposite && s !== 0 && s !== pos) close_(O[i], EXIT.FLIP, i); // may re-enter below
       if (pos !== 0) continue;   // still holding: no entry logic this bar
@@ -300,9 +343,18 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
           ? Math.max(slDist * x.tpRR, x.tickSize)
           : Math.max(a * x.tpAtrMult, x.tickSize);
         // Size from the stop distance known at entry — never from anything later.
-        qCur = x.sizingMode === "risk"
+        const full = x.sizingMode === "risk"
           ? Math.max(1, Math.min(Math.trunc(x.maxContracts), Math.round(x.riskDollars / (slDist * pv))))
           : q;
+        if (scaleFrac > 0 && full >= 2) {
+          qCur = Math.max(1, Math.round(full * scaleFrac));
+          pendQty = full - qCur;
+          addPx = ep + pos * Math.max(a * x.scaleInTrigger, x.tickSize);
+          addBy = i + Math.max(1, Math.trunc(x.scaleInWindowBars));
+        } else {
+          qCur = full; pendQty = 0; addBy = -1;
+        }
+        entryNotional = (pos === 1 ? ep + slip : ep - slip) * qCur;
         hiSeen = H[i]; loSeen = L[i];
       }
     }
