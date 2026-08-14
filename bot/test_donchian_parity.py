@@ -512,18 +512,29 @@ def run_live_path_tests(fx, bars):
             # distance the platform's hard dollar cap allows. Placing it beyond
             # the cap would be a stop that never fills, and would make every risk
             # figure the bot logs fiction.
+            #
+            # The cap is a DOLLAR limit, so its distance in POINTS depends on how
+            # many contracts are actually on. Under scale-in the first tranche is
+            # small and the cap therefore sits proportionally further away — at 2
+            # lots it is 250 points, not the 62.5 that 8 lots implies. Computing
+            # this against the configured total would place a stop four times
+            # tighter than the position warrants; that is the bug this asserts
+            # against, so `size` (what was really sent) is the only correct
+            # denominator here.
             atr_at_signal = fx["indicators"]["atr"][sig_idx]
             designed = bot.CONFIG["sl_atr_mult"] * atr_at_signal
             cap = bot.CONFIG["platform_hard_loss_stop"]
-            cap_pts = cap / (2.0 * bot.CONFIG["contracts"])   # $/point = tick_value/tick_size
+            cap_pts = cap / (2.0 * size)      # $/point = tick_value/tick_size
             want_sl = min(designed, cap_pts)
-            check("...stop is the nearer of 5xATR and the platform cap",
+            check("...stop is the nearer of 5xATR and the cap for the size sent",
                   abs(sl_t * 0.25 - want_sl) < 0.3,
                   f"{sl_t * 0.25:.2f} pts vs expected {want_sl:.2f} "
-                  f"(designed {designed:.2f}, cap {cap_pts:.2f})")
-            check("...and never risks more than the cap allows",
-                  sl_t * 0.25 * 2.0 * bot.CONFIG["contracts"] <= cap + 1,
-                  f"${sl_t * 0.25 * 2.0 * bot.CONFIG['contracts']:.0f} > ${cap:.0f}")
+                  f"(designed {designed:.2f}, cap at {size} lots {cap_pts:.2f})")
+            # The invariant that actually protects the account: whatever size went
+            # out, the dollars behind its stop stay inside the cap.
+            risk = sl_t * 0.25 * 2.0 * size
+            check("...and the tranche sent never risks more than the cap",
+                  risk <= cap + 1, f"${risk:.0f} > ${cap:.0f} on {size} lots")
             if designed <= cap_pts:
                 ratio = sl_t / tp_t
                 want = bot.CONFIG["sl_atr_mult"] / bot.CONFIG["tp_atr_mult"]
@@ -585,6 +596,49 @@ def run_live_path_tests(fx, bars):
 
     finally:
         bot.CONFIG.update(saved)
+
+    # ── the cap scales with size, not with the config ──
+    # The platform liquidates at a fixed DOLLAR loss, so halving the contracts
+    # DOUBLES how far away that limit sits in points. The bot originally computed
+    # the cap against CONFIG["contracts"] regardless of what it was about to
+    # send, which under scale-in put a 62.5-point stop on a 2-lot tranche that
+    # should have carried 250 — four times too tight, stopping the small tranche
+    # out of trades the backtest holds all the way to target. Guard it directly.
+    capbot, _capapi = make_bot(bars, sig_ct)
+    cap_usd = bot.CONFIG["platform_hard_loss_stop"]
+    if cap_usd > 0:
+        tiny_atr = 0.2                     # small enough that the cap never binds
+        big_atr = 200.0                    # large enough that it always binds
+        for lots in (1, 2, 4, 8):
+            _, _, _, cap_pts = capbot._bracket_points(big_atr, lots)
+            check(f"cap sits at the right distance for {lots} lots",
+                  abs(cap_pts - cap_usd / (2.0 * lots)) < 1e-6,
+                  f"{cap_pts:.2f} vs {cap_usd / (2.0 * lots):.2f}")
+            sl_pts, _, capped, _ = capbot._bracket_points(big_atr, lots)
+            check(f"...and {lots} lots behind it risk exactly the cap",
+                  capped and abs(sl_pts * 2.0 * lots - cap_usd) < 1.0,
+                  f"${sl_pts * 2.0 * lots:.0f} vs ${cap_usd:.0f}")
+        # A small tranche must NOT inherit the full-size cap.
+        first_lots = (bot.CONFIG["scale_in_first"] if bot.CONFIG.get("scale_in")
+                      else bot.CONFIG["contracts"])
+        if first_lots < bot.CONFIG["contracts"]:
+            small, _, _, _ = capbot._bracket_points(big_atr, first_lots)
+            full, _, _, _ = capbot._bracket_points(big_atr, bot.CONFIG["contracts"])
+            check("first tranche gets a WIDER stop than the full size would",
+                  small > full * 1.5,
+                  f"{small:.1f} pts at {first_lots} lots vs {full:.1f} at "
+                  f"{bot.CONFIG['contracts']}")
+        # Below the cap the designed geometry survives untouched at any size.
+        a, _, capped_small, _ = capbot._bracket_points(tiny_atr, 1)
+        check("a stop inside the cap is left at its designed distance",
+              (not capped_small) and abs(a - bot.CONFIG["sl_atr_mult"] * tiny_atr) < 1e-9,
+              f"{a:.4f}, capped={capped_small}")
+        # Default argument still means the configured total, so nothing that calls
+        # it without a size changes behaviour.
+        d, _, _, dcap = capbot._bracket_points(big_atr)
+        check("omitting the size falls back to the configured total",
+              abs(dcap - cap_usd / (2.0 * bot.CONFIG["contracts"])) < 1e-6,
+              f"{dcap:.2f}")
 
     # ── scale-in ──
     # Needs the same overrides section 9 uses: live path, staleness guards off.

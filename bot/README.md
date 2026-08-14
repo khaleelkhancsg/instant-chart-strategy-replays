@@ -7,7 +7,7 @@ The strategy itself, and how it was arrived at, is in
 | | |
 |---|---|
 | `mnq_donchian_bot.py` | the bot |
-| `test_donchian_parity.py` | 89 checks that the port matches the JS engine |
+| `test_donchian_parity.py` | 101 checks that the port matches the JS engine |
 | `fixture_donchian.json` | golden output from that engine (25 days, 39 trades) |
 | `run_donchian_bot.bat` | launcher — runs the parity checks first, refuses to start if they fail |
 
@@ -99,6 +99,31 @@ after 10 bars.
 | all 8 at the signal | 30.8% | 37.9% | 40.0% | 1.092 |
 | **2 + 6 @ 0.15×ATR** | **37.7%** | **45.7%** | **49.1%** | **1.143** |
 
+Both rows are measured with the **full rule set on** — $3,000 target, $2,000
+trailing drawdown, the **50% consistency rule**, and the **−$1,000 hard cap**.
+Not hypothetical: 14% of base trades and 10% of scale-in trades exit via the cap.
+Consistency is barely binding here (30.8% → 31.1% with it off) because the $750
+profit block already keeps days small.
+
+**The gain is a property of the capped account, not of the strategy.** Toggling
+only the cap:
+
+| | cap −$1,000 | cap OFF |
+|---|---|---|
+| all 8 at the signal | 30.8% / 37.9% | **35.5% / 46.9%** |
+| 2 + 6 @ 0.15×ATR | **37.7% / 45.7%** | 34.1% / 42.1% |
+
+Uncapped, scale-in is *worse* — −1.4pp all-history and −4.8pp on 12 months. The
+reason is that the cap is a dollar limit, so its distance in points scales with
+size: at 2 lots it sits 250 points away and the designed 5×ATR stop governs; at 8
+it pulls in to 62.5. Starting small therefore buys a genuinely wide stop while
+little is at risk, then accepts a tight one once the trade has proven itself.
+Remove the cap and that asymmetry disappears, leaving only the confirmed trades
+carrying a full-size 5×ATR stop — far too much against a $2,000 drawdown.
+
+**So do not carry this to an uncapped account.** If the cap is ever lifted, plain
+8-at-the-signal is the better book and this section stops applying.
+
 It is **not** better averaging — the add fills *worse* than the signal. It's a
 soft stop: ~15% of trades never move even a quarter-ATR the right way, and those
 average **−$278** each, so only a quarter of the position ever meets them. Adding
@@ -120,12 +145,19 @@ instruction to check the platform; that message means go and look.
 Both tranches carry their own bracket, with the add's tick offsets chosen so its
 stop and target land on the *same absolute prices* as the first tranche's.
 
+**The first tranche's stop is sized against the first tranche.** The cap is a
+dollar limit, so 2 lots reach it 250 points out, not the 62.5 that 8 lots imply.
+Sizing that bracket against the configured total — which the bot did until this
+was caught — puts a stop 2.2× too tight on the one tranche meant to ride widest,
+and it would stop out of trades the backtest holds to target. Eleven checks pin
+the cap distance at 1, 2, 4 and 8 lots; reintroducing the bug fails nine of them.
+
 ## Verifying the port
 
 
 ```bash
 node ../research/export_bot_fixture.mjs   # regenerate the fixture
-python test_donchian_parity.py            # 89 checks
+python test_donchian_parity.py            # 101 checks
 ```
 
 The harness asserts the Python reproduces the JS **stage by stage** — 2-minute

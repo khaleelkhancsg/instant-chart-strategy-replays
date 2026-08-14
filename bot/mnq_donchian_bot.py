@@ -905,6 +905,7 @@ class DonchianBot:
         self._add_px = 0.0
         self._add_deadline = None
         self._add_lots = 0
+        self._first_lots = 0
         # dry-run virtual book
         self._v_pos = 0
         self._v_entry = 0.0
@@ -1098,7 +1099,10 @@ class DonchianBot:
             pcid = p.get("contractId")
             if pcid is not None and pcid != CONFIG["contract_id"]:
                 continue
-            if abs(p.get("size", 0)) >= CONFIG["contracts"]:
+            # ANY growth beyond the first tranche means it filled — testing for
+            # the full configured size would miss a partial fill and leave the
+            # bot believing an add is still resting when it is already on.
+            if abs(p.get("size", 0)) > (self._first_lots or 0):
                 fill = None
                 for k in ("averagePrice", "avgPrice", "price"):
                     if p.get(k) is not None:
@@ -1110,8 +1114,15 @@ class DonchianBot:
             break
 
     # ---- the bracket the platform will actually allow ----
-    def _bracket_points(self, atr_v: float):
+    def _bracket_points(self, atr_v: float, qty: int = None):
         """Return (stop_points, target_points, capped, cap_points).
+
+        `qty` is the size the bracket will actually be placed on, which is NOT
+        always the configured total: under scale-in the first tranche is smaller,
+        and the platform cap is a DOLLAR limit, so fewer contracts means the cap
+        sits FURTHER away in points. Using the full size here would place a stop
+        four times tighter than the position warrants and cut the first tranche
+        out of trades the backtest holds.
 
         The platform liquidates at a fixed DOLLAR loss for the day, so the widest
         stop it will ever honour is (cap + realised day P&L) / ($ per point).
@@ -1130,7 +1141,8 @@ class DonchianBot:
         # Room left today: a day already in profit has more, one already down has
         # less. Mirrors the engine's realised-P&L-aware cap.
         room = cap + self._day_pnl()
-        cap_pts = max(TICK, room / (self._pv * CONFIG["contracts"]))
+        lots = qty if qty else CONFIG["contracts"]
+        cap_pts = max(TICK, room / (self._pv * lots))
         if raw_sl <= cap_pts:
             return raw_sl, tp, False, cap_pts
         return cap_pts, tp, True, cap_pts
@@ -1167,13 +1179,19 @@ class DonchianBot:
 
     # ---- entry ----
     async def _place_entry(self, sig: int, atr_v: float, ref_px: float) -> None:
-        sl_pts, tp_pts, capped, cap_pts = self._bracket_points(atr_v)
+        qty = CONFIG["contracts"]
+        first_lots = qty
+        if CONFIG.get("scale_in") and qty >= 2:
+            first_lots = max(1, min(qty - 1, int(CONFIG["scale_in_first"])))
+        # Bracket the FIRST TRANCHE against its own size. Once the add fills the
+        # position is larger and the platform's cap moves nearer on its own — the
+        # engine models exactly that, as a dynamic stop against current size.
+        sl_pts, tp_pts, capped, cap_pts = self._bracket_points(atr_v, first_lots)
         sl_ticks = max(1, round(sl_pts / TICK))
         tp_ticks = max(1, round(tp_pts / TICK))
-        qty = CONFIG["contracts"]
         side = 0 if sig == 1 else 1
-        risk = qty * sl_pts * self._pv
-        reward = qty * tp_pts * self._pv
+        risk = first_lots * sl_pts * self._pv
+        reward = first_lots * tp_pts * self._pv
         sl_px = ref_px - sig * sl_pts
         tp_px = ref_px + sig * tp_pts
 
@@ -1198,9 +1216,7 @@ class DonchianBot:
         self._balance_at_entry = self.api.balance
         self._save_state()
 
-        first = qty
-        if CONFIG.get("scale_in") and qty >= 2:
-            first = max(1, min(qty - 1, int(CONFIG["scale_in_first"])))
+        first = first_lots
         oid = await self.api.place_bracket_order(side, first, sl_ticks, tp_ticks)
         if oid is None:
             log.error("❌ entry failed — staying flat")
@@ -1212,7 +1228,7 @@ class DonchianBot:
         if not self.in_position:
             log.warning("⚠  order placed but no position visible — check the platform")
             return
-        await self._log_fill(sig, ref_px)
+        await self._log_fill(sig, ref_px, first_lots)
 
         # ── the resting add ──
         if first >= qty:
@@ -1233,10 +1249,11 @@ class DonchianBot:
             return
         self._add_px = add_px
         self._add_lots = rest
+        self._first_lots = first
         self._add_deadline = datetime.now(timezone.utc) + timedelta(
             minutes=CONFIG["scale_in_window_bars"] * CONFIG["timeframe_min"])
 
-    async def _log_fill(self, sig: int, ref_px: float) -> None:
+    async def _log_fill(self, sig: int, ref_px: float, lots: int = None) -> None:
         """Deviation of the actual fill from the SIGNAL BAR'S CLOSE.
 
         That reference is deliberate. The backtest fills at the next bar's open,
@@ -1265,7 +1282,8 @@ class DonchianBot:
         self._slip_abs_sum += abs(dev_ticks)
         self._slip_n += 1
         log.info("📐 FILL %.2f vs ref %.2f | %+.1ft ($%+.0f) | session |avg| %.2ft over %d",
-                 fill, ref_px, dev_ticks, -dev_ticks * CONFIG["tick_value"] * CONFIG["contracts"],
+                 fill, ref_px, dev_ticks,
+                 -dev_ticks * CONFIG["tick_value"] * (lots or CONFIG["contracts"]),
                  self._slip_abs_sum / self._slip_n, self._slip_n)
         if self._slip_n >= 5 and self._slip_abs_sum / self._slip_n > CONFIG["slip_warn_ticks"]:
             log.warning("⚠  |avg| slippage %.2ft exceeds %.1ft. The headline assumed ZERO and "
@@ -1338,7 +1356,10 @@ class DonchianBot:
         # optimism in the dry run ONLY — the real fill is measured by _log_fill.
         # The paper book must respect the platform cap too, or its P&L is fiction:
         # it would print losses of $2,400 that the platform would never allow.
-        sl_pts, tp_pts, capped, _ = self._bracket_points(atr_v)
+        total0 = CONFIG["contracts"]
+        first0 = (max(1, min(total0 - 1, int(CONFIG["scale_in_first"])))
+                  if CONFIG.get("scale_in") and total0 >= 2 else total0)
+        sl_pts, tp_pts, capped, _ = self._bracket_points(atr_v, first0)
         self._v_pos, self._v_entry = sig, bar.close
         self._v_sl = bar.close - sig * sl_pts
         self._v_tp = bar.close + sig * tp_pts
@@ -1350,12 +1371,13 @@ class DonchianBot:
                 CONFIG["scale_in_trigger_atr"] * atr_v, TICK)
         else:
             self._v_qty, self._v_add_left = total, 0
-        log.info("🧪 DRY ENTRY %-5s x%d @ %.2f | SL %.2f  TP %.2f | risk $%.0f%s / reward $%.0f",
-                 "LONG" if sig == 1 else "SHORT", CONFIG["contracts"], bar.close,
-                 self._v_sl, self._v_tp,
-                 CONFIG["contracts"] * sl_pts * self._pv,
+        log.info("🧪 DRY ENTRY %-5s x%d%s @ %.2f | SL %.2f  TP %.2f | risk $%.0f%s / reward $%.0f",
+                 "LONG" if sig == 1 else "SHORT", self._v_qty,
+                 f" (+{self._v_add_left} @ {self._v_add_px:.2f})" if self._v_add_left else "",
+                 bar.close, self._v_sl, self._v_tp,
+                 self._v_qty * sl_pts * self._pv,
                  " CAPPED" if capped else "",
-                 CONFIG["contracts"] * tp_pts * self._pv)
+                 self._v_qty * tp_pts * self._pv)
         self._warn_if_capped(sl_pts, tp_pts, atr_v, capped)
 
     def _dry_exit(self, px: float, reason: str) -> None:
