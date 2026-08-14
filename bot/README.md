@@ -7,7 +7,7 @@ The strategy itself, and how it was arrived at, is in
 | | |
 |---|---|
 | `mnq_donchian_bot.py` | the bot |
-| `test_donchian_parity.py` | 80 checks that the port matches the JS engine |
+| `test_donchian_parity.py` | 89 checks that the port matches the JS engine |
 | `fixture_donchian.json` | golden output from that engine (25 days, 39 trades) |
 | `run_donchian_bot.bat` | launcher — runs the parity checks first, refuses to start if they fail |
 
@@ -88,11 +88,44 @@ scores 21.8% on 2026, i.e. it is fitted to the pre-2026 stretch. Same trap as
 against 35.8% late. Rank on the worse half and check the recent slice; never on
 the average.
 
+## Scale-in (new)
+
+The bot no longer takes all 8 lots at the signal. It takes **2**, and rests a
+**stop order for the remaining 6** at entry + 0.15×ATR, cancelled if unfilled
+after 10 bars.
+
+| | all history | 12 months | 2026 | pf |
+|---|---|---|---|---|
+| all 8 at the signal | 30.8% | 37.9% | 40.0% | 1.092 |
+| **2 + 6 @ 0.15×ATR** | **37.7%** | **45.7%** | **49.1%** | **1.143** |
+
+It is **not** better averaging — the add fills *worse* than the signal. It's a
+soft stop: ~15% of trades never move even a quarter-ATR the right way, and those
+average **−$278** each, so only a quarter of the position ever meets them. Adding
+on a *dip* instead tests clearly worse; a breakout that retraces is the one that
+failed.
+
+**Why a stop and not a limit.** The add is a buy *above* the market, so it can
+only be a stop. A stop-limit would cap the price but miss exactly when price runs
+fastest through the level — the adds most worth having. Slippage is the
+affordable cost: break-even is **8 ticks** of extra slippage on the add, and a
+plain stop should cost 1–3.
+
+**The one dangerous failure mode.** A resting add that outlives its position will
+open a fresh, unmanaged position on the next touch. Every exit path routes through
+`_cancel_add()` — position closed, flatten window, flip, window expiry — and the
+harness tests each. If a cancel ever fails the bot logs it at ERROR with an
+instruction to check the platform; that message means go and look.
+
+Both tranches carry their own bracket, with the add's tick offsets chosen so its
+stop and target land on the *same absolute prices* as the first tranche's.
+
 ## Verifying the port
+
 
 ```bash
 node ../research/export_bot_fixture.mjs   # regenerate the fixture
-python test_donchian_parity.py            # 80 checks
+python test_donchian_parity.py            # 89 checks
 ```
 
 The harness asserts the Python reproduces the JS **stage by stage** — 2-minute
@@ -110,7 +143,7 @@ path** — that is what the launcher does automatically.
 
 2-minute clock-aligned bars. Donchian-30 breakout (channel excludes the current
 bar), ADX(14) ≥ 25, and Kaufman efficiency(20) > 0.5, taken only between 08:30
-and 15:00 CT. **8 contracts**, 5×ATR stop and 1.75×ATR target — the inverted
+and 15:00 CT. **8 contracts** (2 at the signal, 6 added on follow-through), 5×ATR stop and 1.75×ATR target — the inverted
 geometry is deliberate and is what makes trades resolve before the flatten.
 Flips on an opposite signal. Flat by 15:04 CT against a firm 15:05 deadline.
 

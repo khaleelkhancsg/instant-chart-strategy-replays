@@ -27,7 +27,7 @@ import json
 import math
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -389,7 +389,7 @@ def main():
     if FAILURES:
         print()
         for f in FAILURES:
-            print(f"  ✗ {f}")
+            print(f"  x {f}")
     print(f"{'=' * 62}\n")
     return 1 if FAIL else 0
 
@@ -409,6 +409,7 @@ class FakeClient:
         self._bars1m = bars1m
         self._balance = balance
         self.orders = []          # (side, size, sl_ticks, tp_ticks)
+        self.adds = []            # (side, size, stop_price, sl_ticks, tp_ticks)
         self.closes = 0
         self.cancels = 0
         self.position = None      # {"size": int, "type": 1|2, "price": float}
@@ -428,6 +429,10 @@ class FakeClient:
         self.position = {"size": size, "type": 1 if side == 0 else 2,
                          "price": 20000.0, "contractId": bot.CONFIG["contract_id"]}
         return 1234
+
+    async def place_stop_with_bracket(self, side, size, stop_price, sl_ticks, tp_ticks):
+        self.adds.append((side, size, stop_price, sl_ticks, tp_ticks))
+        return 5678
 
     async def get_open_positions(self):
         return [self.position] if self.position else []
@@ -495,8 +500,12 @@ def run_live_path_tests(fx, bars):
         if api.orders:
             side, size, sl_t, tp_t = api.orders[0]
             check("...buy side for a long", side == 0, f"side={side}")
-            check("...at the configured size", size == bot.CONFIG["contracts"],
-                  f"size={size}")
+            # With scale-in the first order is the FIRST TRANCHE, not the full
+            # size; the remainder rests as a stop order and is checked below.
+            want = (bot.CONFIG["scale_in_first"] if bot.CONFIG.get("scale_in")
+                    else bot.CONFIG["contracts"])
+            check("...at the configured first-tranche size", size == want,
+                  f"size={size} want={want}")
             check("...stop wider than target (inverted geometry)", sl_t > tp_t,
                   f"sl={sl_t}t tp={tp_t}t")
             # The bracket must be the NEARER of the designed 5xATR stop and the
@@ -576,6 +585,69 @@ def run_live_path_tests(fx, bars):
 
     finally:
         bot.CONFIG.update(saved)
+
+    # ── scale-in ──
+    # Needs the same overrides section 9 uses: live path, staleness guards off.
+    saved2 = {k: bot.CONFIG[k] for k in ("dry_run", "max_bar_age_s", "max_entry_delay_s")}
+    bot.CONFIG["dry_run"] = False
+    bot.CONFIG["max_bar_age_s"] = 10 ** 12
+    bot.CONFIG["max_entry_delay_s"] = 10 ** 12
+    try:
+      if bot.CONFIG.get("scale_in"):
+          b, api = run(sig_ct + 2)
+          total, first = bot.CONFIG["contracts"], bot.CONFIG["scale_in_first"]
+          check("scale-in: first tranche is the configured size",
+                len(api.orders) == 1 and api.orders[0][1] == first, f"orders={api.orders}")
+          check("scale-in: one resting add for the remainder",
+                len(api.adds) == 1 and api.adds[0][1] == total - first, f"adds={api.adds}")
+          if api.adds and api.orders:
+              side, size, stop_px, a_sl, a_tp = api.adds[0]
+              check("...add is on the SAME side as the entry", side == api.orders[0][0], "")
+              # The add's bracket must land on the same ABSOLUTE levels as the first
+              # tranche's — otherwise the two halves get managed differently and the
+              # position has two stops at two prices.
+              atr_at = fx["indicators"]["atr"][sig_idx]
+              trig = bot.CONFIG["scale_in_trigger_atr"] * atr_at
+              ent_sl, ent_tp = api.orders[0][2] * 0.25, api.orders[0][3] * 0.25
+              check("...add's stop distance reaches the SHARED stop",
+                    abs(a_sl * 0.25 - (ent_sl + trig)) < 0.6,
+                    f"{a_sl * 0.25:.2f} vs {ent_sl + trig:.2f}")
+              check("...add's target distance reaches the SHARED target",
+                    abs(a_tp * 0.25 - (ent_tp - trig)) < 0.6,
+                    f"{a_tp * 0.25:.2f} vs {ent_tp - trig:.2f}")
+
+          # THE DANGEROUS PATH. A resting stop that outlives its position opens a
+          # fresh unmanaged position on the next touch, with no signal behind it.
+          b2, api2 = make_bot(prefix, sig_ct + 2)
+          b2._add_oid, b2.in_position, b2._pos_dir = 999, True, 1
+          api2.position = None                        # platform reports flat
+          asyncio.run(b2._sync_position())
+          check("scale-in: add is cancelled the moment the position closes",
+                b2._add_oid is None and api2.cancels >= 1,
+                f"add_oid={b2._add_oid} cancels={api2.cancels}")
+
+          b3, api3 = make_bot(prefix, bot.CONFIG["flatten_ct"])
+          b3._add_oid = 999
+          asyncio.run(b3._enforce_flatten())
+          check("scale-in: add is cancelled in the flatten window",
+                b3._add_oid is None and api3.cancels >= 1, "")
+
+          b4, api4 = make_bot(prefix, sig_ct + 2)
+          b4._add_oid = 999
+          b4._add_deadline = datetime.now(timezone.utc) - timedelta(minutes=1)
+          asyncio.run(b4._service_add())
+          check("scale-in: add expires once its window passes",
+                b4._add_oid is None and api4.cancels >= 1, "")
+
+          b5, api5 = make_bot(prefix, sig_ct + 2)
+          b5._add_oid = 999
+          b5._add_deadline = datetime.now(timezone.utc) + timedelta(hours=1)
+          asyncio.run(b5._service_add())
+          check("...but survives while the window is still open",
+                b5._add_oid == 999 and api5.cancels == 0, "")
+
+    finally:
+        bot.CONFIG.update(saved2)
 
     # i) staleness guards, with the shipped values back in force
     bot.CONFIG["dry_run"] = False

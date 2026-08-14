@@ -225,6 +225,29 @@ CONFIG = {
     "tp_atr_mult": 1.75,
     "flip_on_opposite": True,
 
+    # -- SCALE-IN --------------------------------------------------------
+    # Take a small first tranche at the signal and add the rest only once price
+    # has moved `scale_in_trigger_atr` x ATR in the trade's FAVOUR.
+    #
+    # It is not better averaging: the add fills WORSE than the signal. It is a
+    # soft stop. About 15% of trades never move even a quarter-ATR the right way
+    # and those average -$278 each, so starting small means only a quarter of the
+    # position ever meets them. Measured +7pp all-history and +8pp on the last 12
+    # months under a pessimistic within-bar assumption, with BOTH time halves
+    # improving. Adding on a DIP instead tests clearly worse - a breakout that
+    # retraces is the one that failed.
+    #
+    # The add is a BUY above the market (or a sell below), so it can only be a
+    # STOP order. A stop-limit would cap the price but miss exactly when price
+    # runs fastest through the level, which are the adds most worth having.
+    # Slippage is the affordable cost: break-even is 8 ticks of EXTRA slippage on
+    # the add, and a plain stop should cost 1-3.
+    "scale_in": True,
+    "scale_in_first": 2,                 # lots taken at the signal; the rest rests
+    "scale_in_trigger_atr": 0.15,        # favourable move required before adding
+    "scale_in_window_bars": 10,          # give up on the add after this many bars
+    "scale_in_slip_warn_ticks": 6.0,     # past this the benefit is largely gone
+
     # session, CT minutes past midnight
     "signal_start_ct": 8 * 60 + 30,      # 08:30 — first bar whose signal counts
     "signal_end_ct": 15 * 60,            # 15:00 — signal bars gated below this
@@ -785,6 +808,44 @@ class TopstepXClient:
             log.error("place_bracket_order failed: %s", exc)
             return None
 
+    async def place_stop_with_bracket(self, side: int, size: int, stop_price: float,
+                                      sl_ticks: int, tp_ticks: int):
+        """A resting STOP entry that arrives WITH its own protective bracket.
+
+        Used for the scale-in tranche. The caller chooses the bracket ticks so
+        that, filling at `stop_price`, the stop and target land on the same
+        ABSOLUTE prices as the first tranche's — which is what the backtest
+        models. A slipped fill shifts them by the slippage, which is acceptable.
+        Contracts sitting with no stop at all is not, which is why the bracket
+        travels with the order rather than being attached afterwards.
+        """
+        sl_signed = -abs(sl_ticks) if side == 0 else abs(sl_ticks)
+        tp_signed = abs(tp_ticks) if side == 0 else -abs(tp_ticks)
+        body = {
+            "accountId": self._account_id,
+            "contractId": CONFIG["contract_id"],
+            "type": 4,          # Stop
+            "side": side,
+            "size": size,
+            "limitPrice": None,
+            "stopPrice": round(stop_price / CONFIG["tick_size"]) * CONFIG["tick_size"],
+            "trailPrice": None, "customTag": None,
+            "stopLossBracket": {"ticks": sl_signed, "type": 4},
+            "takeProfitBracket": {"ticks": tp_signed, "type": 1},
+        }
+        try:
+            data = await self._post("/Order/place", body)
+            if not data.get("success", False):
+                log.error("Scale-in stop rejected: %s", data.get("errorMessage"))
+                return None
+            oid = data.get("orderId")
+            log.info("➕ ADD resting | orderId=%s side=%d size=%d stop @ %.2f  sl=%+dt tp=%+dt",
+                     oid, side, size, stop_price, sl_signed, tp_signed)
+            return oid
+        except Exception as exc:
+            log.error("place_stop_with_bracket failed: %s", exc)
+            return None
+
     async def get_open_positions(self) -> List[dict]:
         try:
             data = await self._post("/Position/searchOpen", {"accountId": self._account_id})
@@ -839,12 +900,20 @@ class DonchianBot:
         self._slip_sum = 0.0
         self._slip_abs_sum = 0.0
         self._slip_n = 0
+        # scale-in: the resting add order and its deadline
+        self._add_oid = None
+        self._add_px = 0.0
+        self._add_deadline = None
+        self._add_lots = 0
         # dry-run virtual book
         self._v_pos = 0
         self._v_entry = 0.0
         self._v_sl = 0.0
         self._v_tp = 0.0
         self._v_day_pnl = 0.0
+        self._v_qty = 0
+        self._v_add_px = 0.0
+        self._v_add_left = 0
         self._v_trades = 0
         self._v_wins = 0
 
@@ -952,6 +1021,9 @@ class DonchianBot:
         else:
             self._pos_dir = 1 if open_sz > 0 else (-1 if open_sz < 0 else 0)
         if was_open and not self.in_position:
+            # FIRST, before anything else: a resting add outlives the position
+            # that justified it and would re-enter, unmanaged, on the next touch.
+            await self._cancel_add("position closed")
             realised = (self.api.balance - self._balance_at_entry
                         if self._balance_at_entry is not None else None)
             log.info("🔄 closed → flat | realised %s | day P&L %+.0f",
@@ -976,6 +1048,7 @@ class DonchianBot:
         open regardless of where stop and target sit, and so does this."""
         if CONFIG["dry_run"] or not self._in_flat_window(self._ct_now()):
             return
+        await self._cancel_add("flatten window")
         await self._sync_position()
         if self.in_position:
             log.info("🕓 FLATTEN: closing position (firm deadline 15:05 CT, acting at %02d:%02d)",
@@ -987,6 +1060,54 @@ class DonchianBot:
                 oid = o.get("id", o.get("orderId"))
                 if oid is not None:
                     await self.api.cancel_order(oid)
+
+    # ---- the resting scale-in order ----
+    async def _cancel_add(self, why: str) -> None:
+        """Kill the resting add. EVERY path that leaves a position comes here.
+
+        This is the most dangerous piece of the scale-in machinery. A working
+        stop order left behind after the position closes will open a fresh,
+        unmanaged position the next time price touches it — a position with no
+        signal behind it and, worse, one the bot does not know it has. The
+        failure is silent, so the cancel is loud when it fails.
+        """
+        if self._add_oid is None:
+            return
+        oid, self._add_oid = self._add_oid, None
+        self._add_deadline = None
+        try:
+            ok = await self.api.cancel_order(oid)
+            if ok:
+                log.info("✖ add order cancelled (%s)", why)
+            else:
+                log.error("🛑 add order %s did NOT cancel (%s). If it is still working it can "
+                          "open an unmanaged position — CHECK THE PLATFORM NOW.", oid, why)
+        except Exception as exc:
+            log.error("🛑 cancel of add order %s FAILED (%s): %s — CHECK THE PLATFORM NOW.",
+                      oid, why, exc)
+
+    async def _service_add(self) -> None:
+        """Expire the add once its window has passed, and notice when it fills."""
+        if self._add_oid is None:
+            return
+        if self._add_deadline and datetime.now(timezone.utc) >= self._add_deadline:
+            await self._cancel_add(f"{CONFIG['scale_in_window_bars']}-bar window expired")
+            return
+        # Has it filled? The position growing past the first tranche is the tell.
+        for p in await self.api.get_open_positions():
+            pcid = p.get("contractId")
+            if pcid is not None and pcid != CONFIG["contract_id"]:
+                continue
+            if abs(p.get("size", 0)) >= CONFIG["contracts"]:
+                fill = None
+                for k in ("averagePrice", "avgPrice", "price"):
+                    if p.get(k) is not None:
+                        fill = float(p[k]); break
+                log.info("✅ ADD FILLED — now %d lots%s", abs(p.get("size", 0)),
+                         f", blended fill {fill:.2f}" if fill else "")
+                self._add_oid = None
+                self._add_deadline = None
+            break
 
     # ---- the bracket the platform will actually allow ----
     def _bracket_points(self, atr_v: float):
@@ -1076,7 +1197,11 @@ class DonchianBot:
 
         self._balance_at_entry = self.api.balance
         self._save_state()
-        oid = await self.api.place_bracket_order(side, qty, sl_ticks, tp_ticks)
+
+        first = qty
+        if CONFIG.get("scale_in") and qty >= 2:
+            first = max(1, min(qty - 1, int(CONFIG["scale_in_first"])))
+        oid = await self.api.place_bracket_order(side, first, sl_ticks, tp_ticks)
         if oid is None:
             log.error("❌ entry failed — staying flat")
             self._balance_at_entry = None
@@ -1088,6 +1213,28 @@ class DonchianBot:
             log.warning("⚠  order placed but no position visible — check the platform")
             return
         await self._log_fill(sig, ref_px)
+
+        # ── the resting add ──
+        if first >= qty:
+            return
+        rest = qty - first
+        add_px = round((ref_px + sig * max(CONFIG["scale_in_trigger_atr"] * atr_v, TICK)) / TICK) * TICK
+        # Bracket ticks are measured from the ADD's own fill, chosen so the levels
+        # coincide with the first tranche's rather than being offset from it.
+        add_sl_ticks = max(1, round(abs(add_px - sl_px) / TICK))
+        add_tp_ticks = max(1, round(abs(tp_px - add_px) / TICK))
+        log.info("   ↳ scale-in: %d lots now, %d resting at %.2f (%.2fxATR away). "
+                 "Roughly 15%% of trades never reach it — that is the point.",
+                 first, rest, add_px, CONFIG["scale_in_trigger_atr"])
+        self._add_oid = await self.api.place_stop_with_bracket(
+            side, rest, add_px, add_sl_ticks, add_tp_ticks)
+        if self._add_oid is None:
+            log.warning("⚠  add order REJECTED — running at %d lots instead of %d", first, qty)
+            return
+        self._add_px = add_px
+        self._add_lots = rest
+        self._add_deadline = datetime.now(timezone.utc) + timedelta(
+            minutes=CONFIG["scale_in_window_bars"] * CONFIG["timeframe_min"])
 
     async def _log_fill(self, sig: int, ref_px: float) -> None:
         """Deviation of the actual fill from the SIGNAL BAR'S CLOSE.
@@ -1127,6 +1274,20 @@ class DonchianBot:
 
     # ---- dry-run virtual book ----
     def _dry_step(self, bar: Bar2m, sig: int, atr_v: float) -> None:
+        # 0) the resting add fills once price has moved far enough the right way.
+        #    Modelled here too, or the paper book would trade a different size
+        #    from the live one and the dry run would not mean anything.
+        if self._v_pos != 0 and self._v_add_left > 0:
+            reached = (bar.high >= self._v_add_px if self._v_pos == 1
+                       else bar.low <= self._v_add_px)
+            if reached:
+                q, add = self._v_qty, self._v_add_left
+                self._v_entry = (self._v_entry * q + self._v_add_px * add) / (q + add)
+                self._v_qty += add
+                self._v_add_left = 0
+                log.info("✅ DRY ADD filled %d @ %.2f — now %d lots, avg %.2f",
+                         add, self._v_add_px, self._v_qty, self._v_entry)
+
         # 1) resolve an open virtual position on this bar, stop BEFORE target and
         #    gap-throughs filled at the open — matching src/engine.mjs ordering.
         if self._v_pos != 0:
@@ -1181,6 +1342,14 @@ class DonchianBot:
         self._v_pos, self._v_entry = sig, bar.close
         self._v_sl = bar.close - sig * sl_pts
         self._v_tp = bar.close + sig * tp_pts
+        total = CONFIG["contracts"]
+        if CONFIG.get("scale_in") and total >= 2:
+            self._v_qty = max(1, min(total - 1, int(CONFIG["scale_in_first"])))
+            self._v_add_left = total - self._v_qty
+            self._v_add_px = bar.close + sig * max(
+                CONFIG["scale_in_trigger_atr"] * atr_v, TICK)
+        else:
+            self._v_qty, self._v_add_left = total, 0
         log.info("🧪 DRY ENTRY %-5s x%d @ %.2f | SL %.2f  TP %.2f | risk $%.0f%s / reward $%.0f",
                  "LONG" if sig == 1 else "SHORT", CONFIG["contracts"], bar.close,
                  self._v_sl, self._v_tp,
@@ -1190,8 +1359,9 @@ class DonchianBot:
         self._warn_if_capped(sl_pts, tp_pts, atr_v, capped)
 
     def _dry_exit(self, px: float, reason: str) -> None:
-        fees = 2 * CONFIG["commission_per_side"] * CONFIG["contracts"]
-        pnl = (px - self._v_entry) * self._v_pos * self._pv * CONFIG["contracts"] - fees
+        q = self._v_qty or CONFIG["contracts"]
+        fees = 2 * CONFIG["commission_per_side"] * q
+        pnl = (px - self._v_entry) * self._v_pos * self._pv * q - fees
         self._v_day_pnl += pnl
         self._v_trades += 1
         if pnl > 0:
@@ -1200,6 +1370,8 @@ class DonchianBot:
                  "LONG" if self._v_pos == 1 else "SHORT", px, reason, pnl, self._v_day_pnl,
                  self._v_trades, 100.0 * self._v_wins / max(1, self._v_trades))
         self._v_pos = 0
+        self._v_qty = 0
+        self._v_add_left = 0
 
     # ---- main cycle ----
     async def _evaluate(self) -> bool:
@@ -1247,6 +1419,7 @@ class DonchianBot:
 
         await self._enforce_flatten()
         await self._sync_position()
+        await self._service_add()
 
         blocked, why = self._entry_blocked()
         log.info("%s", DIV)
@@ -1270,6 +1443,7 @@ class DonchianBot:
                 return True
             if not (CONFIG["flip_on_opposite"] and s != 0 and s != self._pos_dir):
                 return True
+            await self._cancel_add("flip")
             log.info("🔃 FLIP: %s signal against a %s position — closing to reverse",
                      "LONG" if s == 1 else "SHORT", "LONG" if self._pos_dir == 1 else "SHORT")
             await self.api.close_position()

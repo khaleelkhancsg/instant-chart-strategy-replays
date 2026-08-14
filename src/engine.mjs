@@ -144,6 +144,14 @@ export const DEFAULT_EXEC = {
   // the pessimistic reading — if a bar both triggers the add and hits the stop,
   // assume the stop printed first and no add happened.
   scaleInOrder: "before",     // 'before' | 'after'
+  // EXTRA adverse ticks on the ADD tranche only, on top of slippageTicks.
+  //
+  // The add is a BUY above the market (or a sell below), so it can only be a STOP
+  // order, which fills at market once triggered and therefore slips. A stop-LIMIT
+  // caps the price but misses exactly when price runs fastest through the level —
+  // which are the adds most worth having. This parameter prices that risk without
+  // taking a view on order type: sweep it to find how much the edge can absorb.
+  scaleInSlipTicks: 0,
 };
 
 export function resolveExec(cfg = {}) {
@@ -258,7 +266,8 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       if (pendQty <= 0 || bar > addBy) return;
       const reached = pos === 1 ? H[bar] >= addPx : L[bar] <= addPx;
       if (!reached) return;
-      entryNotional += (pos === 1 ? addPx + slip : addPx - slip) * pendQty;
+      const addSlip = slip + (x.scaleInSlipTicks || 0) * x.tickSize;
+      entryNotional += (pos === 1 ? addPx + addSlip : addPx - addSlip) * pendQty;
       qCur += pendQty;
       pendQty = 0;
     };
