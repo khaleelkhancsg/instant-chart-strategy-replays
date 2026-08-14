@@ -281,9 +281,15 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       // A hard unrealised day-profit stop behaves exactly like a second, closer
       // take-profit: the price at which realised+open P&L reaches the threshold.
       // Whichever profit level is nearer gets hit first as price advances.
+      // Both platform caps trigger on ACTUAL P&L, so they must be measured from
+      // the real average fill — not from the signal price. Without scale-in the
+      // two differ only by slippage; with it they can differ by much more, and
+      // using `ep` made the cap fire at the wrong price on scaled positions.
+      const avgFill = entryNotional > 0 ? entryNotional / qCur
+                                        : (pos === 1 ? ep + slip : ep - slip);
       let capPx = 0;
       if (dayCap > 0 && !dayCapHit) {
-        capPx = ep + pos * ((dayCap - dayRealised) / (pv * qCur));
+        capPx = avgFill + pos * ((dayCap - dayRealised) / (pv * qCur));
       }
       // A platform loss stop is the exact mirror: the price at which
       // realised + open P&L reaches -dayLoss. Whichever stop is NEARER gets hit
@@ -294,7 +300,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
         (isCap && exactLoss) ? -dayLoss - dayRealised : undefined;
       let lossPx = 0;
       if (dayLoss > 0 && !dayLossHit) {
-        lossPx = ep - pos * ((dayLoss + dayRealised) / (pv * qCur));
+        lossPx = avgFill - pos * ((dayLoss + dayRealised) / (pv * qCur));
       }
 
       let exited = false;
