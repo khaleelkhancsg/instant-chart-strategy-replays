@@ -1,4 +1,4 @@
-// The efficiency gate at 0.01 resolution, under the NEW stop-entry structure.
+// The efficiency gate at 0.01 resolution from 0.25 to 0.75, under stop entry.
 //
 // The reasoning is sound and has already been right once: changing the tranche
 // split moved the sizing optimum (8 vs 10 lots), so changing the entry structure
@@ -163,7 +163,7 @@ const SLICES = [["early", T0, MID], ["late", MID, T1], ["12m", Y12, T1],
                 ["2026", Y26, T1], ["ALL", T0, T1]];
 
 const EFFS = [];
-for (let e = 30; e <= 65; e++) EFFS.push(e / 100);
+for (let e = 25; e <= 75; e++) EFFS.push(e / 100);
 const books = EFFS.map(e =>
   replay(applyFilters(raw, ctx, { ...NO_FILTER, startCt: 510, endCt: 900, effMin: e })));
 const cols = SLICES.map(([, lo, hi]) => {
@@ -247,7 +247,16 @@ function pairedDelta(a, b, keys, seed) {
            pWin: ds.filter(v => v > 0).length / ds.length };
 }
 const iOf = (e) => EFFS.findIndex(x => Math.abs(x - e) < 1e-9);
-for (const cand of [0.40, 0.39, 0.44]) {
+// Candidates chosen FROM the sweep rather than hardcoded: the best on the worse
+// half, the best on 12m, and the best on 2026. If those three disagree, that
+// disagreement is the finding.
+const bestBy = (j) => EFFS[cols[j].indexOf(Math.max(...cols[j]))];
+const bestWorse = scored[0].e;
+const cands = [...new Set([bestWorse, bestBy(2), bestBy(3)])].filter(e => Math.abs(e - 0.50) > 1e-9);
+console.log(`
+  best on worse half: ${bestWorse.toFixed(2)}   ` +
+            `best on 12m: ${bestBy(2).toFixed(2)}   best on 2026: ${bestBy(3).toFixed(2)}`);
+for (const cand of cands) {
   console.log(`\n  PAIRED CI: eff ${cand.toFixed(2)} minus eff 0.50\n`);
   console.log("   slice     mean delta      95% band     P(better)   vs slice floor");
   SLICES.forEach(([nm, lo, hi], j) => {
