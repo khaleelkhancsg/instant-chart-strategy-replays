@@ -1023,10 +1023,17 @@ class DonchianBot:
             self._pos_dir = -1
         else:
             self._pos_dir = 1 if open_sz > 0 else (-1 if open_sz < 0 else 0)
+        if not self.in_position:
+            # UNCONDITIONAL, not just on the transition. This is the authoritative
+            # read of the platform: there is no position. Anything still able to
+            # OPEN one must die here, whether or not the bot believed it was in a
+            # trade a moment ago. Gating this on `was_open` left a bot that was
+            # already flat holding a live or parked add indefinitely — a working
+            # stop with nothing behind it, which opens a fresh unmanaged position
+            # on the next touch. A property test over randomised event sequences
+            # found it; reading the five cancel paths did not.
+            await self._cancel_add("platform reports flat")
         if was_open and not self.in_position:
-            # FIRST, before anything else: a resting add outlives the position
-            # that justified it and would re-enter, unmanaged, on the next touch.
-            await self._cancel_add("position closed")
             realised = (self.api.balance - self._balance_at_entry
                         if self._balance_at_entry is not None else None)
             log.info("🔄 closed → flat | realised %s | day P&L %+.0f",
@@ -1081,7 +1088,7 @@ class DonchianBot:
             self._add_pending = None
             log.info("✖ deferred add dropped (%s)", why)
         if self._add_oid is None:
-            return
+            return          # nothing live — silent, this runs every bar
         oid, self._add_oid = self._add_oid, None
         self._add_deadline = None
         try:

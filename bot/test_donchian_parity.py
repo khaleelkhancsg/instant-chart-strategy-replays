@@ -748,6 +748,71 @@ def run_live_path_tests(fx, bars):
                 len(api8.adds) == 1 and b8._add_oid is not None,
                 f"adds={api8.adds}")
 
+
+      # ── PROPERTY TEST: no add may survive being flat ──
+      # Five separate paths clear the add (position closed, flatten window, flip,
+      # window expiry, and the deferred-drop in _service_add). Reading them and
+      # believing they are exhaustive is how the last three defects got shipped,
+      # so drive the state machine through randomised event sequences instead and
+      # assert the invariant after every step:
+      #
+      #     the platform reports flat  =>  no add order live AND none parked
+      #
+      # A violation means a working stop order with no position behind it, which
+      # opens a fresh unmanaged position on the next touch. That is the single
+      # worst thing this bot can do.
+      if bot.CONFIG.get("scale_in"):
+          import random as _rnd
+          rng = _rnd.Random(20260815)
+          violations, steps = [], 0
+          for trial in range(240):
+              b, api = make_bot(prefix, sig_ct + 2)
+              # random starting state
+              if rng.random() < 0.5:
+                  b._add_oid = 900 + trial
+                  b._add_deadline = (datetime.now(timezone.utc) +
+                                     timedelta(minutes=rng.choice([-5, 20])))
+              if rng.random() < 0.5:
+                  b._add_pending = {"side": rng.choice([0, 1]), "lots": 6,
+                                    "px": 100.0, "sl_ticks": 10, "tp_ticks": 5,
+                                    "deadline": datetime.now(timezone.utc) +
+                                                timedelta(minutes=20)}
+              b.in_position = rng.random() < 0.6
+              b._pos_dir = rng.choice([1, -1])
+              api.position = ({"contractId": bot.CONFIG["contract_id"],
+                               "size": rng.choice([2, 8]), "averagePrice": 100.0}
+                              if b.in_position else None)
+              for _ in range(rng.randint(1, 6)):
+                  ev = rng.choice(["sync", "service", "flatten", "flip", "vanish"])
+                  try:
+                      if ev == "vanish":
+                          api.position = None        # platform closed it out
+                          asyncio.run(b._sync_position())
+                      elif ev == "sync":
+                          asyncio.run(b._sync_position())
+                      elif ev == "service":
+                          asyncio.run(b._service_add())
+                      elif ev == "flatten":
+                          asyncio.run(b._enforce_flatten())
+                      elif ev == "flip":
+                          asyncio.run(b._cancel_add("flip"))
+                  except Exception as exc:
+                      violations.append(f"trial {trial} {ev} raised {exc!r}")
+                      break
+                  # Every live bar ends with _sync_position, so that is where the
+                  # invariant must hold. _enforce_flatten outside its window is a
+                  # deliberate no-op and cannot be asked to establish it alone.
+                  asyncio.run(b._sync_position())
+                  steps += 1
+                  if not b.in_position and (b._add_oid is not None or
+                                            b._add_pending is not None):
+                      violations.append(
+                          f"trial {trial} after {ev}: flat but "
+                          f"oid={b._add_oid} pending={b._add_pending is not None}")
+                      break
+          check(f"no add survives being flat ({steps} randomised steps)",
+                not violations, "; ".join(violations[:3]))
+
     finally:
         bot.CONFIG.update(saved2)
 
