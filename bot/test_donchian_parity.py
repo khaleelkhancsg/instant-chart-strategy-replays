@@ -468,8 +468,16 @@ def make_bot(bars1m, ct_now, day_pnl=0.0, position=None):
 def run_live_path_tests(fx, bars):
     import asyncio
 
-    saved = {k: bot.CONFIG[k] for k in ("dry_run", "max_bar_age_s", "max_entry_delay_s")}
+    saved = {k: bot.CONFIG[k] for k in
+             ("dry_run", "max_bar_age_s", "max_entry_delay_s", "scale_in_first")}
     bot.CONFIG["dry_run"] = False
+    # BOTH entry modes must stay tested regardless of which one ships. The general
+    # path below assumes a market order at the signal, so it is pinned to a
+    # tranche of at least 1; the dedicated stop-entry block further down sets 0
+    # explicitly. Letting this follow the shipped value would silently retire
+    # whichever half is not currently in use.
+    if bot.CONFIG.get("scale_in") and int(bot.CONFIG["scale_in_first"]) < 1:
+        bot.CONFIG["scale_in_first"] = 1
     # The fixture is historical, so the staleness guards would refuse every bar.
     # They are verified separately below with the real values restored.
     bot.CONFIG["max_bar_age_s"] = 10 ** 12
@@ -619,8 +627,13 @@ def run_live_path_tests(fx, bars):
                   capped and abs(sl_pts * 2.0 * lots - cap_usd) < 1.0,
                   f"${sl_pts * 2.0 * lots:.0f} vs ${cap_usd:.0f}")
         # A small tranche must NOT inherit the full-size cap.
-        first_lots = (bot.CONFIG["scale_in_first"] if bot.CONFIG.get("scale_in")
-                      else bot.CONFIG["contracts"])
+        # In stop-entry mode there is no small first tranche -- the whole size
+        # goes on one order -- but the regression this guards against (a tranche
+        # inheriting the FULL-size cap) is exactly what breaks if the mode is
+        # ever switched back, so it is checked at a tranche of 1 regardless of
+        # what ships rather than being skipped whenever the shipped value is 0.
+        first_lots = max(1, bot.CONFIG["scale_in_first"] if bot.CONFIG.get("scale_in")
+                            else bot.CONFIG["contracts"])
         if first_lots < bot.CONFIG["contracts"]:
             small, _, _, _ = capbot._bracket_points(big_atr, first_lots)
             full, _, _, _ = capbot._bracket_points(big_atr, bot.CONFIG["contracts"])
@@ -642,8 +655,15 @@ def run_live_path_tests(fx, bars):
 
     # ── scale-in ──
     # Needs the same overrides section 9 uses: live path, staleness guards off.
-    saved2 = {k: bot.CONFIG[k] for k in ("dry_run", "max_bar_age_s", "max_entry_delay_s")}
+    saved2 = {k: bot.CONFIG[k] for k in
+              ("dry_run", "max_bar_age_s", "max_entry_delay_s", "scale_in_first")}
     bot.CONFIG["dry_run"] = False
+    # Pinned to market-entry mode again: the block above restored the shipped
+    # config, and these checks (tranche sizing, the four cancel paths, and the
+    # flat-with-a-working-order property) are all statements about the mode where
+    # a market order IS taken at the signal. The stop-entry block below sets 0.
+    if bot.CONFIG.get("scale_in") and int(bot.CONFIG["scale_in_first"]) < 1:
+        bot.CONFIG["scale_in_first"] = 1
     bot.CONFIG["max_bar_age_s"] = 10 ** 12
     bot.CONFIG["max_entry_delay_s"] = 10 ** 12
     try:
@@ -864,6 +884,20 @@ def run_live_path_tests(fx, bars):
           asyncio.run(b11._cancel_add("flip"))
           check("stop-entry: _cancel_add still drops a parked entry",
                 b11._add_pending is None, f"pending={b11._add_pending}")
+
+          # THE STACKING BUG. In this mode the bot is FLAT while armed, so nothing
+          # upstream prevents a fresh signal reaching _place_entry and parking a
+          # second order while the first is still working at the exchange. Two
+          # live stops, possibly opposite, is the worst state this bot can reach.
+          b12, api12 = make_bot(prefix, sig_ct + 2)
+          b12._add_oid = 4242                      # one already working
+          b12._add_pending = None
+          asyncio.run(b12._place_entry(1, 20.0, 100.0))
+          check("stop-entry: a new signal CANCELS the working arm before re-arming",
+                api12.cancels >= 1, f"cancels={api12.cancels}")
+          check("...and leaves exactly one armed entry, not two",
+                b12._add_oid is None and b12._add_pending is not None,
+                f"oid={b12._add_oid} pending={b12._add_pending is not None}")
       finally:
           bot.CONFIG["scale_in_first"] = saved3
 

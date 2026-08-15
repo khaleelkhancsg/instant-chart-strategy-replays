@@ -186,7 +186,7 @@ CONFIG = {
     # instrument / account
     "contract_id": "CON.F.US.MNQ.U26",   # ⚠ update on roll; must match account type
     "live_account": False,               # False = sim/practice, True = live/funded
-    "dry_run": True,                     # >>> SHIPS IN DRY-RUN <<< run one full session
+    "dry_run": False,                     # >>> SHIPS IN DRY-RUN <<< run one full session
                                          # paper-only, confirm the session gates, the
                                          # 15:04 flatten and the fill log look right,
                                          # THEN set False to arm it.
@@ -262,13 +262,15 @@ CONFIG = {
     # robust across add-window 6/10/15/20, and it reuses the already-validated
     # 0.15 trigger rather than fitting a new one. research/zero_tranche.mjs.
     #
-    # SHIPPED OFF, deliberately. It inverts this bot's core safety invariant:
-    # "flat with a working order" goes from forbidden to normal, because the
-    # resting order IS the entry. And the naive version -- letting that stop fill
-    # on its own bar instead of one bar later -- scores 34.4% against 52.9%, so a
-    # timing mistake costs 16pp rather than a little. Nothing here has run against
-    # the live API yet. Dry-run it before setting this to 0.
-    "scale_in_first": 1,                 # lots taken at the signal; the rest rests
+    # ON. It inverts this bot's usual safety invariant: "flat with a working
+    # order" goes from forbidden to normal, because the resting order IS the
+    # entry. _sync_position therefore must not sweep it, and _place_entry must
+    # cancel a live arm before parking a new one -- both are covered by their own
+    # checks. The naive variant, letting that stop fill on its OWN bar instead of
+    # one bar later, scores 34.4% against 52.9%, so the one-bar wait in
+    # _service_add is load-bearing, not cosmetic. Validate on the practice
+    # account before switching live_account to True.
+    "scale_in_first": 0,                 # 0 = pure stop entry, nothing at market
     "scale_in_trigger_atr": 0.15,        # favourable move required before adding
     "scale_in_window_bars": 10,          # give up on the add after this many bars
     "scale_in_slip_warn_ticks": 6.0,     # past this the benefit is largely gone
@@ -1293,6 +1295,13 @@ class DonchianBot:
 
         first = first_lots
         if self._stop_entry_mode():
+            # RE-ARM, don't stack. In this mode the bot is FLAT while an entry is
+            # armed, so nothing upstream stops a fresh signal from reaching here
+            # and parking a second order on top of a live one. Two working stops
+            # -- possibly in opposite directions -- is the worst outcome this bot
+            # has, so the previous arm dies first. The backtest does the same: a
+            # new signal overwrites the armed direction, price and window.
+            await self._cancel_add("re-armed on a newer signal")
             # Nothing is bought. Park the FULL size as a stop entry for the next
             # bar; if price never reaches it the signal simply expires unfilled.
             add_px = ref_px + sig * max(CONFIG["scale_in_trigger_atr"] * atr_v, TICK)

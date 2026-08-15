@@ -324,7 +324,12 @@ console.log("\n6. CONFIG — does the bot trade what was measured?\n");
     ["sl_atr_mult", "5.0", String(CFG.slAtrMult)],
     ["tp_atr_mult", "1.75", String(CFG.tpAtrMult)],
     ["platform_hard_loss_stop", "1000.0", String(CFG.dayLossStopUsd) + ".0"],
-    ["scale_in_first", "1", String(CFG.scaleInFrac * CFG.contracts)],
+    // 0 = stop-entry mode. runBrackets cannot represent a zero first tranche
+    // (scaleInFrac must be in (0,1)), so the engine baseline above stays at 1/8,
+    // the nearest representable config; stop-entry is measured by
+    // research/zero_tranche.mjs instead. The check is that the BOT is in the
+    // mode that was chosen, not that the engine can mirror it.
+    ["scale_in_first", "0", "0 (engine baseline uses 1/8)"],
     ["scale_in_trigger_atr", "0.15", String(CFG.scaleInTrigger)],
     ["scale_in_window_bars", "10", String(CFG.scaleInWindowBars)],
     ["timeframe_min", "2", "2"],
@@ -339,8 +344,18 @@ console.log("\n6. CONFIG — does the bot trade what was measured?\n");
     ok(`bot ${k} = ${want} (research used ${measured})`,
        got === want, `bot has ${got}`);
   }
-  ok("bot still ships dry_run = True", g("dry_run") === "True", `dry_run=${g("dry_run")}`);
-  ok("bot still ships live_account = False", g("live_account") === "False");
+  // dry_run is now deliberately False: the paper book never touches the order
+  // path at all (_evaluate returns before it), so it could not validate the
+  // scale-in machinery. The practice account exercises the real API instead.
+  // The assertion that matters is therefore the REAL-MONEY switch.
+  const dry = g("dry_run"), liveAcct = g("live_account");
+  console.log(`   trading mode: dry_run=${dry}, live_account=${liveAcct} -> ` +
+    (dry === "True" ? "paper only, no orders sent"
+     : liveAcct === "True" ? "!! LIVE MONEY !!" : "real orders on the PRACTICE account"));
+  ok("live_account is still False (no real money at risk)", liveAcct === "False",
+     `live_account=${liveAcct}`);
+  if (dry === "False" && liveAcct === "False")
+    console.log("   ok   orders go to the practice account, which is the point");
   const cid = g("contract_id");
   console.log(`   contract_id = ${cid}  — must match the current front month`);
 }

@@ -7,7 +7,7 @@ The strategy itself, and how it was arrived at, is in
 | | |
 |---|---|
 | `mnq_donchian_bot.py` | the bot |
-| `test_donchian_parity.py` | 117 checks that the port matches the JS engine |
+| `test_donchian_parity.py` | 119 checks that the port matches the JS engine |
 | `fixture_donchian.json` | golden output from that engine (25 days, 39 trades) |
 | `run_donchian_bot.bat` | launcher — runs the parity checks first, refuses to start if they fail |
 
@@ -192,7 +192,7 @@ start costing size on the winners. It survives slippage on the add (+1 tick
 seconds of the entry fill — which put it on the wrong side of this by 15pp.
 Measurement in [`../research/samebar_add.mjs`](../research/samebar_add.mjs).
 
-## Stop-entry mode (`scale_in_first: 0`) — measured better, shipped off
+## Stop-entry mode (`scale_in_first: 0`) — ON
 
 The tranche sweep is monotone (1 > 2 > 3 > 4 > 6), so the limit case is taking
 **nothing** at the signal: it only ARMS a stop for the full size at
@@ -209,8 +209,12 @@ half is +1.02pp at 80%, the one weak reading). Robust across add-window 6/10/15/
 and it reuses the already-validated 0.15 trigger instead of fitting a new one.
 It also removes the market order entirely — every fill becomes a stop.
 
-**It ships OFF, and that is deliberate.** Two reasons, both about live risk
-rather than the measurement:
+**It is ON, and validated on the practice account rather than on paper.** That
+is the right order: `dry_run: True` never touches the order path at all —
+`_evaluate` returns before `_enforce_flatten`, `_sync_position` and
+`_service_add` — so the paper book could not have tested any of this. The
+practice account exercises the real API with no money at risk. Two things about
+it need watching, both about live behaviour rather than the measurement:
 
 1. It **inverts this bot's core safety invariant**. Everywhere else, "flat with a
    working order" is the single worst state — a stop with nothing behind it opens
@@ -224,8 +228,27 @@ rather than the measurement:
    at all. The whole thing rests on order timing that has never been exercised
    against the real API.
 
-Turn it on only after a dry-run session confirms the arm is placed one bar late,
-fills near the trigger, and is cancelled by the flatten window and by expiry.
+A third hazard exists only in this mode and is guarded separately: because the
+bot is FLAT while an entry is armed, nothing upstream stops a fresh signal from
+reaching `_place_entry` and parking a second order on top of a live one. Two
+working stops, possibly in opposite directions, is the worst state this bot can
+reach. `_place_entry` now cancels the existing arm before re-arming, matching the
+backtest, which also lets a newer signal overwrite the armed direction, price and
+window. Removing that guard fails two checks.
+
+**Current mode: `dry_run: False`, `live_account: False`** — real orders on the
+practice account. The audit asserts `live_account` is still False on every run;
+that is now the switch that matters, not `dry_run`.
+
+What to watch on the practice account:
+1. the arm is placed the bar **after** the signal, never the same bar (34.4% vs
+   52.9% rides on this)
+2. it fills at or near `entry + 0.15×ATR`, not far through it
+3. the bracket ticks on a stop-with-bracket land where intended — the platform's
+   tick convention on that order type is the largest untested assumption left
+4. it is cancelled by all four paths: flatten window, expiry, opposite signal,
+   and a fill
+5. only ever ONE working entry order at a time
 
 **The one dangerous failure mode.** A resting add that outlives its position will
 open a fresh, unmanaged position on the next touch. Every exit path routes through
@@ -248,7 +271,7 @@ the cap distance at 1, 2, 4 and 8 lots; reintroducing the bug fails nine of them
 
 ```bash
 node ../research/export_bot_fixture.mjs   # regenerate the fixture
-python test_donchian_parity.py            # 117 checks
+python test_donchian_parity.py            # 119 checks
 ```
 
 The harness asserts the Python reproduces the JS **stage by stage** — 2-minute
