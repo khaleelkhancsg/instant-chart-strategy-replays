@@ -254,6 +254,20 @@ CONFIG = {
     # positive and every paired CI excluding zero, pf 1.286 -> 1.332, net $271k
     # -> $299k, and it wins at all six add-window settings tested.
     # research/pyramid2.mjs holds the measurement.
+    # 0 = STOP-ENTRY MODE. The signal buys nothing at all; it only ARMS a stop for
+    # the full size at entry + scale_in_trigger_atr, placed one bar later. If price
+    # never confirms, there is no trade. This is the limit of the same gradient
+    # (1 > 2 > 3 > 4 > 6, so try 0) and it measures BETTER than 1 -- +2.2pp all
+    # history, positive in all five slices, pf 1.382 -> 1.423, net $225k -> $237k,
+    # robust across add-window 6/10/15/20, and it reuses the already-validated
+    # 0.15 trigger rather than fitting a new one. research/zero_tranche.mjs.
+    #
+    # SHIPPED OFF, deliberately. It inverts this bot's core safety invariant:
+    # "flat with a working order" goes from forbidden to normal, because the
+    # resting order IS the entry. And the naive version -- letting that stop fill
+    # on its own bar instead of one bar later -- scores 34.4% against 52.9%, so a
+    # timing mistake costs 16pp rather than a little. Nothing here has run against
+    # the live API yet. Dry-run it before setting this to 0.
     "scale_in_first": 1,                 # lots taken at the signal; the rest rests
     "scale_in_trigger_atr": 0.15,        # favourable move required before adding
     "scale_in_window_bars": 10,          # give up on the add after this many bars
@@ -1034,7 +1048,7 @@ class DonchianBot:
             self._pos_dir = -1
         else:
             self._pos_dir = 1 if open_sz > 0 else (-1 if open_sz < 0 else 0)
-        if not self.in_position:
+        if not self.in_position and not self._stop_entry_mode():
             # UNCONDITIONAL, not just on the transition. This is the authoritative
             # read of the platform: there is no position. Anything still able to
             # OPEN one must die here, whether or not the bot believed it was in a
@@ -1082,6 +1096,17 @@ class DonchianBot:
                 if oid is not None:
                     await self.api.cancel_order(oid)
 
+    # ---- stop-entry mode ----
+    @staticmethod
+    def _stop_entry_mode() -> bool:
+        """True when the signal arms a stop instead of buying anything.
+
+        In this mode a resting order with no position is the NORMAL state, not
+        the dangerous one, so the flat-cancel rule in _sync_position must not
+        apply to it. Everything else that kills a resting order still does.
+        """
+        return bool(CONFIG.get("scale_in")) and int(CONFIG.get("scale_in_first", 1)) <= 0
+
     # ---- the resting scale-in order ----
     async def _cancel_add(self, why: str) -> None:
         """Kill the resting add. EVERY path that leaves a position comes here.
@@ -1120,7 +1145,7 @@ class DonchianBot:
         the previous bar's entry goes to the exchange exactly one bar late — which
         is the behaviour that was measured. See _place_entry.
         """
-        if self._add_pending is not None and self.in_position:
+        if self._add_pending is not None and (self.in_position or self._stop_entry_mode()):
             a = self._add_pending
             self._add_pending = None
             self._add_oid = await self.api.place_stop_with_bracket(
@@ -1133,7 +1158,7 @@ class DonchianBot:
             self._add_lots = a["lots"]
             self._add_deadline = a["deadline"]
             return
-        if self._add_pending is not None and not self.in_position:
+        if self._add_pending is not None and not self.in_position and not self._stop_entry_mode():
             # Position gone before the add was ever placed. Nothing to cancel,
             # but the parked order must not survive.
             self._add_pending = None
@@ -1267,6 +1292,27 @@ class DonchianBot:
         self._save_state()
 
         first = first_lots
+        if self._stop_entry_mode():
+            # Nothing is bought. Park the FULL size as a stop entry for the next
+            # bar; if price never reaches it the signal simply expires unfilled.
+            add_px = ref_px + sig * max(CONFIG["scale_in_trigger_atr"] * atr_v, TICK)
+            add_px = round(add_px / TICK) * TICK
+            sl_px = ref_px - sig * sl_pts
+            tp_px = ref_px + sig * tp_pts
+            self._first_lots = 0
+            self._add_pending = {
+                "side": side, "lots": qty, "px": add_px,
+                "sl_ticks": max(1, round(abs(add_px - sl_px) / TICK)),
+                "tp_ticks": max(1, round(abs(tp_px - add_px) / TICK)),
+                "deadline": datetime.now(timezone.utc) + timedelta(
+                    minutes=CONFIG["scale_in_window_bars"] * CONFIG["timeframe_min"]),
+            }
+            log.info("   ↳ STOP-ENTRY armed: %d lots at %.2f (%.2fxATR away), "
+                     "live from the NEXT bar. No position until it fills.",
+                     qty, add_px, CONFIG["scale_in_trigger_atr"])
+            self._balance_at_entry = None
+            self._save_state()
+            return
         oid = await self.api.place_bracket_order(side, first, sl_ticks, tp_ticks)
         if oid is None:
             log.error("❌ entry failed — staying flat")

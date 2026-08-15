@@ -7,7 +7,7 @@ The strategy itself, and how it was arrived at, is in
 | | |
 |---|---|
 | `mnq_donchian_bot.py` | the bot |
-| `test_donchian_parity.py` | 108 checks that the port matches the JS engine |
+| `test_donchian_parity.py` | 117 checks that the port matches the JS engine |
 | `fixture_donchian.json` | golden output from that engine (25 days, 39 trades) |
 | `run_donchian_bot.bat` | launcher — runs the parity checks first, refuses to start if they fail |
 
@@ -192,6 +192,41 @@ start costing size on the winners. It survives slippage on the add (+1 tick
 seconds of the entry fill — which put it on the wrong side of this by 15pp.
 Measurement in [`../research/samebar_add.mjs`](../research/samebar_add.mjs).
 
+## Stop-entry mode (`scale_in_first: 0`) — measured better, shipped off
+
+The tranche sweep is monotone (1 > 2 > 3 > 4 > 6), so the limit case is taking
+**nothing** at the signal: it only ARMS a stop for the full size at
+entry + 0.15×ATR, placed one bar later. If price never confirms there is no
+trade at all.
+
+| | early | late | 12m | 2026 | ALL | pf | net |
+|---|---|---|---|---|---|---|---|
+| 1 + 7 (ships) | 51.3 | 48.8 | 57.8 | 54.4 | 50.8 | 1.382 | $225k |
+| **0 + 8 @ 0.15×ATR** | **+2.8** | +1.0 | **+3.7** | **+1.9** | **+2.2** | **1.423** | **$237k** |
+
+Positive in all five slices; paired CIs exclude zero in four of them (the late
+half is +1.02pp at 80%, the one weak reading). Robust across add-window 6/10/15/20,
+and it reuses the already-validated 0.15 trigger instead of fitting a new one.
+It also removes the market order entirely — every fill becomes a stop.
+
+**It ships OFF, and that is deliberate.** Two reasons, both about live risk
+rather than the measurement:
+
+1. It **inverts this bot's core safety invariant**. Everywhere else, "flat with a
+   working order" is the single worst state — a stop with nothing behind it opens
+   an unmanaged position on the next touch, and a property test over 854
+   randomised steps exists to forbid it. In stop-entry mode that state is
+   *normal*, because the resting order **is** the entry. `_sync_position` no
+   longer sweeps it, which is correct here and would be a serious bug anywhere
+   else. Nine checks pin the two regimes apart; three mutants confirm they bite.
+2. The naive version **loses 16pp**. Letting the armed stop fill on its own bar
+   instead of one bar later scores 34.4% against 52.9% — worse than not doing it
+   at all. The whole thing rests on order timing that has never been exercised
+   against the real API.
+
+Turn it on only after a dry-run session confirms the arm is placed one bar late,
+fills near the trigger, and is cancelled by the flatten window and by expiry.
+
 **The one dangerous failure mode.** A resting add that outlives its position will
 open a fresh, unmanaged position on the next touch. Every exit path routes through
 `_cancel_add()` — position closed, flatten window, flip, window expiry — and the
@@ -213,7 +248,7 @@ the cap distance at 1, 2, 4 and 8 lots; reintroducing the bug fails nine of them
 
 ```bash
 node ../research/export_bot_fixture.mjs   # regenerate the fixture
-python test_donchian_parity.py            # 108 checks
+python test_donchian_parity.py            # 117 checks
 ```
 
 The harness asserts the Python reproduces the JS **stage by stage** — 2-minute

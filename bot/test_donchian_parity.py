@@ -813,6 +813,60 @@ def run_live_path_tests(fx, bars):
           check(f"no add survives being flat ({steps} randomised steps)",
                 not violations, "; ".join(violations[:3]))
 
+
+      # ── STOP-ENTRY MODE (scale_in_first = 0), shipped off ──
+      # The signal arms a stop for the full size instead of buying anything. This
+      # INVERTS the invariant above: here a working order with no position is the
+      # normal state, because the order IS the entry. Everything else that kills a
+      # resting order must still kill it, so each of those paths is re-checked
+      # under the new mode rather than assumed to carry over.
+      saved3 = bot.CONFIG["scale_in_first"]
+      bot.CONFIG["scale_in_first"] = 0
+      try:
+          b, api = run(sig_ct + 2)
+          check("stop-entry: NO market order is sent at all",
+                len(api.orders) == 0, f"orders={api.orders}")
+          check("stop-entry: the FULL size is parked, not a tranche",
+                b._add_pending is not None and
+                b._add_pending["lots"] == bot.CONFIG["contracts"],
+                f"pending={b._add_pending}")
+          check("stop-entry: the bot is still FLAT after the signal",
+                not b.in_position, f"in_position={b.in_position}")
+          # _sync_position must NOT sweep the armed entry merely for being flat.
+          api.position = None
+          asyncio.run(b._sync_position())
+          check("stop-entry: a flat _sync_position does NOT kill the armed entry",
+                b._add_pending is not None, f"pending={b._add_pending}")
+          # ...and _service_add must send it even though there is no position.
+          asyncio.run(b._service_add())
+          check("stop-entry: the armed order IS sent while flat",
+                len(api.adds) == 1 and api.adds[0][1] == bot.CONFIG["contracts"],
+                f"adds={api.adds}")
+          check("...and the parked copy is cleared", b._add_pending is None)
+
+          # the paths that MUST still cancel it
+          b9, api9 = make_bot(prefix, bot.CONFIG["flatten_ct"])
+          b9._add_oid = 999
+          asyncio.run(b9._enforce_flatten())
+          check("stop-entry: the flatten window still cancels the armed entry",
+                b9._add_oid is None and api9.cancels >= 1, "")
+
+          b10, api10 = make_bot(prefix, sig_ct + 2)
+          b10._add_oid = 999
+          b10._add_deadline = datetime.now(timezone.utc) - timedelta(minutes=1)
+          asyncio.run(b10._service_add())
+          check("stop-entry: the window still expires the armed entry",
+                b10._add_oid is None and api10.cancels >= 1, "")
+
+          b11, api11 = make_bot(prefix, sig_ct + 2)
+          b11._add_pending = {"side": 0, "lots": 8, "px": 100.0, "sl_ticks": 10,
+                              "tp_ticks": 5, "deadline": datetime.now(timezone.utc)}
+          asyncio.run(b11._cancel_add("flip"))
+          check("stop-entry: _cancel_add still drops a parked entry",
+                b11._add_pending is None, f"pending={b11._add_pending}")
+      finally:
+          bot.CONFIG["scale_in_first"] = saved3
+
     finally:
         bot.CONFIG.update(saved2)
 
