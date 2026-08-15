@@ -1,3 +1,25 @@
+// !! REJECTED — see research/early_walkforward.mjs and early_regime.mjs !!
+//
+// Early arming (k > 0) does NOT survive out-of-sample selection. Every positive
+// result in this file evaluates a FIXED k chosen with full-sample knowledge, and
+// no amount of significance testing on an already-selected parameter can detect
+// that. Two tests that CAN, both fail it:
+//
+//   WALK-FORWARD  choosing k on the past only and scoring on the next six
+//   months gives -$2.19/trade against k=0 when k is picked on training
+//   expectancy, and +$6.76 when picked on training pass rate. The sign flips
+//   with the selection rule, per-period deltas swing +-$55, and the procedure
+//   picks k=0.80 -- not the 0.40 that was going to be recommended.
+//
+//   REGIME  the entire gain sits in ONE ATR quintile (11.7-16.3 pts) at every
+//   value of k: 103% of the total at k=0.40, 91% at 0.60, 110% at 0.80. The
+//   other four quintiles net to zero or negative, and quintile 4 is negative.
+//   Confirmation has no reason to work only in that band.
+//
+// The MES "replication" does not rescue it: MES and MNQ are ~95% correlated
+// index futures over the same calendar span, so a gain driven by a shared
+// volatility regime replicates without being real.
+//
 // Is early detection an edge, or is it the bull market?
 //
 // early_detect.mjs found that arming k x ATR before the Donchian break beats the
