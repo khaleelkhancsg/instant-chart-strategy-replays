@@ -652,8 +652,26 @@ def run_live_path_tests(fx, bars):
           total, first = bot.CONFIG["contracts"], bot.CONFIG["scale_in_first"]
           check("scale-in: first tranche is the configured size",
                 len(api.orders) == 1 and api.orders[0][1] == first, f"orders={api.orders}")
-          check("scale-in: one resting add for the remainder",
+          # THE ADD IS DEFERRED BY ONE BAR. A 2-min bar's range is about one ATR,
+          # so a 0.15xATR trigger is touched inside the ENTRY bar for ~81% of
+          # signals with no information in it. Resting the order immediately adds
+          # to nearly everything, including the breakouts that spiked and died —
+          # measured at 31.8% / pf 1.116, WORSE than not scaling in. One bar later
+          # is 46.5% / pf 1.338. So "nothing sent yet" is the correct state here.
+          check("scale-in: NO add order is sent on the entry bar",
+                len(api.adds) == 0, f"adds={api.adds}")
+          check("scale-in: the add is parked for the next bar instead",
+                b._add_pending is not None and b._add_pending["lots"] == total - first,
+                f"pending={b._add_pending}")
+          # Now let one more bar pass: _service_add is what sends it.
+          if b._add_pending is not None:
+              api.position = {"contractId": bot.CONFIG["contract_id"],
+                              "size": first, "averagePrice": 100.0}
+              b.in_position, b._pos_dir = True, 1
+              asyncio.run(b._service_add())
+          check("scale-in: one resting add for the remainder, one bar late",
                 len(api.adds) == 1 and api.adds[0][1] == total - first, f"adds={api.adds}")
+          check("...and the parked copy is cleared once sent", b._add_pending is None)
           if api.adds and api.orders:
               side, size, stop_px, a_sl, a_tp = api.adds[0]
               check("...add is on the SAME side as the entry", side == api.orders[0][0], "")
@@ -699,6 +717,36 @@ def run_live_path_tests(fx, bars):
           asyncio.run(b5._service_add())
           check("...but survives while the window is still open",
                 b5._add_oid == 999 and api5.cancels == 0, "")
+
+          # A DEFERRED add is exactly as dangerous as a resting one: if the
+          # position is gone by the next bar, sending it would open a fresh
+          # unmanaged position with no signal behind it. Two ways out.
+          b6, api6 = make_bot(prefix, sig_ct + 2)
+          b6._add_pending = {"side": 0, "lots": 6, "px": 100.0, "sl_ticks": 10,
+                             "tp_ticks": 5, "deadline": datetime.now(timezone.utc)}
+          b6.in_position = False
+          asyncio.run(b6._service_add())
+          check("scale-in: a parked add is DROPPED if the position is gone",
+                b6._add_pending is None and len(api6.adds) == 0,
+                f"pending={b6._add_pending} adds={api6.adds}")
+
+          b7, api7 = make_bot(prefix, sig_ct + 2)
+          b7._add_pending = {"side": 0, "lots": 6, "px": 100.0, "sl_ticks": 10,
+                             "tp_ticks": 5, "deadline": datetime.now(timezone.utc)}
+          asyncio.run(b7._cancel_add("test"))
+          check("scale-in: _cancel_add drops a parked add too",
+                b7._add_pending is None, f"pending={b7._add_pending}")
+
+          b8, api8 = make_bot(prefix, sig_ct + 2)
+          b8._add_pending = {"side": 0, "lots": 6, "px": 100.0, "sl_ticks": 10,
+                             "tp_ticks": 5, "deadline": datetime.now(timezone.utc)}
+          b8.in_position, b8._pos_dir = True, 1
+          api8.position = {"contractId": bot.CONFIG["contract_id"],
+                           "size": 2, "averagePrice": 100.0}
+          asyncio.run(b8._service_add())
+          check("...but is SENT while the position is still open",
+                len(api8.adds) == 1 and b8._add_oid is not None,
+                f"adds={api8.adds}")
 
     finally:
         bot.CONFIG.update(saved2)

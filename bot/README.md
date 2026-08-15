@@ -7,7 +7,7 @@ The strategy itself, and how it was arrived at, is in
 | | |
 |---|---|
 | `mnq_donchian_bot.py` | the bot |
-| `test_donchian_parity.py` | 101 checks that the port matches the JS engine |
+| `test_donchian_parity.py` | 107 checks that the port matches the JS engine |
 | `fixture_donchian.json` | golden output from that engine (25 days, 39 trades) |
 | `run_donchian_bot.bat` | launcher — runs the parity checks first, refuses to start if they fail |
 
@@ -136,6 +136,28 @@ fastest through the level — the adds most worth having. Slippage is the
 affordable cost: break-even is **8 ticks** of extra slippage on the add, and a
 plain stop should cost 1–3.
 
+**The add is placed one bar AFTER entry, and that delay is the entire edge.**
+A 2-minute bar's range is roughly one ATR, so a 0.15×ATR trigger gets touched
+somewhere inside the *entry bar itself* for **81%** of signals — almost
+mechanically, carrying no information. Resting the order immediately therefore
+adds to nearly everything, including the breakouts that spiked and died, which is
+the exact population scale-in exists to stay small in.
+
+| when the add may fill | add rate | avg lots | pf | pass |
+|---|---|---|---|---|
+| entry bar | 95% | 7.67 | 1.116 | 31.8% |
+| **one bar later (shipped)** | 87% | 7.21 | **1.338** | **46.5%** |
+| +2 bars | 72% | 6.33 | 1.298 | 43.9% |
+| +5 bars | 47% | 4.82 | 1.272 | 38.2% |
+| no scale-in at all | — | 8.00 | 1.128 | 30.9% |
+
+Adding from the entry bar is **worse than not scaling in at all**. One bar is the
+shortest delay that tests anything; longer delays decay smoothly because they
+start costing size on the winners. It survives slippage on the add (+1 tick
+−0.9pp, +2 ticks −1.5pp). The bot originally sent the add immediately — within
+seconds of the entry fill — which put it on the wrong side of this by 15pp.
+Measurement in [`../research/samebar_add.mjs`](../research/samebar_add.mjs).
+
 **The one dangerous failure mode.** A resting add that outlives its position will
 open a fresh, unmanaged position on the next touch. Every exit path routes through
 `_cancel_add()` — position closed, flatten window, flip, window expiry — and the
@@ -157,7 +179,7 @@ the cap distance at 1, 2, 4 and 8 lots; reintroducing the bug fails nine of them
 
 ```bash
 node ../research/export_bot_fixture.mjs   # regenerate the fixture
-python test_donchian_parity.py            # 101 checks
+python test_donchian_parity.py            # 107 checks
 ```
 
 The harness asserts the Python reproduces the JS **stage by stage** — 2-minute
@@ -244,12 +266,19 @@ and picking one size that suits the regime (8 lots).
   at double commission the book does not survive.
 - **One loss ends the day.** A capped loss is ~$1,000 against a −$500 breaker,
   so one loser closes the session. Intended, and priced in.
-- **A trade can still end the account, cap or no cap.** 50 trades in the book
-  lose more than the entire $2,000 trailing drawdown, worst −$8,782, because the
-  platform stop only fires on a price it is shown and a gap jumps it. The cap
-  cuts these from 297 to 50 — a large improvement, not immunity. Neither daily
-  rule helps: both are entry blocks and neither can touch a trade already
-  running.
+- **Tail risk on the book actually traded is bounded, but that is a modelling
+  assumption, not a guarantee.** An earlier draft of this file said 50 trades
+  lose more than the $2,000 trailing drawdown, worst −$8,782. That was computed
+  on the RAW engine output, which contains trades the daily blocks prevent — the
+  engine has no profit block, so it keeps trading days that stopped at +$750.
+  Recomputed on the book that is actually traded: **no trade loses more than
+  $2,000 and no day finishes below −$1,011**, in either cap mode (exact
+  −$1,726 worst trade / −$1,011 worst day; price −$1,742 / −$1,038). A
+  −$1,726 trade is not $1,726 of risk: it is a day that was up $700 being cut
+  to −$1,000, which is the cap working. What remains is that a real limit move
+  or halt would break the assumption that the platform can always liquidate near
+  the cap, and no such event is in this dataset. Neither daily rule would help:
+  both are entry blocks and neither can touch a trade already running.
 - **Slippage.** The bot logs realised entry slippage every fill and warns past 3
   ticks of mean absolute deviation — judge on `|avg|`, not the signed number. The
   Monte Carlo puts 3 ticks per side *at* the zero-edge null, and the metric runs

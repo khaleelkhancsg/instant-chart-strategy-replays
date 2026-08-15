@@ -906,6 +906,8 @@ class DonchianBot:
         self._add_deadline = None
         self._add_lots = 0
         self._first_lots = 0
+        # The add is DEFERRED by one bar — see _place_entry for why.
+        self._add_pending = None
         # dry-run virtual book
         self._v_pos = 0
         self._v_entry = 0.0
@@ -1072,6 +1074,12 @@ class DonchianBot:
         signal behind it and, worse, one the bot does not know it has. The
         failure is silent, so the cancel is loud when it fails.
         """
+        # A DEFERRED add is just as dangerous as a resting one: if the position
+        # closes before the next bar, placing it then would open a fresh
+        # unmanaged position. Drop it first, and unconditionally.
+        if self._add_pending is not None:
+            self._add_pending = None
+            log.info("✖ deferred add dropped (%s)", why)
         if self._add_oid is None:
             return
         oid, self._add_oid = self._add_oid, None
@@ -1088,7 +1096,31 @@ class DonchianBot:
                       oid, why, exc)
 
     async def _service_add(self) -> None:
-        """Expire the add once its window has passed, and notice when it fills."""
+        """Place a deferred add, expire it once its window passes, notice a fill.
+
+        _evaluate() runs once per completed 2-minute bar, so an add parked here by
+        the previous bar's entry goes to the exchange exactly one bar late — which
+        is the behaviour that was measured. See _place_entry.
+        """
+        if self._add_pending is not None and self.in_position:
+            a = self._add_pending
+            self._add_pending = None
+            self._add_oid = await self.api.place_stop_with_bracket(
+                a["side"], a["lots"], a["px"], a["sl_ticks"], a["tp_ticks"])
+            if self._add_oid is None:
+                log.warning("⚠  add order REJECTED — running at %d lots instead of %d",
+                            self._first_lots, CONFIG["contracts"])
+                return
+            self._add_px = a["px"]
+            self._add_lots = a["lots"]
+            self._add_deadline = a["deadline"]
+            return
+        if self._add_pending is not None and not self.in_position:
+            # Position gone before the add was ever placed. Nothing to cancel,
+            # but the parked order must not survive.
+            self._add_pending = None
+            log.info("✖ deferred add dropped (flat before it was placed)")
+            return
         if self._add_oid is None:
             return
         if self._add_deadline and datetime.now(timezone.utc) >= self._add_deadline:
@@ -1242,16 +1274,24 @@ class DonchianBot:
         log.info("   ↳ scale-in: %d lots now, %d resting at %.2f (%.2fxATR away). "
                  "Roughly 15%% of trades never reach it — that is the point.",
                  first, rest, add_px, CONFIG["scale_in_trigger_atr"])
-        self._add_oid = await self.api.place_stop_with_bracket(
-            side, rest, add_px, add_sl_ticks, add_tp_ticks)
-        if self._add_oid is None:
-            log.warning("⚠  add order REJECTED — running at %d lots instead of %d", first, qty)
-            return
-        self._add_px = add_px
-        self._add_lots = rest
+        # DEFERRED BY ONE BAR, deliberately. A 2-minute bar's range is roughly one
+        # ATR, so a 0.15xATR trigger is touched somewhere inside the ENTRY bar for
+        # ~81% of signals — almost mechanically, and with no information in it.
+        # Resting the order immediately therefore adds to nearly everything,
+        # including the breakouts that spiked and died, which is the exact
+        # population scale-in exists to stay small in. Measured, that is the whole
+        # of the edge: add from the entry bar and the book scores 31.8% with pf
+        # 1.116, WORSE than not scaling in at all; add one bar later and it is
+        # 46.5% with pf 1.338. Longer delays decay smoothly from there (43.9% at
+        # +2 bars, 38.2% at +5) because they start costing size on the winners.
+        # research/samebar_add.mjs holds the measurement.
         self._first_lots = first
-        self._add_deadline = datetime.now(timezone.utc) + timedelta(
-            minutes=CONFIG["scale_in_window_bars"] * CONFIG["timeframe_min"])
+        self._add_pending = {
+            "side": side, "lots": rest, "px": add_px,
+            "sl_ticks": add_sl_ticks, "tp_ticks": add_tp_ticks,
+            "deadline": datetime.now(timezone.utc) + timedelta(
+                minutes=CONFIG["scale_in_window_bars"] * CONFIG["timeframe_min"]),
+        }
 
     async def _log_fill(self, sig: int, ref_px: float, lots: int = None) -> None:
         """Deviation of the actual fill from the SIGNAL BAR'S CLOSE.
