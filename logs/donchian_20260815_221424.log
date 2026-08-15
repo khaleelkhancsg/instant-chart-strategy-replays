@@ -1,0 +1,10 @@
+2026-08-15 22:14:25  INFO     ────────────────────────────────────────────────────────────
+2026-08-15 22:14:25  INFO     🔎 FILL CHECK
+2026-08-15 22:14:25  INFO        size            8 lots  [OK]
+2026-08-15 22:14:25  INFO        fill price      20000.25 vs trigger 20000.00 = +1.0 ticks  [OK]
+2026-08-15 22:14:25  INFO        working legs    19937.50, 20035.00
+2026-08-15 22:14:25  INFO        wanted          stop 19937.50 / target 20035.00
+2026-08-15 22:14:25  INFO        bracket         both legs where intended  [OK]
+2026-08-15 22:14:25  INFO        stop distance   62.8 pts | cap allows 62.5 at 8 lots | 5xATR = 100.0
+2026-08-15 22:14:25  INFO        verdict         ALL CHECKS PASSED
+2026-08-15 22:14:25  INFO     ────────────────────────────────────────────────────────────

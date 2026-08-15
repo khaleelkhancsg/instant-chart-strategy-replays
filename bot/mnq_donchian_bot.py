@@ -163,6 +163,7 @@ import asyncio
 import json
 import logging
 import math
+import sys
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -352,6 +353,19 @@ BUCKET_MS = CONFIG["timeframe_min"] * 60_000
 # ─────────────────────────────────────────────────────────────
 #  LOGGING
 # ─────────────────────────────────────────────────────────────
+# The FILE handler below is utf-8 and always correct. The console is not: on
+# a Windows cp1252 terminal Python writes every non-ASCII character as a
+# literal backslash-u escape, which turns a 60-character divider into 360
+# characters of noise and makes the log unreadable exactly when it is being
+# watched live. Put the console into utf-8 if it will accept it, and fall
+# back to plain ASCII decoration rather than escapes if it will not.
+_CONSOLE_UTF8 = True
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except Exception:
+        _CONSOLE_UTF8 = False
+
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s  %(levelname)-7s  %(message)s",
                     datefmt="%Y-%m-%d %H:%M:%S")
@@ -363,7 +377,7 @@ _fh = logging.FileHandler(_log_dir / f"donchian_{datetime.now():%Y%m%d_%H%M%S}.l
 _fh.setFormatter(logging.Formatter("%(asctime)s  %(levelname)-7s  %(message)s",
                                    "%Y-%m-%d %H:%M:%S"))
 logging.getLogger().addHandler(_fh)
-DIV = "─" * 60
+DIV = ("─" if _CONSOLE_UTF8 else "-") * 60
 
 
 # ═════════════════════════════════════════════════════════════
@@ -931,6 +945,7 @@ class DonchianBot:
         self._first_lots = 0
         # The add is DEFERRED by one bar — see _place_entry for why.
         self._add_pending = None
+        self._want = None
 
     # ---- persistence ----
     def _load_state(self) -> None:
@@ -1141,6 +1156,20 @@ class DonchianBot:
             self._add_px = a["px"]
             self._add_lots = a["lots"]
             self._add_deadline = a["deadline"]
+            self._want = a
+            # The arm should reach the exchange exactly ONE bar after the signal
+            # bar closed. Earlier costs 18pp, later 8.8pp, so it is worth
+            # asserting on every trade rather than trusting the scheduler.
+            if a.get("sig_ts") and self._last_bar_ts:
+                late = (self._last_bar_ts - a["sig_ts"]) / 60000.0
+                good = abs(late - CONFIG["timeframe_min"]) < 0.51
+                log.info("   \u23f1 arm timing: %.0f min after the signal bar "
+                         "(want %d) [%s]", late, CONFIG["timeframe_min"],
+                         "OK" if good else "WRONG")
+                if not good:
+                    log.error("\U0001f6d1 ARM TIMING WRONG \u2014 same bar costs 18pp, "
+                              "two bars late 8.8pp. This is the one thing worth "
+                              "stopping the session for.")
             return
         if self._add_pending is not None and not self.in_position and not self._stop_entry_mode():
             # Position gone before the add was ever placed. Nothing to cancel,
@@ -1170,7 +1199,90 @@ class DonchianBot:
                          f", blended fill {fill:.2f}" if fill else "")
                 self._add_oid = None
                 self._add_deadline = None
+                await self._verify_fill(abs(p.get("size", 0)), fill)
             break
+
+    async def _verify_fill(self, size, fill_px) -> None:
+        """Check a real fill against what was intended, and say so in the log.
+
+        None of this is answerable by a backtest. The bracket especially: it is
+        sent as signed TICKS from the platform own fill price, and whether that
+        convention matches the assumed one is the largest untested thing here.
+        Cheap to check on every fill, expensive to discover late.
+        """
+        want = getattr(self, "_want", None)
+        if not want:
+            return
+        sig = 1 if want["side"] == 0 else -1
+        ok = True
+        log.info("%s", DIV)
+        log.info("\U0001f50e FILL CHECK")
+
+        want_lots = int(want["lots"])
+        if size == want_lots:
+            log.info("   size            %d lots  [OK]", size)
+        else:
+            ok = False
+            log.error("   size            %d lots, wanted %d  [WRONG]", size, want_lots)
+
+        if fill_px is not None:
+            slip_t = (fill_px - want["px"]) * sig / TICK
+            verdict = "OK" if slip_t <= 2.0 else ("HIGH" if slip_t <= 4.0 else "BAD")
+            log.info("   fill price      %.2f vs trigger %.2f = %+.1f ticks  [%s]",
+                     fill_px, want["px"], slip_t, verdict)
+            if slip_t > 4.0:
+                ok = False
+                log.error("   -> %.1f ticks of entry slippage. Roughly 1.4pp of pass "
+                          "rate per tick; judge on the running average, not one fill.",
+                          slip_t)
+
+        legs = []
+        try:
+            for o in await self.api.get_open_orders():
+                if o.get("contractId") not in (None, CONFIG["contract_id"]):
+                    continue
+                px = o.get("stopPrice") or o.get("limitPrice")
+                if px is not None:
+                    legs.append(float(px))
+        except Exception as exc:
+            log.warning("   bracket legs    could not be read: %s", exc)
+
+        want_sl, want_tp = want.get("want_sl_px"), want.get("want_tp_px")
+        if legs and want_sl and want_tp:
+            tol = max(4 * TICK, 0.0005 * abs(want_sl))
+            sl_hit = any(abs(px - want_sl) <= tol for px in legs)
+            tp_hit = any(abs(px - want_tp) <= tol for px in legs)
+            log.info("   working legs    %s", ", ".join("%.2f" % px for px in legs))
+            log.info("   wanted          stop %.2f / target %.2f", want_sl, want_tp)
+            if sl_hit and tp_hit:
+                log.info("   bracket         both legs where intended  [OK]")
+            else:
+                ok = False
+                log.error("   bracket         stop %s, target %s  [WRONG]",
+                          "ok" if sl_hit else "MISSING", "ok" if tp_hit else "MISSING")
+                log.error("   -> the tick convention on a stop-with-bracket differs from "
+                          "the assumed one. This is the failure this check exists for. "
+                          "The measured fallback is polling + a plain market order, "
+                          "which costs 1.4-3.0pp (research/fill_mechanism.mjs).")
+            if fill_px is not None and size:
+                dist = abs(fill_px - want_sl)
+                cap_d = CONFIG["platform_hard_loss_stop"] / (self._pv * max(1, size))
+                log.info("   stop distance   %.1f pts | cap allows %.1f at %d lots | "
+                         "5xATR = %.1f", dist, cap_d, size,
+                         CONFIG["sl_atr_mult"] * float(want.get("atr") or 0))
+                if dist > cap_d + 1.0:
+                    log.warning("   -> the stop sits BEYOND what the cap allows; the "
+                                "platform will liquidate before it is reached. Expected "
+                                "whenever 5xATR is wider than the cap, which is ~56%% of "
+                                "entries -- only a problem if it is EVERY entry.")
+        elif not legs:
+            ok = False
+            log.error("   bracket         NO working legs found after the fill  [WRONG] "
+                      "-- the position may be unprotected. CHECK THE PLATFORM NOW.")
+
+        log.info("   verdict         %s", "ALL CHECKS PASSED" if ok else "SOMETHING IS WRONG")
+        log.info("%s", DIV)
+        self._want = None
 
     # ---- the bracket the platform will actually allow ----
     def _bracket_points(self, atr_v: float, qty: int = None):
@@ -1297,6 +1409,13 @@ class DonchianBot:
                 "tp_ticks": max(1, round(abs(tp_px - add_px) / TICK)),
                 "deadline": datetime.now(timezone.utc) + timedelta(
                     minutes=CONFIG["scale_in_window_bars"] * CONFIG["timeframe_min"]),
+                # What the fill SHOULD look like, carried so it can be CHECKED
+                # rather than assumed. want_sl_px/want_tp_px are absolute prices;
+                # the platform is told signed TICKS from its own fill, so if its
+                # convention differs from the assumed one, these are exactly
+                # where the legs will fail to land.
+                "want_sl_px": sl_px, "want_tp_px": tp_px,
+                "sig_ts": self._last_bar_ts, "atr": atr_v,
             }
             log.info("   ↳ STOP-ENTRY armed: %d lots at %.2f (%.2fxATR away), "
                      "live from the NEXT bar. No position until it fills.",

@@ -1,0 +1,39 @@
+2026-08-15 22:12:26  INFO     ────────────────────────────────────────────────────────────
+2026-08-15 22:12:26  INFO     🔎 FILL CHECK
+2026-08-15 22:12:26  INFO        size            8 lots  [OK]
+2026-08-15 22:12:26  INFO        fill price      20000.25 vs trigger 20000.00 = +1.0 ticks  [OK]
+2026-08-15 22:12:26  INFO        working legs    19937.50, 20035.00
+2026-08-15 22:12:26  INFO        wanted          stop 19937.50 / target 20035.00
+2026-08-15 22:12:26  INFO        bracket         both legs where intended  [OK]
+2026-08-15 22:12:26  INFO        stop distance   62.8 pts | cap allows 62.5 at 8 lots | 5xATR = 100.0
+2026-08-15 22:12:26  INFO        verdict         ALL CHECKS PASSED
+2026-08-15 22:12:26  INFO     ────────────────────────────────────────────────────────────
+2026-08-15 22:12:26  INFO     ────────────────────────────────────────────────────────────
+2026-08-15 22:12:26  INFO     🔎 FILL CHECK
+2026-08-15 22:12:26  INFO        size            8 lots  [OK]
+2026-08-15 22:12:26  INFO        fill price      20000.25 vs trigger 20000.00 = +1.0 ticks  [OK]
+2026-08-15 22:12:26  INFO        working legs    19990.00, 20010.00
+2026-08-15 22:12:26  INFO        wanted          stop 19937.50 / target 20035.00
+2026-08-15 22:12:26  ERROR       bracket         stop MISSING, target MISSING  [WRONG]
+2026-08-15 22:12:26  ERROR       -> the tick convention on a stop-with-bracket differs from the assumed one. This is the failure this check exists for. The measured fallback is polling + a plain market order, which costs 1.4-3.0pp (research/fill_mechanism.mjs).
+2026-08-15 22:12:26  INFO        stop distance   62.8 pts | cap allows 62.5 at 8 lots | 5xATR = 100.0
+2026-08-15 22:12:26  INFO        verdict         SOMETHING IS WRONG
+2026-08-15 22:12:26  INFO     ────────────────────────────────────────────────────────────
+2026-08-15 22:12:26  INFO     ────────────────────────────────────────────────────────────
+2026-08-15 22:12:26  INFO     🔎 FILL CHECK
+2026-08-15 22:12:26  INFO        size            8 lots  [OK]
+2026-08-15 22:12:26  INFO        fill price      20000.25 vs trigger 20000.00 = +1.0 ticks  [OK]
+2026-08-15 22:12:26  ERROR       bracket         NO working legs found after the fill  [WRONG] -- the position may be unprotected. CHECK THE PLATFORM NOW.
+2026-08-15 22:12:26  INFO        verdict         SOMETHING IS WRONG
+2026-08-15 22:12:26  INFO     ────────────────────────────────────────────────────────────
+2026-08-15 22:12:26  INFO     ────────────────────────────────────────────────────────────
+2026-08-15 22:12:26  INFO     🔎 FILL CHECK
+2026-08-15 22:12:26  ERROR       size            3 lots, wanted 8  [WRONG]
+2026-08-15 22:12:26  INFO        fill price      20002.00 vs trigger 20000.00 = +8.0 ticks  [BAD]
+2026-08-15 22:12:26  ERROR       -> 8.0 ticks of entry slippage. Roughly 1.4pp of pass rate per tick; judge on the running average, not one fill.
+2026-08-15 22:12:26  INFO        working legs    19937.50, 20035.00
+2026-08-15 22:12:26  INFO        wanted          stop 19937.50 / target 20035.00
+2026-08-15 22:12:26  INFO        bracket         both legs where intended  [OK]
+2026-08-15 22:12:26  INFO        stop distance   64.5 pts | cap allows 166.7 at 3 lots | 5xATR = 100.0
+2026-08-15 22:12:26  INFO        verdict         SOMETHING IS WRONG
+2026-08-15 22:12:26  INFO     ────────────────────────────────────────────────────────────
