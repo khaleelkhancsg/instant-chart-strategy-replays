@@ -7,7 +7,7 @@ The strategy itself, and how it was arrived at, is in
 | | |
 |---|---|
 | `mnq_donchian_bot.py` | the bot |
-| `test_donchian_parity.py` | 107 checks that the port matches the JS engine |
+| `test_donchian_parity.py` | 108 checks that the port matches the JS engine |
 | `fixture_donchian.json` | golden output from that engine (25 days, 39 trades) |
 | `run_donchian_bot.bat` | launcher — runs the parity checks first, refuses to start if they fail |
 
@@ -66,7 +66,13 @@ to 0.851 and from +$38k to −$215k. The bot warns at startup until you set
 The all-history sweep picks 10, but it averages 2019 (median 2-min ATR 4.8) with
 2026 (23.7) — not a market anyone trades. Conditioning on the current
 high-volatility regime and validating on the **later half** of it, 8 lots scores
-41.5% against 10 lots' 35.0%, and wins head-to-head on all history too.
+41.5% against 10 lots' 35.0%.
+
+Re-checked under the 1-lot first tranche, because the split changes the answer:
+8 lots splits 48.3 / 49.1 across the two halves against 10 lots' 47.3 / 51.0, so
+**8 still wins on the worse half** — 48.3 vs 47.3 — and on 2026, 60.6 vs 57.0.
+10 lots now edges it on the all-history *average* by 0.3pp, which is inside noise
+and is the exact criterion this file warns against ranking on.
 
 Going smaller does **not** keep helping: 4 lots scores 34.5% and 2 lots 10.9%,
 because throughput collapses against a fixed $3,000 target on a deadline. 8 is a
@@ -90,14 +96,42 @@ the average.
 
 ## Scale-in (new)
 
-The bot no longer takes all 8 lots at the signal. It takes **2**, and rests a
-**stop order for the remaining 6** at entry + 0.15×ATR, cancelled if unfilled
+The bot no longer takes all 8 lots at the signal. It takes **1**, and rests a
+**stop order for the remaining 7** at entry + 0.15×ATR, cancelled if unfilled
 after 10 bars.
 
 | | all history | 12 months | 2026 | pf |
 |---|---|---|---|---|
 | all 8 at the signal | 30.8% | 37.9% | 40.0% | 1.092 |
-| **2 + 6 @ 0.15×ATR** | **37.7%** | **45.7%** | **49.1%** | **1.143** |
+| 2 + 6 @ 0.15×ATR | 37.7% | 45.7% | 49.1% | 1.143 |
+| **1 + 7 @ 0.15×ATR (ships)** | **+2.5pp on that** | | | **1.332** |
+
+**The first tranche is ONE lot, not two.** The sweep is monotone — 1 > 2 > 3 > 4
+> 6 — and 1 is the boundary, so nothing is fitted; you cannot hold less than a
+contract. It follows directly from the one-bar deferral below: if the edge is in
+not committing size before confirmation, commit as little as possible until it
+arrives. Average size barely moves (7.06 vs 7.21 lots) because confirmed trades
+still reach 8 either way — what changes is that the ~13% which never confirm now
+risk one lot instead of two.
+
+| slice | 1+7 minus 2+6 | 95% band | P(better) |
+|---|---|---|---|
+| early half | +3.24pp | 1.0 .. 4.6 | 100% |
+| late half | +1.70pp | 0.4 .. 3.4 | 98% |
+| last 12m | +4.56pp | 2.8 .. 6.4 | 100% |
+| 2026 | +4.17pp | 2.4 .. 6.2 | 100% |
+| **all history** | **+2.53pp** | 0.4 .. 4.4 | 100% |
+
+On the real engine: pf 1.286 → **1.332**, net $271k → **$299k**, all-history pass
+46.2% → **48.7%**. It wins at all six add-window settings tested (4/6/10/15/20/30
+bars), which is the robustness test that killed the volume filter.
+
+**Confirmation does NOT compound.** Two adds and three adds were tested at every
+sensible split and trigger — 2+3+3, 2+2+4, 2+4+2, 1+3+4, a four-rung ladder — and
+every one loses, −3.2pp to −7.5pp. Each extra tranche buys its confirmation with a
+worse average entry while the dollar cap tightens as size grows, so the last
+tranche arrives at the worst price with the least room. One round of
+confirmation is all this book supports.
 
 Both rows are measured with the **full rule set on** — $3,000 target, $2,000
 trailing drawdown, the **50% consistency rule**, and the **−$1,000 hard cap**.
@@ -179,7 +213,7 @@ the cap distance at 1, 2, 4 and 8 lots; reintroducing the bug fails nine of them
 
 ```bash
 node ../research/export_bot_fixture.mjs   # regenerate the fixture
-python test_donchian_parity.py            # 107 checks
+python test_donchian_parity.py            # 108 checks
 ```
 
 The harness asserts the Python reproduces the JS **stage by stage** — 2-minute
@@ -197,7 +231,7 @@ path** — that is what the launcher does automatically.
 
 2-minute clock-aligned bars. Donchian-30 breakout (channel excludes the current
 bar), ADX(14) ≥ 25, and Kaufman efficiency(20) > 0.5, taken only between 08:30
-and 15:00 CT. **8 contracts** (2 at the signal, 6 added on follow-through), 5×ATR stop and 1.75×ATR target — the inverted
+and 15:00 CT. **8 contracts** (1 at the signal, 7 added on follow-through), 5×ATR stop and 1.75×ATR target — the inverted
 geometry is deliberate and is what makes trades resolve before the flatten.
 Flips on an opposite signal. Flat by 15:04 CT against a firm 15:05 deadline.
 

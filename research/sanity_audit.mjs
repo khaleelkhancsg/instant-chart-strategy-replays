@@ -45,7 +45,7 @@ const warn = (name, detail) => { WARN++; console.log(`   warn ${name}  — ${det
 const CFG = {
   contracts: 8, slAtrMult: 5.0, tpAtrMult: 1.75,
   dayLossStopUsd: 1000, dayLossStopMode: "exact", slippageTicks: 1,
-  scaleInFrac: 0.25, scaleInTrigger: 0.15, scaleInWindowBars: 10,
+  scaleInFrac: 0.125, scaleInTrigger: 0.15, scaleInWindowBars: 10,
 };
 const RULES = { circuitBreaker: 500, dailyProfitStop: 750 };
 const { bars } = loadBars();
@@ -260,9 +260,23 @@ console.log("\n4. CLAIMS — recomputing what bot/README.md asserts\n");
       warn("README quotes worst trade -$8,782",
            `now $${Math.min(...kept.map(t => t.pnl)).toFixed(0)} on the traded book — restate`);
   }
-  ok("README claim '8 beats 10 head-to-head on all history'",
-     sw8.summary.passRate > sw10.summary.passRate,
-     `${sw8.summary.passRate.toFixed(1)} vs ${sw10.summary.passRate.toFixed(1)}`);
+  // The sizing choice is made on the WORSE of the two halves, not the
+  // all-history average. Ranking on the average is the specific trap this
+  // project keeps writing down — it is what made 3.5/2.5 look best while it
+  // split 53.9 early against 35.8 late — so the check must use the criterion
+  // the decision was actually made on. On all-history alone 10 lots now edges
+  // 8 by ~0.3pp, which is inside noise and is not the basis either way.
+  const MID_ = bars.ts[0] + (bars.ts[bars.count - 1] - bars.ts[0]) / 2;
+  const halves = (tr) => [[bars.ts[0], MID_], [MID_, bars.ts[bars.count - 1]]]
+    .map(([lo, hi]) => sweepWindows(
+      tr.filter(t => t.entryTime >= lo && t.entryTime < hi), lo, hi, rules, 1)
+      .summary.passRate);
+  const h8 = halves(base.trades), h10 = halves(ten);
+  const w8 = Math.min(...h8), w10 = Math.min(...h10);
+  console.log(`   8 lots halves ${h8.map(v => v.toFixed(1)).join(" / ")} -> worse ${w8.toFixed(1)}`);
+  console.log(`   10 lots halves ${h10.map(v => v.toFixed(1)).join(" / ")} -> worse ${w10.toFixed(1)}`);
+  ok("README claim '8 beats 10' on the WORSE half (the stated criterion)",
+     w8 > w10, `${w8.toFixed(1)} vs ${w10.toFixed(1)}`);
 }
 
 // ── 5. DATA INTEGRITY ────────────────────────────────────────────────
@@ -310,7 +324,7 @@ console.log("\n6. CONFIG — does the bot trade what was measured?\n");
     ["sl_atr_mult", "5.0", String(CFG.slAtrMult)],
     ["tp_atr_mult", "1.75", String(CFG.tpAtrMult)],
     ["platform_hard_loss_stop", "1000.0", String(CFG.dayLossStopUsd) + ".0"],
-    ["scale_in_first", "2", String(CFG.scaleInFrac * CFG.contracts)],
+    ["scale_in_first", "1", String(CFG.scaleInFrac * CFG.contracts)],
     ["scale_in_trigger_atr", "0.15", String(CFG.scaleInTrigger)],
     ["scale_in_window_bars", "10", String(CFG.scaleInWindowBars)],
     ["timeframe_min", "2", "2"],

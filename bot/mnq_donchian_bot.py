@@ -243,7 +243,18 @@ CONFIG = {
     # Slippage is the affordable cost: break-even is 8 ticks of EXTRA slippage on
     # the add, and a plain stop should cost 1-3.
     "scale_in": True,
-    "scale_in_first": 2,                 # lots taken at the signal; the rest rests
+    # ONE lot at the signal, seven on confirmation. The first-tranche sweep is
+    # monotone -- 1 > 2 > 3 > 4 > 6 -- and 1 is the boundary, so nothing here is
+    # fitted; you cannot hold less than a contract. It follows directly from what
+    # the one-bar deferral proved: the edge is in NOT committing size before
+    # confirmation, so commit as little as possible before it arrives. Average
+    # size barely moves (7.06 vs 7.21 lots) because confirmed trades still reach
+    # 8 either way -- what changes is that the ~13% which never confirm now risk
+    # one lot instead of two. Measured +2.5pp all-history with every time slice
+    # positive and every paired CI excluding zero, pf 1.286 -> 1.332, net $271k
+    # -> $299k, and it wins at all six add-window settings tested.
+    # research/pyramid2.mjs holds the measurement.
+    "scale_in_first": 1,                 # lots taken at the signal; the rest rests
     "scale_in_trigger_atr": 0.15,        # favourable move required before adding
     "scale_in_window_bars": 10,          # give up on the add after this many bars
     "scale_in_slip_warn_ticks": 6.0,     # past this the benefit is largely gone
