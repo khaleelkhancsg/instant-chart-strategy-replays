@@ -186,10 +186,6 @@ CONFIG = {
     # instrument / account
     "contract_id": "CON.F.US.MNQ.U26",   # ⚠ update on roll; must match account type
     "live_account": False,               # False = sim/practice, True = live/funded
-    "dry_run": False,                     # >>> SHIPS IN DRY-RUN <<< run one full session
-                                         # paper-only, confirm the session gates, the
-                                         # 15:04 flatten and the fill log look right,
-                                         # THEN set False to arm it.
     "tick_size": 0.25,                   # MNQ price increment (points)
     "tick_value": 0.50,                  # $ per tick (= $2.00/point)
 
@@ -935,17 +931,6 @@ class DonchianBot:
         self._first_lots = 0
         # The add is DEFERRED by one bar — see _place_entry for why.
         self._add_pending = None
-        # dry-run virtual book
-        self._v_pos = 0
-        self._v_entry = 0.0
-        self._v_sl = 0.0
-        self._v_tp = 0.0
-        self._v_day_pnl = 0.0
-        self._v_qty = 0
-        self._v_add_px = 0.0
-        self._v_add_left = 0
-        self._v_trades = 0
-        self._v_wins = 0
 
     # ---- persistence ----
     def _load_state(self) -> None:
@@ -980,7 +965,6 @@ class DonchianBot:
                      self._slip_abs_sum / self._slip_n, self._slip_n)
         self._session_key = key
         self._day_start_balance = self.api.balance
-        self._v_day_pnl = 0.0
         self._slip_sum = self._slip_abs_sum = 0.0
         self._slip_n = 0
         self._save_state()
@@ -988,8 +972,6 @@ class DonchianBot:
 
     # ---- daily rules ----
     def _day_pnl(self) -> float:
-        if CONFIG["dry_run"]:
-            return self._v_day_pnl
         return self.api.balance - self._day_start_balance
 
     def _entry_blocked(self) -> Tuple[bool, str]:
@@ -1083,7 +1065,7 @@ class DonchianBot:
         """Firm rule: no overnight positions, flat by 3:05 PM CT. This outranks
         the bracket unconditionally — the backtest closes at the flatten bar's
         open regardless of where stop and target sit, and so does this."""
-        if CONFIG["dry_run"] or not self._in_flat_window(self._ct_now()):
+        if not self._in_flat_window(self._ct_now()):
             return
         await self._cancel_add("flatten window")
         await self._sync_position()
@@ -1403,111 +1385,6 @@ class DonchianBot:
                         "was still only 41.0%% at ONE tick — measure before trusting it.",
                         self._slip_abs_sum / self._slip_n, CONFIG["slip_warn_ticks"])
 
-    # ---- dry-run virtual book ----
-    def _dry_step(self, bar: Bar2m, sig: int, atr_v: float) -> None:
-        # 0) the resting add fills once price has moved far enough the right way.
-        #    Modelled here too, or the paper book would trade a different size
-        #    from the live one and the dry run would not mean anything.
-        if self._v_pos != 0 and self._v_add_left > 0:
-            reached = (bar.high >= self._v_add_px if self._v_pos == 1
-                       else bar.low <= self._v_add_px)
-            if reached:
-                q, add = self._v_qty, self._v_add_left
-                self._v_entry = (self._v_entry * q + self._v_add_px * add) / (q + add)
-                self._v_qty += add
-                self._v_add_left = 0
-                log.info("✅ DRY ADD filled %d @ %.2f — now %d lots, avg %.2f",
-                         add, self._v_add_px, self._v_qty, self._v_entry)
-
-        # 1) resolve an open virtual position on this bar, stop BEFORE target and
-        #    gap-throughs filled at the open — matching src/engine.mjs ordering.
-        if self._v_pos != 0:
-            o, h, l = bar.open, bar.high, bar.low
-            px = reason = None
-            if self._v_pos == 1:
-                if o <= self._v_sl:
-                    px, reason = o, "SL(gap)"
-                elif l <= self._v_sl:
-                    px, reason = self._v_sl, "SL"
-                elif h >= self._v_tp:
-                    px, reason = self._v_tp, "TP"
-            else:
-                if o >= self._v_sl:
-                    px, reason = o, "SL(gap)"
-                elif h >= self._v_sl:
-                    px, reason = self._v_sl, "SL"
-                elif l <= self._v_tp:
-                    px, reason = self._v_tp, "TP"
-            if px is not None:
-                self._dry_exit(px, reason)
-        # 2) flatten outranks the bracket
-        if self._v_pos != 0 and self._in_flat_window(bar.ct_min):
-            self._dry_exit(bar.open, "FLAT")
-
-        blocked, why = self._entry_blocked()
-        log.info("%s", DIV)
-        log.info("[2m %s CT] O=%.2f H=%.2f L=%.2f C=%.2f | ATR=%.2f | sig=%+d | %s | dayP&L=%+.0f",
-                 f"{bar.ct_min // 60:02d}:{bar.ct_min % 60:02d}",
-                 bar.open, bar.high, bar.low, bar.close, atr_v, sig,
-                 ("VPOS " + ("▲" if self._v_pos == 1 else "▼")) if self._v_pos else "flat",
-                 self._v_day_pnl)
-
-        # 3) flip
-        if self._v_pos != 0 and CONFIG["flip_on_opposite"] and sig != 0 and sig != self._v_pos:
-            self._dry_exit(bar.close, "FLIP")
-        if self._v_pos != 0 or sig == 0 or atr_v <= 0:
-            return
-        ok, gate = self._entry_allowed_now(bar.ct_min)
-        if not ok:
-            log.info("⏸  DRY entry suppressed: %s", gate)
-            return
-        if blocked:
-            log.info("⏸  DRY entry suppressed: %s", why)
-            return
-        # The live bot fills at the NEXT bar's open; the virtual book has no next
-        # bar yet, so it uses this close as the reference. That is a ~1 bar
-        # optimism in the dry run ONLY — the real fill is measured by _log_fill.
-        # The paper book must respect the platform cap too, or its P&L is fiction:
-        # it would print losses of $2,400 that the platform would never allow.
-        total0 = CONFIG["contracts"]
-        first0 = (max(1, min(total0 - 1, int(CONFIG["scale_in_first"])))
-                  if CONFIG.get("scale_in") and total0 >= 2 else total0)
-        sl_pts, tp_pts, capped, _ = self._bracket_points(atr_v, first0)
-        self._v_pos, self._v_entry = sig, bar.close
-        self._v_sl = bar.close - sig * sl_pts
-        self._v_tp = bar.close + sig * tp_pts
-        total = CONFIG["contracts"]
-        if CONFIG.get("scale_in") and total >= 2:
-            self._v_qty = max(1, min(total - 1, int(CONFIG["scale_in_first"])))
-            self._v_add_left = total - self._v_qty
-            self._v_add_px = bar.close + sig * max(
-                CONFIG["scale_in_trigger_atr"] * atr_v, TICK)
-        else:
-            self._v_qty, self._v_add_left = total, 0
-        log.info("🧪 DRY ENTRY %-5s x%d%s @ %.2f | SL %.2f  TP %.2f | risk $%.0f%s / reward $%.0f",
-                 "LONG" if sig == 1 else "SHORT", self._v_qty,
-                 f" (+{self._v_add_left} @ {self._v_add_px:.2f})" if self._v_add_left else "",
-                 bar.close, self._v_sl, self._v_tp,
-                 self._v_qty * sl_pts * self._pv,
-                 " CAPPED" if capped else "",
-                 self._v_qty * tp_pts * self._pv)
-        self._warn_if_capped(sl_pts, tp_pts, atr_v, capped)
-
-    def _dry_exit(self, px: float, reason: str) -> None:
-        q = self._v_qty or CONFIG["contracts"]
-        fees = 2 * CONFIG["commission_per_side"] * q
-        pnl = (px - self._v_entry) * self._v_pos * self._pv * q - fees
-        self._v_day_pnl += pnl
-        self._v_trades += 1
-        if pnl > 0:
-            self._v_wins += 1
-        log.info("🧪 DRY EXIT  %-5s @ %.2f (%s) | %+.0f | day %+.0f | %d trades, %.0f%% win",
-                 "LONG" if self._v_pos == 1 else "SHORT", px, reason, pnl, self._v_day_pnl,
-                 self._v_trades, 100.0 * self._v_wins / max(1, self._v_trades))
-        self._v_pos = 0
-        self._v_qty = 0
-        self._v_add_left = 0
-
     # ---- main cycle ----
     async def _evaluate(self) -> bool:
         """One decision at a 2-minute boundary. Returns False if no new completed
@@ -1547,10 +1424,6 @@ class DonchianBot:
 
         await self.api.refresh_balance()
         self._roll_session_if_needed()
-
-        if CONFIG["dry_run"]:
-            self._dry_step(last, s, atr_v)
-            return True
 
         await self._enforce_flatten()
         await self._sync_position()
@@ -1627,7 +1500,7 @@ class DonchianBot:
             remaining = (deadline - datetime.now(timezone.utc)).total_seconds()
             if remaining <= 0:
                 return
-            near_flatten = (not CONFIG["dry_run"] and self.in_position and
+            near_flatten = (self.in_position and
                             CONFIG["no_entry_ct"] <= self._ct_now() < CONFIG["reopen_ct"])
             if not near_flatten:
                 await asyncio.sleep(remaining)
@@ -1644,8 +1517,7 @@ class DonchianBot:
         await self.api.refresh_balance()
         self._load_state()
         self._roll_session_if_needed()
-        if not CONFIG["dry_run"]:
-            await self._sync_position()
+        await self._sync_position()
         log.info("Seeded | bal=%.2f  in_position=%s  session=%s  dayP&L=%+.0f",
                  self.api.balance, self.in_position, self._session_key, self._day_pnl())
 
@@ -1672,8 +1544,8 @@ class DonchianBot:
 
     async def run(self) -> None:
         log.info("=" * 60)
-        log.info("MNQ DONCHIAN + EFFICIENCY-GATE BOT | contract=%s live=%s dry=%s",
-                 CONFIG["contract_id"], CONFIG["live_account"], CONFIG["dry_run"])
+        log.info("MNQ DONCHIAN + EFFICIENCY-GATE BOT | contract=%s live_account=%s",
+                 CONFIG["contract_id"], CONFIG["live_account"])
         log.info("signal: Donchian-%d break (excl. current bar), ADX(%d)>=%d, "
                  "efficiency(%d)>%.2f, %d-min bars",
                  CONFIG["period"], CONFIG["adx_period"], CONFIG["adx_min"],

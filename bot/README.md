@@ -28,7 +28,12 @@ Then edit `CONFIG` at the top of `mnq_donchian_bot.py`:
 
 - `contract_id` — must be the current front month, **update on every roll**
 - `live_account` — `False` for sim, `True` for a real evaluation
-- `dry_run` — ships `True`. Run one full session paper-only first.
+- `live_account` — **the only switch between the practice account and real
+  money.** There is no paper mode: `dry_run` was removed outright, because it
+  returned from `_evaluate` before `_enforce_flatten`, `_sync_position` and
+  `_service_add` ever ran and so could not exercise a single line of the order
+  path. Validate on the practice account instead — it uses the real API with no
+  money at risk.
 
 ## Before you arm it
 
@@ -210,10 +215,10 @@ and it reuses the already-validated 0.15 trigger instead of fitting a new one.
 It also removes the market order entirely — every fill becomes a stop.
 
 **It is ON, and validated on the practice account rather than on paper.** That
-is the right order: `dry_run: True` never touches the order path at all —
-`_evaluate` returns before `_enforce_flatten`, `_sync_position` and
-`_service_add` — so the paper book could not have tested any of this. The
-practice account exercises the real API with no money at risk. Two things about
+is the right order: the old paper mode never touched the order path at all —
+`_evaluate` returned before `_enforce_flatten`, `_sync_position` and
+`_service_add` — so it could not have tested any of this, and it has since been
+removed. The practice account exercises the real API with no money at risk. Two things about
 it need watching, both about live behaviour rather than the measurement:
 
 1. It **inverts this bot's core safety invariant**. Everywhere else, "flat with a
@@ -236,9 +241,9 @@ reach. `_place_entry` now cancels the existing arm before re-arming, matching th
 backtest, which also lets a newer signal overwrite the armed direction, price and
 window. Removing that guard fails two checks.
 
-**Current mode: `dry_run: False`, `live_account: False`** — real orders on the
-practice account. The audit asserts `live_account` is still False on every run;
-that is now the switch that matters, not `dry_run`.
+**Current mode: `live_account: False`** — real orders on the practice account.
+The audit asserts this on every run, and also asserts that no virtual-book code
+survived the removal.
 
 What to watch on the practice account:
 1. the arm is placed the bar **after** the signal, never the same bar (34.4% vs

@@ -308,22 +308,27 @@ def main():
     # ── 7. daily entry blocks ─────────────────────────────────
     print("\n7. daily rule semantics")
     b = bot.DonchianBot.__new__(bot.DonchianBot)
-    b._v_day_pnl = 0.0
-    saved_dry = bot.CONFIG["dry_run"]
-    bot.CONFIG["dry_run"] = True
+    # The day's P&L is now read from the account balance only — there is no
+    # virtual book to poke — so drive it with a stub balance instead.
+    class _Bal:
+        balance = 0.0
+    b.api = _Bal()
+    b._day_start_balance = 0.0
+    def _set_day(v):
+        b.api.balance = v
     try:
         cap = bot.CONFIG["daily_profit_block"]
         brk = bot.CONFIG["circuit_breaker"]
-        b._v_day_pnl = 0.0
+        _set_day(0.0)
         check("flat day is not blocked", b._entry_blocked()[0] is False, "")
-        b._v_day_pnl = cap - 1
+        _set_day(cap - 1)
         check("just under the profit block trades", b._entry_blocked()[0] is False, "")
-        b._v_day_pnl = cap
+        _set_day(cap)
         blocked, why = b._entry_blocked()
         check("at the profit block, entries stop", blocked and "profit" in why, why)
-        b._v_day_pnl = -brk + 1
+        _set_day(-brk + 1)
         check("just above the breaker trades", b._entry_blocked()[0] is False, "")
-        b._v_day_pnl = -brk
+        _set_day(-brk)
         blocked, why = b._entry_blocked()
         check("at the breaker, entries stop", blocked and "breaker" in why, why)
         # The distinction the whole configuration rests on: these rules block new
@@ -335,7 +340,7 @@ def main():
               {"close_position"} >= {c for c in bot.DonchianBot._evaluate.__code__.co_names
                                      if c == "close_position"}, "")
     finally:
-        bot.CONFIG["dry_run"] = saved_dry
+        pass
 
     # ── 8. session helpers ────────────────────────────────────
     print("\n8. session + day-boundary helpers")
@@ -469,8 +474,7 @@ def run_live_path_tests(fx, bars):
     import asyncio
 
     saved = {k: bot.CONFIG[k] for k in
-             ("dry_run", "max_bar_age_s", "max_entry_delay_s", "scale_in_first")}
-    bot.CONFIG["dry_run"] = False
+             ("max_bar_age_s", "max_entry_delay_s", "scale_in_first")}
     # BOTH entry modes must stay tested regardless of which one ships. The general
     # path below assumes a market order at the signal, so it is pinned to a
     # tranche of at least 1; the dedicated stop-entry block further down sets 0
@@ -656,8 +660,7 @@ def run_live_path_tests(fx, bars):
     # ── scale-in ──
     # Needs the same overrides section 9 uses: live path, staleness guards off.
     saved2 = {k: bot.CONFIG[k] for k in
-              ("dry_run", "max_bar_age_s", "max_entry_delay_s", "scale_in_first")}
-    bot.CONFIG["dry_run"] = False
+              ("max_bar_age_s", "max_entry_delay_s", "scale_in_first")}
     # Pinned to market-entry mode again: the block above restored the shipped
     # config, and these checks (tranche sizing, the four cancel paths, and the
     # flat-with-a-working-order property) are all statements about the mode where
@@ -905,7 +908,6 @@ def run_live_path_tests(fx, bars):
         bot.CONFIG.update(saved2)
 
     # i) staleness guards, with the shipped values back in force
-    bot.CONFIG["dry_run"] = False
     try:
         b, api = make_bot([{"ms": r[0], "o": r[1], "h": r[2], "l": r[3], "c": r[4]}
                            for r in fx["bars1m"]], 12 * 60)

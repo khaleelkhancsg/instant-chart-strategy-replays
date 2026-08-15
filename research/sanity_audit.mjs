@@ -348,14 +348,19 @@ console.log("\n6. CONFIG — does the bot trade what was measured?\n");
   // path at all (_evaluate returns before it), so it could not validate the
   // scale-in machinery. The practice account exercises the real API instead.
   // The assertion that matters is therefore the REAL-MONEY switch.
-  const dry = g("dry_run"), liveAcct = g("live_account");
-  console.log(`   trading mode: dry_run=${dry}, live_account=${liveAcct} -> ` +
-    (dry === "True" ? "paper only, no orders sent"
-     : liveAcct === "True" ? "!! LIVE MONEY !!" : "real orders on the PRACTICE account"));
+  // The paper book has been removed outright: it never touched the order path
+  // (_evaluate returned before it), so it could not validate the machinery that
+  // matters, and keeping a second unexercised code path only invited drift.
+  // live_account is now the ONLY switch between practice and real money.
+  const liveAcct = g("live_account");
+  ok("dry_run is gone, not merely disabled", g("dry_run") === null,
+     `dry_run=${g("dry_run")}`);
+  ok("no virtual-book code survives the removal",
+     !/_dry_step|_dry_exit|_v_day_pnl|_v_pos/.test(py), "virtual book residue found");
+  console.log(`   trading mode: live_account=${liveAcct} -> ` +
+    (liveAcct === "True" ? "!! LIVE MONEY !!" : "real orders on the PRACTICE account"));
   ok("live_account is still False (no real money at risk)", liveAcct === "False",
      `live_account=${liveAcct}`);
-  if (dry === "False" && liveAcct === "False")
-    console.log("   ok   orders go to the practice account, which is the point");
   const cid = g("contract_id");
   console.log(`   contract_id = ${cid}  — must match the current front month`);
 }
