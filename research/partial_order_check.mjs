@@ -1,19 +1,3 @@
-// !! REFUTED — see research/partial_order_check.mjs !!
-//
-// Every partial-exit result below is INVALID. The replay resolved the full
-// target BEFORE the partial and then `continue`d, so on any bar that reached
-// the target all 8 lots exited there and the partial never fired. That makes
-// the simulated rule "sell 6 lots at 1.575xATR, but only when this bar will not
-// reach 1.75xATR" — lookahead inside the bar, and not tradeable.
-//
-// A resting limit fills whenever price passes through it. With that correction
-// the fire rate goes 22% -> 67%, because most trades that touch the partial
-// level do so on a bar that also touches the target, and ALL 18 grid settings
-// lose: best -3.4pp, worst -20.2pp, none inside the +-1.0pp noise floor.
-//
-// Kept for the record and because the diagnosis of the give-back pool, and the
-// finding that every stop-MOVING rule loses, both still stand.
-
 // Pass rates for the partial exit against the shipped algo, as a single table.
 //
 // Everything is measured with the FULL rule set: $3,000 target, $2,000 trailing
@@ -56,7 +40,7 @@ for (let i = 30; i < raw.length; i++) {
 const sig = applyFilters(raw, ctx, { ...NO_FILTER, startCt: 510, endCt: 900, effMin: 0.5 });
 const R = resolveRules({ circuitBreaker: 500, dailyProfitStop: 750 });
 
-function replay(trig, frac) {
+function replay(trig, frac, pessimistic) {
   const { open: O, high: H, low: L, ctMin: CT, tday: TD, ts: TS } = tf;
   const n = O.length, pv = 2, tick = 0.25, slip = 0.25, perSide = 0.75;
   const inFlat = (ct, f, r) => (r > f ? ct >= f && ct < r : ct >= f || ct < r);
@@ -96,6 +80,24 @@ function replay(trig, frac) {
       const isCap = dir === 1 ? (sl === lossPx && lossPx > rawSl)
                               : (sl === lossPx && lossPx < rawSl);
       const tp = ep + dir * tpD;
+      // If a single bar spans BOTH the partial level and the full target, the
+      // resting partial limit fills on the way through -- it does not get
+      // upgraded to the better price. Closing everything at the full target
+      // (the optimistic reading) overstates those bars, so `pessimistic` fills
+      // the partial at its own level first and only the remainder at target.
+      if (pessimistic && frac > 0 && !tookPartial) {
+        const tg = ep + dir * trig * tpD;
+        const spans = dir === 1 ? (H[i] >= tp && L[i] > sl && O[i] > sl)
+                                : (L[i] <= tp && H[i] < sl && O[i] < sl);
+        if (spans && (dir === 1 ? H[i] >= tg : L[i] <= tg)) {
+          const qOut = Math.max(1, Math.round(qty * frac));
+          if (qOut < qty) {
+            const af = avgFill();
+            bank(tg, i, undefined, qOut);
+            notional -= af * qOut; qty -= qOut; tookPartial = true; nPart++;
+          }
+        }
+      }
       let exited = false;
       if (dir === 1) {
         if (O[i] <= sl) { close_(O[i], i, isCap ? -CAP - dayReal : undefined); exited = true; }
@@ -203,79 +205,46 @@ const MID = T0 + (T1 - T0) / 2, Y12 = T1 - 365 * 86400000, Y26 = Date.UTC(2026, 
 const SLICES = [["early half", T0, MID], ["late half", MID, T1],
                 ["last 12m", Y12, T1], ["2026", Y26, T1], ["ALL", T0, T1]];
 
-// lots taken off (of 8) x trigger as a fraction of the 1.75xATR target
+// The full grid again, this time with the realistic fill, so the conclusion is
+// about the IDEA and not about one setting of it.
 const LOTS = [[2, 0.25], [4, 0.5], [6, 0.75]];
-const TRIGS = [0.6, 0.7, 0.8, 0.9];
-const CFG = [["ship (no partial)", 0, 0]];
+const TRIGS = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9];
+const CFG = [["ship (no partial)", 0, 0, true]];
 for (const [lot, frac] of LOTS)
-  for (const t of TRIGS) CFG.push([`${lot} of 8 @ ${(t * TP_MULT).toFixed(2)}xATR`, t, frac]);
+  for (const t of TRIGS)
+    CFG.push([`${lot} of 8 @ ${(t * 1.75).toFixed(2)}xATR`, t, frac, true]);
+const books = CFG.map(([, t, f, pess]) => replay(t, f, pess));
 
-const books = CFG.map(([, t, f]) => replay(t, f));
-
-console.log("\nPASS RATE — partial exit vs the shipped algo");
-console.log("8 lots (2+6 scale-in), 5xATR stop, 1.75xATR target, -$1000 cap, 50% consistency");
-console.log("Paired bootstrap: every row scored on the SAME resampled days within a slice.\n");
-
+console.log("\nWITHIN-BAR ORDERING: does the finding survive the pessimistic fill?\n");
+console.log("On a bar that trades through BOTH levels, the optimistic run closes");
+console.log("everything at the full target; the realistic one fills the partial at");
+console.log("its own price first. If the edge lives on that assumption, it is not real.\n");
+let hdr = "  config                  fires";
+for (const [nm] of SLICES) hdr += nm.padStart(14);
+console.log(hdr);
 const cols = [];
 for (const [, lo, hi] of SLICES) {
   const maps = books.map(b => dayMap(b.fills, lo, hi));
   const keys = [...new Set(maps.flatMap(m => [...m.keys()]))].sort((a, b) => a - b);
   cols.push({ ps: pairedPass(maps, keys, 4242), maps, keys });
 }
-let hdr = "  take off / at        fires";
-for (const [nm] of SLICES) hdr += nm.padStart(14);
-console.log(hdr);
-console.log("  " + "-".repeat(hdr.length - 2));
 CFG.forEach(([lbl, , f], i) => {
-  let row = "  " + lbl.padEnd(20) + (f ? books[i].fireRate.toFixed(0) + "%" : "  -").padStart(5);
-  cols.forEach((c, j) => {
+  if (i && (i - 1) % TRIGS.length === 0) console.log("");
+  let row = "  " + lbl.padEnd(23) + (f ? books[i].fireRate.toFixed(0) + "%" : "  -").padStart(5);
+  cols.forEach(c => {
     const v = c.ps[i], d = v - c.ps[0];
     row += (v.toFixed(1) + "%" + (i === 0 ? "" : ` ${d >= 0 ? "+" : ""}${d.toFixed(1)}`)).padStart(14);
   });
   console.log(row);
-  if (i === 0 || i % TRIGS.length === 0) console.log("");
 });
-
-// Per-slice noise floor, from the 4-of-8 trigger sweep.
-console.log("  noise floor (mean |step| between adjacent triggers, 4 of 8):");
-let nf = "                             ";
-SLICES.forEach((_, j) => {
-  const row = [];
-  for (let k = 0; k < TRIGS.length; k++) row.push(cols[j].ps[1 + TRIGS.length + k]);
-  let s = 0;
-  for (let k = 1; k < row.length; k++) s += Math.abs(row[k] - row[k - 1]);
-  nf += (`+-${(s / (row.length - 1)).toFixed(1)}pp`).padStart(14);
+console.log("\n  config                 trades    pf     $/day   sd/day    net");
+[0, 6, 12, 18].forEach((i) => {
+  const lbl = CFG[i][0];
+  const v = [...cols[4].maps[i].values()];
+  const mean = v.reduce((a, b) => a + b, 0) / v.length;
+  const sd = Math.sqrt(v.reduce((a, b) => a + (b - mean) ** 2, 0) / v.length);
+  let gw = 0, gl = 0, tot = 0;
+  for (const f of books[i].fills) { tot += f.net; if (f.net > 0) gw += f.net; else gl -= f.net; }
+  console.log(`  ${lbl.padEnd(22)}${String(books[i].fills.length).padStart(6)}  ${(gw / gl).toFixed(3)}  ` +
+    `${("$" + mean.toFixed(0)).padStart(6)}  ${("$" + sd.toFixed(0)).padStart(6)}  ${("$" + (tot / 1000).toFixed(0) + "k").padStart(6)}`);
 });
-console.log(nf);
-console.log("  Deltas smaller than the floor for their slice are not resolvable here.\n");
-
-// Two candidates: the one that wins the big slices, and the only one positive in
-// EVERY slice. Picking on the recent slice alone is the classic trap, so both are
-// shown with intervals rather than one being declared the answer.
-const PICKS = [1 + TRIGS.length + 2, 1 + 2 * TRIGS.length + 3];
-for (const pick of PICKS) {
-  console.log(`\nPAIRED CI on the delta vs ship — ${CFG[pick][0]}\n`);
-  console.log("  slice          mean delta        95% band     P(better)   days");
-  SLICES.forEach(([nm], j) => {
-    const d = pairedDelta(cols[j].maps[pick], cols[j].maps[0], cols[j].keys, 5150 + j);
-    console.log(`  ${nm.padEnd(13)}${((d.mean >= 0 ? "+" : "") + d.mean.toFixed(2) + "pp").padStart(11)}   ` +
-      `${(d.lo.toFixed(1) + " .. " + d.hi.toFixed(1)).padStart(14)}   ` +
-      `${(100 * d.pWin).toFixed(0).padStart(7)}%   ${String(cols[j].keys.length).padStart(5)}`);
-  });
-}
-
-console.log("\nP&L by slice — the column with the statistical power\n");
-console.log("  config                slice        trades    pf     $/day    sd/day");
-for (const pick of [0, ...PICKS]) {
-  SLICES.forEach(([nm, lo, hi], j) => {
-    const sel = books[pick].fills.filter(f => f.entryTime >= lo && f.entryTime < hi);
-    let gw = 0, gl = 0;
-    for (const f of sel) { if (f.net > 0) gw += f.net; else gl -= f.net; }
-    const v = [...cols[j].maps[pick].values()];
-    const mean = v.reduce((a, b) => a + b, 0) / v.length;
-    const sd = Math.sqrt(v.reduce((a, b) => a + (b - mean) ** 2, 0) / v.length);
-    console.log(`  ${(j ? "" : CFG[pick][0]).padEnd(21)}${nm.padEnd(12)}${String(sel.length).padStart(6)}  ` +
-      `${(gw / gl).toFixed(3)}  ${("$" + mean.toFixed(0)).padStart(6)}  ${("$" + sd.toFixed(0)).padStart(6)}`);
-  });
-  console.log("");
-}

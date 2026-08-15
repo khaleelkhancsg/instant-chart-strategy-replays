@@ -1,3 +1,19 @@
+// !! REFUTED — see research/partial_order_check.mjs !!
+//
+// Every partial-exit result below is INVALID. The replay resolved the full
+// target BEFORE the partial and then `continue`d, so on any bar that reached
+// the target all 8 lots exited there and the partial never fired. That makes
+// the simulated rule "sell 6 lots at 1.575xATR, but only when this bar will not
+// reach 1.75xATR" — lookahead inside the bar, and not tradeable.
+//
+// A resting limit fills whenever price passes through it. With that correction
+// the fire rate goes 22% -> 67%, because most trades that touch the partial
+// level do so on a bar that also touches the target, and ALL 18 grid settings
+// lose: best -3.4pp, worst -20.2pp, none inside the +-1.0pp noise floor.
+//
+// Kept for the record and because the diagnosis of the give-back pool, and the
+// finding that every stop-MOVING rule loses, both still stand.
+
 // Does taking part of the position off before the target actually survive?
 //
 // giveback_test.mjs found that every rule which MOVES THE STOP (breakeven,
