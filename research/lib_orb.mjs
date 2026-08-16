@@ -38,6 +38,38 @@ for (const d of dayKeys) {
 }
 export { dayStart, dayEnd, daySess };
 
+// Prior day's RTH extremes -- the single most cited "liquidity" level. Keyed by
+// the day whose trading they are the PREVIOUS day's, so lookup is causal.
+export const prevRth = new Map();
+{
+  let ph = null, pl = null;
+  for (const d of dayKeys) {
+    if (ph !== null) prevRth.set(d, [ph, pl]);
+    let h = -Infinity, l = Infinity;
+    for (let i = daySess.get(d), e = dayEnd.get(d); i < e; i++)
+      if (CT[i] >= OPEN_CT && CT[i] < FLAT_CT) { if (H[i] > h) h = H[i]; if (L[i] < l) l = L[i]; }
+    if (h > l) { ph = h; pl = l; }
+  }
+}
+
+// "Liquidity" in this vocabulary means resting stop orders, which pool just
+// beyond prices the market has already turned at. Mechanically that is the same
+// pivot clustering used for the entry level, run over the whole overnight
+// session (17:00 the previous evening to the open) rather than a short window.
+// Everything here is strictly before the open, so it is causal by construction.
+export function liqPool(day, fromCt, toCt, pivotK, tolFrac, minTouch) {
+  const s = dayStart.get(day), e = dayEnd.get(day);
+  let i0 = s; while (i0 < e && CT[i0] < fromCt) i0++;
+  let i1 = i0; while (i1 < e && CT[i1] < toCt) i1++;
+  if (i1 - i0 < 4 * pivotK + 6) return null;
+  let hi = -Infinity, lo = Infinity;
+  for (let i = i0; i < i1; i++) { if (H[i] > hi) hi = H[i]; if (L[i] < lo) lo = L[i]; }
+  if (!(hi > lo)) return null;
+  const cls = clusterPx(pivotsIn(i0, i1, pivotK), Math.max(TICK * 2, (hi - lo) * tolFrac), minTouch);
+  cls.sort((a, b) => a.px - b.px);
+  return { cls, hi, lo };
+}
+
 // ---- "key levels where the market reacts off the most" ---------------------
 // Not the extremes of the window. He is counting TAPS -- points where price
 // came to a price and turned away -- and picking the price with the most of
@@ -50,6 +82,37 @@ export { dayStart, dayEnd, daySess };
 // price, take the densest cluster above the reference price and the densest
 // below. Both highs and lows count as taps of the same level, which is how he
 // reads them ("we could be hitting it to the upside... or the downside").
+// Swing pivots in [i0,i1). A pivot is a bar whose high (or low) is the extreme
+// of its +/-pivotK neighbourhood -- a point where price came and turned away.
+export function pivotsIn(i0, i1, pivotK) {
+  const piv = [];
+  for (let i = i0 + pivotK; i < i1 - pivotK; i++) {
+    let isH = true, isL = true;
+    for (let k = 1; k <= pivotK; k++) {
+      if (!(H[i] >= H[i - k] && H[i] >= H[i + k])) isH = false;
+      if (!(L[i] <= L[i - k] && L[i] <= L[i + k])) isL = false;
+    }
+    if (isH) piv.push(H[i]);
+    if (isL) piv.push(L[i]);
+  }
+  return piv;
+}
+
+// Greedy price clustering. A cluster keeps absorbing pivots while they stay
+// within tol of where it started, so cluster width is bounded by tol.
+export function clusterPx(piv, tol, minTouch) {
+  if (!piv.length) return [];
+  piv = piv.slice().sort((x, y) => x - y);
+  const cl = []; let cur = [piv[0]];
+  for (let i = 1; i < piv.length; i++) {
+    if (piv[i] - cur[0] <= tol) cur.push(piv[i]);
+    else { cl.push(cur); cur = [piv[i]]; }
+  }
+  cl.push(cur);
+  return cl.map(c => ({ px: c.reduce((x, y) => x + y, 0) / c.length, n: c.length }))
+           .filter(c => c.n >= minTouch);
+}
+
 export function touchLevels(s0, e0, a, b, opt) {
   const { pivotK = 2, tolFrac = 0.08, minTouch = 3 } = opt;
   let i0 = s0; while (i0 < e0 && CT[i0] < a) i0++;
@@ -61,30 +124,9 @@ export function touchLevels(s0, e0, a, b, opt) {
   if (!(whi > wlo)) return null;
   const tol = Math.max(TICK * 2, (whi - wlo) * tolFrac);
 
-  const piv = [];
-  for (let i = i0 + pivotK; i < i1 - pivotK; i++) {
-    let isH = true, isL = true;
-    for (let k = 1; k <= pivotK; k++) {
-      if (!(H[i] >= H[i - k] && H[i] >= H[i + k])) isH = false;
-      if (!(L[i] <= L[i - k] && L[i] <= L[i + k])) isL = false;
-    }
-    if (isH) piv.push(H[i]);
-    if (isL) piv.push(L[i]);
-  }
+  const piv = pivotsIn(i0, i1, pivotK);
   if (piv.length < minTouch) return null;
-  piv.sort((x, y) => x - y);
-
-  // Greedy price clustering. A cluster keeps absorbing pivots while they stay
-  // within tol of where it started, so cluster width is bounded by tol.
-  const cl = [];
-  let cur = [piv[0]];
-  for (let i = 1; i < piv.length; i++) {
-    if (piv[i] - cur[0] <= tol) cur.push(piv[i]);
-    else { cl.push(cur); cur = [piv[i]]; }
-  }
-  cl.push(cur);
-  const cls = cl.map(c => ({ px: c.reduce((x, y) => x + y, 0) / c.length, n: c.length }))
-                .filter(c => c.n >= minTouch);
+  const cls = clusterPx(piv, tol, minTouch);
   if (!cls.length) return null;
 
   const ref = C[i1 - 1];                       // last price before the open
@@ -135,11 +177,26 @@ export function setups(cfg) {
     //   only one thing: that this particular price is where price kept turning.
     //   If tap counting does nothing, this scores the same.
     levelMode = "extremes", levelSeed = 5,
+    // "Take profit off liquidity, and places it wants to be. It can even be off
+    // another level." Undefined as stated, so these are the concrete readings:
+    //   R          fixed R multiple (what every earlier round used)
+    //   windowExt  the pre-open window's extreme in the direction of travel --
+    //              break the internal level, run to the edge of the range
+    //   liqNear    nearest overnight pivot cluster beyond entry
+    //   liqFar     second nearest
+    //   liqBest    the cluster with the MOST taps beyond entry
+    //   prevDay    prior day's RTH high (long) or low (short)
+    //   sessExt    the overnight session's extreme
+    // A liquidity target is a VARIABLE distance, which is the structural
+    // difference from a fixed R: it adapts to where price actually stalled.
+    tpMode = "R", liqFromCt = -420, liqPivotK = 3, liqTolFrac = 0.02, liqMinTouch = 2,
+    tpMinR = 0.5, tpMaxR = 8, tpFallback = "R",
   } = cfg;
+  const needLiq = ["liqNear", "liqFar", "liqBest", "sessExt"].includes(tpMode);
 
   const out = [];
   const diag = { days: 0, ranged: 0, push1: 0, retraced: 0, entered: 0, bothWays: 0,
-                 badStop: 0, noLevel: 0, nLevel: 0, tapsHi: 0, tapsLo: 0, insetSum: 0 };
+                 badStop: 0, noLevel: 0, nLevel: 0, tapsHi: 0, tapsLo: 0, insetSum: 0, noTp: 0 };
   const [a, b] = refBounds(refWin);
 
   // For the shuffled-level control: collect every qualifying day's level as a
@@ -168,7 +225,7 @@ export function setups(cfg) {
 
   for (const day of dayKeys) {
     const s0 = daySess.get(day), e0 = dayEnd.get(day);
-    let hi = -Infinity, lo = Infinity, nRef = 0;
+    let hi = -Infinity, lo = Infinity, nRef = 0, whi = 0, wlo = 0;
     for (let i = s0; i < e0 && CT[i] < b; i++) if (CT[i] >= a) {
       if (H[i] > hi) hi = H[i]; if (L[i] < lo) lo = L[i]; nRef++;
     }
@@ -185,7 +242,7 @@ export function setups(cfg) {
         t.lo = t.ref - fL * (t.ref - t.wlo);
         if (!(t.hi > t.ref && t.ref > t.lo)) { diag.noLevel++; continue; }
       }
-      hi = t.hi; lo = t.lo;
+      hi = t.hi; lo = t.lo; whi = t.whi; wlo = t.wlo;
       diag.tapsHi += t.tHi; diag.tapsLo += t.tLo;
       // How far inside the window the levels sit -- 0% means they land on the
       // extremes and this reduces to the range version.
@@ -194,6 +251,32 @@ export function setups(cfg) {
     }
     diag.ranged++;
     const width = hi - lo;
+    if (levelMode === "extremes") { whi = hi; wlo = lo; }
+
+    // Where "liquidity" sits for this day. Computed once, entirely from bars
+    // before the hunt starts, so no entry can see its own future.
+    const liq = needLiq ? liqPool(day, liqFromCt, b, liqPivotK, liqTolFrac, liqMinTouch) : null;
+    const tpFor = (dir, entryPx, risk) => {
+      let cand = null;
+      if (tpMode === "windowExt") cand = dir === 1 ? whi : wlo;
+      else if (tpMode === "prevDay") { const p = prevRth.get(day); if (p) cand = dir === 1 ? p[0] : p[1]; }
+      else if (liq) {
+        if (tpMode === "sessExt") cand = dir === 1 ? liq.hi : liq.lo;
+        else {
+          const bey = liq.cls.filter(c => dir === 1 ? c.px > entryPx : c.px < entryPx)
+                              .sort((x, y) => (x.px - y.px) * dir);
+          if (bey.length) {
+            if (tpMode === "liqNear") cand = bey[0].px;
+            else if (tpMode === "liqFar") cand = (bey[1] ?? bey[0]).px;
+            else cand = bey.slice().sort((x, y) => y.n - x.n || (x.px - y.px) * dir)[0].px;
+          }
+        }
+      }
+      if (cand == null) return null;
+      // A target 0.2R away is not a trade and one 40R away is not a target.
+      const dist = (cand - entryPx) * dir;
+      return (dist >= risk * tpMinR && dist <= risk * tpMaxR) ? cand : null;
+    };
 
     const riskFor = (dir, entryPx, lvl, retExt) => {
       if (stopAt === "range")    return Math.max(width * stopK, TICK);
@@ -226,7 +309,9 @@ export function setups(cfg) {
           const entryPx = dir === 1 ? Math.max(trig, O[i]) : Math.min(trig, O[i]);
           const risk = riskFor(dir, entryPx, lvl, entryPx);
           if (risk < TICK) { diag.badStop++; break; }
-          out.push({ bar: i, dir, entryPx, risk, day, e0, width });
+          const tpPx = tpMode === "R" ? null : tpFor(dir, entryPx, risk);
+          if (tpPx === null && tpMode !== "R" && tpFallback !== "R") { diag.noTp++; break; }
+          out.push({ bar: i, dir, entryPx, risk, day, e0, width, tpPx });
           diag.entered++; done = true;
           break;
         }
@@ -253,7 +338,9 @@ export function setups(cfg) {
           const entryPx = dir === 1 ? Math.max(trig, O[i]) : Math.min(trig, O[i]);  // gap through
           const risk = riskFor(dir, entryPx, lvl, retExt);
           if (risk < TICK) { diag.badStop++; break; }
-          out.push({ bar: i, dir, entryPx, risk, day, e0, width });
+          const tpPx = tpMode === "R" ? null : tpFor(dir, entryPx, risk);
+          if (tpPx === null && tpMode !== "R" && tpFallback !== "R") { diag.noTp++; break; }
+          out.push({ bar: i, dir, entryPx, risk, day, e0, width, tpPx });
           diag.entered++; done = true;
         } else if (i > stateBar && (dir === 1 ? L[i] < lvl : H[i] > lvl)) break;
         // ^ only abandon on a LATER bar. The breakout bar's own low sits below
@@ -271,31 +358,49 @@ export function setups(cfg) {
 // which books an instant fake profit -- is impossible by construction.
 export function resolve(s, opt = {}) {
   const { rMult = 2.0, maxHoldMin = 120, flipDir, riskDollars = 0, maxLots = 40,
-          costMult = 1 } = opt;
+          costMult = 1,
+          // When a 1-minute bar contains BOTH barriers, its OHLC cannot say
+          // which came first. "stop" assumes the worse order and is what every
+          // result here uses; "target" assumes the better one. The two bracket
+          // the truth, and the gap between them is exactly what sub-minute data
+          // would resolve -- so it measures what 1-second polling is worth.
+          barFirst = "stop" } = opt;
   const slip = SLIP * costMult;
   const dir = flipDir ?? s.dir;
   const { bar: i, e0, entryPx, risk, day } = s;
   const lots = riskDollars
     ? Math.max(1, Math.min(maxLots, Math.floor(riskDollars / (risk * PV))))
     : LOTS;
-  const sl = entryPx - dir * risk, tp = entryPx + dir * risk * rMult;
+  const sl = entryPx - dir * risk;
+  // An absolute liquidity target overrides the R multiple. Under a direction
+  // flip it is mirrored rather than reused, so the control keeps the same
+  // target DISTANCE and only the side changes.
+  const tp = s.tpPx == null ? entryPx + dir * risk * rMult
+                            : entryPx + dir * (s.tpPx - entryPx) * s.dir;
+  let ambig = 0;
   const fill = dir === 1 ? entryPx + slip : entryPx - slip;
   const fees = PERSIDE * 2 * lots * costMult;
   const out = (px, why, held) => {
     const xp = dir === 1 ? px - slip : px + slip;
     const gross = (xp - fill) * dir * PV * lots - fees;
     return { tday: day, pnl: Math.max(-CAP, gross), raw: gross, why, risk, held, dir, lots,
-             riskUsd: risk * PV * lots, capped: gross < -CAP };
+             riskUsd: risk * PV * lots, capped: gross < -CAP, ambig };
   };
   for (let j = i; j < e0; j++) {
     if (CT[j] >= FLAT_CT) return out(O[j], "FLAT", j - i);
     if ((j - i) >= maxHoldMin) return out(O[j], "TIME", j - i);
-    if (j > i) {
+    if (j > i) {                                    // gap through at the open
       if (dir === 1 ? O[j] <= sl : O[j] >= sl) return out(O[j], "SL", j - i);
       if (dir === 1 ? O[j] >= tp : O[j] <= tp) return out(O[j], "TP", j - i);
     }
-    if (dir === 1 ? L[j] <= sl : H[j] >= sl) return out(sl, "SL", j - i);
-    if (dir === 1 ? H[j] >= tp : L[j] <= tp) return out(tp, "TP", j - i);
+    const hitS = dir === 1 ? L[j] <= sl : H[j] >= sl;
+    const hitT = dir === 1 ? H[j] >= tp : L[j] <= tp;
+    if (hitS && hitT) {
+      ambig = 1;                                    // both barriers, one bar
+      return barFirst === "target" ? out(tp, "TP", j - i) : out(sl, "SL", j - i);
+    }
+    if (hitS) return out(sl, "SL", j - i);
+    if (hitT) return out(tp, "TP", j - i);
   }
   return out(C[e0 - 1], "EOD", e0 - 1 - i);
 }
