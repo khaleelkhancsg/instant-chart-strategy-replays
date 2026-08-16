@@ -191,6 +191,13 @@ export function setups(cfg) {
     // difference from a fixed R: it adapts to where price actually stalled.
     tpMode = "R", liqFromCt = -420, liqPivotK = 3, liqTolFrac = 0.02, liqMinTouch = 2,
     tpMinR = 0.5, tpMaxR = 8, tpFallback = "R",
+    // He takes one trade a day, but if the edge is a burst lasting a minute
+    // then one trade a day cannot produce enough dollars to clear a 21-day
+    // target. maxPerDay lets the same rule re-arm after a trade is out, which
+    // is the only lever that has ever moved pass rate in this project.
+    // Re-arming resumes maxHoldMin bars after entry, which UNDERSTATES the real
+    // count -- a stop or target usually lands sooner than the time stop.
+    maxPerDay = 1,
   } = cfg;
   const needLiq = ["liqNear", "liqFar", "liqBest", "sessExt"].includes(tpMode);
 
@@ -287,8 +294,10 @@ export function setups(cfg) {
 
     const huntFrom = Math.max(b, OPEN_CT);
     let st = 0, dir = 0, p1 = 0, lvl = 0, stateBar = -1, retExt = 0, done = false;
+    let taken = 0, busyUntil = -1;
 
     for (let i = s0; i < e0 && !done; i++) {
+      if (i < busyUntil) continue;
       if (CT[i] < huntFrom) continue;
       if (CT[i] >= giveUpCt) break;
 
@@ -312,8 +321,10 @@ export function setups(cfg) {
           const tpPx = tpMode === "R" ? null : tpFor(dir, entryPx, risk);
           if (tpPx === null && tpMode !== "R" && tpFallback !== "R") { diag.noTp++; break; }
           out.push({ bar: i, dir, entryPx, risk, day, e0, width, tpPx });
-          diag.entered++; done = true;
-          break;
+          diag.entered++; taken++;
+          if (taken >= maxPerDay) { done = true; break; }
+          busyUntil = i + (cfg.maxHoldMin ?? 120); st = 0; stateBar = -1;
+          continue;
         }
         if (!sameBar) continue;
       }
@@ -341,7 +352,9 @@ export function setups(cfg) {
           const tpPx = tpMode === "R" ? null : tpFor(dir, entryPx, risk);
           if (tpPx === null && tpMode !== "R" && tpFallback !== "R") { diag.noTp++; break; }
           out.push({ bar: i, dir, entryPx, risk, day, e0, width, tpPx });
-          diag.entered++; done = true;
+          diag.entered++; taken++;
+          if (taken >= maxPerDay) { done = true; }
+          else { busyUntil = i + (cfg.maxHoldMin ?? 120); st = 0; stateBar = -1; }
         } else if (i > stateBar && (dir === 1 ? L[i] < lvl : H[i] > lvl)) break;
         // ^ only abandon on a LATER bar. The breakout bar's own low sits below
         // the level almost by definition, so checking it on the same bar kills
