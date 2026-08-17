@@ -937,6 +937,8 @@ class DonchianBot:
         self._slip_sum = 0.0
         self._slip_abs_sum = 0.0
         self._slip_n = 0
+        # Wall clock at the top of the last completed loop cycle. Watchdog only.
+        self._last_cycle_at = None
         # scale-in: the resting add order and its deadline
         self._add_oid = None
         self._add_px = 0.0
@@ -1712,6 +1714,34 @@ class DonchianBot:
         while True:
             if not first:
                 await self._sleep_to_next_bar()
+            # WATCHDOG. The longest sleep this loop can take is one bar, and its
+            # retry path sleeps 2s, so a gap materially longer than a bar did not
+            # come from the bot. On the first live session 38 minutes went missing
+            # with nothing said about it — the retry loop should have issued 15
+            # requests in 30 seconds and issued one, which is a frozen process,
+            # almost certainly a suspended host.
+            #
+            # WALL CLOCK on purpose, not time.monotonic(): monotonic is not
+            # guaranteed to advance across a Windows suspend, which is precisely
+            # the case being detected here.
+            #
+            # This only REPORTS. Acting on lost time is already handled: the
+            # stale-feed guard refuses old bars and _service_add drops a parked
+            # add whose window closed while the bot was out.
+            now = datetime.now(timezone.utc)
+            if not first and self._last_cycle_at is not None:
+                gap = (now - self._last_cycle_at).total_seconds()
+                bar_s = CONFIG["timeframe_min"] * 60
+                if gap > bar_s * 1.5:
+                    log.warning("⏰ LOST TIME: %.0f min since the last cycle, about %.0f bars "
+                                "missed. Nothing in this bot sleeps that long, so it came from "
+                                "outside — check the host's sleep settings.",
+                                gap / 60.0, gap / bar_s)
+                    log.warning("   While it was out, NOTHING was enforced: not the %02d:%02d "
+                                "flatten, not the circuit breaker, not the profit block. A "
+                                "resting order can still have filled — verify the platform.",
+                                CONFIG["flatten_ct"] // 60, CONFIG["flatten_ct"] % 60)
+            self._last_cycle_at = now
             first = False
             try:
                 await self._enforce_flatten()
