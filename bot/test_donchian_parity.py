@@ -762,7 +762,11 @@ def run_live_path_tests(fx, bars):
 
           b8, api8 = make_bot(prefix, sig_ct + 2)
           b8._add_pending = {"side": 0, "lots": 6, "px": 100.0, "sl_ticks": 10,
-                             "tp_ticks": 5, "deadline": datetime.now(timezone.utc)}
+                             "tp_ticks": 5,
+                             # A LIVE deadline. This used to read datetime.now(),
+                             # which only passed because a parked add was never
+                             # checked against its own window before being sent.
+                             "deadline": datetime.now(timezone.utc) + timedelta(minutes=20)}
           b8.in_position, b8._pos_dir = True, 1
           api8.position = {"contractId": bot.CONFIG["contract_id"],
                            "size": 2, "averagePrice": 100.0}
@@ -770,6 +774,25 @@ def run_live_path_tests(fx, bars):
           check("...but is SENT while the position is still open",
                 len(api8.adds) == 1 and b8._add_oid is not None,
                 f"adds={api8.adds}")
+
+          # REGRESSION: a parked add whose window has already closed must never
+          # reach the exchange. Live, the bot lost 38 minutes (a slept host), woke
+          # up, and armed a 42-minute-old trigger; the deadline field existed but
+          # was only consulted once the order was already WORKING, so nothing
+          # checked it on the way out. The exchange rejected that one for being on
+          # the wrong side of the book, which was luck rather than protection.
+          b8b, api8b = make_bot(prefix, sig_ct + 2)
+          b8b._add_pending = {"side": 0, "lots": 6, "px": 100.0, "sl_ticks": 10,
+                              "tp_ticks": 5,
+                              "deadline": datetime.now(timezone.utc) - timedelta(minutes=22)}
+          b8b.in_position, b8b._pos_dir = True, 1
+          api8b.position = {"contractId": bot.CONFIG["contract_id"],
+                            "size": 2, "averagePrice": 100.0}
+          asyncio.run(b8b._service_add())
+          check("a parked add past its window is DROPPED, not sent",
+                len(api8b.adds) == 0 and b8b._add_pending is None
+                and b8b._add_oid is None,
+                f"adds={api8b.adds} oid={b8b._add_oid}")
 
 
       # ── PROPERTY TEST: no add may survive being flat ──

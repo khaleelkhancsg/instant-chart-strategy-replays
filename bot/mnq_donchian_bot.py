@@ -1147,6 +1147,33 @@ class DonchianBot:
         if self._add_pending is not None and (self.in_position or self._stop_entry_mode()):
             a = self._add_pending
             self._add_pending = None
+            # Report lateness BEFORE anything can return early. The arm should
+            # reach the exchange exactly ONE bar after the signal bar closed;
+            # earlier costs 18pp, later 8.8pp. This used to sit AFTER the place
+            # call, so a rejected order printed nothing — and a rejection is
+            # precisely the case where staleness is the likely cause.
+            if a.get("sig_ts") and self._last_bar_ts:
+                late = (self._last_bar_ts - a["sig_ts"]) / 60000.0
+                good = abs(late - CONFIG["timeframe_min"]) < 0.51
+                log.info("   ⏱ arm timing: %.0f min after the signal bar "
+                         "(want %d) [%s]", late, CONFIG["timeframe_min"],
+                         "OK" if good else "WRONG")
+                if not good:
+                    log.error("🛑 ARM TIMING WRONG — same bar costs 18pp, "
+                              "two bars late 8.8pp. This is the one thing worth "
+                              "stopping the session for.")
+            # A PARKED add had NO expiry check: the deadline was only consulted
+            # once the order was already WORKING. So any lost time — a slept
+            # host, a stalled feed, a long retry — let the bot wake up and arm a
+            # trigger computed from an ATR and a reference price that no longer
+            # describe the market. Whether that lands on the right side of the
+            # book is then chance, and a FILL is worse than a rejection.
+            if a.get("deadline") and datetime.now(timezone.utc) >= a["deadline"]:
+                over = (datetime.now(timezone.utc) - a["deadline"]).total_seconds() / 60.0
+                log.warning("✖ deferred add DROPPED — its %d-bar window closed %.0f "
+                            "min ago. Not arming a stale trigger.",
+                            CONFIG["scale_in_window_bars"], over)
+                return
             self._add_oid = await self.api.place_stop_with_bracket(
                 a["side"], a["lots"], a["px"], a["sl_ticks"], a["tp_ticks"])
             if self._add_oid is None:
@@ -1157,19 +1184,6 @@ class DonchianBot:
             self._add_lots = a["lots"]
             self._add_deadline = a["deadline"]
             self._want = a
-            # The arm should reach the exchange exactly ONE bar after the signal
-            # bar closed. Earlier costs 18pp, later 8.8pp, so it is worth
-            # asserting on every trade rather than trusting the scheduler.
-            if a.get("sig_ts") and self._last_bar_ts:
-                late = (self._last_bar_ts - a["sig_ts"]) / 60000.0
-                good = abs(late - CONFIG["timeframe_min"]) < 0.51
-                log.info("   \u23f1 arm timing: %.0f min after the signal bar "
-                         "(want %d) [%s]", late, CONFIG["timeframe_min"],
-                         "OK" if good else "WRONG")
-                if not good:
-                    log.error("\U0001f6d1 ARM TIMING WRONG \u2014 same bar costs 18pp, "
-                              "two bars late 8.8pp. This is the one thing worth "
-                              "stopping the session for.")
             return
         if self._add_pending is not None and not self.in_position and not self._stop_entry_mode():
             # Position gone before the add was ever placed. Nothing to cancel,
@@ -1354,15 +1368,25 @@ class DonchianBot:
         first_lots = qty
         if CONFIG.get("scale_in") and qty >= 2:
             first_lots = max(1, min(qty - 1, int(CONFIG["scale_in_first"])))
-        # Bracket the FIRST TRANCHE against its own size. Once the add fills the
-        # position is larger and the platform's cap moves nearer on its own — the
-        # engine models exactly that, as a dynamic stop against current size.
-        sl_pts, tp_pts, capped, cap_pts = self._bracket_points(atr_v, first_lots)
+        # Bracket against the size ACTUALLY SENT. Normally that is the first
+        # tranche; once the add fills, the position is larger and the platform's
+        # cap moves nearer on its own, which the engine models as a dynamic stop
+        # against current size.
+        #
+        # But in stop-entry mode nothing is bought now — the WHOLE size rests on
+        # one stop order — and scale_in_first of 0 clamps first_lots UP to 1 on
+        # the line above. Sizing off it computed the cap, the risk, and every
+        # dollar logged below against a single contract while eight went to the
+        # exchange: a logged "-$160" stop that was really -$1,276, and "8% of the
+        # trailing drawdown" that was really 64%. It also left the stop uncapped
+        # at 8 lots, which the engine does NOT model.
+        bracket_lots = qty if self._stop_entry_mode() else first_lots
+        sl_pts, tp_pts, capped, cap_pts = self._bracket_points(atr_v, bracket_lots)
         sl_ticks = max(1, round(sl_pts / TICK))
         tp_ticks = max(1, round(tp_pts / TICK))
         side = 0 if sig == 1 else 1
-        risk = first_lots * sl_pts * self._pv
-        reward = first_lots * tp_pts * self._pv
+        risk = bracket_lots * sl_pts * self._pv
+        reward = bracket_lots * tp_pts * self._pv
         sl_px = ref_px - sig * sl_pts
         tp_px = ref_px + sig * tp_pts
 
