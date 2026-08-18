@@ -42,14 +42,20 @@ export const H1 = days.slice(0, days.length >> 1), H2 = days.slice(days.length >
 export const RECENT = days.slice(-500);
 
 // sizer(atrAtSignal, ctMinAtSignal, signalIndex) -> lots
-export function run(sizer, { costMult = 1 } = {}) {
+// breaker/profitBlock are overridable because they were calibrated FOR THE
+// COMBINE -- a race to +$3,000 under a consistency rule. A funded account has
+// no target and no consistency rule, so neither setting can be assumed to
+// carry over.
+export function run(sizer, { costMult = 1, breaker = BREAKER,
+                             profitBlock = PROFIT_BLOCK } = {}) {
   const slip = SLIP * costMult, perSide = PERSIDE * costMult;
   const trades = [];
   let pos = 0, ep = 0, slD = 0, tpD = 0, qty = 0, notional = 0, entCt = 0, entBar = 0, entAtr = 0;
   let armDir = 0, armPx = 0, armBy = -1, armBar = 0, armEp = 0, armSl = 0, armTp = 0, armQty = 0, armAtr = 0;
   let curTday = -1e9, dayReal = 0, capHit = false, sigSeq = 0;
   const avgFill = () => notional / qty;
-  const blocked = () => capHit || dayReal <= -BREAKER || dayReal >= PROFIT_BLOCK;
+  const blocked = () => capHit || (breaker > 0 && dayReal <= -breaker)
+                              || (profitBlock > 0 && dayReal >= profitBlock);
   const close_ = (px, i, exact, why) => {
     const xp = pos === 1 ? px - slip : px + slip;
     const net = exact !== undefined ? exact
