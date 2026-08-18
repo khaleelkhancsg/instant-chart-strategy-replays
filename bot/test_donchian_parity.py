@@ -415,6 +415,11 @@ class FakeClient:
         self._balance = balance
         self.orders = []          # (side, size, sl_ticks, tp_ticks)
         self.adds = []            # (side, size, stop_price, sl_ticks, tp_ticks)
+        self.limits = []          # (side, size, limit_price, sl_ticks, tp_ticks)
+        # The exchange refuses a stop that is already on the wrong side of the
+        # market. Simulating that is the only way to reach the limit fallback.
+        self.reject_stop = False
+        self.reject_limit = False
         self.closes = 0
         self.cancels = 0
         self.position = None      # {"size": int, "type": 1|2, "price": float}
@@ -437,7 +442,11 @@ class FakeClient:
 
     async def place_stop_with_bracket(self, side, size, stop_price, sl_ticks, tp_ticks):
         self.adds.append((side, size, stop_price, sl_ticks, tp_ticks))
-        return 5678
+        return None if self.reject_stop else 5678
+
+    async def place_limit_with_bracket(self, side, size, limit_price, sl_ticks, tp_ticks):
+        self.limits.append((side, size, limit_price, sl_ticks, tp_ticks))
+        return None if self.reject_limit else 8765
 
     async def get_open_positions(self):
         return [self.position] if self.position else []
@@ -774,6 +783,64 @@ def run_live_path_tests(fx, bars):
           check("...but is SENT while the position is still open",
                 len(api8.adds) == 1 and b8._add_oid is not None,
                 f"adds={api8.adds}")
+
+          # THE LIMIT FALLBACK. A resting STOP is refused whenever price has
+          # already gone through the trigger during the deferral bar, which is
+          # 40.8% of arms (research/arm_reject.mjs). The level is still the
+          # entry that was wanted -- the 0.15xATR confirmation has already
+          # happened, which is exactly WHY the stop was refused -- so the same
+          # price must go back as a LIMIT, bracket untouched.
+          b8c, api8c = make_bot(prefix, sig_ct + 2)
+          api8c.reject_stop = True
+          b8c._add_pending = {"side": 0, "lots": 6, "px": 100.0, "sl_ticks": 10,
+                              "tp_ticks": 5,
+                              "deadline": datetime.now(timezone.utc) + timedelta(minutes=20)}
+          b8c.in_position, b8c._pos_dir = True, 1
+          api8c.position = {"contractId": bot.CONFIG["contract_id"],
+                            "size": 2, "averagePrice": 100.0}
+          asyncio.run(b8c._service_add())
+          check("stop refused -> a LIMIT goes out instead",
+                len(api8c.adds) == 1 and len(api8c.limits) == 1,
+                f"adds={api8c.adds} limits={api8c.limits}")
+          check("...at exactly the same price",
+                api8c.limits and api8c.limits[0][2] == 100.0, f"limits={api8c.limits}")
+          check("...with size and bracket unchanged",
+                api8c.limits and api8c.limits[0][1] == 6
+                and api8c.limits[0][3] == 10 and api8c.limits[0][4] == 5,
+                f"limits={api8c.limits}")
+          check("...the order is tracked so it can still be cancelled",
+                b8c._add_oid is not None, f"oid={b8c._add_oid}")
+          check("...and the bot records that it is a LIMIT, not a stop",
+                b8c._add_is_limit is True, f"is_limit={b8c._add_is_limit}")
+
+          # A stop that IS accepted must never also send a limit.
+          b8d, api8d = make_bot(prefix, sig_ct + 2)
+          b8d._add_pending = {"side": 0, "lots": 6, "px": 100.0, "sl_ticks": 10,
+                              "tp_ticks": 5,
+                              "deadline": datetime.now(timezone.utc) + timedelta(minutes=20)}
+          b8d.in_position, b8d._pos_dir = True, 1
+          api8d.position = {"contractId": bot.CONFIG["contract_id"],
+                            "size": 2, "averagePrice": 100.0}
+          asyncio.run(b8d._service_add())
+          check("a stop that IS accepted sends no limit",
+                len(api8d.adds) == 1 and len(api8d.limits) == 0
+                and b8d._add_is_limit is False,
+                f"adds={api8d.adds} limits={api8d.limits}")
+
+          # Both refused: no working order, and nothing left pretending there is.
+          b8e, api8e = make_bot(prefix, sig_ct + 2)
+          api8e.reject_stop = True
+          api8e.reject_limit = True
+          b8e._add_pending = {"side": 0, "lots": 6, "px": 100.0, "sl_ticks": 10,
+                              "tp_ticks": 5,
+                              "deadline": datetime.now(timezone.utc) + timedelta(minutes=20)}
+          b8e.in_position, b8e._pos_dir = True, 1
+          api8e.position = {"contractId": bot.CONFIG["contract_id"],
+                            "size": 2, "averagePrice": 100.0}
+          asyncio.run(b8e._service_add())
+          check("both refused -> no working order is recorded",
+                b8e._add_oid is None and b8e._add_pending is None,
+                f"oid={b8e._add_oid} pending={b8e._add_pending}")
 
           # REGRESSION: a parked add whose window has already closed must never
           # reach the exchange. Live, the bot lost 38 minutes (a slept host), woke

@@ -845,43 +845,65 @@ class TopstepXClient:
             log.error("place_bracket_order failed: %s", exc)
             return None
 
-    async def place_stop_with_bracket(self, side: int, size: int, stop_price: float,
-                                      sl_ticks: int, tp_ticks: int):
-        """A resting STOP entry that arrives WITH its own protective bracket.
+    async def _place_resting_entry(self, order_type: int, side: int, size: int,
+                                   price: float, sl_ticks: int, tp_ticks: int):
+        """A resting entry at `price` that arrives WITH its own bracket.
 
-        Used for the scale-in tranche. The caller chooses the bracket ticks so
-        that, filling at `stop_price`, the stop and target land on the same
-        ABSOLUTE prices as the first tranche's — which is what the backtest
-        models. A slipped fill shifts them by the slippage, which is acceptable.
+        order_type 4 = Stop, 1 = Limit. The two are the SAME order in every
+        respect except which side of the market the price sits on, so they share
+        this body rather than being copy-pasted — see _service_add for why both
+        are needed.
+
+        The caller chooses the bracket ticks so that, filling at `price`, the
+        stop and target land on the same ABSOLUTE prices the entry was designed
+        around. A slipped fill shifts them by the slippage, which is acceptable.
         Contracts sitting with no stop at all is not, which is why the bracket
         travels with the order rather than being attached afterwards.
         """
         sl_signed = -abs(sl_ticks) if side == 0 else abs(sl_ticks)
         tp_signed = abs(tp_ticks) if side == 0 else -abs(tp_ticks)
+        px = round(price / CONFIG["tick_size"]) * CONFIG["tick_size"]
+        is_stop = order_type == 4
         body = {
             "accountId": self._account_id,
             "contractId": CONFIG["contract_id"],
-            "type": 4,          # Stop
+            "type": order_type,
             "side": side,
             "size": size,
-            "limitPrice": None,
-            "stopPrice": round(stop_price / CONFIG["tick_size"]) * CONFIG["tick_size"],
+            "limitPrice": None if is_stop else px,
+            "stopPrice": px if is_stop else None,
             "trailPrice": None, "customTag": None,
             "stopLossBracket": {"ticks": sl_signed, "type": 4},
             "takeProfitBracket": {"ticks": tp_signed, "type": 1},
         }
+        what = "stop" if is_stop else "limit"
         try:
             data = await self._post("/Order/place", body)
             if not data.get("success", False):
-                log.error("Scale-in stop rejected: %s", data.get("errorMessage"))
+                log.error("Scale-in %s rejected: %s", what, data.get("errorMessage"))
                 return None
             oid = data.get("orderId")
-            log.info("➕ ADD resting | orderId=%s side=%d size=%d stop @ %.2f  sl=%+dt tp=%+dt",
-                     oid, side, size, stop_price, sl_signed, tp_signed)
+            log.info("➕ ADD resting | orderId=%s side=%d size=%d %s @ %.2f  sl=%+dt tp=%+dt",
+                     oid, side, size, what, px, sl_signed, tp_signed)
             return oid
         except Exception as exc:
-            log.error("place_stop_with_bracket failed: %s", exc)
+            log.error("place %s with bracket failed: %s", what, exc)
             return None
+
+    async def place_stop_with_bracket(self, side: int, size: int, stop_price: float,
+                                      sl_ticks: int, tp_ticks: int):
+        """Resting STOP entry. Valid only BELOW market to sell, ABOVE to buy."""
+        return await self._place_resting_entry(4, side, size, stop_price,
+                                               sl_ticks, tp_ticks)
+
+    async def place_limit_with_bracket(self, side: int, size: int, limit_price: float,
+                                       sl_ticks: int, tp_ticks: int):
+        """Resting LIMIT entry at the same price. Valid on the OTHER side of the
+        market from a stop: above to sell, below to buy. That is the whole point
+        — when price has already run through the trigger, this is the order type
+        that can still rest there."""
+        return await self._place_resting_entry(1, side, size, limit_price,
+                                               sl_ticks, tp_ticks)
 
     async def get_open_positions(self) -> List[dict]:
         try:
@@ -948,6 +970,9 @@ class DonchianBot:
         # The add is DEFERRED by one bar — see _place_entry for why.
         self._add_pending = None
         self._want = None
+        # Whether the working add is a LIMIT (retrace fill) rather than
+        # a STOP (continuation fill). Changes what a good fill looks like.
+        self._add_is_limit = False
 
     # ---- persistence ----
     def _load_state(self) -> None:
@@ -1178,8 +1203,26 @@ class DonchianBot:
                 return
             self._add_oid = await self.api.place_stop_with_bracket(
                 a["side"], a["lots"], a["px"], a["sl_ticks"], a["tp_ticks"])
+            self._add_is_limit = False
             if self._add_oid is None:
-                log.warning("⚠  add order REJECTED — running at %d lots instead of %d",
+                # A STOP is refused when price has ALREADY gone through the
+                # trigger during the deferral bar — 40.8% of arms, measured. But
+                # the level is still the entry we want: the 0.15xATR
+                # confirmation has already happened, which is precisely WHY the
+                # stop was refused. A LIMIT at the same price is valid on that
+                # side and fills if price comes back, which it does about half
+                # the time within the window. Worth ~2.6pp of pass rate against
+                # giving up, and it beats chasing with a market order by ~4pp
+                # (research/arm_reject.mjs).
+                log.info("   ↻ stop refused — re-placing the SAME price as a LIMIT. "
+                         "Price has already passed the trigger, so this now fills "
+                         "on a retrace rather than on continuation.")
+                self._add_oid = await self.api.place_limit_with_bracket(
+                    a["side"], a["lots"], a["px"], a["sl_ticks"], a["tp_ticks"])
+                self._add_is_limit = self._add_oid is not None
+            if self._add_oid is None:
+                log.warning("⚠  add order REJECTED as both stop and limit — "
+                            "running at %d lots instead of %d",
                             self._first_lots, CONFIG["contracts"])
                 return
             self._add_px = a["px"]
@@ -1243,9 +1286,14 @@ class DonchianBot:
 
         if fill_px is not None:
             slip_t = (fill_px - want["px"]) * sig / TICK
+            # A LIMIT fills at its price or BETTER, so a negative number here is
+            # a gift rather than a problem; only a stop can slip against you.
+            kind = "limit" if getattr(self, "_add_is_limit", False) else "stop"
             verdict = "OK" if slip_t <= 2.0 else ("HIGH" if slip_t <= 4.0 else "BAD")
-            log.info("   fill price      %.2f vs trigger %.2f = %+.1f ticks  [%s]",
-                     fill_px, want["px"], slip_t, verdict)
+            if kind == "limit" and slip_t <= 0:
+                verdict = "OK (limit filled at or better)"
+            log.info("   fill price      %.2f vs %s trigger %.2f = %+.1f ticks  [%s]",
+                     fill_px, kind, want["px"], slip_t, verdict)
             if slip_t > 4.0:
                 ok = False
                 log.error("   -> %.1f ticks of entry slippage. Roughly 1.4pp of pass "
