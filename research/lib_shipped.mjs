@@ -160,3 +160,98 @@ export function stat(t) {
            exp: tot / t.length, net: tot, lots: lo / t.length };
 }
 export const inSet = (t, s) => { const q = new Set(s); return t.filter(x => q.has(x.tday)); };
+
+// ---- episode runner: the same engine, bounded to a day range, with the ACCOUNT
+// visible to the sizer.
+//
+// run() above generates one continuous stream with a sizer that can only see the
+// bar. That cannot express "trade smaller when close to the drawdown floor",
+// because position size then depends on account equity and account equity
+// depends on position size. This closes that loop.
+//
+// The floor is the firm's: peak-2000 until peak reaches 2000, then 0 forever.
+// `room` is equity minus floor -- how much can be lost before the account dies.
+// sizer(atr, ctMin, state) where state = { acct, peak, locked, room, day }.
+export const dayFirstBar = new Map();
+for (let i = 0; i < nB; i++) if (!dayFirstBar.has(TD[i])) dayFirstBar.set(TD[i], i);
+
+export function episode(startDayIdx, nDays, sizer,
+                        { breaker = BREAKER, profitBlock = PROFIT_BLOCK,
+                          dd = 2000, costMult = 1 } = {}) {
+  const slip = SLIP * costMult, perSide = PERSIDE * costMult;
+  const d0 = days[startDayIdx % days.length];
+  let i = dayFirstBar.get(d0);
+  const lastIdx = Math.min(startDayIdx + nDays, days.length) - 1;
+  const dEnd = days[lastIdx % days.length];
+  let stop = dayFirstBar.get(dEnd);
+  while (stop < nB && TD[stop] === dEnd) stop++;
+
+  let acct = 0, peak = 0, locked = false, dayCount = 0, curTday = -1e9;
+  let pos = 0, ep = 0, slD = 0, tpD = 0, qty = 0, notional = 0;
+  let armDir = 0, armPx = 0, armBy = -1, armBar = 0, armEp = 0, armSl = 0, armTp = 0, armQty = 0;
+  let dayReal = 0, capHit = false, trades = 0;
+  const floorOf = () => (locked ? 0 : peak - dd);
+  const avgFill = () => notional / qty;
+  const blocked = () => capHit || (breaker > 0 && dayReal <= -breaker)
+                                || (profitBlock > 0 && dayReal >= profitBlock);
+  let dead = false;
+  const book = (net) => {
+    dayReal += net; acct += net; trades++;
+    if (dayReal <= -CAP) capHit = true;
+    if (acct > peak) peak = acct;
+    if (!locked && peak >= dd) locked = true;
+    if (acct <= floorOf()) dead = true;
+  };
+  const close_ = (px, exact) => {
+    const xp = pos === 1 ? px - slip : px + slip;
+    book(exact !== undefined ? exact
+         : (xp - avgFill()) * pos * PV * qty - perSide * 2 * qty);
+    pos = 0; notional = 0;
+  };
+  for (; i < stop && !dead; i++) {
+    const s2 = sig[i - 1];
+    const flatNow = CT[i] >= FLAT || CT[i] < 510;
+    if (TD[i] !== curTday) { curTday = TD[i]; dayReal = 0; capHit = false; dayCount++; }
+    if (pos === 0 && armDir !== 0) {
+      if (flatNow || i > armBy || blocked()) armDir = 0;
+      else if (i > armBar && (armDir === 1 ? H[i] >= armPx : L[i] <= armPx)) {
+        pos = armDir; qty = armQty; ep = armEp; slD = armSl; tpD = armTp;
+        notional = (pos === 1 ? armPx + slip : armPx - slip) * qty;
+        armDir = 0;
+      }
+    }
+    if (pos !== 0) {
+      if (flatNow) { close_(O[i]); continue; }
+      const dir = pos;
+      const lossPx = avgFill() - dir * ((CAP + dayReal) / (PV * qty));
+      const rawSl = ep - dir * slD;
+      const sl = dir === 1 ? Math.max(rawSl, lossPx) : Math.min(rawSl, lossPx);
+      const isCap = dir === 1 ? (sl === lossPx && lossPx > rawSl) : (sl === lossPx && lossPx < rawSl);
+      const tp = ep + dir * tpD;
+      const cut = isCap ? -CAP - dayReal : undefined;
+      let done = false;
+      if (dir === 1) {
+        if (O[i] <= sl) { close_(O[i], cut); done = true; }
+        else if (L[i] <= sl) { close_(sl, cut); done = true; }
+        else if (H[i] >= tp) { close_(tp); done = true; }
+      } else {
+        if (O[i] >= sl) { close_(O[i], cut); done = true; }
+        else if (H[i] >= sl) { close_(sl, cut); done = true; }
+        else if (L[i] <= tp) { close_(tp); done = true; }
+      }
+      if (done) continue;
+      if (s2 !== 0 && s2 !== pos) close_(O[i]);
+      if (pos !== 0) continue;
+    }
+    if (pos === 0 && s2 !== 0 && !flatNow && !blocked() && CT[i] < NOENTRY) {
+      const a = A[i - 1];
+      if (!(a > 0)) continue;
+      const q = sizer(a, CT[i], { acct, peak, locked, room: acct - floorOf(), day: dayCount });
+      if (q < 1) continue;
+      armDir = s2; armBar = i; armBy = i + ADD_WIN; armEp = O[i]; armQty = q;
+      armPx = O[i] + s2 * Math.max(a * TRIG, TICK);
+      armSl = Math.max(a * 5, TICK); armTp = Math.max(a * 1.75, TICK);
+    }
+  }
+  return { acct, dead, trades, days: dayCount };
+}
