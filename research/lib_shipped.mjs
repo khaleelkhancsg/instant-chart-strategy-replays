@@ -177,7 +177,18 @@ for (let i = 0; i < nB; i++) if (!dayFirstBar.has(TD[i])) dayFirstBar.set(TD[i],
 
 export function episode(startDayIdx, nDays, sizer,
                         { breaker = BREAKER, profitBlock = PROFIT_BLOCK,
-                          dd = 2000, costMult = 1 } = {}) {
+                          dd = 2000, costMult = 1,
+                          // How the trailing drawdown behaves. This is the single
+                          // most load-bearing assumption in any funded-account
+                          // number, so it is switchable rather than baked in.
+                          //   "lock"   floor = peak-dd until peak reaches dd, then
+                          //            $0 forever (Topstep style: stops trailing)
+                          //   "eod"    same, but the peak only ratchets on END OF
+                          //            DAY balance, so intraday spikes do not
+                          //            raise the floor
+                          //   "always" floor = peak-dd forever, never stops
+                          //            trailing however much profit is made
+                          ddMode = "lock" } = {}) {
   const slip = SLIP * costMult, perSide = PERSIDE * costMult;
   const d0 = days[startDayIdx % days.length];
   let i = dayFirstBar.get(d0);
@@ -187,10 +198,16 @@ export function episode(startDayIdx, nDays, sizer,
   while (stop < nB && TD[stop] === dEnd) stop++;
 
   let acct = 0, peak = 0, locked = false, dayCount = 0, curTday = -1e9;
+  let dayOpenAcct = 0;                       // equity at the START of today
   let pos = 0, ep = 0, slD = 0, tpD = 0, qty = 0, notional = 0;
   let armDir = 0, armPx = 0, armBy = -1, armBar = 0, armEp = 0, armSl = 0, armTp = 0, armQty = 0;
   let dayReal = 0, capHit = false, trades = 0;
-  const floorOf = () => (locked ? 0 : peak - dd);
+  const floorOf = () => (ddMode !== "always" && locked ? 0 : peak - dd);
+  // Under "eod" the peak only moves at a day boundary, on the closing balance.
+  const ratchet = (v) => {
+    if (v > peak) peak = v;
+    if (ddMode !== "always" && !locked && peak >= dd) locked = true;
+  };
   const avgFill = () => notional / qty;
   const blocked = () => capHit || (breaker > 0 && dayReal <= -breaker)
                                 || (profitBlock > 0 && dayReal >= profitBlock);
@@ -198,8 +215,9 @@ export function episode(startDayIdx, nDays, sizer,
   const book = (net) => {
     dayReal += net; acct += net; trades++;
     if (dayReal <= -CAP) capHit = true;
-    if (acct > peak) peak = acct;
-    if (!locked && peak >= dd) locked = true;
+    if (ddMode !== "eod") ratchet(acct);      // intraday ratchet
+    // The floor is always checked live: the firm liquidates when equity touches
+    // it, whatever the peak convention.
     if (acct <= floorOf()) dead = true;
   };
   const close_ = (px, exact) => {
@@ -211,7 +229,10 @@ export function episode(startDayIdx, nDays, sizer,
   for (; i < stop && !dead; i++) {
     const s2 = sig[i - 1];
     const flatNow = CT[i] >= FLAT || CT[i] < 510;
-    if (TD[i] !== curTday) { curTday = TD[i]; dayReal = 0; capHit = false; dayCount++; }
+    if (TD[i] !== curTday) {
+      if (ddMode === "eod" && curTday !== -1e9) ratchet(acct);   // close of the day just ended
+      curTday = TD[i]; dayReal = 0; capHit = false; dayCount++; dayOpenAcct = acct;
+    }
     if (pos === 0 && armDir !== 0) {
       if (flatNow || i > armBy || blocked()) armDir = 0;
       else if (i > armBar && (armDir === 1 ? H[i] >= armPx : L[i] <= armPx)) {
