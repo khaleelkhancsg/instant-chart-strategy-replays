@@ -1,2 +1,0 @@
-set PROJECT_X_API_KEY=0bQ458ytqDIgwd/5HnloS0j7bIFb8juLgYyIL/2X5kc=
-set PROJECT_X_USERNAME=ningen

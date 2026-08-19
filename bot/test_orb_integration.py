@@ -228,7 +228,7 @@ def main():
     print("")
     print("arm timing and level-commit safety")
 
-    def preopen_bars(day_key, upto_ct=ORB_LAST, px=20000.0):
+    def preopen_bars(day_key, upto_ct=ORB_LAST, px=20000.0, amp=12.0):
         """1-minute bars covering the pre-open window of `day_key`."""
         from datetime import date
         d = date.fromisoformat(day_key)
@@ -239,8 +239,8 @@ def main():
             dt = naive.replace(tzinfo=bot.CT_TZ).astimezone(timezone.utc)
             # A shape with two clearly tapped levels either side of the close.
             k = ct % 8
-            hi = px + (12.0 if k in (1, 3, 5) else 3.0)
-            lo = px - (12.0 if k in (2, 4, 6) else 3.0)
+            hi = px + (amp if k in (1, 3, 5) else 3.0)
+            lo = px - (amp if k in (2, 4, 6) else 3.0)
             rows.append({"ms": int(dt.timestamp() * 1000), "o": px,
                          "h": hi, "l": lo, "c": px})
         return rows
@@ -297,6 +297,29 @@ def main():
     asyncio.run(b17._service_orb())
     check("a second poll does not re-fetch once levels are committed",
           api17.bar_fetches == 1, f"fetches={api17.bar_fetches}")
+
+    # A level pair too wide to trade: size would collapse, and the position
+    # would hold the account away from the donchian book for nothing.
+    b18, api18 = make(bot.ORB_OPEN_CT + 1, levels=None)
+    b18._session_key = KEY
+    b18._orb_day = None
+    api18.bars = preopen_bars(KEY, amp=60.0)      # ~120 pt spread, well over 31
+    asyncio.run(b18._service_orb())
+    check("stands down when the levels are too far apart to size properly",
+          b18._orb_levels is None and b18._orb_done and len(api18.adds) == 0,
+          f"lv={b18._orb_levels} done={b18._orb_done} adds={api18.adds}")
+
+    saved = bot.CONFIG["orb_max_width_pts"]
+    bot.CONFIG["orb_max_width_pts"] = 0            # guard off
+    b19, api19 = make(bot.ORB_OPEN_CT + 1, levels=None)
+    b19._session_key = KEY
+    b19._orb_day = None
+    api19.bars = preopen_bars(KEY, amp=60.0)
+    asyncio.run(b19._service_orb())
+    bot.CONFIG["orb_max_width_pts"] = saved
+    check("...and arms the same day with the guard switched off",
+          b19._orb_levels is not None and len(api19.adds) == 2,
+          f"lv={b19._orb_levels} adds={api19.adds}")
 
     # ── property: no path opens a second position ─────────────
     print("\nproperty: two books can never both hold")

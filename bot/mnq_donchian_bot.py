@@ -348,6 +348,24 @@ CONFIG = {
     # short of the bell only 66.0% of days produce identical levels, and 91 days
     # lose their level altogether. So the bot waits for the real window and then
     # moves fast, rather than guessing sooner.
+    # STAND DOWN WHEN THE POSITION WOULD BE TOO SMALL TO MATTER.
+    # Size is $500 / stop and the stop is the level spread, so a wide pre-open
+    # range buys a tiny position: median size is 12 lots pooled but only 5 in
+    # 2026, and 13.6% of 2026 trades size to a single lot against 3.3% pooled.
+    #
+    # Those trades pay for themselves -- the ones dropped here average +$39 in
+    # 2026 -- but they hold the account EXCLUSIVELY while they do it, blocking
+    # the 8-lot donchian book behind them. That cost is invisible to the trade's
+    # own P&L and shows up only on the shared account, which is exactly what the
+    # measurement finds: the guard LOWERS the ORB book standing alone (37.4% ->
+    # 34.0% on 2024-26) and RAISES the joint account (49.0% -> 50.3%).
+    #
+    # 31 points is roughly "at least 8 lots". The curve peaks there on both the
+    # full history and 2024-26, is better in both halves of 2024-26, and turns
+    # over past ~10 lots as throughput starts to bite -- at >= 25 lots only 292
+    # trades survive and the joint account falls to 41.5%. The plateau is broad
+    # (5-10 lots all beat no guard); the exact number inside it is not sharp.
+    "orb_max_width_pts": 31.0,           # 0 = off
     "orb_arm_lead_min": 5,               # start watching for the bell this early
     "orb_open_poll_s": 2,                # poll cadence while waiting to arm
     "orb_bar_grace_s": 120,              # wait this long past the open for the
@@ -1482,6 +1500,15 @@ class DonchianBot:
         self._orb_day = key
         self._orb_levels = orb_levels(rows)
         self._orb_done = False
+        cap = CONFIG["orb_max_width_pts"]
+        if self._orb_levels is not None and cap > 0:
+            spread = self._orb_levels.hi - self._orb_levels.lo
+            if spread > cap:
+                log.info("   ⊘ ORB: levels %.2f points apart (limit %.0f) — the "
+                         "position would be ~%d lots, standing down",
+                         spread, cap,
+                         max(1, int(ORB_CFG["risk_dollars"] // (spread * 2.0))))
+                self._orb_levels = None
         if self._orb_levels is None:
             # Happens on roughly 43% of days: no price in the window was tapped
             # often enough on BOTH sides. On those days the setup does not exist
