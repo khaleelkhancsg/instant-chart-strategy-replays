@@ -338,6 +338,20 @@ CONFIG = {
     "orb_give_up_ct": 9 * 60 + 30,       # 09:30 CT — stop hunting (10:30 ET)
     "orb_max_hold_min": 5,               # time stop; see orb_strategy.py
     "orb_poll_s": 10,                    # while armed or holding, check this often
+    # ARM LATENCY IS THE WHOLE BOOK. 85.6% of ORB entries fire in the first two
+    # minutes after 08:30 and 62.7% in the first minute, so an arm that lands
+    # late does not get a worse trade -- it gets no trade. Measured on 1,045
+    # historical entries, an arm landing at 08:38 (which is what happened live
+    # on 2026-08-19) keeps 2.1% of the book and that residue is NET NEGATIVE.
+    #
+    # The levels cannot simply be computed early to get ahead of it: one minute
+    # short of the bell only 66.0% of days produce identical levels, and 91 days
+    # lose their level altogether. So the bot waits for the real window and then
+    # moves fast, rather than guessing sooner.
+    "orb_arm_lead_min": 5,               # start watching for the bell this early
+    "orb_open_poll_s": 2,                # poll cadence while waiting to arm
+    "orb_bar_grace_s": 120,              # wait this long past the open for the
+                                         # 08:29 bar before arming without it
     "trailing_drawdown": 2000.0,         # firm's trailing drawdown. REPORTING ONLY — the bot
                                          # does not track cushion or resize against it. Sizing
                                          # against the drawdown was tested on real data and
@@ -779,7 +793,7 @@ class TopstepXClient:
         accounts = data.get("accounts", [])
         if not accounts:
             raise RuntimeError("No active accounts found")
-        acct = accounts[0]                                        # CHANGE ACCOUNT NUMBER HERE
+        acct = accounts[1]                                        # CHANGE ACCOUNT NUMBER HERE
         self._account_id = acct["id"]
         self._balance = float(acct.get("balance", 0))
         log.info("✅ Account: %s (id=%s bal=%.2f)",
@@ -817,7 +831,7 @@ class TopstepXClient:
             data = await self._post("/Account/search", {"onlyActiveAccounts": True})
             accts = data.get("accounts", [])
             if accts:
-                self._balance = float(accts[0].get("balance", self._balance))
+                self._balance = float(accts[1].get("balance", self._balance))
         except Exception as exc:
             log.debug("Balance refresh failed: %s", exc)
         return self._balance
@@ -1421,10 +1435,20 @@ class DonchianBot:
         log.info("   ✖ ORB orders cancelled (%s)", why)
 
     async def _orb_build_levels(self, bars1m: Sequence[dict]) -> None:
-        """Compute the day's levels once, from the two hours before the open."""
+        """Compute the day's levels once, from the two hours before the open.
+
+        Committing is deliberately all-or-nothing. Setting `_orb_day` is what
+        stops the levels being recomputed, so committing a partial window would
+        freeze the wrong levels for the whole session -- or, worse, commit None
+        and stand the book down on a day that had a perfectly good setup. Every
+        path that cannot see the complete window returns WITHOUT committing, so
+        the next poll simply tries again.
+        """
         key = self._session_key
         if self._orb_day == key:
             return
+        if self._ct_now() < ORB_OPEN_CT:
+            return                       # the window is not closed yet
         rows = []
         for b in bars1m:
             ms = _bar_ms(b)
@@ -1437,6 +1461,24 @@ class DonchianBot:
             o, h, l, c = _ohlc(b)
             rows.append({"o": o, "h": h, "l": l, "c": c,
                          "ct": ct.hour * 60 + ct.minute})
+        # The window the levels come from, and the last minute of it. The
+        # backtest reads the 08:29 bar, so arming without it is a different
+        # strategy -- one minute short changes the levels on 34% of days.
+        lo_ct = ORB_OPEN_CT - ORB_CFG["pre_window_min"]
+        win = [r for r in rows if lo_ct <= r["ct"] < ORB_OPEN_CT]
+        if not win:
+            log.warning("   ⊘ ORB: the pre-open window is empty in the feed — "
+                        "not committing, will retry")
+            return
+        have_last = any(r["ct"] == ORB_OPEN_CT - 1 for r in win)
+        if not have_last:
+            late_s = (self._ct_now() - ORB_OPEN_CT) * 60
+            if late_s < CONFIG["orb_bar_grace_s"]:
+                log.info("   … ORB: waiting for the %02d:%02d CT bar to print",
+                         (ORB_OPEN_CT - 1) // 60, (ORB_OPEN_CT - 1) % 60)
+                return
+            log.warning("   ⚠ ORB: the final pre-open bar never printed — arming "
+                        "on a window one minute short")
         self._orb_day = key
         self._orb_levels = orb_levels(rows)
         self._orb_done = False
@@ -1450,7 +1492,7 @@ class DonchianBot:
             log.info("   ◆ ORB levels: %.2f (%d taps) / %.2f (%d taps), ref %.2f",
                      lv.hi, lv.taps_hi, lv.lo, lv.taps_lo, lv.ref)
 
-    async def _service_orb(self, bars1m: Sequence[dict]) -> None:
+    async def _service_orb(self, bars1m: Optional[Sequence[dict]] = None) -> None:
         """Arm, fill, and time-stop the ORB book.
 
         The level is known BEFORE the open, so the entry is a resting stop
@@ -1490,7 +1532,18 @@ class DonchianBot:
             self._orb_done = True
             return
 
-        await self._orb_build_levels(bars1m)
+        # Polled from the sleep loop there are no bars to hand, so fetch them.
+        # Only until the levels are committed -- after that _orb_build_levels
+        # returns immediately and this costs nothing.
+        if self._orb_day != self._session_key and not bars1m:
+            try:
+                bars1m = await self.api.get_bars_1m(days=2)
+            except Exception as exc:
+                log.warning("ORB bar fetch failed, will retry: %s", exc)
+                return
+        await self._orb_build_levels(bars1m or [])
+        if self._orb_day != self._session_key:
+            return                       # incomplete feed; try again next poll
         if self._orb_levels is None:
             self._orb_done = True
             return
@@ -1916,30 +1969,49 @@ class DonchianBot:
             # time stop checked every two minutes can overrun by 40%, and a fill
             # has to be noticed before the other side can also fill.
             ct_now = self._ct_now()
-            orb_live = CONFIG["orb_enabled"] and (
+            # WAITING FOR THE BELL. The arm used to be reachable only from
+            # _evaluate, which runs once per 2-minute bar and bails early when
+            # the feed has not published one yet -- so the orders landed at
+            # 08:39 instead of 08:30 and the book missed 97.9% of its trades.
+            # This window makes the open its own event: poll hard from a few
+            # minutes before, and place the moment the 08:29 bar exists.
+            orb_pre = (CONFIG["orb_enabled"] and not self._orb_done
+                       and not self.in_position and not self._orb_oids
+                       and ORB_OPEN_CT - CONFIG["orb_arm_lead_min"]
+                       <= ct_now < CONFIG["orb_give_up_ct"])
+            orb_held = CONFIG["orb_enabled"] and (
                 self._pos_owner == "orb" or
                 (bool(self._orb_oids) and ct_now < CONFIG["orb_give_up_ct"]))
+            orb_live = orb_pre or orb_held
             near_flatten = (self.in_position and
                             CONFIG["no_entry_ct"] <= ct_now < CONFIG["reopen_ct"])
             if not near_flatten and not orb_live:
                 await asyncio.sleep(remaining)
                 return
-            await asyncio.sleep(min(CONFIG["orb_poll_s"] if orb_live
+            await asyncio.sleep(min(CONFIG["orb_open_poll_s"] if orb_pre
+                                    else CONFIG["orb_poll_s"] if orb_live
                                     else CONFIG["flatten_poll_s"], remaining))
             try:
                 if orb_live:
-                    await self._sync_position()
-                    if self.in_position and self._pos_owner is None and self._orb_oids:
+                    # Before anything is resting there is no fill to notice, so
+                    # skip the position round-trip and keep the pre-open poll to
+                    # one call. Once orders are live the sync is what catches a
+                    # fill in time to pull the other side.
+                    if orb_held:
+                        await self._sync_position()
+                    if (orb_held and self.in_position
+                            and self._pos_owner is None and self._orb_oids):
                         self._pos_owner = "orb"
                         self._orb_entry_ts = datetime.now(timezone.utc)
                         self._orb_done = True
                         log.info("   ◆ ORB FILLED (sub-bar) — %s",
                                  "LONG" if self._pos_dir == 1 else "SHORT")
                         await self._orb_cancel("ORB filled; pulling the other side")
-                    elif not self.in_position and self._pos_owner == "orb":
+                    elif (orb_held and not self.in_position
+                          and self._pos_owner == "orb"):
                         self._pos_owner = None
                         self._orb_entry_ts = None
-                    await self._service_orb([])
+                    await self._service_orb()
                 await self._enforce_flatten()
             except asyncio.CancelledError:
                 raise

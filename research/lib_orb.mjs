@@ -267,6 +267,11 @@ export function setups(cfg) {
     }
     diag.ranged++;
     const width = hi - lo;
+    // Optional pre-open stand-down on a level pair too far apart to trade.
+    // Known at 08:30 from the levels alone, so it is a decision the live bot can
+    // make once at the bell rather than a filter applied to a fill price.
+    // Default Infinity, so every previously measured result is unchanged.
+    if (width > (cfg.maxWidthPts ?? Infinity)) { diag.tooWide = (diag.tooWide || 0) + 1; continue; }
     if (levelMode === "extremes") { whi = hi; wlo = lo; }
 
     // Where "liquidity" sits for this day. Computed once, entirely from bars

@@ -31,6 +31,7 @@ from orb_strategy import OrbLevels        # noqa: E402
 bot.CONFIG["state_file"] = str(HERE / "logs_test" / "test_state_orb.json")
 (HERE / "logs_test").mkdir(exist_ok=True)
 
+ORB_LAST = 509          # 08:29 CT, the last bar of the pre-open window
 PASS = FAIL = 0
 FAILURES = []
 
@@ -56,6 +57,8 @@ class Api:
         self.closes = 0
         self.position = None
         self.reject_stop = False
+        self.bars = []
+        self.bar_fetches = 0
 
     @property
     def balance(self):
@@ -65,7 +68,8 @@ class Api:
         return self._balance
 
     async def get_bars_1m(self, days=5):
-        return []
+        self.bar_fetches += 1
+        return self.bars
 
     async def place_bracket_order(self, side, size, sl, tp):
         self.orders.append((side, size, sl, tp))
@@ -216,6 +220,83 @@ def main():
     asyncio.run(b12._service_orb([]))
     check("refused stops leave nothing tracked",
           b12._orb_oids == [], f"oids={b12._orb_oids}")
+
+    # ── arming at the bell, not eight minutes after it ────────
+    # 85.6% of ORB entries fire in the first two minutes after 08:30, so the
+    # level commit must be all-or-nothing: a partial feed that commits either
+    # freezes the wrong levels or stands the book down for a whole session.
+    print("")
+    print("arm timing and level-commit safety")
+
+    def preopen_bars(day_key, upto_ct=ORB_LAST, px=20000.0):
+        """1-minute bars covering the pre-open window of `day_key`."""
+        from datetime import date
+        d = date.fromisoformat(day_key)
+        rows = []
+        ct0 = bot.ORB_OPEN_CT - bot.ORB_CFG["pre_window_min"]
+        for ct in range(ct0, upto_ct + 1):
+            naive = datetime(d.year, d.month, d.day, ct // 60, ct % 60)
+            dt = naive.replace(tzinfo=bot.CT_TZ).astimezone(timezone.utc)
+            # A shape with two clearly tapped levels either side of the close.
+            k = ct % 8
+            hi = px + (12.0 if k in (1, 3, 5) else 3.0)
+            lo = px - (12.0 if k in (2, 4, 6) else 3.0)
+            rows.append({"ms": int(dt.timestamp() * 1000), "o": px,
+                         "h": hi, "l": lo, "c": px})
+        return rows
+
+    KEY = "2026-08-19"
+
+    b13, api13 = make(bot.ORB_OPEN_CT - 3, levels=None)
+    b13._session_key = KEY
+    b13._orb_day = None
+    api13.bars = preopen_bars(KEY)
+    asyncio.run(b13._service_orb())
+    check("nothing is committed or armed before the open",
+          b13._orb_day is None and len(api13.adds) == 0,
+          f"day={b13._orb_day} adds={api13.adds}")
+
+    b14, api14 = make(bot.ORB_OPEN_CT + 1, levels=None)
+    b14._session_key = KEY
+    b14._orb_day = None
+    api14.bars = []                        # feed has published nothing
+    asyncio.run(b14._service_orb())
+    check("an empty feed does NOT stand the book down for the day",
+          b14._orb_day is None and not b14._orb_done,
+          f"day={b14._orb_day} done={b14._orb_done}")
+
+    # One minute short of the bell: wait inside the grace period, arm after it.
+    b15, api15 = make(bot.ORB_OPEN_CT + 1, levels=None)
+    b15._session_key = KEY
+    b15._orb_day = None
+    api15.bars = preopen_bars(KEY, upto_ct=ORB_LAST - 1)
+    asyncio.run(b15._service_orb())
+    check("waits for the final pre-open bar inside the grace period",
+          b15._orb_day is None and len(api15.adds) == 0,
+          f"day={b15._orb_day} adds={api15.adds}")
+
+    b16, api16 = make(bot.ORB_OPEN_CT + 5, levels=None)   # past the 120s grace
+    b16._session_key = KEY
+    b16._orb_day = None
+    api16.bars = preopen_bars(KEY, upto_ct=ORB_LAST - 1)
+    asyncio.run(b16._service_orb())
+    check("arms anyway once the grace period has passed",
+          b16._orb_day == KEY, f"day={b16._orb_day}")
+
+    b17, api17 = make(bot.ORB_OPEN_CT + 1, levels=None)
+    b17._session_key = KEY
+    b17._orb_day = None
+    api17.bars = preopen_bars(KEY)
+    asyncio.run(b17._service_orb())
+    check("fetches its own bars when polled outside _evaluate",
+          api17.bar_fetches == 1, f"fetches={api17.bar_fetches}")
+    check("commits the levels and arms in the same pass",
+          b17._orb_day == KEY and b17._orb_levels is not None
+          and len(api17.adds) == 2,
+          f"day={b17._orb_day} lv={b17._orb_levels} adds={api17.adds}")
+    asyncio.run(b17._service_orb())
+    check("a second poll does not re-fetch once levels are committed",
+          api17.bar_fetches == 1, f"fetches={api17.bar_fetches}")
 
     # ── property: no path opens a second position ─────────────
     print("\nproperty: two books can never both hold")
