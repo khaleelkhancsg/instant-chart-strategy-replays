@@ -77,6 +77,7 @@ function simulate(books) {
   const dayPnl = new Map(); for (const d of days) dayPnl.set(d, 0);
   const dTr = [], oTr = [];
   let curDay = -1e9, realised = 0, capHit = false, liqDays = 0;
+  let coMin = 0, coSame = 0, coOpp = 0, dMin = 0, oMin = 0;
 
   let dPos = 0, dEp = 0, dSlD = 0, dTpD = 0, dQty = 0, dNotional = 0;
   let armDir = 0, armPx = 0, armBy = -1, armBar = -1, armEp = 0, armSl = 0, armTp = 0;
@@ -109,14 +110,28 @@ function simulate(books) {
       dPos = 0; oPos = 0; armDir = 0; isLimit = false; dNotional = 0;
     }
     const ct = CT1[i];
+    if (dPos !== 0) dMin++;
+    if (oPos !== 0) oMin++;
+    if (dPos !== 0 && oPos !== 0) { coMin++; if (dPos === oPos) coSame++; else coOpp++; }
 
     // ---- THE SHARED CAP, on running equity, every minute ------------------
     if (!capHit && (dPos !== 0 || oPos !== 0)) {
+      // Mark BOTH books at the SAME price, then take the worse of the bar's two
+      // extremes. Marking each at its own worst point -- the low for a long, the
+      // high for a short -- sums two moments that never coexisted, and would
+      // liquidate on a combined loss that never happened. Combined P&L is linear
+      // in price, so its minimum over the bar's range is exactly at an endpoint:
+      // min of (value at the high, value at the low) is right, not merely safe.
+      const mark = (px) =>
+        (dPos === 0 ? 0 : (px - dFill()) * dPos * PV * dQty - PERSIDE * 2 * dQty) +
+        (oPos === 0 ? 0 : (px - oFill) * oPos * PV * oQty - PERSIDE * 2 * oQty);
+      const atLow = mark(L1[i]), atHigh = mark(H1[i]);
+      const worst = Math.min(atLow, atHigh);
       const dU = dPos === 0 ? 0
-        : ((dPos === 1 ? L1[i] - dFill() : dFill() - H1[i]) * PV * dQty - PERSIDE * 2 * dQty);
-      const oU = oPos === 0 ? 0
-        : ((oPos === 1 ? L1[i] - oFill : oFill - H1[i]) * PV * oQty - PERSIDE * 2 * oQty);
-      if (realised + dU + oU <= -CAP) {
+        : ((atLow <= atHigh ? L1[i] - dFill() : H1[i] - dFill()) * dPos * PV * dQty
+           - PERSIDE * 2 * dQty);
+      const oU = worst - dU;
+      if (realised + worst <= -CAP) {
         // Liquidated. Split the shortfall between whatever is open so the day
         // lands on exactly -$1,000, and book it as a trade so the trade-level
         // parity check can still see it.
@@ -216,7 +231,8 @@ function simulate(books) {
     }
   }
   dayPnl.set(curDay, realised);
-  return { arr: days.map(d => dayPnl.get(d)), dTr, oTr, liqDays };
+  return { arr: days.map(d => dayPnl.get(d)), dTr, oTr, liqDays,
+           coMin, coSame, coOpp, dMin, oMin };
 }
 
 // ---- evaluation ----------------------------------------------------------
@@ -309,3 +325,26 @@ console.log("\n-- what the day-sum approximation was worth --");
 console.log("  day-sum then clip   " + pass21(naive).toFixed(1) + "%   no deadline " + forward(naive).toFixed(1) + "%");
 console.log("  true joint account  " + pass21(both.arr).toFixed(1) + "%   no deadline " + forward(both.arr).toFixed(1) + "%");
 console.log("  approximation was optimistic by " + (pass21(naive) - pass21(both.arr)).toFixed(1) + "pp");
+
+console.log("");
+console.log("-- how often are BOTH books actually holding at once? --");
+console.log("  donchian in a position     " + both.dMin.toLocaleString() + " minutes");
+console.log("  orb in a position          " + both.oMin.toLocaleString() + " minutes");
+console.log("  BOTH at once               " + both.coMin.toLocaleString() + " minutes  (" +
+  (100 * both.coMin / Math.min(both.dMin, both.oMin)).toFixed(1) + "% of the ORB's exposure)");
+console.log("    same direction           " + both.coSame.toLocaleString());
+console.log("    OPPOSITE directions      " + both.coOpp.toLocaleString() +
+  "  <- the only case the marking bug could bite");
+
+console.log("");
+console.log("-- do the two books suppress each other through the SHARED daily blocks? --");
+console.log("  book run alone   donchian " + don.dTr.length + " trades, orb " + orb.oTr.length);
+console.log("  book run together donchian " + both.dTr.length + " trades, orb " + both.oTr.length);
+console.log("  donchian trades lost to sharing: " + (don.dTr.length - both.dTr.length) +
+  "  (" + (100 * (don.dTr.length - both.dTr.length) / don.dTr.length).toFixed(1) + "%)");
+console.log("  orb trades lost to sharing:      " + (orb.oTr.length - both.oTr.length) +
+  "  (" + (100 * (orb.oTr.length - both.oTr.length) / orb.oTr.length).toFixed(1) + "%)");
+console.log("");
+console.log("  The circuit breaker (-$500) and profit block (+$750) are ACCOUNT-level, so one");
+console.log("  book's P&L can shut the other out. That is a real cost of sharing an account,");
+console.log("  and it is why simultaneous holding is rarer than chance would suggest.");
