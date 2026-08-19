@@ -46,13 +46,22 @@ export const RECENT = days.slice(-500);
 // COMBINE -- a race to +$3,000 under a consistency rule. A funded account has
 // no target and no consistency rule, so neither setting can be assumed to
 // carry over.
+// entryModel decides what happens when the placement bar OPENS past the trigger,
+// which is 40.8% of arms (research/arm_reject.mjs):
+//   "optimistic" fills at the trigger anyway -- a price the market has already
+//                left. This is what every number before a7a7bd0 assumed and it
+//                is not achievable; kept only to reproduce old results.
+//   "limit"      what the bot now does: the stop is refused, the same price goes
+//                back as a LIMIT, and it fills if price returns.
 export function run(sizer, { costMult = 1, breaker = BREAKER,
-                             profitBlock = PROFIT_BLOCK } = {}) {
+                             profitBlock = PROFIT_BLOCK,
+                             entryModel = "limit" } = {}) {
   const slip = SLIP * costMult, perSide = PERSIDE * costMult;
   const trades = [];
   let pos = 0, ep = 0, slD = 0, tpD = 0, qty = 0, notional = 0, entCt = 0, entBar = 0, entAtr = 0;
   let armDir = 0, armPx = 0, armBy = -1, armBar = 0, armEp = 0, armSl = 0, armTp = 0, armQty = 0, armAtr = 0;
   let curTday = -1e9, dayReal = 0, capHit = false, sigSeq = 0;
+  let isLimit = false;                  // working as a limit, so the fill side flips
   const avgFill = () => notional / qty;
   const blocked = () => capHit || (breaker > 0 && dayReal <= -breaker)
                               || (profitBlock > 0 && dayReal >= profitBlock);
@@ -72,11 +81,22 @@ export function run(sizer, { costMult = 1, breaker = BREAKER,
     if (pos === 0 && armDir !== 0) {
       if (flatNow || i > armBy || blocked()) armDir = 0;
       else if (i > armBar) {
-        const touched = armDir === 1 ? H[i] >= armPx : L[i] <= armPx;
-        if (touched) {
+        const fill = () => {
           pos = armDir; qty = armQty; ep = armEp; slD = armSl; tpD = armTp;
           notional = (pos === 1 ? armPx + slip : armPx - slip) * qty;
           entCt = CT[i]; entBar = i; entAtr = armAtr; armDir = 0;
+        };
+        if (entryModel !== "optimistic" && i === armBar + 1 && !isLimit &&
+            (armDir === 1 ? O[i] >= armPx : O[i] <= armPx)) {
+          // A stop here would be refused: price is already through the trigger.
+          // The same price becomes a LIMIT, so the fill now needs a RETRACE and
+          // the side of the test flips for the rest of the window.
+          isLimit = true;
+          if (armDir === 1 ? L[i] <= armPx : H[i] >= armPx) fill();
+        } else {
+          const hit = isLimit ? (armDir === 1 ? L[i] <= armPx : H[i] >= armPx)
+                              : (armDir === 1 ? H[i] >= armPx : L[i] <= armPx);
+          if (hit) fill();
         }
       }
     }
@@ -109,6 +129,7 @@ export function run(sizer, { costMult = 1, breaker = BREAKER,
       if (!(a > 0)) continue;
       const q = sizer(a, CT[i], sigSeq++);
       if (q < 1) continue;
+      isLimit = false;
       armDir = s2; armBar = i; armBy = i + ADD_WIN; armEp = O[i]; armQty = q; armAtr = a;
       armPx = O[i] + s2 * Math.max(a * TRIG, TICK);
       armSl = Math.max(a * 5, TICK); armTp = Math.max(a * 1.75, TICK);

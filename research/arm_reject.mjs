@@ -45,7 +45,7 @@ const { open: O, high: H, low: L, ctMin: CT, tday: TD } = tf;
 //       "reject"     = placement bar opens past the trigger, exchange refuses,
 //                      no trade happens (what the bot does today)
 //       "market"     = send a market order instead, filling at that open
-function run(mode, thruTicks = 0) {
+function run(mode, thruTicks = 0, WIN = ADD_WIN) {
   const thru = thruTicks * TICK;
   const trades = [];
   let rejected = 0, arms = 0, fills = 0;
@@ -133,7 +133,7 @@ function run(mode, thruTicks = 0) {
       if (!(a > 0)) continue;
       arms++;
       isLimit = false;
-      armDir = s2; armBar = i; armBy = i + ADD_WIN; armEp = O[i];
+      armDir = s2; armBar = i; armBy = i + WIN; armEp = O[i];
       armPx = O[i] + s2 * Math.max(a * TRIG, TICK);
       armSl = Math.max(a * 5, TICK); armTp = Math.max(a * 1.75, TICK);
       // IMMEDIATE placement: the order reaches the exchange a few seconds into
@@ -230,3 +230,43 @@ for (const [lbl, mode] of [["optimistic (current backtest)", "optimistic"],
     (mode.startsWith("limit") ? "   " + r.limitFilled + "/" + r.limitPlaced + " limits filled (" +
       (100 * r.limitFilled / Math.max(1, r.limitPlaced)).toFixed(1) + "%)" : ""));
 }
+
+// ---- how much of the 49.8% can the limit actually recover? ---------------
+// 49.8% IS the 100%-fill figure: it books every touched arm at armPx, including
+// the 40.8% where the market had already gone. The only honest way to get
+// closer is to give the limit longer to catch a retrace, so sweep the window.
+console.log("\n-- widening the add window so more limits get filled --");
+console.log("  window (bars)   minutes   limits filled   fills   pf    $/trade    pass   1stH   2ndH");
+for (const w of [10, 15, 20, 30, 45, 60]) {
+  const r = run("limit", 0, w), st = stat(r.trades);
+  console.log("  " + String(w).padEnd(15) + String(w * 2).padEnd(10) +
+    ((100 * r.limitFilled / Math.max(1, r.limitPlaced)).toFixed(1) + "%").padStart(12) +
+    String(r.fills).padStart(9) + st.pf.toFixed(3).padStart(6) +
+    ("$" + st.exp.toFixed(2)).padStart(10) + passOf(r.trades, days).toFixed(1).padStart(8) + "%" +
+    passOf(inSet(r.trades, H1), H1).toFixed(1).padStart(6) + "%" +
+    passOf(inSet(r.trades, H2), H2).toFixed(1).padStart(6) + "%");
+}
+console.log("\n  ceiling check: the optimistic row (49.8%) fills 2842 arms at armPx.");
+console.log("  A limit can only reach the ones price actually returns to.");
+
+// ---- what is EXECUTION SKILL worth? --------------------------------------
+// A human watching the chart places the order the moment the signal fires, so
+// it is resting when price arrives -- the "immediate" case. On top of that they
+// may work the order for price IMPROVEMENT. Negative ticks below mean filling
+// BETTER than the trigger. This prices that skill directly.
+console.log("");
+console.log("-- entering at the trigger, or better, with no deferral --");
+console.log("  fill vs trigger      fills   pf    $/trade    pass   1stH   2ndH  recent");
+for (const t of [4, 2, 1, 0, -1, -2, -4, -8]) {
+  const r = run("pollmkt", t), st = stat(r.trades);
+  const lbl = t === 0 ? "exactly at trigger"
+            : t > 0 ? (t + " ticks WORSE") : ((-t) + " ticks BETTER");
+  console.log("  " + lbl.padEnd(21) + String(r.fills).padStart(5) +
+    st.pf.toFixed(3).padStart(7) + ("$" + st.exp.toFixed(2)).padStart(10) +
+    passOf(r.trades, days).toFixed(1).padStart(8) + "%" +
+    passOf(inSet(r.trades, H1), H1).toFixed(1).padStart(6) + "%" +
+    passOf(inSet(r.trades, H2), H2).toFixed(1).padStart(6) + "%" +
+    passOf(inSet(r.trades, RECENT), RECENT).toFixed(1).padStart(7) + "%");
+}
+console.log("");
+console.log("  The 0.15xATR trigger offset is itself only about 8 ticks (2 points at ATR 13).");
