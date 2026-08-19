@@ -177,6 +177,30 @@ except ImportError:                                     # pragma: no cover
 CT_TZ = ZoneInfo("America/Chicago")
 ET_TZ = ZoneInfo("America/New_York")
 
+def _orb_side_entry(levels, side_sign: int):
+    """The ORB entry for ONE side, without waiting for a break.
+
+    orb_entry() answers "has a level broken on the bar that just closed", which
+    is what the backtest asks. Live, the level is known before the open and the
+    order rests there, so the same geometry is needed WITHOUT the break test.
+    Both come from the same numbers, so they cannot drift apart.
+    """
+    from orb_strategy import OrbEntry, _round_tick, TICK as _T, PV as _PV
+    level = levels.hi if side_sign == 1 else levels.lo
+    far = levels.lo if side_sign == 1 else levels.hi
+    trigger = _round_tick(level + side_sign * ORB_CFG["trigger_ticks"] * _T)
+    risk_pts = abs(trigger - far)
+    if risk_pts < _T:
+        return None
+    lots = max(1, min(int(ORB_CFG["max_lots"]),
+                      int(ORB_CFG["risk_dollars"] // (risk_pts * _PV))))
+    return OrbEntry(
+        side=side_sign, trigger=trigger,
+        stop=_round_tick(trigger - side_sign * risk_pts),
+        target=_round_tick(trigger + side_sign * risk_pts * ORB_CFG["r_mult"]),
+        risk_pts=risk_pts, lots=lots, risk_usd=risk_pts * _PV * lots)
+
+
 # ─────────────────────────────────────────────────────────────
 #  CONFIG
 # ─────────────────────────────────────────────────────────────
@@ -300,6 +324,20 @@ CONFIG = {
     # bot. Recorded here so the entry log can say how close each trade sits to it.
     # It costs ~6pp of pass rate and is treated as non-negotiable.
     "platform_hard_loss_stop": 1000.0,
+    # ── ORB, the second book ──────────────────────────────────
+    # Trades once a day off a level drawn from the two hours before the open.
+    # Nearly uncorrelated with the Donchian book (r = 0.069 on daily P&L), which
+    # is why running both is worth 34.4% -> 50.3% on one account rather than
+    # being two copies of the same bet.
+    #
+    # EXCLUSIVE by design: the two books hold at the same time for twelve
+    # minutes across seven years, so forbidding it outright costs 0.3pp and
+    # removes net-position bookkeeping and overlapping brackets, which are the
+    # two things most likely to go wrong on one account.
+    "orb_enabled": True,
+    "orb_give_up_ct": 9 * 60 + 30,       # 09:30 CT — stop hunting (10:30 ET)
+    "orb_max_hold_min": 5,               # time stop; see orb_strategy.py
+    "orb_poll_s": 10,                    # while armed or holding, check this often
     "trailing_drawdown": 2000.0,         # firm's trailing drawdown. REPORTING ONLY — the bot
                                          # does not track cushion or resize against it. Sizing
                                          # against the drawdown was tested on real data and
@@ -695,6 +733,8 @@ def _bar_ms(bar: dict) -> Optional[int]:
 #  behaviour confirmed live 2026-07-21.
 # ═════════════════════════════════════════════════════════════
 import httpx                                                     # noqa: E402
+from orb_strategy import (orb_levels, orb_entry, OPEN_CT as ORB_OPEN_CT,
+                          DEFAULT_CFG as ORB_CFG)                # noqa: E402
 from dotenv import load_dotenv                                   # noqa: E402
 
 load_dotenv()
@@ -973,6 +1013,16 @@ class DonchianBot:
         # Whether the working add is a LIMIT (retrace fill) rather than
         # a STOP (continuation fill). Changes what a good fill looks like.
         self._add_is_limit = False
+        # ---- ORB book ----
+        # Which book owns the open position, so the other stands down. None when
+        # flat. This is how exclusivity is enforced: whichever fills first wins.
+        self._pos_owner = None            # None | "don" | "orb"
+        self._orb_day = None              # session key the levels were built for
+        self._orb_levels = None
+        self._orb_oids = []               # the two resting stops, long and short
+        self._orb_done = False            # already had its shot today
+        self._orb_entry_ts = None         # for the five-minute time stop
+        self._orb_lots = 0
 
     # ---- persistence ----
     def _load_state(self) -> None:
@@ -1006,6 +1056,12 @@ class DonchianBot:
                      self._slip_sum / self._slip_n,
                      self._slip_abs_sum / self._slip_n, self._slip_n)
         self._session_key = key
+        # A new day: the ORB gets a fresh shot and its levels are rebuilt.
+        self._orb_day = None
+        self._orb_levels = None
+        self._orb_done = False
+        self._orb_entry_ts = None
+        self._pos_owner = None
         self._day_start_balance = self.api.balance
         self._slip_sum = self._slip_abs_sum = 0.0
         self._slip_n = 0
@@ -1348,6 +1404,142 @@ class DonchianBot:
         log.info("%s", DIV)
         self._want = None
 
+    # ═══════════════════════════════════════════════════════════
+    #  ORB — the second book
+    # ═══════════════════════════════════════════════════════════
+    async def _orb_cancel(self, why: str) -> None:
+        """Pull both resting stops. Safe to call when there are none."""
+        if not self._orb_oids:
+            return
+        oids, self._orb_oids = self._orb_oids, []
+        for oid in oids:
+            try:
+                await self.api.cancel_order(oid)
+            except Exception as exc:
+                log.error("🛑 ORB cancel of %s FAILED (%s): %s — CHECK THE PLATFORM.",
+                          oid, why, exc)
+        log.info("   ✖ ORB orders cancelled (%s)", why)
+
+    async def _orb_build_levels(self, bars1m: Sequence[dict]) -> None:
+        """Compute the day's levels once, from the two hours before the open."""
+        key = self._session_key
+        if self._orb_day == key:
+            return
+        rows = []
+        for b in bars1m:
+            ms = _bar_ms(b)
+            if ms is None:
+                continue
+            dt = datetime.fromtimestamp(ms / 1000, timezone.utc)
+            if trading_day_key(dt) != key:
+                continue
+            ct = dt.astimezone(CT_TZ)
+            o, h, l, c = _ohlc(b)
+            rows.append({"o": o, "h": h, "l": l, "c": c,
+                         "ct": ct.hour * 60 + ct.minute})
+        self._orb_day = key
+        self._orb_levels = orb_levels(rows)
+        self._orb_done = False
+        if self._orb_levels is None:
+            # Happens on roughly 43% of days: no price in the window was tapped
+            # often enough on BOTH sides. On those days the setup does not exist
+            # and the book simply sits out.
+            log.info("   ⊘ ORB: no qualifying level today — book stands down")
+        else:
+            lv = self._orb_levels
+            log.info("   ◆ ORB levels: %.2f (%d taps) / %.2f (%d taps), ref %.2f",
+                     lv.hi, lv.taps_hi, lv.lo, lv.taps_lo, lv.ref)
+
+    async def _service_orb(self, bars1m: Sequence[dict]) -> None:
+        """Arm, fill, and time-stop the ORB book.
+
+        The level is known BEFORE the open, so the entry is a resting stop
+        placed at the bell rather than a break detected on a bar close. That
+        matters: detecting the break first and sending an order after would
+        inherit exactly the problem that makes the Donchian arm get refused 41%
+        of the time, because price has already gone through the trigger.
+        """
+        if not CONFIG["orb_enabled"]:
+            return
+        ct = self._ct_now()
+
+        # ---- the five-minute time stop -----------------------------------
+        if self._pos_owner == "orb" and self.in_position and self._orb_entry_ts:
+            held = (datetime.now(timezone.utc) - self._orb_entry_ts).total_seconds() / 60.0
+            if held >= CONFIG["orb_max_hold_min"]:
+                log.info("   ⏲ ORB time stop: %.1f min held (limit %d) — closing",
+                         held, CONFIG["orb_max_hold_min"])
+                if await self.api.close_position():
+                    self.in_position = False
+                    self._pos_dir = 0
+                    self._pos_owner = None
+                    self._orb_entry_ts = None
+                    await self._cancel_working_brackets("ORB time stop")
+            return
+
+        # Somebody else owns the position, or the day is over for this book.
+        if self.in_position or self._orb_done:
+            if self._orb_oids and self.in_position:
+                await self._orb_cancel("a position is open; one book at a time")
+            return
+        if ct < ORB_OPEN_CT:
+            return
+        if ct >= CONFIG["orb_give_up_ct"]:
+            if self._orb_oids:
+                await self._orb_cancel("hunt window closed")
+            self._orb_done = True
+            return
+
+        await self._orb_build_levels(bars1m)
+        if self._orb_levels is None:
+            self._orb_done = True
+            return
+        blocked, why = self._entry_blocked()
+        if blocked:
+            if self._orb_oids:
+                await self._orb_cancel("entries blocked: " + why)
+            return
+        if self._orb_oids:
+            return                                  # already resting
+
+        # ---- arm BOTH sides ----------------------------------------------
+        # Which way the level breaks is not knowable in advance, so both rest
+        # and the first fill cancels the other. A double fill needs price to
+        # cross both triggers inside one poll, which the 10-second cadence makes
+        # very unlikely -- and _sync_position would catch it if it happened.
+        lv = self._orb_levels
+        for side_sign in (1, -1):
+            fake = type("B", (), {})()
+            fake.hi, fake.lo = lv.hi, lv.lo
+            e = _orb_side_entry(lv, side_sign)
+            if e is None:
+                continue
+            sl_ticks = max(1, round(abs(e.trigger - e.stop) / TICK))
+            tp_ticks = max(1, round(abs(e.target - e.trigger) / TICK))
+            oid = await self.api.place_stop_with_bracket(
+                0 if side_sign == 1 else 1, e.lots, e.trigger, sl_ticks, tp_ticks)
+            if oid is None:
+                log.warning("⚠  ORB %s stop refused at %.2f",
+                            "long" if side_sign == 1 else "short", e.trigger)
+                continue
+            self._orb_oids.append(oid)
+            self._orb_lots = e.lots
+            log.info("   ◆ ORB armed %s: %d lots at %.2f  (stop %.2f, target %.2f, "
+                     "risk $%.0f)", "LONG" if side_sign == 1 else "SHORT",
+                     e.lots, e.trigger, e.stop, e.target, e.risk_usd)
+
+    async def _cancel_working_brackets(self, why: str) -> None:
+        """After closing a position by hand, its bracket legs are orphans."""
+        try:
+            for o in await self.api.get_open_orders():
+                if o.get("contractId") not in (None, CONFIG["contract_id"]):
+                    continue
+                oid = o.get("id") or o.get("orderId")
+                if oid is not None and oid not in self._orb_oids:
+                    await self.api.cancel_order(oid)
+        except Exception as exc:
+            log.warning("bracket cleanup after %s failed: %s", why, exc)
+
     # ---- the bracket the platform will actually allow ----
     def _bracket_points(self, atr_v: float, qty: int = None):
         """Return (stop_points, target_points, capped, cap_points).
@@ -1619,8 +1811,27 @@ class DonchianBot:
         self._roll_session_if_needed()
 
         await self._enforce_flatten()
+        was_in = self.in_position
         await self._sync_position()
+        # A position that appeared while ORB orders were resting belongs to the
+        # ORB. Claim it, start its clock, and pull the other side immediately --
+        # that cancellation is what enforces "one book at a time".
+        if self.in_position and not was_in and self._orb_oids and self._pos_owner is None:
+            self._pos_owner = "orb"
+            self._orb_entry_ts = datetime.now(timezone.utc)
+            self._orb_done = True
+            log.info("   ◆ ORB FILLED — %s, claiming the account for %d min",
+                     "LONG" if self._pos_dir == 1 else "SHORT",
+                     CONFIG["orb_max_hold_min"])
+            await self._orb_cancel("ORB filled; pulling the other side")
+        elif self.in_position and self._pos_owner is None:
+            self._pos_owner = "don"
+        elif not self.in_position:
+            self._pos_owner = None
+            self._orb_entry_ts = None
+
         await self._service_add()
+        await self._service_orb(raw)
 
         blocked, why = self._entry_blocked()
         log.info("%s", DIV)
@@ -1672,6 +1883,14 @@ class DonchianBot:
         if blocked:
             log.info("⏸  entry suppressed: %s", why)
             return True
+        if self._pos_owner == "orb":
+            log.info("⏸  entry suppressed: the ORB book owns the account")
+            return True
+        # Taking a position means the ORB's resting orders must go, or a fill
+        # there would open a second one.
+        if self._orb_oids:
+            await self._orb_cancel("donchian is taking the account")
+        self._pos_owner = "don"
         await self._place_entry(s, atr_v, last.close)
         return True
 
@@ -1693,13 +1912,34 @@ class DonchianBot:
             remaining = (deadline - datetime.now(timezone.utc)).total_seconds()
             if remaining <= 0:
                 return
+            # The ORB needs a finer clock than the 2-minute loop: a five-minute
+            # time stop checked every two minutes can overrun by 40%, and a fill
+            # has to be noticed before the other side can also fill.
+            ct_now = self._ct_now()
+            orb_live = CONFIG["orb_enabled"] and (
+                self._pos_owner == "orb" or
+                (bool(self._orb_oids) and ct_now < CONFIG["orb_give_up_ct"]))
             near_flatten = (self.in_position and
-                            CONFIG["no_entry_ct"] <= self._ct_now() < CONFIG["reopen_ct"])
-            if not near_flatten:
+                            CONFIG["no_entry_ct"] <= ct_now < CONFIG["reopen_ct"])
+            if not near_flatten and not orb_live:
                 await asyncio.sleep(remaining)
                 return
-            await asyncio.sleep(min(CONFIG["flatten_poll_s"], remaining))
+            await asyncio.sleep(min(CONFIG["orb_poll_s"] if orb_live
+                                    else CONFIG["flatten_poll_s"], remaining))
             try:
+                if orb_live:
+                    await self._sync_position()
+                    if self.in_position and self._pos_owner is None and self._orb_oids:
+                        self._pos_owner = "orb"
+                        self._orb_entry_ts = datetime.now(timezone.utc)
+                        self._orb_done = True
+                        log.info("   ◆ ORB FILLED (sub-bar) — %s",
+                                 "LONG" if self._pos_dir == 1 else "SHORT")
+                        await self._orb_cancel("ORB filled; pulling the other side")
+                    elif not self.in_position and self._pos_owner == "orb":
+                        self._pos_owner = None
+                        self._orb_entry_ts = None
+                    await self._service_orb([])
                 await self._enforce_flatten()
             except asyncio.CancelledError:
                 raise
