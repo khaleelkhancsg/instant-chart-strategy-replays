@@ -300,6 +300,11 @@ export function setups(cfg) {
     };
 
     const riskFor = (dir, entryPx, lvl, retExt) => {
+      // A FIXED stop in points. The others all scale with the level pair, so a
+      // wide pre-open range produces a wide stop -- and because size is
+      // risk-normalised, a tiny position. This one holds the scalp geometry
+      // constant and lets size be the thing that moves.
+      if (stopAt === "fixed")    return Math.max(cfg.stopPts ?? 10, TICK);
       if (stopAt === "range")    return Math.max(width * stopK, TICK);
       if (stopAt === "opposite") return Math.abs(entryPx - (dir === 1 ? lo : hi));
       if (stopAt === "retrace")  return Math.abs(entryPx - retExt);
