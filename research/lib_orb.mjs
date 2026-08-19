@@ -241,7 +241,15 @@ export function setups(cfg) {
 
     if (levelMode === "touch" || levelMode === "touchShuffled") {
       const t = touchLevels(s0, e0, a, b, cfg);
-      if (!t) { diag.noLevel++; continue; }
+      if (!t) {
+        diag.noLevel++;
+        // No price in the pre-open window was tapped often enough to qualify.
+        // Skipping loses 43% of days. A trader with no obvious level would
+        // simply use the range edges, so allow that as a fallback.
+        if (!cfg.levelFallback) continue;
+        whi = hi; wlo = lo;                 // extremes already computed above
+        diag.fellBack = (diag.fellBack || 0) + 1;
+      } else {
       if (pool) {
         if (!(t.whi > t.ref && t.ref > t.wlo)) { diag.noLevel++; continue; }
         const [fH, fL] = pool[poolAt++ % pool.length];
@@ -255,6 +263,7 @@ export function setups(cfg) {
       // extremes and this reduces to the range version.
       diag.insetSum += 100 * ((t.whi - t.hi) + (t.lo - t.wlo)) / (t.whi - t.wlo);
       diag.nLevel++;
+      }
     }
     diag.ranged++;
     const width = hi - lo;
@@ -305,7 +314,16 @@ export function setups(cfg) {
       // strict path still advances at most one state per bar.
       if (st === 0) {
         const up = H[i] > hi + buf * TICK, dn = L[i] < lo - buf * TICK;
-        if (up && dn) { diag.bothWays++; break; }
+        if (up && dn) {
+          // One bar broke BOTH levels and 1-minute OHLC cannot say which came
+          // first. Abandoning the whole day for that was too harsh -- it cost
+          // 26% of days that had a level. An ambiguous bar carries no
+          // information, so ignore it and keep hunting. Still fully causal:
+          // nothing about this bar is used.
+          diag.bothWays++;
+          if (cfg.bothWays === "abandon") break;
+          continue;
+        }
         if (!up && !dn) continue;
         dir = up ? 1 : -1; lvl = up ? hi : lo; p1 = up ? H[i] : L[i];
         st = 1; stateBar = i; diag.push1++;
@@ -315,12 +333,14 @@ export function setups(cfg) {
           // trigger regardless hands the backtest a price the market has
           // already left -- an impossible fill, worth real money on open bars.
           const trig = lvl + dir * buf2 * TICK;
-          const entryPx = dir === 1 ? Math.max(trig, O[i]) : Math.min(trig, O[i]);
+          const entryPx = cfg.naiveFill ? trig
+                        : (dir === 1 ? Math.max(trig, O[i]) : Math.min(trig, O[i]));
           const risk = riskFor(dir, entryPx, lvl, entryPx);
           if (risk < TICK) { diag.badStop++; break; }
           const tpPx = tpMode === "R" ? null : tpFor(dir, entryPx, risk);
           if (tpPx === null && tpMode !== "R" && tpFallback !== "R") { diag.noTp++; break; }
-          out.push({ bar: i, dir, entryPx, risk, day, e0, width, tpPx });
+          out.push({ bar: i, dir, entryPx, risk, day, e0, width, tpPx, trig,
+                     gapped: entryPx !== trig });
           diag.entered++; taken++;
           if (taken >= maxPerDay) { done = true; break; }
           busyUntil = i + (cfg.maxHoldMin ?? 120); st = 0; stateBar = -1;
