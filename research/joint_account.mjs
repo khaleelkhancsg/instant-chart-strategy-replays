@@ -67,12 +67,24 @@ const ORB_CFG = {
   mode: "plain", stopAt: "opposite", rMult: 3.0, maxHoldMin: 5,
   retraceFrac: 0.33, giveUpCt: 570, riskDollars: 500, maxLots: 50, maxPerDay: 1,
 };
-const orbAt = new Map();
-for (const s of orbSetups(ORB_CFG).out) orbAt.set(s.bar, s);
+const _schedCache = new Map();
+function orbSchedule(cfg) {
+  const key = JSON.stringify(cfg);
+  if (!_schedCache.has(key)) {
+    const m = new Map();
+    for (const s of orbSetups(cfg).out) m.set(s.bar, s);
+    _schedCache.set(key, m);
+  }
+  return _schedCache.get(key);
+}
 
 const days = [...new Set(TD1)].sort((a, b) => a - b);
 
-function simulate(books, exclusive = false) {
+function simulate(books, opts = {}) {
+  const { exclusive = false, orbCfg = ORB_CFG, donLots = DON_LOTS,
+          costMult = 1 } = opts;
+  const orbAt = orbSchedule(orbCfg);
+  const SLIPc = SLIP * costMult, FEEc = PERSIDE * costMult;
   const useDon = books !== "orb", useOrb = books !== "don";
   const dayPnl = new Map(); for (const d of days) dayPnl.set(d, 0);
   const dTr = [], oTr = [];
@@ -87,17 +99,17 @@ function simulate(books, exclusive = false) {
   const dFill = () => dNotional / dQty;
   const blocked = () => capHit || realised <= -BREAKER || realised >= PROFIT_BLOCK;
   const bookD = (px, exact) => {
-    const xp = dPos === 1 ? px - SLIP : px + SLIP;
+    const xp = dPos === 1 ? px - SLIPc : px + SLIPc;
     const net = exact !== undefined ? exact
-              : (xp - dFill()) * dPos * PV * dQty - PERSIDE * 2 * dQty;
+              : (xp - dFill()) * dPos * PV * dQty - FEEc * 2 * dQty;
     realised += net; dTr.push(net);
     if (realised <= -CAP) capHit = true;
     dPos = 0; dNotional = 0;
   };
   const bookO = (px, exact) => {
-    const xp = oPos === 1 ? px - SLIP : px + SLIP;
+    const xp = oPos === 1 ? px - SLIPc : px + SLIPc;
     const net = exact !== undefined ? exact
-              : (xp - oFill) * oPos * PV * oQty - PERSIDE * 2 * oQty;
+              : (xp - oFill) * oPos * PV * oQty - FEEc * 2 * oQty;
     realised += net; oTr.push(net);
     if (realised <= -CAP) capHit = true;
     oPos = 0;
@@ -123,13 +135,13 @@ function simulate(books, exclusive = false) {
       // in price, so its minimum over the bar's range is exactly at an endpoint:
       // min of (value at the high, value at the low) is right, not merely safe.
       const mark = (px) =>
-        (dPos === 0 ? 0 : (px - dFill()) * dPos * PV * dQty - PERSIDE * 2 * dQty) +
-        (oPos === 0 ? 0 : (px - oFill) * oPos * PV * oQty - PERSIDE * 2 * oQty);
+        (dPos === 0 ? 0 : (px - dFill()) * dPos * PV * dQty - FEEc * 2 * dQty) +
+        (oPos === 0 ? 0 : (px - oFill) * oPos * PV * oQty - FEEc * 2 * oQty);
       const atLow = mark(L1[i]), atHigh = mark(H1[i]);
       const worst = Math.min(atLow, atHigh);
       const dU = dPos === 0 ? 0
         : ((atLow <= atHigh ? L1[i] - dFill() : H1[i] - dFill()) * dPos * PV * dQty
-           - PERSIDE * 2 * dQty);
+           - FEEc * 2 * dQty);
       const oU = worst - dU;
       if (realised + worst <= -CAP) {
         // Liquidated. Split the shortfall between whatever is open so the day
@@ -156,7 +168,7 @@ function simulate(books, exclusive = false) {
       const resolveOrb = () => {
         if (oPos === 0) return;
         if (ct >= ORB_FLAT_CT) { bookO(O1[i]); return; }
-        if (i - oEntryBar >= ORB_CFG.maxHoldMin) { bookO(O1[i]); return; }
+        if (i - oEntryBar >= orbCfg.maxHoldMin) { bookO(O1[i]); return; }
         if (i > oEntryBar) {
           if (oPos === 1 ? O1[i] <= oSl : O1[i] >= oSl) { bookO(O1[i]); return; }
           if (oPos === 1 ? O1[i] >= oTp : O1[i] <= oTp) { bookO(O1[i]); return; }
@@ -169,11 +181,11 @@ function simulate(books, exclusive = false) {
       resolveOrb();
       if (oPos === 0 && !(exclusive && dPos !== 0) && !blocked() && orbAt.has(i) && ct >= OPEN_CT && ct < ORB_FLAT_CT) {
         const s = orbAt.get(i);
-        oQty = Math.max(1, Math.min(50, Math.floor(500 / (s.risk * PV))));
+        oQty = Math.max(1, Math.min(orbCfg.maxLots, Math.floor(orbCfg.riskDollars / (s.risk * PV))));
         oPos = s.dir; oEntryBar = i;
-        oFill = s.dir === 1 ? s.entryPx + SLIP : s.entryPx - SLIP;
+        oFill = s.dir === 1 ? s.entryPx + SLIPc : s.entryPx - SLIPc;
         oSl = s.entryPx - s.dir * s.risk;
-        oTp = s.tpPx != null ? s.tpPx : s.entryPx + s.dir * s.risk * ORB_CFG.rMult;
+        oTp = s.tpPx != null ? s.tpPx : s.entryPx + s.dir * s.risk * orbCfg.rMult;
         resolveOrb();          // lib_orb resolves the ENTRY bar too
       }
     }
@@ -197,8 +209,8 @@ function simulate(books, exclusive = false) {
                            : (armDir === 1 ? HH2[k] >= armPx : LL2[k] <= armPx);
         }
         if (doFill) {
-          dPos = armDir; dQty = DON_LOTS; dEp = armEp; dSlD = armSl; dTpD = armTp;
-          dNotional = (dPos === 1 ? armPx + SLIP : armPx - SLIP) * dQty;
+          dPos = armDir; dQty = donLots; dEp = armEp; dSlD = armSl; dTpD = armTp;
+          dNotional = (dPos === 1 ? armPx + SLIPc : armPx - SLIPc) * dQty;
           armDir = 0;
         }
       }
@@ -284,6 +296,10 @@ const st = (t) => {
   return { n: t.length, win: 100 * w / t.length, pf: gw / gl, exp: (gw - gl) / t.length };
 };
 
+export { simulate, days, pass21, forward, st, ORB_CFG };
+const IS_MAIN = process.argv[1] && process.argv[1].endsWith("joint_account.mjs");
+if (!IS_MAIN) { /* imported for sweeps; skip the report */ }
+else {
 const don = simulate("don"), orb = simulate("orb"), both = simulate("both");
 const dS = st(don.dTr), oS = st(orb.oTr);
 const REF = { don: { n: 2639, pf: 1.156, exp: 36.57, win: 72.6 },
@@ -364,4 +380,5 @@ console.log("  and it is why simultaneous holding is rarer than chance would sug
   console.log("  If this costs nothing, the live bot never needs to hold two positions on one");
   console.log("  account -- which removes net-position bookkeeping and overlapping brackets,");
   console.log("  the two things most likely to go wrong with real money.");
+}
 }
