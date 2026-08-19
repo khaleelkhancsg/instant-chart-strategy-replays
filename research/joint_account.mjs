@@ -72,7 +72,7 @@ for (const s of orbSetups(ORB_CFG).out) orbAt.set(s.bar, s);
 
 const days = [...new Set(TD1)].sort((a, b) => a - b);
 
-function simulate(books) {
+function simulate(books, exclusive = false) {
   const useDon = books !== "orb", useOrb = books !== "don";
   const dayPnl = new Map(); for (const d of days) dayPnl.set(d, 0);
   const dTr = [], oTr = [];
@@ -167,7 +167,7 @@ function simulate(books) {
         else if (hitT) bookO(oTp);
       };
       resolveOrb();
-      if (oPos === 0 && !blocked() && orbAt.has(i) && ct >= OPEN_CT && ct < ORB_FLAT_CT) {
+      if (oPos === 0 && !(exclusive && dPos !== 0) && !blocked() && orbAt.has(i) && ct >= OPEN_CT && ct < ORB_FLAT_CT) {
         const s = orbAt.get(i);
         oQty = Math.max(1, Math.min(50, Math.floor(500 / (s.risk * PV))));
         oPos = s.dir; oEntryBar = i;
@@ -185,7 +185,7 @@ function simulate(books) {
     const flatNow = CT2[k] >= FLAT_CT || CT2[k] < OPEN_CT;
 
     if (dPos === 0 && armDir !== 0) {
-      if (flatNow || k > armBy || blocked()) armDir = 0;
+      if (flatNow || k > armBy || blocked() || (exclusive && oPos !== 0)) armDir = 0;
       else if (k > armBar) {
         let doFill = false;
         if (k === armBar + 1 && !isLimit &&
@@ -348,3 +348,20 @@ console.log("");
 console.log("  The circuit breaker (-$500) and profit block (+$750) are ACCOUNT-level, so one");
 console.log("  book's P&L can shut the other out. That is a real cost of sharing an account,");
 console.log("  and it is why simultaneous holding is rarer than chance would suggest.");
+
+{
+  const ex = simulate("both", true);
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  console.log("");
+  console.log("-- DESIGN CHECK: forbid the two books from ever holding at once --");
+  console.log("  both, overlap allowed    $" + mean(both.arr).toFixed(2) + "/day   21-day " +
+    pass21(both.arr).toFixed(1) + "%   no deadline " + forward(both.arr).toFixed(1) + "%");
+  console.log("  both, EXCLUSIVE          $" + mean(ex.arr).toFixed(2) + "/day   21-day " +
+    pass21(ex.arr).toFixed(1) + "%   no deadline " + forward(ex.arr).toFixed(1) + "%");
+  console.log("  trades: donchian " + both.dTr.length + " -> " + ex.dTr.length +
+    ",  orb " + both.oTr.length + " -> " + ex.oTr.length);
+  console.log("");
+  console.log("  If this costs nothing, the live bot never needs to hold two positions on one");
+  console.log("  account -- which removes net-position bookkeeping and overlapping brackets,");
+  console.log("  the two things most likely to go wrong with real money.");
+}
