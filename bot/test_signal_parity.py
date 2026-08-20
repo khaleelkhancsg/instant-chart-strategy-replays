@@ -1,0 +1,264 @@
+#!/usr/bin/env python3
+"""
+Two things about the signal bot, both worth asserting.
+
+  1. IT CANNOT TRADE. The underlying client used here raises on every write
+     method. If SignalClient ever forwards one, this file fails loudly. That is
+     the whole safety claim, so it is tested rather than reasoned about.
+
+  2. IT DECIDES THE SAME THINGS. The same scenarios are run twice -- once with
+     the bot talking to a plain recording client, once with the same client
+     behind SignalClient -- and the instruction streams must match on side,
+     size, price and bracket ticks. Signal mode is meant to be the live bot with
+     a different output device, and this is what makes that true rather than
+     hopeful.
+
+    python bot/test_signal_parity.py
+"""
+
+import asyncio
+import os
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+os.environ.setdefault("MNQ_LOG_DIR", str(HERE / "logs_test"))
+os.environ.pop("MNQ_NOTIFY_WEBHOOK", None)          # never push from a test
+
+import mnq_donchian_bot as bot                       # noqa: E402
+import mnq_signal_bot as sigbot                      # noqa: E402
+from orb_strategy import OrbLevels                   # noqa: E402
+
+bot.CONFIG["state_file"] = str(HERE / "logs_test" / "test_state_signal.json")
+(HERE / "logs_test").mkdir(exist_ok=True)
+sigbot.notify = lambda *a, **k: None                 # silence banners and beeps
+
+PASS = FAIL = 0
+FAILURES = []
+
+
+def check(name, ok, detail=""):
+    global PASS, FAIL
+    if ok:
+        PASS += 1
+        print(f"  PASS  {name}")
+    else:
+        FAIL += 1
+        FAILURES.append(f"{name}: {detail}")
+        print(f"  FAIL  {name}   {detail}")
+
+
+class Recorder:
+    """Stands in for TopstepXClient. Records instructions, never matches them."""
+
+    WRITES = ("place_bracket_order", "place_stop_with_bracket",
+              "place_limit_with_bracket", "close_position", "cancel_order")
+
+    def __init__(self, forbid_writes=False, balance=50_000.0):
+        self._balance = balance
+        self.calls = []
+        self.position = None
+        self.forbid = forbid_writes
+
+    def _w(self, name, *args):
+        if self.forbid:
+            raise AssertionError(
+                f"SignalClient forwarded {name}{args} to the real platform")
+        self.calls.append((name,) + args)
+
+    @property
+    def balance(self):
+        return self._balance
+
+    async def connect(self):
+        return None
+
+    async def refresh_balance(self):
+        return self._balance
+
+    async def get_bars_1m(self, days=5):
+        return []
+
+    async def get_open_positions(self):
+        return [self.position] if self.position else []
+
+    async def get_open_orders(self):
+        return []
+
+    async def place_bracket_order(self, side, size, sl, tp):
+        self._w("place_bracket_order", side, size, sl, tp)
+        return 1234
+
+    async def place_stop_with_bracket(self, side, size, px, sl, tp):
+        self._w("place_stop_with_bracket", side, size, round(px, 2), sl, tp)
+        return 5000 + len(self.calls)
+
+    async def place_limit_with_bracket(self, side, size, px, sl, tp):
+        self._w("place_limit_with_bracket", side, size, round(px, 2), sl, tp)
+        return 6000 + len(self.calls)
+
+    async def close_position(self):
+        self._w("close_position")
+        self.position = None
+        return True
+
+    async def cancel_order(self, oid):
+        self._w("cancel_order")
+        return True
+
+
+class Spy(sigbot.SignalClient):
+    """SignalClient that records what it was ASKED to do, so it can be diffed."""
+
+    def __init__(self, real):
+        super().__init__(real)
+        self.calls = []
+
+    async def place_bracket_order(self, side, size, sl, tp):
+        self.calls.append(("place_bracket_order", side, size, sl, tp))
+        return await super().place_bracket_order(side, size, sl, tp)
+
+    async def place_stop_with_bracket(self, side, size, px, sl, tp):
+        self.calls.append(("place_stop_with_bracket", side, size, round(px, 2), sl, tp))
+        return await super().place_stop_with_bracket(side, size, px, sl, tp)
+
+    async def place_limit_with_bracket(self, side, size, px, sl, tp):
+        self.calls.append(("place_limit_with_bracket", side, size, round(px, 2), sl, tp))
+        return await super().place_limit_with_bracket(side, size, px, sl, tp)
+
+    async def close_position(self):
+        self.calls.append(("close_position",))
+        return await super().close_position()
+
+    async def cancel_order(self, oid):
+        self.calls.append(("cancel_order",))
+        return await super().cancel_order(oid)
+
+
+LV = OrbLevels(hi=20050.0, lo=19950.0, taps_hi=4, taps_lo=3,
+               win_hi=20080.0, win_lo=19920.0, ref=20000.0)
+POS = {"size": 8, "type": 1, "price": 20000.0, "contractId": bot.CONFIG["contract_id"]}
+
+
+def build(api, ct, *, levels=LV, day_pnl=0.0, position=None):
+    api.position = position
+    b = bot.DonchianBot(api)
+    b._session_key = "T"
+    b._day_start_balance = api.balance - day_pnl
+    b._ct_now = lambda: ct
+    b._orb_day = "T"
+    b._orb_levels = levels
+    if position:
+        b.in_position = True
+        b._pos_dir = 1 if position["type"] == 1 else -1
+    return b
+
+
+SCENARIOS = [
+    ("ORB arms both sides at the open", bot.ORB_OPEN_CT + 1, {}),
+    ("hunt window expiry cancels", bot.CONFIG["orb_give_up_ct"] + 1, {"oids": [1, 2]}),
+    ("profit block prevents arming", bot.ORB_OPEN_CT + 1, {"day_pnl": 900.0}),
+    ("circuit breaker cancels", bot.ORB_OPEN_CT + 1,
+     {"day_pnl": -600.0, "oids": [7, 8]}),
+    ("no level, book stands down", bot.ORB_OPEN_CT + 1, {"levels": None}),
+    ("a position cancels resting orders", bot.ORB_OPEN_CT + 1,
+     {"position": POS, "owner": "don", "oids": [11, 12]}),
+]
+
+
+def run_scenario(api, ct, opts):
+    b = build(api, ct, levels=opts.get("levels", LV),
+              day_pnl=opts.get("day_pnl", 0.0), position=opts.get("position"))
+    if opts.get("owner"):
+        b._pos_owner = opts["owner"]
+    if opts.get("oids"):
+        b._orb_oids = list(opts["oids"])
+    asyncio.run(b._service_orb([]))
+    return b
+
+
+def main():
+    print("\nsignal bot parity\n")
+
+    # ── 1. it cannot trade ────────────────────────────────────
+    print("safety: no write ever reaches the platform")
+    for name, ct, opts in SCENARIOS:
+        guard = Recorder(forbid_writes=True)
+        try:
+            run_scenario(Spy(guard), ct, opts)
+            check(f"no order placed — {name}", True)
+        except AssertionError as exc:
+            check(f"no order placed — {name}", False, str(exc))
+
+    # The time stop is the one path that closes a position.
+    guard = Recorder(forbid_writes=True)
+    spy = Spy(guard)
+    b = build(spy, bot.ORB_OPEN_CT + 20, position=POS)
+    b._pos_owner = "orb"
+    b._orb_entry_ts = datetime.now(timezone.utc) - __import__("datetime").timedelta(
+        minutes=bot.CONFIG["orb_max_hold_min"] + 0.5)
+    try:
+        asyncio.run(b._service_orb([]))
+        check("no position closed — ORB time stop", True)
+    except AssertionError as exc:
+        check("no position closed — ORB time stop", False, str(exc))
+    check("...but it DID tell you to close",
+          ("close_position",) in spy.calls, f"calls={spy.calls}")
+
+    # ── 2. it decides the same things ─────────────────────────
+    print("\nparity: identical instructions in both modes")
+    for name, ct, opts in SCENARIOS:
+        direct = Recorder()
+        run_scenario(direct, ct, opts)
+        spy = Spy(Recorder(forbid_writes=True))
+        run_scenario(spy, ct, opts)
+        check(f"same instruction stream — {name}",
+              direct.calls == spy.calls,
+              f"\n      live  {direct.calls}\n      signal{spy.calls}")
+
+    # ── 3. the seam is complete ───────────────────────────────
+    print("\ninterface: SignalClient covers everything the bot calls")
+    missing = [m for m in ("connect", "balance", "refresh_balance", "get_bars_1m",
+                           "get_open_positions", "get_open_orders",
+                           "place_bracket_order", "place_stop_with_bracket",
+                           "place_limit_with_bracket", "close_position",
+                           "cancel_order")
+               if not hasattr(sigbot.SignalClient, m)]
+    check("every method DonchianBot uses exists", not missing, f"missing={missing}")
+
+    real_writes = [m for m in Recorder.WRITES
+                   if not hasattr(sigbot.SignalClient, m)]
+    check("every WRITE method is overridden", not real_writes, f"missing={real_writes}")
+
+    # ── 4. the nag ────────────────────────────────────────────
+    print("\nfollow-up: it keeps asking until the position is really gone")
+    rec = Recorder()
+    rec.position = dict(POS)
+    sc = sigbot.SignalClient(rec)
+    asyncio.run(sc.close_position())
+    check("a close request starts nagging", sc._nagging is not None)
+    sc._nag_at = 0.0
+    seen = []
+    sigbot.notify = lambda t, l, p="entry": seen.append(t)
+    asyncio.run(sc.get_open_positions())
+    check("nags while the position is still open",
+          any("STILL OPEN" in s for s in seen), f"seen={seen}")
+    rec.position = None
+    seen.clear()
+    asyncio.run(sc.get_open_positions())
+    check("stops nagging once flat",
+          not seen and sc._nagging is None, f"seen={seen}")
+    sigbot.notify = lambda *a, **k: None
+
+    print("\n" + "=" * 62)
+    print(f"  {PASS} passed, {FAIL} failed")
+    print("=" * 62)
+    for f in FAILURES:
+        print("  x " + f)
+    return 1 if FAIL else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
