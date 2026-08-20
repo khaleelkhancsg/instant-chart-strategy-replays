@@ -184,7 +184,11 @@ function simulate(books, opts = {}) {
         oQty = Math.max(1, Math.min(orbCfg.maxLots, Math.floor(orbCfg.riskDollars / (s.risk * PV))));
         oPos = s.dir; oEntryBar = i;
         oFill = s.dir === 1 ? s.entryPx + SLIPc : s.entryPx - SLIPc;
-        oSl = s.entryPx - s.dir * s.risk;
+        // A dollar-denominated stop, when the config asks for one: size and
+        // target still come from the level spread, only the stop moves out to
+        // wherever `stopUsd` of loss sits. Undefined leaves the level stop.
+        oSl = s.entryPx - s.dir * (orbCfg.stopUsd
+                ? orbCfg.stopUsd / (PV * oQty) : s.risk);
         oTp = s.tpPx != null ? s.tpPx : s.entryPx + s.dir * s.risk * orbCfg.rMult;
         resolveOrb();          // lib_orb resolves the ENTRY bar too
       }

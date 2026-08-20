@@ -425,7 +425,10 @@ export function resolve(s, opt = {}) {
   const lots = riskDollars
     ? Math.max(1, Math.min(maxLots, Math.floor(riskDollars / (risk * PV))))
     : LOTS;
-  const sl = entryPx - dir * risk;
+  // A stop set by DOLLARS rather than by structure. `risk` still decides size
+  // and the target; only where the stop sits changes. Undefined = unchanged.
+  const stopDist = opt.stopUsd ? opt.stopUsd / (PV * lots) : risk;
+  const sl = entryPx - dir * stopDist;
   // An absolute liquidity target overrides the R multiple. Under a direction
   // flip it is mirrored rather than reused, so the control keeps the same
   // target DISTANCE and only the side changes.
