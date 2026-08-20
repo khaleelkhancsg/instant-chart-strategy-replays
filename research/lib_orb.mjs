@@ -385,7 +385,18 @@ export function setups(cfg) {
           diag.entered++; taken++;
           if (taken >= maxPerDay) { done = true; }
           else { busyUntil = i + (cfg.maxHoldMin ?? 120); st = 0; stateBar = -1; }
-        } else if (i > stateBar && (dir === 1 ? L[i] < lvl : H[i] > lvl)) break;
+        } else if (i > stateBar && (dir === 1 ? L[i] < lvl : H[i] > lvl)) {
+          // The setup failed: price came back through the level before the
+          // second push. "break" ends the DAY, which is what this did -- but
+          // the transcript's own worked example does the opposite. A long
+          // setup off the upper level fails ("spoiler alert, it never gets back
+          // up there"), and the SAME session then pushes down through the lower
+          // level and that short is the trade he takes. Ending the day on the
+          // first failure makes that sequence unreachable.
+          diag.abandoned = (diag.abandoned || 0) + 1;
+          if (cfg.abandon !== "reset") break;
+          st = 0; stateBar = -1; dir = 0;
+        }
         // ^ only abandon on a LATER bar. The breakout bar's own low sits below
         // the level almost by definition, so checking it on the same bar kills
         // the setup instantly. No-op on the strict path, where i > stateBar is
