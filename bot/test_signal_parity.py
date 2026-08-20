@@ -417,6 +417,40 @@ def main():
           seen and seen[-1][1] == "low", f"seen={seen}")
     sigbot.notify = lambda *a, **k: None
 
+    # ── 7. the push payload ───────────────────────────────────
+    # Every alert title starts with an emoji, and ntfy's header API puts the
+    # title in an HTTP header, which is ASCII-only. That silently lost every
+    # push. The JSON endpoint carries UTF-8, so the rule is: nothing
+    # non-ASCII may ever end up in a header.
+    print("")
+    print("push: unicode titles must survive the wire")
+    url, p = sigbot.push_payload("https://ntfy.sh/some-topic",
+                                 "✅ SIGNAL BOT LIVE", "line one\nline two", "urgent")
+    check("ntfy posts to the base url with the topic in the body",
+          url == "https://ntfy.sh" and p.get("topic") == "some-topic",
+          f"url={url} payload={p}")
+    check("the emoji title is carried in the JSON body, not a header",
+          p.get("title") == "✅ SIGNAL BOT LIVE", f"payload={p}")
+    try:
+        import json as _json
+        _json.dumps(p).encode("utf-8")
+        check("the payload encodes as utf-8", True)
+    except Exception as exc:
+        check("the payload encodes as utf-8", False, str(exc))
+    bad = [k for k, v in p.items()
+           if isinstance(v, str) and any(ord(c) > 127 for c in v) and k not in
+           ("title", "message")]
+    check("no non-ascii anywhere a header could be built from", not bad, f"{bad}")
+    check("priority maps to ntfy's numeric scale",
+          p.get("priority") == 5
+          and sigbot.push_payload("https://ntfy.sh/t", "a", "b", "low")[1]["priority"] == 2,
+          f"payload={p}")
+    d_url, d_p = sigbot.push_payload("https://discord.com/api/webhooks/1/abc",
+                                     "💤 STILL ONLINE", "body", "low")
+    check("discord and slack urls are left alone",
+          d_url.endswith("/abc") and "content" in d_p and "text" in d_p,
+          f"url={d_url} payload={d_p}")
+
     print("\n" + "=" * 62)
     print(f"  {PASS} passed, {FAIL} failed")
     print("=" * 62)

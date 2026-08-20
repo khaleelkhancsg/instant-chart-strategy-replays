@@ -94,20 +94,42 @@ def _push(title: str, body: str, priority: str = "urgent") -> None:
     if not WEBHOOK:
         return
 
+    url, payload = push_payload(WEBHOOK, title, body, priority)
+
     def go():
         try:
             import httpx
-            if "ntfy.sh" in WEBHOOK:
-                httpx.post(WEBHOOK, data=body.encode("utf-8"), timeout=8,
-                           headers={"Title": title, "Priority": priority,
-                                    "Tags": "chart_with_upwards_trend"})
-            else:                                   # Discord / Slack style
-                httpx.post(WEBHOOK, json={"content": f"**{title}**\n```\n{body}\n```",
-                                          "text": f"*{title}*\n```\n{body}\n```"},
-                           timeout=8)
+            httpx.post(url, json=payload, timeout=8)
         except Exception as exc:
             log.warning("notification webhook failed: %s", exc)
     threading.Thread(target=go, daemon=True).start()
+
+
+# ntfy priority is numeric over JSON: 1 min, 2 low, 3 default, 4 high, 5 max.
+_NTFY_PRIORITY = {"min": 1, "low": 2, "default": 3, "high": 4, "urgent": 5}
+
+
+def push_payload(webhook: str, title: str, body: str, priority: str):
+    """Build (url, json) for the webhook. Pure, so it can be tested offline.
+
+    ntfy's header-based API takes the title in an HTTP header, and HTTP headers
+    are ASCII — so a title starting with an emoji fails to encode and the push is
+    silently lost. Every title here starts with one. Its JSON endpoint takes the
+    whole message as a UTF-8 body instead, which is why this posts to the base
+    URL with the topic in the payload rather than to the topic URL.
+    """
+    if "ntfy" in webhook:
+        base, _, topic = webhook.rstrip("/").rpartition("/")
+        return base or "https://ntfy.sh", {
+            "topic": topic,
+            "title": title,
+            "message": body,
+            "priority": _NTFY_PRIORITY.get(priority, 3),
+        }
+    # Discord and Slack both take a JSON body, so Unicode was never a problem
+    # there; sending both keys lets one URL serve either.
+    return webhook, {"content": f"**{title}**\n```\n{body}\n```",
+                     "text": f"*{title}*\n```\n{body}\n```"}
 
 
 def _cols(text: str) -> int:
