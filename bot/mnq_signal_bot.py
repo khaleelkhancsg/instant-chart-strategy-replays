@@ -83,7 +83,7 @@ def _beep(pattern: str = "entry") -> None:
     threading.Thread(target=go, daemon=True).start()
 
 
-def _push(title: str, body: str, priority: str = "urgent") -> None:
+def _push(title: str, body: str, priority: str = "default") -> None:
     """Best-effort phone push. Never raises, never blocks the trading loop.
 
     Priority is not decoration. Trade alerts go out urgent so they break through
@@ -145,9 +145,17 @@ def _cols(text: str) -> int:
 
 
 def notify(title: str, lines: List[str], pattern: Optional[str] = "entry",
-           priority: str = "urgent") -> None:
+           priority: str = "default") -> None:
     """pattern=None stays silent locally — used by the heartbeat, which should
-    reach the phone without making a noise in the room every hour."""
+    reach the phone without making a noise in the room every hour.
+
+    PRIORITY POLICY, because it decides whether an alert is useful or ignored:
+      high     something must be done NOW — place it, cancel it, close it
+      default  something happened and you want to know — fills, exits, startup
+      low      the heartbeat, which must never train you to swipe alerts away
+    Nothing uses ntfy's max/urgent level. That one is for a fire alarm, and an
+    alert that overrides every phone setting is one you eventually silence.
+    """
     body = "\n".join(lines)
     width = max(62, max((_cols(x) for x in lines + [title]), default=0) + 4)
 
@@ -282,7 +290,8 @@ class SignalClient:
                 notify("⚠ STILL OPEN — CLOSE IT",
                        [self._nagging,
                         f"the platform still shows {pos[0].get('size', '?')} lots open.",
-                        "This repeats every 30s until the position is flat."], "exit")
+                        "This repeats every 30s until the position is flat."],
+                       pattern="exit", priority="high")
         elif not pos:
             self._nagging = None
         return pos
@@ -320,7 +329,7 @@ class SignalClient:
              f"  risk if stopped   ${size * sl_pts * CONFIG['tick_value'] / TICK:,.0f}",
              "  the ~ prices are from the last bar close, not your fill.",
              "  Set the bracket from the price you actually get."],
-            "entry")
+            "entry", priority="high")
         return self._oid(f"market {'buy' if side == 0 else 'sell'} {size}")
 
     async def _resting(self, kind: str, side: int, size: int, price: float,
@@ -352,7 +361,7 @@ class SignalClient:
             lines += ["", "  Donchian: runs to its bracket or the 15:04 CT flatten."]
         lines.append("  Leave it resting. You will be told when to pull it.")
         notify(f"📋 {book} — {kind.upper()} {'BUY' if side == 0 else 'SELL'} "
-               f"{size} LOTS", lines, "entry")
+               f"{size} LOTS", lines, "entry", priority="high")
         return self._oid(f"{kind} {'buy' if side == 0 else 'sell'} {size} @ {price:.2f}")
 
     async def place_stop_with_bracket(self, side: int, size: int, stop_price: float,
@@ -367,12 +376,11 @@ class SignalClient:
         pos = await self._real.get_open_positions()
         size = pos[0].get("size", "?") if pos else "?"
         msg = f"Close {size} MNQ at market, now."
-        notify(f"🔴 {_book()} — CLOSE THE POSITION, MARKET, NOW",
-               [f"  {msg}",
+        notify(f"🔴 {_book()} — CLOSE THE POSITION, MARKET, NOW",                [f"  {msg}",
                 "  This is the bot's own exit (time stop, flatten, or a flip).",
                 "  It is not the bracket — the bracket stays where it is until",
                 "  you cancel it, so cancel any leftover legs afterwards."],
-               "exit")
+               pattern="exit", priority="high")
         # Reported as done so the bot's state machine advances. Reality is
         # re-read every cycle from the account, and get_open_positions() nags
         # until the position is actually gone.
@@ -382,11 +390,10 @@ class SignalClient:
 
     async def cancel_order(self, order_id) -> bool:
         what = self._tickets.pop(order_id, f"order {order_id}")
-        notify(f"✖ {_book()} — CANCEL A WORKING ORDER",
-               [f"  Cancel:  {what}",
+        notify(f"✖ {_book()} — CANCEL A WORKING ORDER",                [f"  Cancel:  {what}",
                 "  It is no longer wanted — the setup expired, filled on the",
                 "  other side, or the day's blocks came on."],
-               "cancel")
+               pattern="cancel", priority="high")
         return True
 
 
@@ -537,10 +544,10 @@ async def demo() -> None:
         await api.cancel_order(900_002)
 
     async def _enforce_flatten():
-        notify("🔴 FLATTEN — CLOSE THE POSITION, MARKET, NOW",
-               ["  Close 8 MNQ at market, now.",
+        notify("🔴 FLATTEN — CLOSE THE POSITION, MARKET, NOW",                ["  Close 8 MNQ at market, now.",
                 "  15:04 CT. The firm's deadline is 15:05 — do not be late.",
-                "  Cancel any leftover bracket legs afterwards."], "exit")
+                "  Cancel any leftover bracket legs afterwards."],
+               pattern="exit", priority="high")
 
     await _service_orb()
     await asyncio.sleep(1.2)
@@ -564,8 +571,9 @@ async def demo() -> None:
         _last_bar_ts = int(datetime.now(timezone.utc).timestamp() * 1000) - 180_000
     notify("💤 STILL ONLINE", heartbeat_lines(api, _HbBot()),
            pattern=None, priority="low")
-    log.info("Done. If you saw four banners, heard them, and got four pushes,")
-    log.info("the channel is working.")
+    log.info("Done. Eight alerts: five HIGH (place / cancel / close), two DEFAULT")
+    log.info("(filled, flat) and one LOW (the heartbeat). If all eight reached the")
+    log.info("phone and the heartbeat was the quiet one, the channel is working.")
 
 
 if __name__ == "__main__":

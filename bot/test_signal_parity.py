@@ -296,7 +296,7 @@ def main():
     print("labelling: each alert names the book that asked")
     seen = []
     real_notify = sigbot.notify
-    sigbot.notify = lambda t, l, p="entry": seen.append(t)
+    sigbot.notify = lambda t, l, pattern="entry", priority="default": seen.append(t)
     guard = Recorder(forbid_writes=True)
     run_scenario(sigbot.SignalClient(guard), bot.ORB_OPEN_CT + 1, {})
     check("ORB arms are labelled ORB",
@@ -330,7 +330,7 @@ def main():
     check("a close request starts nagging", sc._nagging is not None)
     sc._nag_at = 0.0
     seen = []
-    sigbot.notify = lambda t, l, p="entry": seen.append(t)
+    sigbot.notify = lambda t, l, pattern="entry", priority="default": seen.append(t)
     asyncio.run(sc.get_open_positions())
     check("nags while the position is still open",
           any("STILL OPEN" in s for s in seen), f"seen={seen}")
@@ -411,11 +411,44 @@ def main():
           any("ORB book" in x for x in held), f"lines={held}")
 
     seen = []
-    sigbot.notify = lambda t, l, pattern=None, priority="urgent": seen.append((t, priority))
+    sigbot.notify = lambda t, l, pattern=None, priority="default": seen.append((t, priority))
     sigbot.notify("💤 STILL ONLINE", fresh, pattern=None, priority="low")
     check("heartbeat is LOW priority, so it cannot mute the trade alerts",
           seen and seen[-1][1] == "low", f"seen={seen}")
     sigbot.notify = lambda *a, **k: None
+
+    # ── 6b. the priority policy ───────────────────────────────
+    # An alert that overrides every phone setting is one that eventually gets
+    # silenced, and a silenced channel costs the 08:30 ORB. So only "do this
+    # now" gets high; everything informational sits at default; the heartbeat
+    # sits at low and nothing uses ntfy's max level at all.
+    print("")
+    print("priority: act-now is high, news is default, heartbeat is low")
+    fired = []
+    sigbot.notify = lambda title, lines, pattern="entry", priority="default":         fired.append((title, priority))
+    saved_hook, sigbot.WEBHOOK = sigbot.WEBHOOK, ""
+    asyncio.run(sigbot.demo())
+    sigbot.WEBHOOK = saved_hook
+    sigbot.notify = lambda *a, **k: None
+
+    def prio(fragment):
+        return [p for t, p in fired if fragment in t]
+
+    for frag in ("STOP BUY", "STOP SELL", "CANCEL A WORKING ORDER", "CLOSE THE POSITION"):
+        check(f"high: {frag}", prio(frag) and all(p == "high" for p in prio(frag)),
+              f"{frag} -> {prio(frag)}")
+    for frag in ("FILLED", "TRADE IS DONE"):
+        check(f"default: {frag}", prio(frag) and all(p == "default" for p in prio(frag)),
+              f"{frag} -> {prio(frag)}")
+    check("low: STILL ONLINE", prio("STILL ONLINE") == ["low"], f"{prio('STILL ONLINE')}")
+    check("nothing uses ntfy's max level",
+          not [p for _, p in fired if p in ("urgent", "max")],
+          f"{[ (t,p) for t,p in fired if p in ('urgent','max') ]}")
+    check("high maps to ntfy 4, default 3, low 2",
+          (sigbot.push_payload("https://ntfy.sh/t", "a", "b", "high")[1]["priority"] == 4
+           and sigbot.push_payload("https://ntfy.sh/t", "a", "b", "default")[1]["priority"] == 3
+           and sigbot.push_payload("https://ntfy.sh/t", "a", "b", "low")[1]["priority"] == 2),
+          "mapping wrong")
 
     # ── 7. the push payload ───────────────────────────────────
     # Every alert title starts with an emoji, and ntfy's header API puts the
