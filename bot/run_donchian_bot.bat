@@ -27,12 +27,12 @@ if not exist ".env" (
   exit /b 1
 )
 
-:: ── Verify the port before trading. Fast, offline, no credentials needed. ──
+:: -- Verify the port before trading. Fast, offline, no credentials needed. --
 echo Running parity checks ...
 python test_donchian_parity.py
 if errorlevel 1 (
   echo.
-  echo   PARITY CHECKS FAILED — not starting the bot.
+  echo   PARITY CHECKS FAILED - not starting the bot.
   echo   The strategy no longer matches the engine that measured it.
   echo.
   pause
