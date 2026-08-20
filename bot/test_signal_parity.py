@@ -338,8 +338,39 @@ def main():
     seen.clear()
     asyncio.run(sc.get_open_positions())
     check("stops nagging once flat",
-          not seen and sc._nagging is None, f"seen={seen}")
-    sigbot.notify = lambda *a, **k: None
+          not any("STILL OPEN" in s for s in seen) and sc._nagging is None,
+          f"seen={seen}")
+
+    # ── 5. it tells you when YOUR order filled, and when it ended ──
+    # Nothing in this process places the orders, so the account is the only
+    # place a fill shows up. Missing it would leave the ORB's five-minute clock
+    # running with nobody told it had started.
+    print("")
+    print("fills: the account is watched for your own executions")
+    rec2 = Recorder()
+    sc2 = sigbot.SignalClient(rec2)
+    seen.clear()
+    asyncio.run(sc2.get_open_positions())
+    check("flat start is silent", not seen, f"seen={seen}")
+
+    rec2.position = dict(POS)
+    seen.clear()
+    asyncio.run(sc2.get_open_positions())
+    check("alerts when your order fills",
+          any("FILLED" in s for s in seen), f"seen={seen}")
+    seen.clear()
+    asyncio.run(sc2.get_open_positions())
+    check("does not re-alert while still in", not seen, f"seen={seen}")
+
+    rec2.position = None
+    seen.clear()
+    asyncio.run(sc2.get_open_positions())
+    check("alerts when the trade is done",
+          any("FLAT" in s for s in seen), f"seen={seen}")
+    seen.clear()
+    asyncio.run(sc2.get_open_positions())
+    check("does not re-alert while flat", not seen, f"seen={seen}")
+    sigbot.notify = real_notify if "real_notify" in dir() else (lambda *a, **k: None)
 
     print("\n" + "=" * 62)
     print(f"  {PASS} passed, {FAIL} failed")

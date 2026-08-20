@@ -44,7 +44,7 @@ import json
 import os
 import sys
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -175,6 +175,11 @@ class SignalClient:
         self._tickets: Dict[int, str] = {}          # synthetic id -> description
         self._nagging: Optional[str] = None
         self._nag_at = 0.0
+        # Your fill is invisible to this process until the account shows it, so
+        # the transition is watched for rather than assumed.
+        self._in_pos = False
+        self._fill_bal: Optional[float] = None
+        self._fill_at: Optional[datetime] = None
 
     # ---- reads: straight through -------------------------------------
     async def connect(self) -> None:
@@ -199,11 +204,47 @@ class SignalClient:
 
     async def get_open_positions(self) -> List[dict]:
         pos = await self._real.get_open_positions()
+        now = datetime.now(timezone.utc)
+
+        # ---- your fill, and the end of the trade ----------------------
+        # The orders are yours, so nothing else in this process knows when one
+        # of them actually filled. Watching the account for the transition is
+        # the only way to tell you the clock has started -- and for the ORB the
+        # clock is the whole trade.
+        if pos and not self._in_pos:
+            p = pos[0]
+            size = p.get("size", "?")
+            longish = p.get("type") == 1
+            self._in_pos, self._fill_bal, self._fill_at = True, self._real.balance, now
+            book = "ORB" if engine.ORB_OPEN_CT <= self._ct() < CONFIG["orb_give_up_ct"] \
+                   else "DONCHIAN"
+            lines = [f"  {size} MNQ {'LONG' if longish else 'SHORT'} at {_px(p.get('price'))}",
+                     "  The bot can see it and is now managing the clock."]
+            if book == "ORB":
+                out_by = now + timedelta(minutes=CONFIG["orb_max_hold_min"])
+                lines += ["",
+                          f"  ORB time stop at {out_by.astimezone(engine.CT_TZ):%H:%M:%S} CT "
+                          f"({CONFIG['orb_max_hold_min']} min) — out at market then.",
+                          "  CANCEL THE OTHER SIDE if you have not already."]
+            else:
+                lines += ["", "  Runs to its bracket, or the 15:04 CT flatten."]
+            notify(f"✅ {book} — FILLED, YOU ARE IN", lines, "entry")
+        elif not pos and self._in_pos:
+            self._in_pos = False
+            pnl = self._real.balance - (self._fill_bal or self._real.balance)
+            held = (now - self._fill_at).total_seconds() / 60.0 if self._fill_at else 0.0
+            notify("⬜ FLAT — TRADE IS DONE",
+                   [f"  realised   ${pnl:+,.2f}",
+                    f"  held       {held:.1f} min",
+                    f"  balance    ${self._real.balance:,.2f}",
+                    "  Check no bracket legs are still working."],
+                   "cancel")
+            self._nagging = None
+
         # If we asked for a close and the position is still there, keep saying so.
         if self._nagging and pos:
-            now = datetime.now(timezone.utc).timestamp()
-            if now >= self._nag_at:
-                self._nag_at = now + NAG_EVERY_S
+            if now.timestamp() >= self._nag_at:
+                self._nag_at = now.timestamp() + NAG_EVERY_S
                 notify("⚠ STILL OPEN — CLOSE IT",
                        [self._nagging,
                         f"the platform still shows {pos[0].get('size', '?')} lots open.",
@@ -211,6 +252,11 @@ class SignalClient:
         elif not pos:
             self._nagging = None
         return pos
+
+    @staticmethod
+    def _ct() -> int:
+        ct = datetime.now(timezone.utc).astimezone(engine.CT_TZ)
+        return ct.hour * 60 + ct.minute
 
     async def get_open_orders(self) -> List[dict]:
         return await self._real.get_open_orders()
@@ -357,9 +403,18 @@ async def demo() -> None:
     about ninety seconds, which is no time to discover the push is misconfigured.
     """
     log.info("Sending one of each. Phone push: %s", WEBHOOK or "OFF")
-    api = SignalClient.__new__(SignalClient)
-    api._last_px, api._next_oid, api._tickets = 29350.75, 900_000, {}
-    api._nagging, api._nag_at = None, 0.0
+
+    # A stand-in account, so the fill and flat alerts run through exactly the
+    # code path they will use live rather than being faked for the demo.
+    class _Acct:
+        balance = 50_242.74
+        position = None
+
+        async def get_open_positions(self):
+            return [self.position] if self.position else []
+
+    api = SignalClient(_Acct())
+    api._last_px = 29350.75
     # Called through frames named after the bot's real call sites, so the demo
     # exercises the same book-labelling the live run will produce rather than
     # falling back to a generic tag.
@@ -385,6 +440,13 @@ async def demo() -> None:
     await _service_add()
     await asyncio.sleep(1.2)
     await _orb_cancel()
+    await asyncio.sleep(1.2)
+    api._real.position = {"size": 10, "type": 1, "price": 29372.25}
+    await api.get_open_positions()
+    await asyncio.sleep(1.2)
+    api._real.position = None
+    api._real.balance = 49_755.54
+    await api.get_open_positions()
     await asyncio.sleep(1.2)
     await _enforce_flatten()
     log.info("Done. If you saw four banners, heard them, and got four pushes,")
