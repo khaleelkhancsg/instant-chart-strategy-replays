@@ -372,6 +372,51 @@ def main():
     check("does not re-alert while flat", not seen, f"seen={seen}")
     sigbot.notify = real_notify if "real_notify" in dir() else (lambda *a, **k: None)
 
+    # ── 6. the heartbeat ──────────────────────────────────────
+    # It exists to catch the trading loop STOPPING, so the thing worth asserting
+    # is that a dead feed produces a WARNING rather than a cheerful "all fine".
+    print("")
+    print("heartbeat: says alive, and says when the feed went quiet")
+
+    class FakeBot:
+        in_position = False
+        _pos_owner = None
+        _orb_oids = []
+        _orb_done = False
+        _day_start_balance = 50_000.0
+        _last_bar_ts = None
+
+    fb = FakeBot()
+    sc3 = sigbot.SignalClient(Recorder())
+    ms = lambda mins: int(datetime.now(timezone.utc).timestamp() * 1000) - mins * 60_000
+
+    fb._last_bar_ts = ms(2)
+    fresh = sigbot.heartbeat_lines(sc3, fb)
+    check("reports a fresh feed without warning",
+          any("last bar" in x for x in fresh) and not any("STALE" in x for x in fresh),
+          f"lines={fresh}")
+    check("reports flat and the balance",
+          any("flat" in x for x in fresh) and any("balance" in x for x in fresh),
+          f"lines={fresh}")
+
+    fb._last_bar_ts = ms(120)                      # feed died two hours ago
+    stale = sigbot.heartbeat_lines(sc3, fb)
+    check("flags a stale feed instead of saying all is well",
+          any("STALE" in x for x in stale), f"lines={stale}")
+
+    fb.in_position, fb._pos_owner = True, "orb"
+    fb._last_bar_ts = ms(2)
+    held = sigbot.heartbeat_lines(sc3, fb)
+    check("names the book holding the position",
+          any("ORB book" in x for x in held), f"lines={held}")
+
+    seen = []
+    sigbot.notify = lambda t, l, pattern=None, priority="urgent": seen.append((t, priority))
+    sigbot.notify("💤 STILL ONLINE", fresh, pattern=None, priority="low")
+    check("heartbeat is LOW priority, so it cannot mute the trade alerts",
+          seen and seen[-1][1] == "low", f"seen={seen}")
+    sigbot.notify = lambda *a, **k: None
+
     print("\n" + "=" * 62)
     print(f"  {PASS} passed, {FAIL} failed")
     print("=" * 62)

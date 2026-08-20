@@ -57,6 +57,8 @@ from mnq_donchian_bot import CONFIG, TICK, log                   # noqa: E402
 WEBHOOK = os.environ.get("MNQ_NOTIFY_WEBHOOK", "").strip()
 # How often to repeat "you are still in a position that should be closed".
 NAG_EVERY_S = 30.0
+# Minutes between "still online" pings. 0 turns them off.
+HEARTBEAT_MIN = int(os.environ.get("MNQ_HEARTBEAT_MIN", "60"))
 
 
 # ─────────────────────────────────────────────────────────────
@@ -81,8 +83,14 @@ def _beep(pattern: str = "entry") -> None:
     threading.Thread(target=go, daemon=True).start()
 
 
-def _push(title: str, body: str) -> None:
-    """Best-effort phone push. Never raises, never blocks the trading loop."""
+def _push(title: str, body: str, priority: str = "urgent") -> None:
+    """Best-effort phone push. Never raises, never blocks the trading loop.
+
+    Priority is not decoration. Trade alerts go out urgent so they break through
+    Do Not Disturb; the hourly heartbeat goes out low, because an alert that
+    buzzes every hour through the night is one you mute -- and a muted channel
+    loses you the 08:30 ORB, which is the whole reason the channel exists.
+    """
     if not WEBHOOK:
         return
 
@@ -91,7 +99,7 @@ def _push(title: str, body: str) -> None:
             import httpx
             if "ntfy.sh" in WEBHOOK:
                 httpx.post(WEBHOOK, data=body.encode("utf-8"), timeout=8,
-                           headers={"Title": title, "Priority": "urgent",
+                           headers={"Title": title, "Priority": priority,
                                     "Tags": "chart_with_upwards_trend"})
             else:                                   # Discord / Slack style
                 httpx.post(WEBHOOK, json={"content": f"**{title}**\n```\n{body}\n```",
@@ -114,7 +122,10 @@ def _cols(text: str) -> int:
     return n
 
 
-def notify(title: str, lines: List[str], pattern: str = "entry") -> None:
+def notify(title: str, lines: List[str], pattern: Optional[str] = "entry",
+           priority: str = "urgent") -> None:
+    """pattern=None stays silent locally — used by the heartbeat, which should
+    reach the phone without making a noise in the room every hour."""
     body = "\n".join(lines)
     width = max(62, max((_cols(x) for x in lines + [title]), default=0) + 4)
 
@@ -124,8 +135,9 @@ def notify(title: str, lines: List[str], pattern: str = "entry") -> None:
     log.info("\n┏%s┓\n┃ %s┃\n┣%s┫\n%s\n┗%s┛",
              bar, pad(title), bar,
              "\n".join("┃ " + pad(x) + "┃" for x in lines), bar)
-    _beep(pattern)
-    _push(title, body)
+    if pattern:
+        _beep(pattern)
+    _push(title, body, priority)
 
 
 def _px(v: Optional[float]) -> str:
@@ -357,6 +369,71 @@ class SignalClient:
 
 
 # ─────────────────────────────────────────────────────────────
+#  "STILL ONLINE"
+# ─────────────────────────────────────────────────────────────
+async def heartbeat(api: "SignalClient", bot) -> None:
+    """Say the bot is alive, on a wall clock, every HEARTBEAT_MIN minutes.
+
+    Deliberately its own task rather than a check inside the trading loop. The
+    failure this exists to catch is the loop STOPPING -- a suspended host, a
+    frozen request, a wedged await -- and a heartbeat that rides on the loop
+    cannot report a loop that is not running. Running it independently means a
+    stall shows up as a heartbeat saying the last bar is two hours old, which is
+    a far more useful message than silence.
+
+    Silence still means something: if the process is gone, so are these.
+    """
+    while True:
+        await asyncio.sleep(max(60, HEARTBEAT_MIN * 60))
+        try:
+            notify("💤 STILL ONLINE", heartbeat_lines(api, bot),
+                   pattern=None, priority="low")
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:                     # never kill the heartbeat
+            log.warning("heartbeat failed: %s", exc)
+
+
+def heartbeat_lines(api: "SignalClient", bot) -> List[str]:
+    """The body of one heartbeat. Split out so it can be read without waiting an
+    hour, and so the stale-feed branch is directly testable."""
+    now = datetime.now(timezone.utc)
+    ct = now.astimezone(engine.CT_TZ)
+    lines = [f"  {ct:%H:%M} CT   ({ct:%a %d %b})"]
+
+    # Feed freshness is the point. A process that is up but reading a dead feed
+    # is the dangerous state, not a comforting one.
+    ts = getattr(bot, "_last_bar_ts", None)
+    if ts:
+        age = (now.timestamp() * 1000 - (ts + 120_000)) / 60_000.0
+        lines.append(f"  last bar    {age:.0f} min old"
+                     + ("   ⚠ STALE — CHECK IT" if age > 6 else ""))
+    else:
+        lines.append("  last bar    none seen yet")
+
+    if getattr(bot, "in_position", False):
+        owner = getattr(bot, "_pos_owner", None) or "?"
+        lines.append(f"  position    IN, {owner.upper()} book")
+    else:
+        lines.append("  position    flat")
+
+    oids = getattr(bot, "_orb_oids", None)
+    if oids:
+        lines.append(f"  ORB         {len(oids)} orders should be resting")
+    elif getattr(bot, "_orb_done", False):
+        lines.append("  ORB         done for today")
+    elif ct.hour * 60 + ct.minute < engine.ORB_OPEN_CT:
+        lines.append("  ORB         waiting for 08:30 CT")
+
+    day0 = getattr(bot, "_day_start_balance", None)
+    bal = api.balance
+    if day0:
+        lines.append(f"  day P&L     ${bal - day0:+,.2f}")
+    lines.append(f"  balance     ${bal:,.2f}")
+    return lines
+
+
+# ─────────────────────────────────────────────────────────────
 async def main() -> None:
     if not os.environ.get("PROJECT_X_API_KEY") or not os.environ.get("PROJECT_X_USERNAME"):
         raise EnvironmentError("Set PROJECT_X_API_KEY and PROJECT_X_USERNAME (bot/.env)")
@@ -367,6 +444,9 @@ async def main() -> None:
     log.info("  positions     read from the live account, so it sees YOUR fills")
     log.info("  phone push    %s", WEBHOOK.split("/")[-1] if WEBHOOK else
              "off — set MNQ_NOTIFY_WEBHOOK to enable")
+    log.info("  heartbeat     %s",
+             ("every %d min, low priority" % HEARTBEAT_MIN) if HEARTBEAT_MIN > 0
+             else "off (MNQ_HEARTBEAT_MIN=0)")
     log.info("  ORB fires within ~2 minutes of 08:30 CT and is done by ~08:37.")
     log.info("=" * 62)
 
@@ -385,7 +465,12 @@ async def main() -> None:
                 f"  account balance   ${api.balance:,.2f}",
                 f"  contract          {CONFIG['contract_id']}",
                 "  Watching. Nothing will be placed for you."], "cancel")
-            await bot.run()
+            hb = asyncio.create_task(heartbeat(api, bot)) if HEARTBEAT_MIN > 0 else None
+            try:
+                await bot.run()
+            finally:
+                if hb:
+                    hb.cancel()
             break
         except asyncio.CancelledError:
             log.info("Cancelled.")
@@ -449,6 +534,14 @@ async def demo() -> None:
     await api.get_open_positions()
     await asyncio.sleep(1.2)
     await _enforce_flatten()
+    await asyncio.sleep(1.2)
+
+    class _HbBot:
+        in_position, _pos_owner, _orb_oids, _orb_done = False, None, [], False
+        _day_start_balance = 50_242.74
+        _last_bar_ts = int(datetime.now(timezone.utc).timestamp() * 1000) - 180_000
+    notify("💤 STILL ONLINE", heartbeat_lines(api, _HbBot()),
+           pattern=None, priority="low")
     log.info("Done. If you saw four banners, heard them, and got four pushes,")
     log.info("the channel is working.")
 
