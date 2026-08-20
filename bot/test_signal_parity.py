@@ -218,6 +218,95 @@ def main():
               direct.calls == spy.calls,
               f"\n      live  {direct.calls}\n      signal{spy.calls}")
 
+    # ── 2b. THE DONCHIAN PATH ─────────────────────────────────
+    # The scenarios above are all ORB. The donchian book reaches the platform
+    # through completely different call sites -- _service_add for the stop
+    # entry, _place_entry for a market one, _enforce_flatten for the 15:04 exit
+    # -- so "both books alert" is not implied by any of them.
+    print("")
+    print("coverage: the donchian book alerts too")
+
+    def armed(api):
+        b = bot.DonchianBot(api)
+        b._session_key = "T"
+        b._day_start_balance = api.balance
+        b._ct_now = lambda: 10 * 60
+        b._last_bar_ts = 1_000_000
+        b._add_pending = {
+            "side": 0, "lots": 8, "px": 20010.0, "sl_ticks": 199, "tp_ticks": 70,
+            "deadline": datetime.now(timezone.utc) + __import__("datetime").timedelta(minutes=20),
+            "want_sl_px": 19960.25, "want_tp_px": 20027.5,
+            "sig_ts": 1_000_000 - 120_000, "atr": 14.0,
+        }
+        return b
+
+    guard = Recorder(forbid_writes=True)
+    spy = Spy(guard)
+    try:
+        asyncio.run(armed(spy)._service_add())
+        check("no order placed - donchian stop entry", True)
+    except AssertionError as exc:
+        check("no order placed - donchian stop entry", False, str(exc))
+    check("donchian stop entry DID alert",
+          any(c[0] == "place_stop_with_bracket" for c in spy.calls),
+          f"calls={spy.calls}")
+    direct = Recorder()
+    asyncio.run(armed(direct)._service_add())
+    check("same instruction stream - donchian stop entry",
+          direct.calls == spy.calls,
+          f"live {direct.calls} vs signal {spy.calls}")
+
+    # The flatten is how nearly every donchian trade actually ends.
+    guard = Recorder(forbid_writes=True)
+    guard.position = dict(POS)
+    spy = Spy(guard)
+    b = bot.DonchianBot(spy)
+    b._session_key = "T"
+    b._day_start_balance = spy.balance
+    b._ct_now = lambda: bot.CONFIG["flatten_ct"] + 1
+    b.in_position, b._pos_dir = True, 1
+    try:
+        asyncio.run(b._enforce_flatten())
+        check("no position closed - 15:04 flatten", True)
+    except AssertionError as exc:
+        check("no position closed - 15:04 flatten", False, str(exc))
+    check("the flatten DID alert",
+          ("close_position",) in spy.calls, f"calls={spy.calls}")
+
+    # And a plain market entry, for the non-stop-entry configuration.
+    saved = bot.CONFIG["scale_in"]
+    bot.CONFIG["scale_in"] = False
+    guard = Recorder(forbid_writes=True)
+    spy = Spy(guard)
+    b = bot.DonchianBot(spy)
+    b._session_key = "T"
+    b._day_start_balance = spy.balance
+    b._ct_now = lambda: 10 * 60
+    try:
+        asyncio.run(b._place_entry(1, 14.0, 20000.0))
+        check("no order placed - donchian market entry", True)
+    except AssertionError as exc:
+        check("no order placed - donchian market entry", False, str(exc))
+    bot.CONFIG["scale_in"] = saved
+    check("donchian market entry DID alert",
+          any(c[0] == "place_bracket_order" for c in spy.calls), f"calls={spy.calls}")
+
+    # ── 2c. alerts say WHICH book ─────────────────────────────
+    print("")
+    print("labelling: each alert names the book that asked")
+    seen = []
+    real_notify = sigbot.notify
+    sigbot.notify = lambda t, l, p="entry": seen.append(t)
+    guard = Recorder(forbid_writes=True)
+    run_scenario(sigbot.SignalClient(guard), bot.ORB_OPEN_CT + 1, {})
+    check("ORB arms are labelled ORB",
+          seen and all("ORB" in t for t in seen), f"titles={seen}")
+    seen.clear()
+    asyncio.run(armed(sigbot.SignalClient(Recorder(forbid_writes=True)))._service_add())
+    check("donchian arms are labelled DONCHIAN",
+          seen and all("DONCHIAN" in t for t in seen), f"titles={seen}")
+    sigbot.notify = real_notify
+
     # ── 3. the seam is complete ───────────────────────────────
     print("\ninterface: SignalClient covers everything the bot calls")
     missing = [m for m in ("connect", "balance", "refresh_balance", "get_bars_1m",

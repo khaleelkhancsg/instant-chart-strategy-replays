@@ -132,6 +132,36 @@ def _px(v: Optional[float]) -> str:
     return "?" if v is None else f"{v:,.2f}"
 
 
+# Which book asked for this. The two behave completely differently once filled
+# -- the ORB is out in five minutes, the donchian can run to the 15:04 flatten
+# -- so knowing which one is looking at you decides how you manage it.
+_BOOKS = {
+    "_service_orb": "ORB",
+    "_orb_cancel": "ORB",
+    "_service_add": "DONCHIAN",
+    "_place_entry": "DONCHIAN",
+    "_cancel_add": "DONCHIAN",
+    "_enforce_flatten": "FLATTEN",
+    "_handle_flip": "DONCHIAN",
+}
+
+
+def _book() -> str:
+    """Read the call stack for the method that asked. The bot has one call site
+    per book, so this is exact rather than a guess -- and it beats threading a
+    label through eleven method signatures that exist to mirror a REST client."""
+    import inspect
+    f = inspect.currentframe()
+    seen = 0
+    while f is not None and seen < 12:
+        name = f.f_code.co_name
+        if name in _BOOKS:
+            return _BOOKS[name]
+        f = f.f_back
+        seen += 1
+    return "BOT"
+
+
 # ─────────────────────────────────────────────────────────────
 #  THE EXECUTION LAYER, REPLACED
 # ─────────────────────────────────────────────────────────────
@@ -197,7 +227,7 @@ class SignalClient:
         sl_pts, tp_pts = abs(sl_ticks) * TICK, abs(tp_ticks) * TICK
         ref = self._last_px
         notify(
-            f"🚀 ENTER {'LONG' if side == 0 else 'SHORT'} {size} LOTS — MARKET",
+            f"🚀 {_book()} — ENTER {'LONG' if side == 0 else 'SHORT'} {size} LOTS AT MARKET",
             [f"  MARKET {'BUY' if side == 0 else 'SELL'}   {size} MNQ",
              f"  last traded price   {_px(ref)}",
              "",
@@ -219,16 +249,30 @@ class SignalClient:
         sl_px = price - sgn * abs(sl_ticks) * TICK
         tp_px = price + sgn * abs(tp_ticks) * TICK
         risk = size * abs(sl_ticks) * TICK * CONFIG["tick_value"] / TICK
-        notify(
-            f"📋 WORKING ORDER — {kind.upper()} {'BUY' if side == 0 else 'SELL'} {size} LOTS",
-            [f"  {kind.upper()} {'BUY' if side == 0 else 'SELL'}   {size} MNQ",
-             f"    trigger      {_px(price)}",
-             f"    stop loss    {_px(sl_px)}",
-             f"    take profit  {_px(tp_px)}",
-             "",
-             f"  risk if stopped   ${risk:,.0f}",
-             "  Leave it resting. You will be told when to pull it."],
-            "entry")
+        book = _book()
+        lines = [f"  {kind.upper()} {'BUY' if side == 0 else 'SELL'}   {size} MNQ",
+                 f"    trigger      {_px(price)}",
+                 f"    stop loss    {_px(sl_px)}",
+                 f"    take profit  {_px(tp_px)}",
+                 "",
+                 f"  risk if stopped   ${risk:,.0f}"]
+        if kind == "stop":
+            # 40.8% of arms are refused because price is already through the
+            # trigger. The live bot re-places the same price as a LIMIT and that
+            # is worth ~2.6pp of pass rate; placing by hand you have to do it.
+            lines += ["",
+                      "  If the platform REFUSES this stop, price has already gone",
+                      "  through the trigger. Place a LIMIT at the SAME price instead",
+                      "  — do not chase it with a market order."]
+        if book == "ORB":
+            lines += ["",
+                      f"  ORB: both sides rest. First fill wins — cancel the other.",
+                      f"  Time stop {CONFIG['orb_max_hold_min']} min from fill, then out at market."]
+        elif book == "DONCHIAN":
+            lines += ["", "  Donchian: runs to its bracket or the 15:04 CT flatten."]
+        lines.append("  Leave it resting. You will be told when to pull it.")
+        notify(f"📋 {book} — {kind.upper()} {'BUY' if side == 0 else 'SELL'} "
+               f"{size} LOTS", lines, "entry")
         return self._oid(f"{kind} {'buy' if side == 0 else 'sell'} {size} @ {price:.2f}")
 
     async def place_stop_with_bracket(self, side: int, size: int, stop_price: float,
@@ -243,7 +287,7 @@ class SignalClient:
         pos = await self._real.get_open_positions()
         size = pos[0].get("size", "?") if pos else "?"
         msg = f"Close {size} MNQ at market, now."
-        notify("🔴 CLOSE THE POSITION — MARKET, NOW",
+        notify(f"🔴 {_book()} — CLOSE THE POSITION, MARKET, NOW",
                [f"  {msg}",
                 "  This is the bot's own exit (time stop, flatten, or a flip).",
                 "  It is not the bracket — the bracket stays where it is until",
@@ -258,7 +302,7 @@ class SignalClient:
 
     async def cancel_order(self, order_id) -> bool:
         what = self._tickets.pop(order_id, f"order {order_id}")
-        notify("✖ CANCEL A WORKING ORDER",
+        notify(f"✖ {_book()} — CANCEL A WORKING ORDER",
                [f"  Cancel:  {what}",
                 "  It is no longer wanted — the setup expired, filled on the",
                 "  other side, or the day's blocks came on."],
@@ -316,17 +360,33 @@ async def demo() -> None:
     api = SignalClient.__new__(SignalClient)
     api._last_px, api._next_oid, api._tickets = 29350.75, 900_000, {}
     api._nagging, api._nag_at = None, 0.0
-    await api.place_stop_with_bracket(0, 10, 29372.00, 95, 287)
+    # Called through frames named after the bot's real call sites, so the demo
+    # exercises the same book-labelling the live run will produce rather than
+    # falling back to a generic tag.
+    async def _service_orb():
+        await api.place_stop_with_bracket(0, 10, 29372.00, 95, 287)
+        await asyncio.sleep(1.2)
+        await api.place_stop_with_bracket(1, 10, 29348.00, 95, 284)
+
+    async def _service_add():
+        await api.place_stop_with_bracket(0, 8, 29410.25, 199, 70)
+
+    async def _orb_cancel():
+        await api.cancel_order(900_002)
+
+    async def _enforce_flatten():
+        notify("🔴 FLATTEN — CLOSE THE POSITION, MARKET, NOW",
+               ["  Close 8 MNQ at market, now.",
+                "  15:04 CT. The firm's deadline is 15:05 — do not be late.",
+                "  Cancel any leftover bracket legs afterwards."], "exit")
+
+    await _service_orb()
     await asyncio.sleep(1.2)
-    await api.place_stop_with_bracket(1, 10, 29348.00, 95, 284)
+    await _service_add()
     await asyncio.sleep(1.2)
-    await api.place_bracket_order(0, 8, 199, 70)
+    await _orb_cancel()
     await asyncio.sleep(1.2)
-    await api.cancel_order(900_002)
-    await asyncio.sleep(1.2)
-    notify("🔴 CLOSE THE POSITION — MARKET, NOW",
-           ["  Close 10 MNQ at market, now.",
-            "  This is the bot's own exit (time stop, flatten, or a flip)."], "exit")
+    await _enforce_flatten()
     log.info("Done. If you saw four banners, heard them, and got four pushes,")
     log.info("the channel is working.")
 
