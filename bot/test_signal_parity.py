@@ -450,6 +450,90 @@ def main():
            and sigbot.push_payload("https://ntfy.sh/t", "a", "b", "low")[1]["priority"] == 2),
           "mapping wrong")
 
+    # ── 6c. the arming heads-up ───────────────────────────────
+    # The donchian book decides on one bar and orders on the next. That gap is
+    # the only warning there is, and it makes no API call, so it is wrapped on
+    # the bot rather than seen through the client. The wrapper must not change
+    # what the bot decides.
+    print("")
+    print("arming: a heads-up before the order is wanted")
+    fired = []
+    sigbot.notify = lambda title, lines, pattern="entry", priority="default":         fired.append((title, lines, priority))
+
+    def armed_bot(api):
+        b = bot.DonchianBot(api)
+        b._session_key = "T"
+        b._day_start_balance = api.balance
+        b._ct_now = lambda: 10 * 60
+        b._last_bar_ts = 1_000_000
+        sigbot.attach_arming_alerts(b)
+        return b
+
+    guard = Recorder(forbid_writes=True)
+    b = armed_bot(Spy(guard))
+    asyncio.run(b._place_entry(1, 14.0, 20000.0))
+    titles = [t for t, _, _ in fired]
+    check("arming fires before anything is placed",
+          any("ARMING" in t for t, _, _ in fired), f"titles={titles}")
+    check("arming is high priority — it is the one with lead time",
+          all(p == "high" for t, _, p in fired if "ARMING" in t), f"fired={titles}")
+    body = [l for t, l, _ in fired if "ARMING" in t][0]
+    for want in ("reference", "trigger", "stop loss", "take profit", "ATR", "risk"):
+        check(f"arming names the {want}",
+              any(want in x for x in body), f"body={body}")
+    check("arming says nothing is placed yet",
+          any("NOTHING IS PLACED" in x for x in body), f"body={body}")
+
+    # The wrapper must be transparent: same decision, same pending arm.
+    plain = bot.DonchianBot(Recorder())
+    plain._session_key, plain._day_start_balance = "T", 50_000.0
+    plain._ct_now, plain._last_bar_ts = (lambda: 10 * 60), 1_000_000
+    asyncio.run(plain._place_entry(1, 14.0, 20000.0))
+    a1, a2 = plain._add_pending, b._add_pending
+    check("wrapping does not change the arm the bot computes",
+          a1 and a2 and all(a1[k] == a2[k] for k in
+                            ("side", "lots", "px", "sl_ticks", "tp_ticks",
+                             "want_sl_px", "want_tp_px")),
+          f"plain={a1} wrapped={a2}")
+
+    # ORB: levels committed, and the stand-down case.
+    fired.clear()
+    b2 = bot.DonchianBot(Spy(Recorder(forbid_writes=True)))
+    b2._session_key = "T"
+    b2._ct_now = lambda: bot.ORB_OPEN_CT + 1
+    b2._orb_day, b2._orb_levels = None, None
+    sigbot.attach_arming_alerts(b2)
+
+    # Stub the level computation so only the notification path is under test;
+    # what orb_levels() produces is covered by test_orb_parity.
+    async def fake_levels(bars):
+        b2._orb_day, b2._orb_levels, b2._orb_done = "T", LV, False
+    b2._orb_build_levels = fake_levels
+    sigbot.attach_arming_alerts(b2)
+    asyncio.run(b2._orb_build_levels([]))
+    check("ORB levels alert fires when the day commits",
+          any("LEVELS SET" in t for t, _, _ in fired),
+          f"titles={[t for t,_,_ in fired]}")
+    lv_body = [l for t, l, _ in fired if "LEVELS SET" in t][0]
+    for want in ("upper", "lower", "ref", "spread"):
+        check(f"ORB alert names the {want}",
+              any(want in x for x in lv_body), f"body={lv_body}")
+
+    fired.clear()
+    b3 = bot.DonchianBot(Spy(Recorder(forbid_writes=True)))
+    b3._session_key = "T"
+    b3._orb_day, b3._orb_levels = None, None
+
+    async def no_levels(bars):
+        b3._orb_day, b3._orb_levels = "T", None
+    b3._orb_build_levels = no_levels
+    sigbot.attach_arming_alerts(b3)
+    asyncio.run(b3._orb_build_levels([]))
+    check("a stand-down day is announced too",
+          any("NO SETUP" in t for t, _, _ in fired),
+          f"titles={[t for t,_,_ in fired]}")
+    sigbot.notify = lambda *a, **k: None
+
     # ── 7. the push payload ───────────────────────────────────
     # Every alert title starts with an emoji, and ntfy's header API puts the
     # title in an HTTP header, which is ASCII-only. That silently lost every

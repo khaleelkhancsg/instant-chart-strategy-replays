@@ -463,6 +463,92 @@ def heartbeat_lines(api: "SignalClient", bot) -> List[str]:
 
 
 # ─────────────────────────────────────────────────────────────
+#  THE HEADS-UP
+# ─────────────────────────────────────────────────────────────
+def attach_arming_alerts(bot) -> None:
+    """Alert when a trade is ARMED, not only when the order is wanted.
+
+    The donchian book decides on the bar that just closed and sends nothing
+    until the NEXT bar, two minutes later. That gap is real and it is the only
+    warning there is: the trade is fully known, and nothing has been placed.
+    Trading by hand it is the difference between reacting to an order ticket and
+    having already looked at the chart when it arrives.
+
+    SignalClient cannot see it, because arming makes no API call at all -- it
+    just sets _add_pending. So the bot's own methods are wrapped here instead.
+    Both wrappers call through first and only ever read state afterwards, so
+    neither can change what the bot decides.
+    """
+    orig_entry = bot._place_entry
+
+    async def place_entry(sig, atr_v, ref_px):
+        await orig_entry(sig, atr_v, ref_px)
+        a = getattr(bot, "_add_pending", None)
+        if not a:
+            return                       # market-entry config: nothing deferred
+        long_ = a["side"] == 0
+        per_pt = CONFIG["tick_value"] / TICK
+        risk = a["lots"] * a["sl_ticks"] * TICK * per_pt
+        reward = a["lots"] * a["tp_ticks"] * TICK * per_pt
+        expiry = CONFIG["scale_in_window_bars"] * CONFIG["timeframe_min"]
+        notify(
+            f"⏳ DONCHIAN — ARMING {'LONG' if long_ else 'SHORT'} {a['lots']} LOTS",
+            ["  Signal on the bar that just closed. NOTHING IS PLACED YET.",
+             f"  The order is wanted in about {CONFIG['timeframe_min']} minutes.",
+             "",
+             f"  reference    {_px(ref_px)}   signal bar close",
+             f"  trigger      {_px(a['px'])}   {CONFIG['scale_in_trigger_atr']}xATR beyond",
+             f"  stop loss    {_px(a['want_sl_px'])}",
+             f"  take profit  {_px(a['want_tp_px'])}",
+             "",
+             f"  ATR          {a.get('atr', atr_v):.2f}",
+             f"  risk         ${risk:,.0f}",
+             f"  reward       ${reward:,.0f}",
+             "",
+             f"  Price must reach the trigger within {expiry} min or the arm expires",
+             "  unfilled and no trade happens. Pull up the chart now — the order",
+             "  ticket follows on the next bar."],
+            "entry", priority="high")
+
+    bot._place_entry = place_entry
+
+    orig_levels = bot._orb_build_levels
+
+    async def build_levels(bars):
+        before = getattr(bot, "_orb_day", None)
+        await orig_levels(bars)
+        after = getattr(bot, "_orb_day", None)
+        if after == before or after is None:
+            return                       # nothing was committed this pass
+        lv = getattr(bot, "_orb_levels", None)
+        if lv is None:
+            # Worth saying out loud: on these days there is nothing to wait for,
+            # and the ORB is roughly a coin flip to exist at all.
+            notify("⊘ ORB — NO SETUP TODAY",
+                   ["  No price in the pre-open window was tapped often enough on",
+                    "  both sides, or the levels were too far apart to size against.",
+                    "",
+                    "  The ORB book stands down. The donchian book is unaffected."],
+                   pattern="cancel", priority="default")
+            return
+        spread = lv.hi - lv.lo
+        lots = max(1, int(500 // (spread * CONFIG["tick_value"] / TICK)))
+        notify("⏳ ORB — LEVELS SET, ARMING NOW",
+               [f"  upper   {_px(lv.hi)}   {lv.taps_hi} taps",
+                f"  lower   {_px(lv.lo)}   {lv.taps_lo} taps",
+                f"  ref     {_px(lv.ref)}   last price before the open",
+                "",
+                f"  spread  {spread:,.2f} pts  ->  about {lots} lots at $500 risk",
+                "",
+                "  Both sides are about to be armed. A long stop goes just above",
+                "  the upper level with its stop at the LOWER one, and vice versa.",
+                "  Two order tickets follow. Whichever fills, cancel the other."],
+               "entry", priority="high")
+
+    bot._orb_build_levels = build_levels
+
+
+# ─────────────────────────────────────────────────────────────
 async def main() -> None:
     if not os.environ.get("PROJECT_X_API_KEY") or not os.environ.get("PROJECT_X_USERNAME"):
         raise EnvironmentError("Set PROJECT_X_API_KEY and PROJECT_X_USERNAME (bot/.env)")
@@ -488,6 +574,7 @@ async def main() -> None:
         real = engine.TopstepXClient()
         api = SignalClient(real)
         bot = engine.DonchianBot(api)
+        attach_arming_alerts(bot)
         try:
             await api.connect()
             notify("✅ SIGNAL BOT LIVE", [
@@ -549,7 +636,36 @@ async def demo() -> None:
                 "  Cancel any leftover bracket legs afterwards."],
                pattern="exit", priority="high")
 
+    class _LV:
+        hi, lo, taps_hi, taps_lo, ref = 29371.70, 29348.12, 5, 4, 29350.75
+    notify("⏳ ORB — LEVELS SET, ARMING NOW",
+           [f"  upper   {_px(_LV.hi)}   {_LV.taps_hi} taps",
+            f"  lower   {_px(_LV.lo)}   {_LV.taps_lo} taps",
+            f"  ref     {_px(_LV.ref)}   last price before the open",
+            "",
+            "  spread  23.58 pts  ->  about 10 lots at $500 risk",
+            "",
+            "  Both sides are about to be armed. Two order tickets follow.",
+            "  Whichever fills, cancel the other."], "entry", priority="high")
+    await asyncio.sleep(1.2)
     await _service_orb()
+    await asyncio.sleep(1.2)
+    notify("⏳ DONCHIAN — ARMING LONG 8 LOTS",
+           ["  Signal on the bar that just closed. NOTHING IS PLACED YET.",
+            "  The order is wanted in about 2 minutes.",
+            "",
+            "  reference    29,404.00   signal bar close",
+            "  trigger      29,410.25   0.15xATR beyond",
+            "  stop loss    29,354.75",
+            "  take profit  29,421.75",
+            "",
+            "  ATR          41.50",
+            "  risk         $884",
+            "  reward       $184",
+            "",
+            "  Price must reach the trigger within 20 min or the arm expires",
+            "  unfilled and no trade happens. Pull up the chart now."],
+           "entry", priority="high")
     await asyncio.sleep(1.2)
     await _service_add()
     await asyncio.sleep(1.2)
