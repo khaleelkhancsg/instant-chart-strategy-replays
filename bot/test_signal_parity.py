@@ -182,8 +182,9 @@ def run_scenario(api, ct, opts):
 def main():
     print("\nsignal bot parity\n")
 
-    # ── 1. it cannot trade ────────────────────────────────────
-    print("safety: no write ever reaches the platform")
+    # ── 1. it cannot trade, with the safety net OFF ───────────
+    sigbot.AUTO_LOTS = 0
+    print("safety: with MNQ_AUTO_LOTS=0 no write ever reaches the platform")
     for name, ct, opts in SCENARIOS:
         guard = Recorder(forbid_writes=True)
         try:
@@ -206,6 +207,59 @@ def main():
         check("no position closed — ORB time stop", False, str(exc))
     check("...but it DID tell you to close",
           ("close_position",) in spy.calls, f"calls={spy.calls}")
+
+    # ── 1b. THE CLAMP ─────────────────────────────────────────
+    # With the net on, one min() is all that stands between "a 1-lot fallback"
+    # and "the full-size bot you did not mean to run". It gets its own section
+    # because everything else in this file assumes it holds.
+    print("")
+    print("clamp: whatever the strategy asks for, at most AUTO_LOTS is sent")
+    for auto in (1, 2, 3):
+        sigbot.AUTO_LOTS = auto
+        rec = Recorder()
+        sc = sigbot.SignalClient(rec)
+        asyncio.run(sc.place_bracket_order(0, 8, 199, 70))
+        asyncio.run(sc.place_stop_with_bracket(0, 50, 20010.0, 95, 287))
+        asyncio.run(sc.place_limit_with_bracket(1, 37, 19990.0, 95, 287))
+        sizes = [c[2] for c in rec.calls]
+        check(f"AUTO_LOTS={auto}: sizes {sizes} never exceed {auto}",
+              sizes and all(x <= auto for x in sizes), f"calls={rec.calls}")
+        check(f"AUTO_LOTS={auto}: all three order types were forwarded",
+              len(rec.calls) == 3, f"calls={rec.calls}")
+
+    sigbot.AUTO_LOTS = 1
+    rec = Recorder()
+    sc = sigbot.SignalClient(rec)
+    asyncio.run(sc.place_stop_with_bracket(0, 50, 20010.0, 95, 287))
+    check("bracket ticks are NOT scaled down with the size",
+          rec.calls[0][4] == 95 and rec.calls[0][5] == 287, f"calls={rec.calls}")
+
+    # A bot that can open must be able to close, or a real position outlives
+    # the 15:04 flatten.
+    rec = Recorder()
+    rec.position = dict(POS)
+    sc = sigbot.SignalClient(rec)
+    asyncio.run(sc.close_position())
+    check("the flatten and time stop DO close a real position",
+          ("close_position",) in rec.calls, f"calls={rec.calls}")
+    check("...and it stops nagging once it really closed",
+          sc._nagging is None, f"nagging={sc._nagging}")
+
+    # Cancels must reach the platform for orders the bot actually placed, and
+    # must not be invented for orders it only announced.
+    rec = Recorder()
+    sc = sigbot.SignalClient(rec)
+    oid = asyncio.run(sc.place_stop_with_bracket(0, 8, 20010.0, 95, 287))
+    rec.calls.clear()
+    asyncio.run(sc.cancel_order(oid))
+    check("a cancel reaches the platform for an order the bot placed",
+          ("cancel_order",) in rec.calls, f"calls={rec.calls}")
+    rec.calls.clear()
+    asyncio.run(sc.cancel_order(987_654))
+    check("a cancel is NOT sent for an id the bot never placed",
+          not rec.calls, f"calls={rec.calls}")
+
+    sigbot.AUTO_LOTS = 0             # the rest of this file assumes signal-only
 
     # ── 2. it decides the same things ─────────────────────────
     print("\nparity: identical instructions in both modes")

@@ -23,9 +23,22 @@ five-minute clock, the 15:04 flatten, the exclusivity between the two books and
 the daily loss tracking all run off what you actually did, not off a simulation.
 If you skip a signal, nothing breaks: the bot sees flat and carries on.
 
-WHAT IT WILL NOT DO
-It never sends an order, never cancels one, never closes a position. If the
-platform needs to be touched, you touch it.
+THE SAFETY NET
+By default it also places ONE lot for itself on every signal, so a missed alert
+costs you most of a trade rather than all of it. MNQ_AUTO_LOTS sets the ceiling;
+0 restores pure signal mode where nothing is ever sent.
+
+The size the strategy asks for -- 8 lots for the donchian, up to 50 for the ORB
+-- is clamped on the way out. Bracket ticks are NOT scaled with it, so the small
+order carries the same stop and target the full size was designed around, and
+the alert and the order describe the same trade.
+
+If it can open, it must be able to close: the ORB time stop and the 15:04
+flatten really do close, and the resting order it placed really is cancelled.
+Those are account rules, not advice, and a real position outliving them because
+this process was "only signalling" would be the worst possible half-measure.
+
+What it will NEVER do is place your full size. That decision stays yours.
 
 NOTIFICATIONS
 Console banner and a beep always. Set MNQ_NOTIFY_WEBHOOK to a Discord, Slack or
@@ -59,6 +72,17 @@ WEBHOOK = os.environ.get("MNQ_NOTIFY_WEBHOOK", "").strip()
 NAG_EVERY_S = 30.0
 # Minutes between "still online" pings. 0 turns them off.
 HEARTBEAT_MIN = int(os.environ.get("MNQ_HEARTBEAT_MIN", "60"))
+
+# ── THE SAFETY NET ───────────────────────────────────────────
+# Lots the bot places for itself so a missed alert is a small trade rather than
+# no trade. 0 restores pure signal mode, where nothing is ever sent.
+#
+# This is a HARD CEILING, not a target: whatever size the strategy asks for --
+# 8 lots for the donchian, up to 50 for the ORB -- is clamped to this before
+# anything reaches the platform. The clamp is one min() on the way out and it is
+# asserted in test_signal_parity, because it is the only thing standing between
+# "a small safety net" and "the full-size bot you did not mean to run".
+AUTO_LOTS = int(os.environ.get("MNQ_AUTO_LOTS", "1"))
 
 
 # ─────────────────────────────────────────────────────────────
@@ -220,6 +244,9 @@ class SignalClient:
         # Your fill is invisible to this process until the account shows it, so
         # the transition is watched for rather than assumed.
         self._in_pos = False
+        # Order ids the bot actually put on the platform, so a cancel goes to
+        # the real order rather than only being announced.
+        self._real_oids: set = set()
         self._fill_bal: Optional[float] = None
         self._fill_at: Optional[datetime] = None
 
@@ -304,11 +331,47 @@ class SignalClient:
     async def get_open_orders(self) -> List[dict]:
         return await self._real.get_open_orders()
 
-    # ---- writes: notifications ---------------------------------------
+    # ---- writes: notifications, plus a small real order --------------
     def _oid(self, desc: str) -> int:
         self._next_oid += 1
         self._tickets[self._next_oid] = desc
         return self._next_oid
+
+    @staticmethod
+    def _auto(size: int) -> int:
+        """The size actually sent. A ceiling, never a target."""
+        return max(0, min(int(size), AUTO_LOTS))
+
+    def _net_lines(self, wanted: int, sent: int) -> List[str]:
+        """What the safety net did, said the same way every time."""
+        if sent <= 0:
+            return ["", "  Nothing has been placed. This is yours to enter."]
+        lots = "lot" if sent == 1 else "lots"
+        out = ["", f"  ⚙ AUTO-ENTRY: {sent} {lots} placed for you, bracket attached."]
+        if wanted > sent:
+            out += [f"  Full size for this signal is {wanted} — add the other "
+                    f"{wanted - sent} by hand if",
+                    "  you want it. The bot manages whatever it finds on the account."]
+        else:
+            out += ["  That is the full size for this signal; nothing to add."]
+        return out
+
+    async def _forward(self, method: str, *args):
+        """Send the real order, and never let a failure stop the alerting."""
+        try:
+            return await getattr(self._real, method)(*args)
+        except Exception as exc:
+            log.error("🛑 AUTO-ENTRY %s FAILED: %s — you are on your own for "
+                      "this one.", method, exc)
+            return None
+
+    def _track(self, oid, desc: str):
+        """Remember a real order id so a later cancel goes to the platform."""
+        if oid is None:
+            return self._oid(desc)
+        self._tickets[oid] = desc
+        self._real_oids.add(oid)
+        return oid
 
     async def place_bracket_order(self, side: int, size: int,
                                   sl_ticks: int, tp_ticks: int) -> Optional[int]:
@@ -328,9 +391,14 @@ class SignalClient:
              "",
              f"  risk if stopped   ${size * sl_pts * CONFIG['tick_value'] / TICK:,.0f}",
              "  the ~ prices are from the last bar close, not your fill.",
-             "  Set the bracket from the price you actually get."],
+             "  Set the bracket from the price you actually get."]
+            + self._net_lines(size, self._auto(size)),
             "entry", priority="high")
-        return self._oid(f"market {'buy' if side == 0 else 'sell'} {size}")
+        sent = self._auto(size)
+        if sent <= 0:
+            return self._oid(f"market {'buy' if side == 0 else 'sell'} {size}")
+        oid = await self._forward("place_bracket_order", side, sent, sl_ticks, tp_ticks)
+        return self._track(oid, f"market {'buy' if side == 0 else 'sell'} {sent}")
 
     async def _resting(self, kind: str, side: int, size: int, price: float,
                        sl_ticks: int, tp_ticks: int) -> Optional[int]:
@@ -360,9 +428,21 @@ class SignalClient:
         elif book == "DONCHIAN":
             lines += ["", "  Donchian: runs to its bracket or the 15:04 CT flatten."]
         lines.append("  Leave it resting. You will be told when to pull it.")
+        sent = self._auto(size)
+        lines += self._net_lines(size, sent)
         notify(f"📋 {book} — {kind.upper()} {'BUY' if side == 0 else 'SELL'} "
                f"{size} LOTS", lines, "entry", priority="high")
-        return self._oid(f"{kind} {'buy' if side == 0 else 'sell'} {size} @ {price:.2f}")
+        desc = f"{kind} {'buy' if side == 0 else 'sell'} {sent or size} @ {price:.2f}"
+        if sent <= 0:
+            return self._oid(desc)
+        # The bracket is signed TICKS from the fill, so it does not scale with
+        # size — a 1-lot order gets the same stop and target distances the full
+        # size was designed around, which is what keeps the alert and the order
+        # describing the same trade.
+        method = ("place_stop_with_bracket" if kind == "stop"
+                  else "place_limit_with_bracket")
+        oid = await self._forward(method, side, sent, price, sl_ticks, tp_ticks)
+        return self._track(oid, desc)
 
     async def place_stop_with_bracket(self, side: int, size: int, stop_price: float,
                                       sl_ticks: int, tp_ticks: int) -> Optional[int]:
@@ -376,11 +456,21 @@ class SignalClient:
         pos = await self._real.get_open_positions()
         size = pos[0].get("size", "?") if pos else "?"
         msg = f"Close {size} MNQ at market, now."
-        notify(f"🔴 {_book()} — CLOSE THE POSITION, MARKET, NOW",                [f"  {msg}",
+        notify(f"🔴 {_book()} — CLOSE THE POSITION, MARKET, NOW",
+               [f"  {msg}",
                 "  This is the bot's own exit (time stop, flatten, or a flip).",
                 "  It is not the bracket — the bracket stays where it is until",
                 "  you cancel it, so cancel any leftover legs afterwards."],
                pattern="exit", priority="high")
+        # A bot that can OPEN must be able to CLOSE. The time stop and the 15:04
+        # flatten are not advice, they are the account rules, and leaving a real
+        # position open past them because this process is "only signalling"
+        # would be the worst possible half-measure.
+        if AUTO_LOTS > 0:
+            if await self._forward("close_position"):
+                self._nagging = None
+                return True
+            log.error("🛑 AUTO-EXIT FAILED — close it by hand, NOW.")
         # Reported as done so the bot's state machine advances. Reality is
         # re-read every cycle from the account, and get_open_positions() nags
         # until the position is actually gone.
@@ -390,10 +480,18 @@ class SignalClient:
 
     async def cancel_order(self, order_id) -> bool:
         what = self._tickets.pop(order_id, f"order {order_id}")
-        notify(f"✖ {_book()} — CANCEL A WORKING ORDER",                [f"  Cancel:  {what}",
+        mine = order_id in self._real_oids
+        self._real_oids.discard(order_id)
+        notify(f"✖ {_book()} — CANCEL A WORKING ORDER",
+               [f"  Cancel:  {what}",
                 "  It is no longer wanted — the setup expired, filled on the",
-                "  other side, or the day's blocks came on."],
+                "  other side, or the day's blocks came on."]
+               + (["", "  ⚙ The auto-entry order has been cancelled for you.",
+                   "  Anything YOU placed at that price is still working."]
+                  if mine else []),
                pattern="cancel", priority="high")
+        if mine:
+            await self._forward("cancel_order", order_id)
         return True
 
 
@@ -554,7 +652,12 @@ async def main() -> None:
         raise EnvironmentError("Set PROJECT_X_API_KEY and PROJECT_X_USERNAME (bot/.env)")
 
     log.info("=" * 62)
-    log.info("SIGNAL MODE — this process places NOTHING. You do the clicking.")
+    if AUTO_LOTS > 0:
+        log.info("SIGNAL MODE + SAFETY NET — it places %d lot, you place the rest.",
+                 AUTO_LOTS)
+        log.info("  ⚠ THIS SENDS REAL ORDERS. Set MNQ_AUTO_LOTS=0 for alerts only.")
+    else:
+        log.info("SIGNAL MODE — this process places NOTHING. You do the clicking.")
     log.info("  strategy      identical to mnq_donchian_bot (imported, not copied)")
     log.info("  positions     read from the live account, so it sees YOUR fills")
     log.info("  phone push    %s", WEBHOOK.split("/")[-1] if WEBHOOK else
@@ -580,7 +683,12 @@ async def main() -> None:
             notify("✅ SIGNAL BOT LIVE", [
                 f"  account balance   ${api.balance:,.2f}",
                 f"  contract          {CONFIG['contract_id']}",
-                "  Watching. Nothing will be placed for you."], "cancel")
+                f"  auto-entry        {AUTO_LOTS} lot per signal"
+                if AUTO_LOTS > 0 else "  auto-entry        OFF, alerts only",
+                ("  It WILL send real orders at that size, and will close and"
+                 if AUTO_LOTS > 0 else "  Watching. Nothing will be placed for you."),
+                ("  cancel its own. Your full size is still yours to place."
+                 if AUTO_LOTS > 0 else "")], "cancel")
             hb = asyncio.create_task(heartbeat(api, bot)) if HEARTBEAT_MIN > 0 else None
             try:
                 await bot.run()
