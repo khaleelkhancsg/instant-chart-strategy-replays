@@ -91,6 +91,12 @@ function simulate(books, opts = {}) {
   // Parallel day tags. The P&L arrays are plain numbers and other scripts
   // index them, so attribution rides alongside rather than changing them.
   const dDay = [], oDay = [];
+  // Why a day stopped taking trades, and what that cost. The budget is SHARED
+  // and it is realised P&L, so a win earlier in the day genuinely widens the
+  // room for what comes after -- +$200 banked means the breaker is $700 away,
+  // not $500. Counting "the ORB lost more than $500" misses that completely.
+  const blk = { breaker: 0, profit: 0, cap: 0, donSkipped: 0, orbSkipped: 0 };
+  let blkNoted = false;
   let curDay = -1e9, realised = 0, capHit = false, liqDays = 0;
   let coMin = 0, coSame = 0, coOpp = 0, dMin = 0, oMin = 0;
 
@@ -100,7 +106,16 @@ function simulate(books, opts = {}) {
   let oPos = 0, oFill = 0, oSl = 0, oTp = 0, oQty = 0, oEntryBar = -1;
 
   const dFill = () => dNotional / dQty;
-  const blocked = () => capHit || realised <= -BREAKER || realised >= PROFIT_BLOCK;
+  const blocked = () => {
+    const b = capHit || realised <= -BREAKER || realised >= PROFIT_BLOCK;
+    if (b && !blkNoted) {
+      blkNoted = true;
+      if (capHit) blk.cap++;
+      else if (realised <= -BREAKER) blk.breaker++;
+      else blk.profit++;
+    }
+    return b;
+  };
   const bookD = (px, exact) => {
     const xp = dPos === 1 ? px - SLIPc : px + SLIPc;
     const net = exact !== undefined ? exact
@@ -121,7 +136,7 @@ function simulate(books, opts = {}) {
   for (let i = 1; i < N1; i++) {
     if (TD1[i] !== curDay) {
       if (curDay !== -1e9) dayPnl.set(curDay, realised);
-      curDay = TD1[i]; realised = 0; capHit = false;
+      curDay = TD1[i]; realised = 0; capHit = false; blkNoted = false;
       dPos = 0; oPos = 0; armDir = 0; isLimit = false; dNotional = 0;
     }
     const ct = CT1[i];
@@ -246,6 +261,7 @@ function simulate(books, opts = {}) {
         if (!done && s2 !== 0 && s2 !== dPos) bookD(O2[k]);
       }
     }
+    if (dPos === 0 && s2 !== 0 && !flatNow && CT2[k] < NOENTRY_CT && blocked()) blk.donSkipped++;
     if (dPos === 0 && s2 !== 0 && !flatNow && !blocked() && CT2[k] < NOENTRY_CT) {
       const a = A2[k - 1];
       if (a > 0) {
@@ -257,7 +273,7 @@ function simulate(books, opts = {}) {
     }
   }
   dayPnl.set(curDay, realised);
-  return { arr: days.map(d => dayPnl.get(d)), dTr, oTr, dDay, oDay, liqDays,
+  return { arr: days.map(d => dayPnl.get(d)), dTr, oTr, dDay, oDay, blk, liqDays,
            coMin, coSame, coOpp, dMin, oMin };
 }
 
