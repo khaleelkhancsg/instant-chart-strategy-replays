@@ -357,18 +357,40 @@ class SignalClient:
         return out
 
     async def _forward(self, method: str, *args):
-        """Send the real order, and never let a failure stop the alerting."""
+        """Send the real order, and never let a failure stop the alerting.
+
+        An exception is NOT the same as a refusal. A refusal comes back as None
+        from the client and the bot has its own answer for it; an exception
+        means the request never landed, so it is worth saying out loud.
+        """
         try:
             return await getattr(self._real, method)(*args)
         except Exception as exc:
-            log.error("🛑 AUTO-ENTRY %s FAILED: %s — you are on your own for "
-                      "this one.", method, exc)
+            log.error("🛑 AUTO-ENTRY %s FAILED: %s", method, exc)
+            notify("🛑 AUTO-ENTRY FAILED",
+                   [f"  {method} did not reach the platform:",
+                    f"    {exc}",
+                    "",
+                    "  The alert above still stands. Place it by hand if you",
+                    "  want the trade — nothing was sent for you."],
+                   pattern="exit", priority="high")
             return None
 
     def _track(self, oid, desc: str):
-        """Remember a real order id so a later cancel goes to the platform."""
+        """Remember a real order id so a later cancel goes to the platform.
+
+        A REFUSED order must hand back None, not a placeholder. The live bot
+        reads None as "the platform said no", and answers a refused STOP by
+        re-placing the same price as a LIMIT -- which happens on 40.8% of arms
+        and is worth about 2.6pp. Returning a fake id would swallow the refusal,
+        skip the fallback, and leave signal mode quietly not matching the bot it
+        exists to mirror.
+
+        With the net off there is no real order to be refused, so a placeholder
+        is the only honest answer: nothing was sent, and nothing can fail.
+        """
         if oid is None:
-            return self._oid(desc)
+            return None if AUTO_LOTS > 0 else self._oid(desc)
         self._tickets[oid] = desc
         self._real_oids.add(oid)
         return oid

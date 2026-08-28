@@ -61,6 +61,7 @@ class Recorder:
         self.calls = []
         self.position = None
         self.forbid = forbid_writes
+        self.reject_stop = False        # platform says no to a stop entry
 
     def _w(self, name, *args):
         if self.forbid:
@@ -93,7 +94,7 @@ class Recorder:
 
     async def place_stop_with_bracket(self, side, size, px, sl, tp):
         self._w("place_stop_with_bracket", side, size, round(px, 2), sl, tp)
-        return 5000 + len(self.calls)
+        return None if self.reject_stop else 5000 + len(self.calls)
 
     async def place_limit_with_bracket(self, side, size, px, sl, tp):
         self._w("place_limit_with_bracket", side, size, round(px, 2), sl, tp)
@@ -258,6 +259,57 @@ def main():
     asyncio.run(sc.cancel_order(987_654))
     check("a cancel is NOT sent for an id the bot never placed",
           not rec.calls, f"calls={rec.calls}")
+
+    # ── 1c. EXACT MATCH WITH THE LIVE BOT ─────────────────────
+    # The point of signal mode is to be the live bot with a different output
+    # device. So the call sequence the platform sees must be identical apart
+    # from the size, on every path -- and the refusal path is the one that
+    # actually differed: a refused STOP returns None live, which is what makes
+    # the bot re-place it as a LIMIT.
+    print("")
+    print("exact match: same calls as the live bot, only the size differs")
+
+    def sequence(auto, reject_stop=False):
+        """Run one ORB arm + one donchian arm and return what the platform saw."""
+        sigbot.AUTO_LOTS = auto
+        rec = Recorder()
+        rec.reject_stop = reject_stop
+        api = sigbot.SignalClient(rec) if auto is not None else rec
+        b = build(api, bot.ORB_OPEN_CT + 1)
+        asyncio.run(b._service_orb([]))
+        b2 = bot.DonchianBot(api)
+        b2._session_key, b2._day_start_balance = "T", 50_000.0
+        b2._ct_now, b2._last_bar_ts = (lambda: 10 * 60), 1_000_000
+        b2._add_pending = {
+            "side": 0, "lots": 8, "px": 20010.0, "sl_ticks": 199, "tp_ticks": 70,
+            "deadline": datetime.now(timezone.utc) + __import__("datetime").timedelta(minutes=20),
+            "want_sl_px": 19960.25, "want_tp_px": 20027.5,
+            "sig_ts": 1_000_000 - 120_000, "atr": 14.0,
+        }
+        asyncio.run(b2._service_add())
+        return rec.calls
+
+    live = sequence(None)
+    net = sequence(1)
+    check("same number of platform calls", len(live) == len(net),
+          f"live={live}\n      net ={net}")
+    check("same methods, in the same order",
+          [c[0] for c in live] == [c[0] for c in net],
+          f"live={[c[0] for c in live]}\n      net ={[c[0] for c in net]}")
+    check("same sides, prices and bracket ticks",
+          [(c[0], c[1], *c[3:]) for c in live] == [(c[0], c[1], *c[3:]) for c in net],
+          f"live={live}\n      net ={net}")
+    check("only the size differs, and it is clamped to 1",
+          all(n[2] == 1 for n in net) and any(l[2] > 1 for l in live),
+          f"live sizes={[c[2] for c in live]} net sizes={[c[2] for c in net]}")
+
+    # The refusal path: a refused stop must still become a limit in both modes.
+    live_r = sequence(None, reject_stop=True)
+    net_r = sequence(1, reject_stop=True)
+    check("a refused stop falls back to a LIMIT in signal mode too",
+          [c[0] for c in live_r] == [c[0] for c in net_r]
+          and "place_limit_with_bracket" in [c[0] for c in net_r],
+          f"live={[c[0] for c in live_r]}\n      net ={[c[0] for c in net_r]}")
 
     sigbot.AUTO_LOTS = 0             # the rest of this file assumes signal-only
 
