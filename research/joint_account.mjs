@@ -88,6 +88,9 @@ function simulate(books, opts = {}) {
   const useDon = books !== "orb", useOrb = books !== "don";
   const dayPnl = new Map(); for (const d of days) dayPnl.set(d, 0);
   const dTr = [], oTr = [];
+  // Parallel day tags. The P&L arrays are plain numbers and other scripts
+  // index them, so attribution rides alongside rather than changing them.
+  const dDay = [], oDay = [];
   let curDay = -1e9, realised = 0, capHit = false, liqDays = 0;
   let coMin = 0, coSame = 0, coOpp = 0, dMin = 0, oMin = 0;
 
@@ -102,7 +105,7 @@ function simulate(books, opts = {}) {
     const xp = dPos === 1 ? px - SLIPc : px + SLIPc;
     const net = exact !== undefined ? exact
               : (xp - dFill()) * dPos * PV * dQty - FEEc * 2 * dQty;
-    realised += net; dTr.push(net);
+    realised += net; dTr.push(net); dDay.push(curDay);
     if (realised <= -CAP) capHit = true;
     dPos = 0; dNotional = 0;
   };
@@ -110,7 +113,7 @@ function simulate(books, opts = {}) {
     const xp = oPos === 1 ? px - SLIPc : px + SLIPc;
     const net = exact !== undefined ? exact
               : (xp - oFill) * oPos * PV * oQty - FEEc * 2 * oQty;
-    realised += net; oTr.push(net);
+    realised += net; oTr.push(net); oDay.push(curDay);
     if (realised <= -CAP) capHit = true;
     oPos = 0;
   };
@@ -189,7 +192,14 @@ function simulate(books, opts = {}) {
         // wherever `stopUsd` of loss sits. Undefined leaves the level stop.
         oSl = s.entryPx - s.dir * (orbCfg.stopUsd
                 ? orbCfg.stopUsd / (PV * oQty) : s.risk);
-        oTp = s.tpPx != null ? s.tpPx : s.entryPx + s.dir * s.risk * orbCfg.rMult;
+        // An absolute ceiling on the target distance, so a wide-stop day takes
+        // profit where the move actually goes instead of at an unreachable 3R.
+        // Matters here in a way it cannot on the standalone book: an ORB loss
+        // spends the day's -$500 breaker, and once that is gone the donchian
+        // book is blocked for the rest of the session.
+        oTp = s.tpPx != null ? s.tpPx
+            : s.entryPx + s.dir * Math.min(s.risk * orbCfg.rMult,
+                                           orbCfg.tpCapPts ?? Infinity);
         resolveOrb();          // lib_orb resolves the ENTRY bar too
       }
     }
@@ -247,7 +257,7 @@ function simulate(books, opts = {}) {
     }
   }
   dayPnl.set(curDay, realised);
-  return { arr: days.map(d => dayPnl.get(d)), dTr, oTr, liqDays,
+  return { arr: days.map(d => dayPnl.get(d)), dTr, oTr, dDay, oDay, liqDays,
            coMin, coSame, coOpp, dMin, oMin };
 }
 
