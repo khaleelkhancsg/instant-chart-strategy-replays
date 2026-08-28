@@ -299,6 +299,15 @@ export function setups(cfg) {
       return (dist >= risk * tpMinR && dist <= risk * tpMaxR) ? cand : null;
     };
 
+    // A CEILING on the stop, applied after the structural distance is worked
+    // out. Different from stopAt:"fixed", which throws the structure away
+    // entirely: this keeps the level-derived stop whenever it is already tight
+    // and only clamps the days where the two levels are far apart. Since size
+    // is $500 / stop, clamping also raises the position on exactly those days.
+    const capRisk = (r) => {
+      const cap = cfg.stopCapPts ?? Infinity;
+      return Math.max(TICK, Math.min(r, cap));
+    };
     const riskFor = (dir, entryPx, lvl, retExt) => {
       // A FIXED stop in points. The others all scale with the level pair, so a
       // wide pre-open range produces a wide stop -- and because size is
@@ -345,7 +354,7 @@ export function setups(cfg) {
           const trig = lvl + dir * buf2 * TICK;
           const entryPx = cfg.naiveFill ? trig
                         : (dir === 1 ? Math.max(trig, O[i]) : Math.min(trig, O[i]));
-          const risk = riskFor(dir, entryPx, lvl, entryPx);
+          const risk = capRisk(riskFor(dir, entryPx, lvl, entryPx));
           if (risk < TICK) { diag.badStop++; break; }
           const tpPx = tpMode === "R" ? null : tpFor(dir, entryPx, risk);
           if (tpPx === null && tpMode !== "R" && tpFallback !== "R") { diag.noTp++; break; }
@@ -377,7 +386,7 @@ export function setups(cfg) {
         const trig = p1 + dir * buf2 * TICK;
         if (dir === 1 ? H[i] >= trig : L[i] <= trig) {
           const entryPx = dir === 1 ? Math.max(trig, O[i]) : Math.min(trig, O[i]);  // gap through
-          const risk = riskFor(dir, entryPx, lvl, retExt);
+          const risk = capRisk(riskFor(dir, entryPx, lvl, retExt));
           if (risk < TICK) { diag.badStop++; break; }
           const tpPx = tpMode === "R" ? null : tpFor(dir, entryPx, risk);
           if (tpPx === null && tpMode !== "R" && tpFallback !== "R") { diag.noTp++; break; }
@@ -432,7 +441,11 @@ export function resolve(s, opt = {}) {
   // An absolute liquidity target overrides the R multiple. Under a direction
   // flip it is mirrored rather than reused, so the control keeps the same
   // target DISTANCE and only the side changes.
-  const tp = s.tpPx == null ? entryPx + dir * risk * rMult
+  // An absolute ceiling on how far the target may sit, independent of the
+  // stop. 3R off a wide stop puts the target somewhere price cannot reach in
+  // the hold; this takes the profit where the move actually goes instead.
+  const tpDist = Math.min(risk * rMult, opt.tpCapPts ?? Infinity);
+  const tp = s.tpPx == null ? entryPx + dir * tpDist
                             : entryPx + dir * (s.tpPx - entryPx) * s.dir;
   let ambig = 0;
   const fill = dir === 1 ? entryPx + slip : entryPx - slip;
