@@ -25,6 +25,16 @@
 // 95 minutes; the same rule on 1m bars holds roughly the same wall-clock time
 // only if the fade count is scaled up, and left at 3 it will trade far more
 // often for the same $12 round trip.
+//
+// ── IT DID NOT SURVIVE, WHICH IS THE POINT OF HAVING IT ──────────────────
+// Measured: -$12.07 a trade and 12.5% pass rate against the 5-minute book's
+// +$8.85 and 22.0%, negative on every fade setting tried. Average points come
+// out at 0.00 -- 29,294 trades times a $12 round trip is $351k against a $353k
+// loss, so the signal has NO gross edge here at all and loses precisely the
+// commission. Commission is not eating a real edge; there is nothing under it.
+//
+// That is the useful answer. The gate is a five-minute phenomenon, and this file
+// stays as the control that says so rather than being deleted.
 
 import base from "./macd_5m_quiet_anticipate.mjs";
 

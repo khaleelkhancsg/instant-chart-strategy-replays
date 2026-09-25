@@ -60,6 +60,17 @@
 // (research/anticipate_steepness.mjs). Abandoning a trade whose cross has not
 // come by bar N is worse at every N than holding it out.
 //
+// ── AND THE PASS RATE SAYS NO ───────────────────────────────────────────
+// Measured in the lab over 2,598 windows at the defaults: 22.0% pass rate. The
+// shipped Donchian+ORB bot passes about 51%, and 52.9% on 2026 alone. So this
+// is comfortably the best MACD configuration found and less than half as good
+// as what is already running.
+//
+// The reason is in the drawdown rather than the expectancy. Through the engine
+// this earns $8.85 a trade with a 55.4% win rate, which is a perfectly healthy
+// book, and runs a $51,132 peak-to-trough against a $2,000 trailing limit. The
+// edge is real and the risk shape is wrong for the account.
+//
 // ── THE STOP IS OFF BY DEFAULT ──────────────────────────────────────────
 // Every number above was measured with no bracket, so the defaults reproduce
 // them. That is a signal configuration, not a tradeable one: an unstopped
