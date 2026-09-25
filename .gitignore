@@ -15,6 +15,8 @@ Thumbs.db
 # Live bot: credentials, session logs and runtime state
 bot/.env
 bot/logs/
+# Same logs when a bot or test is launched from the repo root
+logs/
 bot/logs_test/
 bot/*_state.json
 *_state.json
