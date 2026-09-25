@@ -37,7 +37,12 @@ export default {
 
   timeframeMin: 1,
 
-  params: baseParams,
+  params: [
+    ...baseParams,
+    { key: "fadeBars", label: "Shrinking bars before exit", type: "int",
+      min: 1, max: 10, step: 1, default: 3, group: "Exit",
+      hint: "Swept in research/fade_bars_sweep.mjs. WIN RATE peaks at 3 on both timeframes (1m 31.2%->34.5%, 5m 34.7%->37.1%) and holds in both halves. PASS RATE disagrees: it rises monotonically toward never exiting at all, so the fade exit never beats holding to the opposite cross." },
+  ],
 
   compute(bars, p) {
     // Reuse the parent's signal and overlays wholesale — same crossover, same
@@ -47,16 +52,25 @@ export default {
     const n = hist.length;
 
     // Bitmask per bar: 1 = a long should leave, 2 = a short should leave.
+    //
+    // A RUN of shrinking bars, not a single one. One flat or slightly smaller
+    // bar happens constantly inside a move that is still working, so requiring
+    // N in a row is the difference between "momentum paused" and "momentum
+    // over". The run is counted per side and resets the moment a bar grows
+    // again or the histogram changes sign.
+    const need = Math.max(1, Math.trunc(p.fadeBars) || 1);
     const exitSig = new Int8Array(n);
+    let upRun = 0, dnRun = 0;
     for (let i = 1; i < n; i++) {
       const v = hist[i], u = hist[i - 1];
-      if (!Number.isFinite(v) || !Number.isFinite(u)) continue;
-      // Shrinking toward the baseline, whichever side of it we are on.
-      if (!(Math.abs(v) < Math.abs(u))) continue;
-      // A long only reads the green side and a short only the red side. On the
-      // bar the histogram changes sign the crossover fires anyway and the flip
-      // takes precedence, so there is nothing to disentangle.
-      exitSig[i] = v >= 0 ? 1 : 2;
+      if (!Number.isFinite(v) || !Number.isFinite(u)) { upRun = dnRun = 0; continue; }
+      const shrinking = Math.abs(v) < Math.abs(u);
+      if (v >= 0) { upRun = shrinking ? upRun + 1 : 0; dnRun = 0; }
+      else { dnRun = shrinking ? dnRun + 1 : 0; upRun = 0; }
+      let m = 0;
+      if (upRun >= need) m |= 1;
+      if (dnRun >= need) m |= 2;
+      exitSig[i] = m;
     }
 
     return { ...out, exitSig, atr: out.atr || atr(bars.high, bars.low, bars.close, p.atrPeriod) };
