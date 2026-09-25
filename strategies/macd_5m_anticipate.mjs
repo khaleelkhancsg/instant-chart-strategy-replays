@@ -50,6 +50,16 @@ export default {
       hint: "How close to the baseline the histogram must already be, as a fraction of its own trailing average — so the threshold means the same thing across regimes. 0.25 gave a 3.35x lift on the probability of a cross within 2 bars." },
     { key: "scaleBars", label: "Bars in the |hist| average", type: "int",
       min: 50, max: 500, step: 25, default: 200, group: "Anticipation" },
+    { key: "trigger", label: "What counts as imminent", type: "select",
+      default: "prox", group: "Anticipation",
+      options: [["eta", "Bars until zero at the current rate"],
+                ["prox", "Proximity to zero alone"]],
+      hint: "ETA is level DIVIDED BY slope: bars until the histogram reaches zero at the rate it is closing. It is the BETTER CROSS PREDICTOR of everything measured (3.55x against 3.53x, on four times the samples) and it TRADES WORSE — $10.47 a trade at best against $37.62 for proximity, and unstable across halves. Matching its frequency and hold time does not close the gap. See research/precursor_compare.mjs; the default stays on proximity because of it." },
+    { key: "etaBars", label: "Max bars until zero", type: "float",
+      min: 0.5, max: 8, step: 0.5, default: 2, group: "Anticipation" },
+    { key: "slopeBars", label: "Bars to measure the slope over", type: "int",
+      min: 1, max: 10, step: 1, default: 3, group: "Anticipation",
+      hint: "The closing rate is averaged over this many bars so one flat bar does not erase it. This is the scale-free version of the approach ANGLE — degrees on a chart depend on the zoom, points per bar do not." },
   ],
 
   compute(bars, p) {
@@ -78,6 +88,8 @@ export default {
     }
 
     const need = Math.max(1, Math.trunc(p.shrinkBars) || 1);
+    const sb = Math.max(1, Math.trunc(p.slopeBars) || 3);
+    const useEta = p.trigger !== "prox";
     const sig = new Int8Array(n);
     let run = 0;
     for (let i = 1; i < n; i++) {
@@ -87,7 +99,21 @@ export default {
       }
       run = Math.abs(v) < Math.abs(u) ? run + 1 : 0;
       if (run < need) continue;
-      if (!(Math.abs(v) < p.prox * scale[i])) continue;
+
+      let imminent;
+      if (useEta) {
+        // Bars until the histogram reaches zero if it keeps closing at the rate
+        // it has been. Level and speed in one number, which is what "about to
+        // cross" actually means -- a big histogram closing fast can be nearer a
+        // cross than a small one drifting.
+        if (i < sb) continue;
+        const rate = (Math.abs(hist[i - sb]) - Math.abs(v)) / sb;
+        if (!(rate > 0)) continue;
+        imminent = Math.abs(v) / rate <= p.etaBars;
+      } else {
+        imminent = Math.abs(v) < p.prox * scale[i];
+      }
+      if (!imminent) continue;
       // Heading toward the OTHER side, which is where the cross would land.
       sig[i] = v >= 0 ? -1 : 1;
     }
