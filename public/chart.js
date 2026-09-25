@@ -83,6 +83,81 @@ export class ChartView {
     this._layout();
   }
 
+  // ── per-pane vertical zoom ──
+  // Each pane keeps its own {z, c}: z is the zoom factor and c is where the
+  // centre of the view sits as a fraction of the pane's NATURAL range. Storing
+  // it that way rather than as absolute prices means a pane stays where you put
+  // it when the data underneath changes — move the window slider and a zoomed
+  // indicator keeps its magnification instead of jumping.
+  _yState(key) {
+    if (!this._yv) this._yv = {};
+    if (!this._yv[key]) this._yv[key] = { z: 1, c: 0.5 };
+    return this._yv[key];
+  }
+
+  // Natural range in, effective range and mapper out. Every pane goes through
+  // this, so they all zoom by the same rule and none can drift apart.
+  _yFor(key, lo, hi, P) {
+    if (!this._yNat) this._yNat = {};
+    this._yNat[key] = [lo, hi];
+    const v = this._yState(key);
+    const span = (hi - lo) || 1;
+    const half = span / (2 * v.z);
+    const mid = lo + v.c * span;
+    const a = mid - half, b = mid + half;
+    return { lo: a, hi: b, y: (t) => P.bottom - ((t - a) / (b - a)) * P.height };
+  }
+
+  yZoomed(key) { const v = this._yState(key); return v.z !== 1 || v.c !== 0.5; }
+
+  resetY(key) {
+    if (key) this._yv[key] = { z: 1, c: 0.5 };
+    else this._yv = {};
+    this.requestDraw();
+  }
+
+  // Which pane a pixel row belongs to.
+  _paneAt(my) {
+    if (!this.panes) return null;
+    for (const k of ["price", "sub", "equity", "daily"]) {
+      const P = this.panes[k];
+      if (P && P.height > 0 && my >= P.top && my <= P.bottom) return k;
+    }
+    return null;
+  }
+
+  // Zoom a pane's vertical axis about the value currently under the cursor, so
+  // whatever you point at stays put.
+  zoomY(key, my, k) {
+    const P = this.panes[key];
+    const nat = this._yNat && this._yNat[key];
+    if (!P || !nat || P.height <= 0) return;
+    const [lo, hi] = nat;
+    const span = (hi - lo) || 1;
+    const v = this._yState(key);
+    const half = span / (2 * v.z);
+    const mid = lo + v.c * span;
+    const a = mid - half, b = mid + half;
+    const frac = (P.bottom - my) / P.height;          // 0 at the bottom edge
+    const val = a + frac * (b - a);                   // value under the cursor
+    const z2 = Math.max(1, Math.min(200, v.z / k));   // never below natural fit
+    const half2 = span / (2 * z2);
+    const mid2 = val + (0.5 - frac) * 2 * half2;      // keep `val` at `frac`
+    v.z = z2;
+    v.c = (mid2 - lo) / span;
+    this.requestDraw();
+  }
+
+  panY(key, dy) {
+    const P = this.panes[key];
+    const nat = this._yNat && this._yNat[key];
+    if (!P || !nat || P.height <= 0) return;
+    const v = this._yState(key);
+    // dy is in pixels; one pane height is one full effective range.
+    v.c += (dy / P.height) / v.z;
+    this.requestDraw();
+  }
+
   _layout() {
     const showSub = !!(this.data && this.data.subOverlays && this.data.subOverlays.length);
     const weights = { ...PANE_WEIGHTS };
@@ -151,10 +226,24 @@ export class ChartView {
     // Dimming goes UNDER the panes; the session and resolution markers go OVER
     // them. At full zoom-out the candle wicks tile every pixel column, so an
     // annotation drawn first is simply painted out by the price series.
-    this._drawPricePane(ctx);
-    this._drawSubPane(ctx);
-    this._drawEquityPane(ctx);
-    this._drawDailyPane(ctx);
+    // Each pane draws inside its own vertical band. Without this a pane zoomed
+    // in on its y-axis paints straight over its neighbours — a magnified MACD
+    // histogram runs off the bottom and lands in the equity chart. Clipping the
+    // full width rather than just the plot keeps the right-hand axis labels.
+    const clipped = (key, fn) => {
+      const P = this.panes[key];
+      if (!P || P.height <= 0) return;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, P.top - 1, this.w, P.height + 2);
+      ctx.clip();
+      fn.call(this, ctx);
+      ctx.restore();
+    };
+    clipped("price", this._drawPricePane);
+    clipped("sub", this._drawSubPane);
+    clipped("equity", this._drawEquityPane);
+    clipped("daily", this._drawDailyPane);
     this._drawDimAfterResolution(ctx);
     this._drawSessionBands(ctx);
     this._drawResolutionMarker(ctx);
@@ -282,9 +371,10 @@ export class ChartView {
     const col = this._columns();
     if (!col) return;
 
-    const [lo, hi] = this._priceRange(col);
+    const nat = this._priceRange(col);
+    const V = this._yFor("price", nat[0], nat[1], P);
+    const lo = V.lo, hi = V.hi, y = V.y;
     this.priceLo = lo; this.priceHi = hi;
-    const y = (p) => P.bottom - ((p - lo) / (hi - lo)) * P.height;
     this.priceY = y;
 
     this._grid(ctx, P, lo, hi, y, (v) => fmtPx(v));
@@ -317,7 +407,7 @@ export class ChartView {
     // Trades
     this._drawTrades(ctx, P, y);
 
-    this._paneLabel(ctx, P, this.data.title || "Price");
+    this._paneLabel(ctx, P, this.data.title || "Price", "price");
   }
 
   _drawOverlayLine(ctx, ov, P, y) {
@@ -413,7 +503,9 @@ export class ChartView {
       const s = this._visibleSpan(ovs.filter((o) => o.autoRange));
       if (s) { lo = s[0]; hi = s[1]; }
     }
-    const y = (v) => P.bottom - ((v - lo) / (hi - lo)) * P.height;
+    const V = this._yFor("sub", lo, hi, P);
+    lo = V.lo; hi = V.hi;
+    const y = V.y;
 
     ctx.strokeStyle = CSS.grid;
     ctx.lineWidth = 1;
@@ -447,7 +539,7 @@ export class ChartView {
       if (o.kind === "hist") this._drawOverlayHist(ctx, o, P, oy);
       else this._drawOverlayLine(ctx, o, P, oy);
     }
-    this._paneLabel(ctx, P, ovs.map((o) => o.name).join("  ·  "));
+    this._paneLabel(ctx, P, ovs.map((o) => o.name).join("  ·  "), "sub");
   }
 
   // Min/max of the given overlays across the visible bars only, padded, and
@@ -522,7 +614,9 @@ export class ChartView {
     for (const p of pts) { if (p.cum < lo) lo = p.cum; if (p.cum > hi) hi = p.cum; if (p.floor < lo) lo = p.floor; }
     const pad = (hi - lo) * 0.08 || 100;
     lo -= pad; hi += pad;
-    const y = (v) => P.bottom - ((v - lo) / (hi - lo)) * P.height;
+    const V = this._yFor("equity", lo, hi, P);
+    lo = V.lo; hi = V.hi;
+    const y = V.y;
     this.eqY = y; this.eqPane = P;
 
     this._grid(ctx, P, lo, hi, y, (v) => fmtUsd(v));
@@ -540,7 +634,7 @@ export class ChartView {
     ctx.font = "10px ui-monospace, monospace";
     ctx.fillText(`target ${fmtUsd(rules.profitTarget)}`, this.plotL + 4, y(rules.profitTarget) - 4);
 
-    if (!pts.length) { this._paneLabel(ctx, P, "Equity vs trailing floor"); return; }
+    if (!pts.length) { this._paneLabel(ctx, P, "Equity vs trailing floor", "equity"); return; }
 
     // The survivable band: between the equity line and the floor beneath it.
     ctx.beginPath();
@@ -607,7 +701,7 @@ export class ChartView {
       ctx.fillText("floor locks at B/E", lx + 4, P.top + 11);
     }
 
-    this._paneLabel(ctx, P, "Equity vs trailing floor");
+    this._paneLabel(ctx, P, "Equity vs trailing floor", "equity");
   }
 
   _flag(ctx, x, y, color, text) {
@@ -629,7 +723,12 @@ export class ChartView {
     let mag = 200;
     for (const d of days) mag = Math.max(mag, Math.abs(d.pnl));
     if (rules) mag = Math.max(mag, rules.dailyProfitStop, rules.dailyLossLimit);
-    const y = (v) => P.top + P.height / 2 - (v / mag) * (P.height / 2 - 4);
+    // Symmetric about zero, so the natural range is [-mag, +mag]; feeding that
+    // through the shared transform keeps the daily bars zooming like everything
+    // else while preserving the 4px inset the bars are drawn with.
+    const V = this._yFor("daily", -mag, mag, P);
+    const magZ = (V.hi - V.lo) / 2, ctr = (V.hi + V.lo) / 2;
+    const y = (v) => P.top + P.height / 2 - ((v - ctr) / magZ) * (P.height / 2 - 4);
 
     ctx.strokeStyle = CSS.grid;
     ctx.beginPath(); ctx.moveTo(this.plotL, y(0)); ctx.lineTo(this.plotR, y(0)); ctx.stroke();
@@ -670,7 +769,7 @@ export class ChartView {
         ctx.fillRect(x0, P.bottom - 3, w, 3);
       }
     }
-    this._paneLabel(ctx, P, "Daily P&L (17:00 ET sessions)");
+    this._paneLabel(ctx, P, "Daily P&L (17:00 ET sessions)", "daily");
   }
 
   _grid(ctx, P, lo, hi, y, fmt) {
@@ -687,10 +786,24 @@ export class ChartView {
     }
   }
 
-  _paneLabel(ctx, P, text) {
+  _paneLabel(ctx, P, text, key) {
     ctx.fillStyle = CSS.text;
     ctx.font = "10px ui-sans-serif, system-ui";
     ctx.fillText(text, this.plotL + 4, P.top + 11);
+    // A pane showing a magnified slice looks like ordinary data unless it says
+    // so, and the reader has no way to know the scale is no longer the natural
+    // fit. The badge doubles as the hint for how to undo it.
+    if (key && this.yZoomed(key)) {
+      const v = this._yState(key);
+      const tag = "⇕ " + (v.z < 10 ? v.z.toFixed(1) : Math.round(v.z)) +
+                  "×  dbl-click axis to reset";
+      ctx.font = "9px ui-monospace, monospace";
+      const w = ctx.measureText(tag).width;
+      ctx.fillStyle = CSS.lock;
+      ctx.globalAlpha = 0.85;
+      ctx.fillText(tag, this.plotR - w - 4, P.top + 11);
+      ctx.globalAlpha = 1;
+    }
   }
 
   _drawTimeAxis(ctx) {
@@ -716,11 +829,19 @@ export class ChartView {
   // ── crosshair + hit testing ──
   _bindEvents() {
     const el = this.over;
-    let dragging = false, lastX = 0;
+    let dragging = false, lastX = 0, lastY = 0, dragPane = null;
+    // A drag that starts in the right-hand axis gutter, or with shift held,
+    // moves that pane's VERTICAL axis instead of the shared horizontal one.
+    const wantsY = (mx, e) => mx > this.plotR || e.shiftKey;
 
     el.addEventListener("mousemove", (e) => {
       const r = el.getBoundingClientRect();
       const mx = e.clientX - r.left, my = e.clientY - r.top;
+      if (dragging && dragPane) {
+        this.panY(dragPane, my - lastY);
+        lastY = my;
+        return;
+      }
       if (dragging) {
         const span = this.i1 - this.i0;
         const d = ((lastX - mx) / this.plotW) * span;
@@ -733,6 +854,7 @@ export class ChartView {
         this.requestDraw();
         return;
       }
+      el.style.cursor = mx > this.plotR ? "ns-resize" : "crosshair";
       this.hover = { x: mx, y: my };
       const t = this._hitTrade(mx, my);
       if (t !== this.hoverTrade) {
@@ -748,16 +870,35 @@ export class ChartView {
       this.octx.clearRect(0, 0, this.w, this.h);
     });
 
-    el.addEventListener("mousedown", (e) => { dragging = true; lastX = e.clientX - el.getBoundingClientRect().left; el.style.cursor = "grabbing"; });
-    window.addEventListener("mouseup", () => { dragging = false; el.style.cursor = "crosshair"; });
+    el.addEventListener("mousedown", (e) => {
+      const r = el.getBoundingClientRect();
+      const mx = e.clientX - r.left, my = e.clientY - r.top;
+      dragging = true; lastX = mx; lastY = my;
+      dragPane = wantsY(mx, e) ? this._paneAt(my) : null;
+      el.style.cursor = dragPane ? "ns-resize" : "grabbing";
+    });
+    window.addEventListener("mouseup", () => {
+      dragging = false; dragPane = null; el.style.cursor = "crosshair";
+    });
 
     el.addEventListener("wheel", (e) => {
       if (!this.data) return;
       e.preventDefault();
       const r = el.getBoundingClientRect();
-      const mx = e.clientX - r.left;
-      const anchor = this.iAt(mx);
+      const mx = e.clientX - r.left, my = e.clientY - r.top;
       const k = e.deltaY > 0 ? 1.18 : 1 / 1.18;
+
+      // Vertical zoom when the pointer is over the axis gutter or shift is
+      // held, and it applies ONLY to the pane under the pointer — the whole
+      // point is being able to magnify the indicator without disturbing the
+      // candles, or the trailing floor without disturbing either.
+      if (wantsY(mx, e)) {
+        const pane = this._paneAt(my);
+        if (pane) this.zoomY(pane, my, k);
+        return;
+      }
+
+      const anchor = this.iAt(mx);
       const n = this.data.bars.count;
       let a = anchor - (anchor - this.i0) * k;
       let b = anchor + (this.i1 - anchor) * k;
@@ -768,7 +909,18 @@ export class ChartView {
       this.requestDraw();
     }, { passive: false });
 
-    el.addEventListener("dblclick", () => this.resetView());
+    // Double-click in the gutter resets just that pane's vertical zoom; in the
+    // plot it resets the horizontal view and every pane at once.
+    el.addEventListener("dblclick", (e) => {
+      const r = el.getBoundingClientRect();
+      const mx = e.clientX - r.left, my = e.clientY - r.top;
+      if (mx > this.plotR) {
+        const pane = this._paneAt(my);
+        if (pane) { this.resetY(pane); return; }
+      }
+      this.resetY();
+      this.resetView();
+    });
   }
 
   _hitTrade(mx, my) {
