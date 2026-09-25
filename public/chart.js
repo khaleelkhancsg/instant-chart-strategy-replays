@@ -829,9 +829,9 @@ export class ChartView {
   // ── crosshair + hit testing ──
   _bindEvents() {
     const el = this.over;
-    let dragging = false, lastX = 0, lastY = 0, dragPane = null;
+    let dragging = false, lastX = 0, lastY = 0, dragPane = null, homePane = null;
     // A drag that starts in the right-hand axis gutter, or with shift held,
-    // moves that pane's VERTICAL axis instead of the shared horizontal one.
+    // moves that pane's VERTICAL axis and nothing else.
     const wantsY = (mx, e) => mx > this.plotR || e.shiftKey;
 
     el.addEventListener("mousemove", (e) => {
@@ -851,6 +851,14 @@ export class ChartView {
         if (b > n) { a -= b - n; b = n; }
         this.i0 = Math.max(0, a); this.i1 = Math.min(n, b);
         lastX = mx;
+        // An ordinary drag moves BOTH axes once the pane it started in has been
+        // zoomed vertically — having magnified something, the obvious next move
+        // is to drag it around, and discarding the vertical component makes the
+        // zoom feel broken. A pane still at its natural fit is left alone: it
+        // already shows everything, so dragging it would only push data off
+        // screen with nothing gained.
+        if (homePane && this.yZoomed(homePane)) this.panY(homePane, my - lastY);
+        lastY = my;
         this.requestDraw();
         return;
       }
@@ -875,10 +883,13 @@ export class ChartView {
       const mx = e.clientX - r.left, my = e.clientY - r.top;
       dragging = true; lastX = mx; lastY = my;
       dragPane = wantsY(mx, e) ? this._paneAt(my) : null;
-      el.style.cursor = dragPane ? "ns-resize" : "grabbing";
+      homePane = dragPane ? null : this._paneAt(my);
+      el.style.cursor = dragPane ? "ns-resize"
+                      : (homePane && this.yZoomed(homePane)) ? "move" : "grabbing";
     });
     window.addEventListener("mouseup", () => {
-      dragging = false; dragPane = null; el.style.cursor = "crosshair";
+      dragging = false; dragPane = null; homePane = null;
+      el.style.cursor = "crosshair";
     });
 
     el.addEventListener("wheel", (e) => {
