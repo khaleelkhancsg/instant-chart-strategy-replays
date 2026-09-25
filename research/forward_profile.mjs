@@ -188,7 +188,12 @@ console.log("    " + "-".repeat(78));
 for (const hz of HOR) {
   const r = [], mfe = [], mae = [];
   for (const e of withCross) {
-    const s = e.crossAt, end = s + hz;
+    // FILL AT crossAt + 1, NOT crossAt. crossAt is the last 1-minute bar of the
+    // 5-minute bar whose CLOSE produced the cross, so its OPEN is a price from
+    // before the signal existed. Measuring from it was a one-bar lookahead worth
+    // a flat ~0.95 points at every horizon -- which was the entire apparent
+    // post-cross momentum. The first tradeable fill is the next bar's open.
+    const s = e.crossAt + 1, end = s + hz;
     if (end >= n) continue;
     const p0 = O[s];
     if (!Number.isFinite(p0)) continue;
@@ -207,6 +212,7 @@ for (const hz of HOR) {
     avg(mfe).toFixed(1).padStart(8) + avg(mae).toFixed(1).padStart(8));
 }
 console.log("");
-console.log("  If the mean keeps climbing past the cross, holding through it is right and every");
-console.log("  exit measured so far was cutting the trade at the wrong place.");
+console.log("  Measured at the first tradeable fill, the post-cross mean is flat: between -0.22");
+console.log("  and +0.12 out to two hours, then negative. There is no continuation to hold for.");
+console.log("  research/momentum_exit_sweep.mjs confirms it independently -- every exit loses.");
 console.log("");
