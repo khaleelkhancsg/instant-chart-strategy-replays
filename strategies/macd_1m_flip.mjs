@@ -36,16 +36,16 @@
 // anything the signal does. Slippage defaults to zero here, which is generous
 // rather than realistic; turn it up in the sidebar and watch what survives.
 
-import { atr, ema, sma } from "../src/indicators.mjs";
+import { atr, ema, sma, wma } from "../src/indicators.mjs";
 
 // The MACD is built here rather than taken from src/indicators.mjs because that
 // helper is EMA-only and hard-wired to close. TradingView's MACD exposes the
 // source and BOTH smoothing types separately, and this control exists to be
-// that indicator exactly — defaults 12 / 26 / close / 9 / EMA / EMA.
+// that indicator exactly — defaults 12 / 26 / close / 9 / EMA / EMA, with
+// EMA, SMA and WMA available for both smoothings.
 function macdOf(bars, p) {
   const src = sourceSeries(bars, p.source);
-  const MA = (arr, len) => (p.oscMaType === "sma" ? sma(arr, len) : ema(arr, len));
-  const SIG = (arr, len) => (p.sigMaType === "sma" ? sma(arr, len) : ema(arr, len));
+  const MA = pick(p.oscMaType), SIG = pick(p.sigMaType);
   const slow = Math.max(p.slow, p.fast + 1);
   const ef = MA(src, p.fast), es = MA(src, slow);
   const line = new Float64Array(src.length);
@@ -54,6 +54,15 @@ function macdOf(bars, p) {
   const hist = new Float64Array(src.length);
   for (let i = 0; i < src.length; i++) hist[i] = line[i] - signal[i];
   return { line, signal, hist };
+}
+
+// EMA seeds from the first bar and so is finite everywhere; SMA and WMA both
+// carry a NaN warm-up. Chaining one over another is fine either way now that
+// both are NaN-safe, but it does push the first real signal further out.
+function pick(type) {
+  if (type === "sma") return sma;
+  if (type === "wma") return wma;
+  return ema;
 }
 
 function sourceSeries(bars, which) {
@@ -105,9 +114,9 @@ export default {
     { key: "source", label: "Source", type: "select", default: "close", group: "MACD",
       options: [["close", "Close"], ["open", "Open"], ["hl2", "HL2"], ["hlc3", "HLC3"], ["ohlc4", "OHLC4"]] },
     { key: "oscMaType", label: "Oscillator MA type", type: "select", default: "ema", group: "MACD",
-      options: [["ema", "EMA"], ["sma", "SMA"]] },
+      options: [["ema", "EMA"], ["sma", "SMA"], ["wma", "WMA"]] },
     { key: "sigMaType", label: "Signal line MA type", type: "select", default: "ema", group: "MACD",
-      options: [["ema", "EMA"], ["sma", "SMA"]] },
+      options: [["ema", "EMA"], ["sma", "SMA"], ["wma", "WMA"]] },
     { key: "atrPeriod", label: "ATR period", type: "int", min: 2, max: 60, step: 1, default: 14, group: "Signal",
       hint: "Not used for stops — they are switched off. The engine needs a finite ATR at entry." },
   ],

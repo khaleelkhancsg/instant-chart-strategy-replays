@@ -5,13 +5,27 @@
 // NOT Wilder's alpha = 1/n. Every strategy tuned in this project assumes EMA;
 // swapping in Wilder silently changes every signal, so don't "fix" it.
 
+// NaN-safe, for the same reason sma() is. This used to seed from arr[0]
+// unconditionally, so a single leading NaN made out[0] NaN and the recurrence
+// carried it forever — an EMA taken over any indicator with a warm-up prefix
+// came back entirely NaN. That is why an SMA or WMA oscillator feeding an EMA
+// signal line produced zero trades.
+//
+// Unchanged for input with no gaps: the seed is still the first value and the
+// recurrence is identical.
 export function ema(arr, span) {
   const n = arr.length;
-  const out = new Float64Array(n);
+  const out = new Float64Array(n).fill(NaN);
   if (n === 0) return out;
   const a = 2 / (span + 1), b = 1 - a;
-  out[0] = arr[0];
-  for (let i = 1; i < n; i++) out[i] = a * arr[i] + b * out[i - 1];
+  let prev = NaN;
+  for (let i = 0; i < n; i++) {
+    const v = arr[i];
+    if (!Number.isFinite(v)) { prev = NaN; continue; }
+    // Re-seed from the first finite value after any gap.
+    prev = Number.isFinite(prev) ? a * v + b * prev : v;
+    out[i] = prev;
+  }
   return out;
 }
 
@@ -30,6 +44,36 @@ export function sma(arr, p) {
     sum += v; run++;
     if (run > p) sum -= arr[i - p];      // finite by construction: run > p
     if (run >= p) out[i] = sum / p;
+  }
+  return out;
+}
+
+// Linearly weighted moving average: the newest bar carries weight p, the oldest
+// weight 1, so the divisor is the constant p(p+1)/2.
+//
+// O(n) rather than O(n*p), because this runs in the browser on every slider
+// move over the whole visible window. The recurrence is
+//     N(t) = N(t-1) + p*x[t] - S(t-1)
+// where N is the weighted numerator and S the plain rolling sum of the window
+// as it stood BEFORE x[t] was added. Sliding forward promotes every surviving
+// element by one weight, which is exactly subtracting that old sum.
+//
+// NaN-safe on the same terms as sma(): a gap resets the accumulators and the
+// average resumes once p consecutive finite values are available again.
+export function wma(arr, p) {
+  const n = arr.length;
+  const out = new Float64Array(n).fill(NaN);
+  if (p < 1) return out;
+  const div = (p * (p + 1)) / 2;
+  let num = 0, sum = 0, run = 0;
+  for (let i = 0; i < n; i++) {
+    const v = arr[i];
+    if (!Number.isFinite(v)) { num = 0; sum = 0; run = 0; continue; }
+    num += p * v - sum;           // sum is still the PREVIOUS window's total
+    sum += v;
+    run++;
+    if (run > p) sum -= arr[i - p];   // finite by construction: run > p
+    if (run >= p) out[i] = num / div;
   }
   return out;
 }

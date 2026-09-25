@@ -6,7 +6,7 @@
 // proves nothing, so the references here are deliberately independent.
 
 import fs from "node:fs";
-import { ema, sma, atr, adx, rsi, donchian, rollingMeanStd, trueRange, efficiencyRatio } from "./src/indicators.mjs";
+import { ema, sma, wma, atr, adx, rsi, donchian, rollingMeanStd, trueRange, efficiencyRatio } from "./src/indicators.mjs";
 import { buildFilterContext, applyFilters, countSurviving } from "./src/filters.mjs";
 import { replayPortfolio } from "./src/portfolio.mjs";
 import { resample, sliceBars, indexAtOrAfter, indexAtOrBefore } from "./src/resample.mjs";
@@ -87,6 +87,58 @@ t("sma matches a brute-force window mean", () => {
     close(out[i], s / 7, 1e-9, `i=${i}`);
   }
   if (!Number.isNaN(out[5])) throw new Error("expected NaN before the window fills");
+});
+
+t("wma matches a brute-force weighted window", () => {
+  const x = Array.from({ length: 60 }, () => rnd() * 100);
+  const p = 7, div = (p * (p + 1)) / 2;
+  const out = wma(x, p);
+  for (let i = p - 1; i < x.length; i++) {
+    // Newest bar carries weight p, oldest weight 1.
+    let num = 0;
+    for (let j = 0; j < p; j++) num += (p - j) * x[i - j];
+    close(out[i], num / div, 1e-9, `i=${i}`);
+  }
+  if (!Number.isNaN(out[p - 2])) throw new Error("expected NaN before the window fills");
+});
+
+t("wma weights the newest bar hardest", () => {
+  // A step from 0 to 1 must be picked up faster than a plain mean does.
+  const x = new Array(40).fill(0); for (let i = 20; i < 40; i++) x[i] = 1;
+  const w = wma(x, 10), m = sma(x, 10);
+  for (let i = 20; i < 29; i++) {
+    if (!(w[i] > m[i])) throw new Error(`wma should lead sma at i=${i}: ${w[i]} vs ${m[i]}`);
+  }
+  close(w[39], 1, 1e-12, "fully inside the step:");
+});
+
+t("ema seeds past a NaN prefix instead of returning an all-NaN series", () => {
+  // ema() used to seed from arr[0] unconditionally, so any indicator with a
+  // warm-up prefix produced nothing at all when smoothed. That is exactly what
+  // an SMA oscillator feeding an EMA signal line does.
+  const x = [NaN, NaN, 5, 5, 5, 5, 5, 5, 5, 5];
+  const out = ema(x, 4);
+  if (!Number.isNaN(out[0]) || !Number.isNaN(out[1])) throw new Error("prefix should stay NaN");
+  close(out[2], 5, 1e-12, "seeds from the first finite value:");
+  close(out[9], 5, 1e-12, "and converges normally after:");
+  // A clean series must be untouched by the change.
+  const clean = Array.from({ length: 40 }, () => rnd() * 10);
+  const e = ema(clean, 6);
+  let p = clean[0];
+  for (let i = 1; i < clean.length; i++) { p = (2 / 7) * clean[i] + (5 / 7) * p; close(e[i], p, 1e-12, `i=${i}`); }
+});
+
+t("sma and wma resume after a NaN instead of being poisoned by it", () => {
+  // The running accumulators used to add every element blindly, so one NaN
+  // wrecked the whole remaining series — which made MA-over-MA all-NaN.
+  const x = [1, 2, 3, NaN, 4, 5, 6, 7, 8, 9];
+  for (const f of [sma, wma]) {
+    const out = f(x, 3);
+    if (!Number.isNaN(out[4]) || !Number.isNaN(out[5])) throw new Error("should still be warming up");
+    if (!Number.isFinite(out[6])) throw new Error(`${f.name} never recovered after the NaN`);
+  }
+  close(sma(x, 3)[6], (4 + 5 + 6) / 3, 1e-12, "sma after the gap:");
+  close(wma(x, 3)[6], (1 * 4 + 2 * 5 + 3 * 6) / 6, 1e-12, "wma after the gap:");
 });
 
 t("trueRange matches the textbook 3-term max", () => {
