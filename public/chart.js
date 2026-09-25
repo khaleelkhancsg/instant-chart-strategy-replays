@@ -403,7 +403,16 @@ export class ChartView {
     const ovs = this.data.subOverlays || [];
     if (P.height <= 0 || !ovs.length) return;
     const ov = ovs[0];
-    const [lo, hi] = ov.range || [0, 100];
+    // An unbounded oscillator cannot use a fixed range. MACD scales with price,
+    // so a span taken over the whole series is set by the most recent years and
+    // squashes anything older into a flat line at zero — the crossings the book
+    // trades on become invisible. Overlays marked autoRange are scaled to what
+    // is actually on screen instead, and share one scale so they stay aligned.
+    let [lo, hi] = ov.range || [0, 100];
+    if (ovs.some((o) => o.autoRange)) {
+      const s = this._visibleSpan(ovs.filter((o) => o.autoRange));
+      if (s) { lo = s[0]; hi = s[1]; }
+    }
     const y = (v) => P.bottom - ((v - lo) / (hi - lo)) * P.height;
 
     ctx.strokeStyle = CSS.grid;
@@ -421,8 +430,75 @@ export class ChartView {
       ctx.font = "10px ui-monospace, monospace";
       ctx.fillText(String(ov.threshold), this.plotR + 4, y(ov.threshold) + 3);
     }
-    this._drawOverlayLine(ctx, ov, P, y);
-    this._paneLabel(ctx, P, ov.name);
+    // Draw EVERY sub overlay, not just the first. This used to render ovs[0]
+    // and silently drop the rest, which is why a MACD pane could never show its
+    // signal line and the crossover the strategy trades on was invisible.
+    //
+    // Each overlay maps through its OWN range, so a pane can hold series on
+    // different scales (a MACD in points beside an ADX in 0-60) without either
+    // being squashed into the other's axis.
+    // Histograms first so the lines whose crossing they represent sit on top.
+    const ordered = [...ovs].sort((a, b) =>
+      (a.kind === "hist" ? 0 : 1) - (b.kind === "hist" ? 0 : 1));
+    for (const o of ordered) {
+      const [l, h] = o.autoRange ? [lo, hi] : (o.range || [lo, hi]);
+      const oy = (l === lo && h === hi) ? y
+               : (v) => P.bottom - ((v - l) / (h - l)) * P.height;
+      if (o.kind === "hist") this._drawOverlayHist(ctx, o, P, oy);
+      else this._drawOverlayLine(ctx, o, P, oy);
+    }
+    this._paneLabel(ctx, P, ovs.map((o) => o.name).join("  ·  "));
+  }
+
+  // Min/max of the given overlays across the visible bars only, padded, and
+  // always symmetric about zero so the zero line a crossover happens on sits
+  // in the middle of the pane rather than drifting with the data.
+  _visibleSpan(ovs) {
+    const map = this.data.tfToLocal;
+    if (!map) return null;
+    const vals = [];
+    for (const o of ovs) {
+      if (!o.data) continue;
+      for (let k = 0; k < o.data.length; k++) {
+        const li = map.localIdx[k];
+        if (li < this.i0 || li > this.i1) continue;
+        const v = Math.abs(o.data[k]);
+        if (Number.isFinite(v)) vals.push(v);
+      }
+    }
+    if (!vals.length) return null;
+    // A PERCENTILE, not the maximum. One news bar can throw a MACD several
+    // times its usual amplitude, and scaling to that leaves every ordinary
+    // crossing compressed into a couple of pixels — which is how this pane
+    // ended up using a fifth of its height. The rare spike clips at the pane
+    // edge instead; the line renderer already drops points that fall outside.
+    vals.sort((a, b) => a - b);
+    const m = vals[Math.min(vals.length - 1, Math.floor(vals.length * 0.98))];
+    if (!(m > 0)) return null;
+    return [-m * 1.15, m * 1.15];
+  }
+
+  // Vertical bars from the zero line, coloured by sign — a MACD histogram.
+  // Bars are clamped to at least one pixel so a near-zero reading still shows
+  // where the crossover actually happened.
+  _drawOverlayHist(ctx, ov, P, y) {
+    const map = this.data.tfToLocal;
+    if (!map || !ov.data) return;
+    const zero = y(0);
+    const bw = Math.max(1, Math.min(6, (this.plotW / Math.max(1, this.i1 - this.i0)) *
+                                       (map.stride || 1) * 0.7));
+    const up = ov.colorUp || "#3fb27f", dn = ov.colorDown || "#d1566e";
+    for (let k = 0; k < ov.data.length; k++) {
+      const li = map.localIdx[k];
+      if (li < this.i0 || li > this.i1) continue;
+      const v = ov.data[k];
+      if (!Number.isFinite(v)) continue;
+      const py = y(v);
+      if (!Number.isFinite(py)) continue;
+      ctx.fillStyle = v >= 0 ? up : dn;
+      const top = Math.min(py, zero), hgt = Math.max(1, Math.abs(py - zero));
+      ctx.fillRect(this.x(li) - bw / 2, top, bw, hgt);
+    }
   }
 
   _drawEquityPane(ctx) {

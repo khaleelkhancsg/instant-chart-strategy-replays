@@ -15,14 +15,21 @@ export function ema(arr, span) {
   return out;
 }
 
+// NaN-safe. The running sum used to add every element blindly, so one NaN
+// anywhere poisoned it permanently — subtracting a NaN back out later does not
+// clear it. That made SMA-over-SMA return an all-NaN series, because most
+// indicators carry a NaN warm-up prefix. Tracking the run of consecutive finite
+// values instead means the average simply resumes once a full window is clean.
 export function sma(arr, p) {
   const n = arr.length;
   const out = new Float64Array(n).fill(NaN);
-  let sum = 0;
+  let sum = 0, run = 0;
   for (let i = 0; i < n; i++) {
-    sum += arr[i];
-    if (i >= p) sum -= arr[i - p];
-    if (i >= p - 1) out[i] = sum / p;
+    const v = arr[i];
+    if (!Number.isFinite(v)) { sum = 0; run = 0; continue; }
+    sum += v; run++;
+    if (run > p) sum -= arr[i - p];      // finite by construction: run > p
+    if (run >= p) out[i] = sum / p;
   }
   return out;
 }

@@ -36,7 +36,39 @@
 // anything the signal does. Slippage defaults to zero here, which is generous
 // rather than realistic; turn it up in the sidebar and watch what survives.
 
-import { atr, macd } from "../src/indicators.mjs";
+import { atr, ema, sma } from "../src/indicators.mjs";
+
+// The MACD is built here rather than taken from src/indicators.mjs because that
+// helper is EMA-only and hard-wired to close. TradingView's MACD exposes the
+// source and BOTH smoothing types separately, and this control exists to be
+// that indicator exactly — defaults 12 / 26 / close / 9 / EMA / EMA.
+function macdOf(bars, p) {
+  const src = sourceSeries(bars, p.source);
+  const MA = (arr, len) => (p.oscMaType === "sma" ? sma(arr, len) : ema(arr, len));
+  const SIG = (arr, len) => (p.sigMaType === "sma" ? sma(arr, len) : ema(arr, len));
+  const slow = Math.max(p.slow, p.fast + 1);
+  const ef = MA(src, p.fast), es = MA(src, slow);
+  const line = new Float64Array(src.length);
+  for (let i = 0; i < src.length; i++) line[i] = ef[i] - es[i];
+  const signal = SIG(line, p.signal);
+  const hist = new Float64Array(src.length);
+  for (let i = 0; i < src.length; i++) hist[i] = line[i] - signal[i];
+  return { line, signal, hist };
+}
+
+function sourceSeries(bars, which) {
+  const { open: O, high: H, low: L, close: C } = bars;
+  if (which === "close" || !which) return C;
+  const out = new Float64Array(C.length);
+  for (let i = 0; i < C.length; i++) {
+    out[i] = which === "open" ? O[i]
+           : which === "hl2" ? (H[i] + L[i]) / 2
+           : which === "hlc3" ? (H[i] + L[i] + C[i]) / 3
+           : which === "ohlc4" ? (O[i] + H[i] + L[i] + C[i]) / 4
+           : C[i];
+  }
+  return out;
+}
 
 export default {
   id: "macd_1m_flip",
@@ -67,50 +99,67 @@ export default {
   rulesDefaults: { circuitBreaker: 0, dailyProfitStop: 0 },
 
   params: [
-    { key: "fast", label: "Fast EMA", type: "int", min: 2, max: 100, step: 1, default: 12, group: "MACD" },
-    { key: "slow", label: "Slow EMA", type: "int", min: 3, max: 200, step: 1, default: 26, group: "MACD" },
-    { key: "signal", label: "Signal EMA", type: "int", min: 2, max: 50, step: 1, default: 9, group: "MACD" },
+    { key: "fast", label: "Fast length", type: "int", min: 2, max: 100, step: 1, default: 12, group: "MACD" },
+    { key: "slow", label: "Slow length", type: "int", min: 3, max: 200, step: 1, default: 26, group: "MACD" },
+    { key: "signal", label: "Signal smoothing", type: "int", min: 2, max: 50, step: 1, default: 9, group: "MACD" },
+    { key: "source", label: "Source", type: "select", default: "close", group: "MACD",
+      options: [["close", "Close"], ["open", "Open"], ["hl2", "HL2"], ["hlc3", "HLC3"], ["ohlc4", "OHLC4"]] },
+    { key: "oscMaType", label: "Oscillator MA type", type: "select", default: "ema", group: "MACD",
+      options: [["ema", "EMA"], ["sma", "SMA"]] },
+    { key: "sigMaType", label: "Signal line MA type", type: "select", default: "ema", group: "MACD",
+      options: [["ema", "EMA"], ["sma", "SMA"]] },
     { key: "atrPeriod", label: "ATR period", type: "int", min: 2, max: 60, step: 1, default: 14, group: "Signal",
-      hint: "Not used for stops — they are switched off. The engine needs a finite ATR at entry, and the chart draws from it." },
+      hint: "Not used for stops — they are switched off. The engine needs a finite ATR at entry." },
   ],
 
   compute(bars, p) {
     const { high: H, low: L, close: C } = bars;
     const n = C.length;
-    // `slow` must stay strictly above `fast` or the line is inverted nonsense.
-    const slow = Math.max(p.slow, p.fast + 1);
-    const m = macd(C, p.fast, slow, p.signal);
+    const m = macdOf(bars, p);
     const a = atr(H, L, C, p.atrPeriod);
 
     const sig = new Int8Array(n);
     for (let i = 1; i < n; i++) {
       // The histogram is line − signal, so its sign change IS the crossover.
-      // Comparing it against zero rather than comparing the two lines directly
-      // avoids a float equality case when they touch exactly.
+      // Testing it against zero rather than comparing the two lines directly
+      // avoids a float equality case on the bar they touch exactly.
       if (m.hist[i] > 0 && m.hist[i - 1] <= 0) sig[i] = 1;
       else if (m.hist[i] < 0 && m.hist[i - 1] >= 0) sig[i] = -1;
     }
 
+    // autoRange, not a fixed span: MACD scales with price, and MNQ ran from
+    // ~7,000 to ~29,000 over this dataset. A range taken across the whole
+    // history is set by the last two years and flattens everything before it
+    // into a line on zero. The three series share one scale so the bars stay
+    // lined up with the crossing they are made of.
+    const r = spanOf(m.line, m.signal, m.hist);
     return {
       sig,
       atr: a,
       overlays: [
+        // Histogram first: it carries the zero line the crossover happens on,
+        // and the renderer draws bars behind the lines.
+        { name: "Histogram", pane: "sub", kind: "hist", data: m.hist,
+          colorUp: "#3fb27f", colorDown: "#d1566e", threshold: 0,
+          autoRange: true, range: r },
         { name: "MACD", pane: "sub", color: "#4aa3ff", data: m.line,
-          threshold: 0, range: range2(m.line, m.signal) },
+          autoRange: true, range: r },
         { name: "Signal", pane: "sub", color: "#e0894a", data: m.signal,
-          range: range2(m.line, m.signal) },
+          autoRange: true, range: r },
       ],
     };
   },
 };
 
-// MACD is unbounded and scales with price, so the sub-pane range has to come
-// from the data. Both series share one range or the crossings do not line up.
-function range2(a, b) {
+// MACD is unbounded and scales with price, so the sub-pane range has to be
+// derived from the data rather than fixed.
+function spanOf(...series) {
   let m = 0;
-  for (let i = 0; i < a.length; i++) {
-    const v = Math.max(Math.abs(a[i]), Math.abs(b[i]));
-    if (Number.isFinite(v) && v > m) m = v;
+  for (const s of series) {
+    for (let i = 0; i < s.length; i++) {
+      const v = Math.abs(s[i]);
+      if (Number.isFinite(v) && v > m) m = v;
+    }
   }
   return [-m * 1.05 || -1, m * 1.05 || 1];
 }
