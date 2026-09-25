@@ -481,6 +481,11 @@ export class ChartView {
   // Vertical bars from the zero line, coloured by sign — a MACD histogram.
   // Bars are clamped to at least one pixel so a near-zero reading still shows
   // where the crossover actually happened.
+  // Four-tone when the fade colours are supplied: the sign picks green or red,
+  // and whether the bar moved DOWN from the one before it picks the lighter
+  // shade of that colour. The comparison is against the previous bar in the
+  // series, not the previous bar drawn, so it stays correct at the left edge of
+  // the view where the predecessor is off screen.
   _drawOverlayHist(ctx, ov, P, y) {
     const map = this.data.tfToLocal;
     if (!map || !ov.data) return;
@@ -488,6 +493,7 @@ export class ChartView {
     const bw = Math.max(1, Math.min(6, (this.plotW / Math.max(1, this.i1 - this.i0)) *
                                        (map.stride || 1) * 0.7));
     const up = ov.colorUp || "#3fb27f", dn = ov.colorDown || "#d1566e";
+    const upF = ov.colorUpFade || up, dnF = ov.colorDownFade || dn;
     for (let k = 0; k < ov.data.length; k++) {
       const li = map.localIdx[k];
       if (li < this.i0 || li > this.i1) continue;
@@ -495,7 +501,9 @@ export class ChartView {
       if (!Number.isFinite(v)) continue;
       const py = y(v);
       if (!Number.isFinite(py)) continue;
-      ctx.fillStyle = v >= 0 ? up : dn;
+      const prev = k > 0 ? ov.data[k - 1] : NaN;
+      const fell = Number.isFinite(prev) && v < prev;
+      ctx.fillStyle = v >= 0 ? (fell ? upF : up) : (fell ? dnF : dn);
       const top = Math.min(py, zero), hgt = Math.max(1, Math.abs(py - zero));
       ctx.fillRect(this.x(li) - bw / 2, top, bw, hgt);
     }

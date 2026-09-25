@@ -148,9 +148,19 @@ export default {
       overlays: [
         // Histogram first: it carries the zero line the crossover happens on,
         // and the renderer draws bars behind the lines.
+        // Two-toned each side. Sign picks green or red; a bar LOWER than the
+        // one before it gets the lighter shade of that colour.
+        //
+        // Note this is literal, and it differs from the usual charting
+        // convention on the bearish half. Above zero, "lower than the last bar"
+        // means momentum fading, so light green reads as a warning. Below zero
+        // it means the histogram is getting MORE negative, which most platforms
+        // draw as the DARK red. Swap colorDown and colorDownFade to get the
+        // conventional reading.
         { name: "Histogram", pane: "sub", kind: "hist", data: m.hist,
-          colorUp: "#3fb27f", colorDown: "#d1566e", threshold: 0,
-          autoRange: true, range: r },
+          colorUp: "#26a65b", colorUpFade: "#7fd4a0",
+          colorDown: "#d1566e", colorDownFade: "#eda2b0",
+          threshold: 0, autoRange: true, range: r },
         { name: "MACD", pane: "sub", color: "#4aa3ff", data: m.line,
           autoRange: true, range: r },
         { name: "Signal", pane: "sub", color: "#e0894a", data: m.signal,
