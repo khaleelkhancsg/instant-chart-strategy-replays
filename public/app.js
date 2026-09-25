@@ -776,6 +776,20 @@ async function boot() {
 
   S.chart = new ChartView($("chartWrap"));
   S.chart.onHoverTrade = (t) => { window._hoverTrade = t; };
+
+  // Candle size is a VIEW setting, so it is deliberately not part of the
+  // strategy config and never triggers a re-run — the trades on screen are the
+  // same trades whatever size the candles are drawn at. Remembered between
+  // visits because it is a preference, not part of a result.
+  const tfSel = $("chartTf");
+  const savedTf = Number(localStorage.getItem("mnq.chartTf")) || 1;
+  tfSel.value = String(savedTf);
+  S.chart.setTimeframe(savedTf);
+  tfSel.addEventListener("change", () => {
+    const v = Number(tfSel.value) || 1;
+    try { localStorage.setItem("mnq.chartTf", String(v)); } catch { /* private mode */ }
+    S.chart.setTimeframe(v);
+  });
   $("chartWrap").addEventListener("mousemove", (e) => tradeTooltip(window._hoverTrade, e));
   $("chartWrap").addEventListener("mouseleave", () => tradeTooltip(null));
 

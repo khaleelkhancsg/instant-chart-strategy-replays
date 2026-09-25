@@ -31,6 +31,17 @@ const fmtUsd = (v, dp = 0) =>
   (v < 0 ? "-$" : "$") + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: dp, maximumFractionDigits: dp });
 const fmtPx = (v) => v.toFixed(2);
 
+const TF_NAME = { 1: "1m", 5: "5m", 10: "10m", 15: "15m", 30: "30m", 60: "1h", 1440: "1d" };
+// Says what the candles ARE, and flags the case where the requested size could
+// not be drawn -- silently showing a different aggregation than the one picked
+// is the sort of thing that gets read off a chart and quoted later.
+function tfNote(want, applied) {
+  if (!want || want === 1) return "";
+  const nm = TF_NAME[want] || want + "m";
+  return applied === want ? "  ·  " + nm + " candles"
+                          : "  ·  " + nm + " too dense here — zoom in";
+}
+
 function fmtTime(ms) {
   const d = new Date(ms);
   const p = (x) => String(x).padStart(2, "0");
@@ -195,6 +206,14 @@ export class ChartView {
     this.requestDraw();
   }
 
+  // Candle aggregation for DISPLAY only. It does not touch the strategy, which
+  // keeps computing on its own timeframe — you can watch a 1-minute book on
+  // hourly candles and the entries stay exactly where they were.
+  setTimeframe(min) {
+    this.tfMin = Math.max(1, Math.round(min) || 1);
+    this.requestDraw();
+  }
+
   resetView() {
     if (!this.data) return;
     this.i0 = 0;
@@ -318,6 +337,19 @@ export class ChartView {
 
   // Bucket the visible range into pixel columns. Everything that needs candles
   // goes through this so the cost is bounded by width, not by bar count.
+  // Candle columns. Two bucketings, and the distinction matters:
+  //
+  //   tfMin = 1   slice [i0,i1) evenly so there is never more than one candle
+  //               per two pixels. Purely a drawing optimisation.
+  //   tfMin > 1   group by the CLOCK — bars sharing a 5/10/15/30/60-minute slot,
+  //               or a trading day. Not by counting bars in fives, because the
+  //               series has holes: CME halts 17:00-18:00 ET and closes at
+  //               weekends, so a fixed stride would straddle those gaps and
+  //               build candles out of bars hours apart.
+  //
+  // Either way idx/idxEnd stay in ONE-MINUTE index space, which is the space
+  // trades, overlays and session markers are positioned in. Nothing downstream
+  // has to know the candles were aggregated.
   _columns() {
     const { bars } = this.data;
     const s = Math.max(0, Math.floor(this.i0));
@@ -325,16 +357,43 @@ export class ChartView {
     const n = e - s;
     if (n <= 0) return null;
 
-    const maxCols = Math.min(n, Math.floor(this.plotW / 2));
-    const cols = Math.max(1, maxCols);
-    const per = n / cols;
+    const maxCols = Math.max(1, Math.min(n, Math.floor(this.plotW / 2)));
+    const tf = this.tfMin || 1;
+    // A drawing budget, not the 2px rule. Honouring the chosen timeframe
+    // matters more than candle width — a sub-pixel candle still aggregates the
+    // right bars, and the alternative is silently showing something else.
+    const MAX_TF_COLS = 4000;
 
+    let starts = null;
+    if (tf > 1) {
+      const ms = tf * 60000;
+      // Daily uses the trading-day index the dataset already carries, so the
+      // session boundary is the firm's 17:00 ET one rather than midnight UTC.
+      const keyOf = tf >= 1440 ? (i) => bars.tday[i] : (i) => Math.floor(bars.ts[i] / ms);
+      starts = [];
+      let prev = null;
+      for (let i = s; i < e; i++) {
+        const k = keyOf(i);
+        if (k !== prev) { starts.push(i); prev = k; }
+        if (starts.length > MAX_TF_COLS) break;
+      }
+      // Past the budget the request is meaningless anyway: thousands of candles
+      // in a few hundred pixels are indistinguishable from the pixel slicing
+      // they fall back to.
+      if (starts.length > MAX_TF_COLS) starts = null;
+    }
+    // Recorded so the pane can admit when it is not showing what was asked for.
+    this.tfApplied = tf === 1 ? 1 : (starts ? tf : 0);
+
+    const cols = starts ? starts.length : maxCols;
+    const per = n / cols;
     const o = new Float32Array(cols), h = new Float32Array(cols);
     const l = new Float32Array(cols), c = new Float32Array(cols);
-    const idx = new Int32Array(cols);
+    const idx = new Int32Array(cols), idxEnd = new Int32Array(cols);
     for (let k = 0; k < cols; k++) {
-      const a = s + Math.floor(k * per);
-      const b = Math.min(e, s + Math.floor((k + 1) * per));
+      const a = starts ? starts[k] : s + Math.floor(k * per);
+      const b = starts ? (k + 1 < cols ? starts[k + 1] : e)
+                       : Math.min(e, s + Math.floor((k + 1) * per));
       const end = Math.max(a + 1, b);
       let hi = -Infinity, lo = Infinity;
       for (let i = a; i < end; i++) {
@@ -342,9 +401,9 @@ export class ChartView {
         if (bars.low[i] < lo) lo = bars.low[i];
       }
       o[k] = bars.open[a]; h[k] = hi; l[k] = lo; c[k] = bars.close[end - 1];
-      idx[k] = a;
+      idx[k] = a; idxEnd[k] = end;
     }
-    return { cols, o, h, l, c, idx, per, s, e };
+    return { cols, o, h, l, c, idx, idxEnd, per, s, e };
   }
 
   _priceRange(col) {
@@ -379,13 +438,17 @@ export class ChartView {
 
     this._grid(ctx, P, lo, hi, y, (v) => fmtPx(v));
 
-    // Candles
-    const cw = this.plotW / col.cols;
-    const bodyW = Math.max(1, Math.min(cw * 0.72, 14));
-    const thin = bodyW <= 1.5;
+    // Candles. Positioned from the BAR INDEX they cover, not from the column
+    // number — clock-aligned buckets hold different numbers of bars, so even
+    // column spacing would slide them out of line with the trade markers and
+    // overlays, which are placed by index.
     ctx.lineWidth = 1;
     for (let k = 0; k < col.cols; k++) {
-      const cx = this.plotL + (k + 0.5) * cw;
+      const xa = this.x(col.idx[k]), xb = this.x(col.idxEnd[k]);
+      const cw = Math.max(1, xb - xa);
+      const bodyW = Math.max(1, Math.min(cw * 0.72, 14));
+      const thin = bodyW <= 1.5;
+      const cx = (xa + xb) / 2;
       const up = col.c[k] >= col.o[k];
       const color = up ? CSS.bull : CSS.bear;
       const yh = y(col.h[k]), yl = y(col.l[k]);
@@ -407,7 +470,8 @@ export class ChartView {
     // Trades
     this._drawTrades(ctx, P, y);
 
-    this._paneLabel(ctx, P, this.data.title || "Price", "price");
+    this._paneLabel(ctx, P, (this.data.title || "Price") + tfNote(this.tfMin, this.tfApplied),
+                    "price");
   }
 
   _drawOverlayLine(ctx, ov, P, y) {
