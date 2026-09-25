@@ -263,6 +263,7 @@ function variant(fn) {
         if (s2 !== sgn) { sgn = s2; run = 0; }
         const a = Math.abs(v);
         if (a > run) run = a;
+        if (!fn) continue;                       // no peak filter: leave sig alone
         const pk = sc[i] > 0 ? run / sc[i] : NaN;
         if (sig[i] && !(Number.isFinite(pk) && fn(pk))) sig[i] = 0;
       }
