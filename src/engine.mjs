@@ -14,7 +14,7 @@
 // an opposite signal while in a position closes at this bar's open AND may
 // re-enter on the same bar. A stop/target exit, by contrast, ends the bar.
 
-export const EXIT = { SL: "SL", TP: "TP", FLIP: "FLIP", EOD: "EOD", TIME: "TIME", FLAT: "FLAT", DAYCAP: "DAYCAP", DAYLOSS: "DAYLOSS" };
+export const EXIT = { SL: "SL", TP: "TP", FLIP: "FLIP", EOD: "EOD", TIME: "TIME", FLAT: "FLAT", DAYCAP: "DAYCAP", DAYLOSS: "DAYLOSS", SIGNAL: "SIGNAL" };
 
 // Intraday-only session rules, in America/Chicago minutes-of-day.
 //
@@ -252,8 +252,19 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
   const CT = bars.ctMin;
   const intraday = !!x.intradayOnly && !!CT;
 
+  // An optional SIGNAL exit, as a BITMASK per bar: 1 closes a long, 2 closes a
+  // short, 3 closes either. A mask rather than a direction because the array is
+  // built in compute(), which has no idea which way the book will be positioned
+  // when the bar arrives -- it can only say "a long should leave here" and "a
+  // short should leave here", and sometimes both are true.
+  //
+  // Read from the bar that just closed and filled at this bar's open, the same
+  // causality entries use. Absent by default, so no existing book moves.
+  const exitSig = cfg && cfg.exitSig ? cfg.exitSig : null;
+
   for (let i = 1; i < n; i++) {
     const s = sig[i - 1];
+    const xs = exitSig ? exitSig[i - 1] : 0;
     const flatNow = intraday && inFlatWindow(CT[i], x.flattenCt, x.reopenCt);
     if (dayTracked && bars.tday[i] !== curTday) {
       curTday = bars.tday[i]; dayRealised = 0; dayCapHit = false; dayLossHit = false;
@@ -334,6 +345,13 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       }
       if (exited && !x.sameBarReentry) continue;
       if (x.scaleInOrder === "after") tryAdd(i);
+      // Deliberately AFTER the bracket test. Both would fill at this bar's open,
+      // and when a gap takes out the stop on the same bar the signal says to
+      // leave, the stop is the pessimistic reading -- the same convention the
+      // rest of this engine uses when one bar contains two answers.
+      if (xs && ((pos === 1 && (xs & 1)) || (pos === -1 && (xs & 2)))) {
+        close_(O[i], EXIT.SIGNAL, i); continue;
+      }
       if (maxBars > 0 && i - ei >= maxBars) { close_(O[i], EXIT.TIME, i); continue; }
       if (x.flipOnOpposite && s !== 0 && s !== pos) close_(O[i], EXIT.FLIP, i); // may re-enter below
       if (pos !== 0) continue;   // still holding: no entry logic this bar

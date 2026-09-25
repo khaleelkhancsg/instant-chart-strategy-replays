@@ -39,6 +39,10 @@ export function runStrategy(bars1m, strategy, params, exec, opts = {}) {
   }
 
   const x = resolveExec(exec);
+  // A strategy may also return an exitSig: +1 closes a long, -1 closes a short.
+  // It rides on the exec config rather than the signature so nothing that calls
+  // runBrackets directly has to change.
+  if (out.exitSig) x.exitSig = out.exitSig;
   const { trades } = runBrackets(tf, sig, out.atr, x);
 
   const kept = opts.fromMs != null

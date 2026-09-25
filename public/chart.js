@@ -657,9 +657,13 @@ export class ChartView {
       if (!Number.isFinite(v)) continue;
       const py = y(v);
       if (!Number.isFinite(py)) continue;
+      // "Lower than the last bar" means CLOSER TO THE BASELINE, not smaller as
+      // a signed number. Below zero those are opposites: a histogram going from
+      // -3 to -5 is a bigger bar, not a smaller one, and shading it as the fade
+      // would mark a strengthening move as a weakening one.
       const prev = k > 0 ? ov.data[k - 1] : NaN;
-      const fell = Number.isFinite(prev) && v < prev;
-      ctx.fillStyle = v >= 0 ? (fell ? upF : up) : (fell ? dnF : dn);
+      const fading = Number.isFinite(prev) && Math.abs(v) < Math.abs(prev);
+      ctx.fillStyle = v >= 0 ? (fading ? upF : up) : (fading ? dnF : dn);
       const top = Math.min(py, zero), hgt = Math.max(1, Math.abs(py - zero));
       ctx.fillRect(this.x(li) - bw / 2, top, bw, hgt);
     }

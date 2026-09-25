@@ -13,6 +13,28 @@ import { DEFAULT_EXEC } from "/src/engine.mjs";
 import { NO_FILTER } from "/src/filters.mjs";
 import { indexAtOrAfter } from "/src/resample.mjs";
 
+// The 1-minute x-position a resampled bar should be drawn at: the middle of the
+// minutes it covers. srcLast+1 is the exclusive end, so the centre of bar k is
+// halfway between srcFirst[k] and srcLast[k]+1. At 1-minute that is i + 0.5,
+// which is exactly where that candle's centre falls.
+function barCentre(tf, idx, fallback) {
+  if (!tf || !tf.srcFirst || idx == null || idx < 0 || idx >= tf.srcFirst.length) {
+    return (fallback || 0) + 0.5;
+  }
+  return (tf.srcFirst[idx] + tf.srcLast[idx] + 1) / 2;
+}
+
+const _centreCache = new WeakMap();
+function centresOf(tf) {
+  const hit = _centreCache.get(tf);
+  if (hit) return hit;
+  const n = tf.srcFirst ? tf.srcFirst.length : 0;
+  const out = new Float64Array(n);
+  for (let k = 0; k < n; k++) out[k] = (tf.srcFirst[k] + tf.srcLast[k] + 1) / 2;
+  _centreCache.set(tf, out);
+  return out;
+}
+
 const $ = (id) => document.getElementById(id);
 const DAY = 86400000;
 
@@ -515,11 +537,20 @@ function paintChart(res, replay) {
   const byKey = new Map();
   for (const e of replay.events) byKey.set(e.k, e);
 
+  // Declared here rather than below because the trade mapping needs it to place
+  // each fill at the centre of its own bar.
+  const tf = res.tf;
+
   const trades = res.trades.map((t, k) => {
     const e = byKey.get(k);
     return {
       ...t,
-      xStart: t.entrySrc, xEnd: t.exitSrc,
+      // Centre of the bar the fill belongs to, not its first minute. Candles
+      // are drawn centred on their span, so an endpoint pinned to the span's
+      // EDGE sits half a candle off the candle it refers to -- which is what
+      // made entries look like they happened a bar after the signal.
+      xStart: barCentre(tf, t.entryIdx, t.entrySrc),
+      xEnd: barCentre(tf, t.exitIdx, t.exitSrc),
       taken: e ? e.taken : false,
       skip: e ? e.skip : "outside",
       cum: e ? e.cum : null,
@@ -536,7 +567,6 @@ function paintChart(res, replay) {
     xEnd: indexAtOrAfter(blob.ts, d.lastMs),
   }));
 
-  const tf = res.tf;
   const priceOverlays = (res.overlays || []).filter((o) => o.pane !== "sub");
   const subOverlays = (res.overlays || []).filter((o) => o.pane === "sub");
 
@@ -551,7 +581,11 @@ function paintChart(res, replay) {
     subOverlays,
     // Overlays are indexed in signal-timeframe space; stride lets the renderer
     // convert a 1-minute pixel budget into a sane sampling step.
-    tfToLocal: { localIdx: tf.srcLast, stride: S.params.timeframeMin || 1 },
+    // Overlay points land at the CENTRE of the bar that produced them, for the
+    // same reason. srcLast put a 5-minute MACD value on the right-hand edge of
+    // its own candle, so the indicator read half a candle ahead of the price it
+    // was computed from.
+    tfToLocal: { localIdx: centresOf(tf), stride: S.params.timeframeMin || 1 },
     lockX: replay.lockMs ? indexAtOrAfter(blob.ts, replay.lockMs) : null,
     // Where the evaluation actually ended — pass or breach, whichever came first.
     resolveX: (replay.passMs ?? replay.failMs) != null
