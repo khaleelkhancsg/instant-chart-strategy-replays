@@ -576,15 +576,22 @@ export class ChartView {
     ctx.strokeRect(this.plotL + 0.5, P.top + 0.5, this.plotW, P.height);
 
     if (ov.threshold != null) {
+      // The threshold belongs to ovs[0], so it has to be placed on THAT
+      // overlay's scale. Using the shared auto-ranged y would put an ADX
+      // threshold of 25 wherever 25 happens to fall on a MACD's axis, which is
+      // only harmless while every overlay in the pane shares one range.
+      const [tl, th] = ov.autoRange ? [lo, hi] : (ov.range || [lo, hi]);
+      const ty = (tl === lo && th === hi) ? y
+               : (v) => P.bottom - ((v - tl) / (th - tl)) * P.height;
       ctx.strokeStyle = CSS.gridStrong;
       ctx.setLineDash([4, 4]);
       ctx.beginPath();
-      ctx.moveTo(this.plotL, y(ov.threshold)); ctx.lineTo(this.plotR, y(ov.threshold));
+      ctx.moveTo(this.plotL, ty(ov.threshold)); ctx.lineTo(this.plotR, ty(ov.threshold));
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.fillStyle = CSS.text;
       ctx.font = "10px ui-monospace, monospace";
-      ctx.fillText(String(ov.threshold), this.plotR + 4, y(ov.threshold) + 3);
+      ctx.fillText(String(ov.threshold), this.plotR + 4, ty(ov.threshold) + 3);
     }
     // Draw EVERY sub overlay, not just the first. This used to render ovs[0]
     // and silently drop the rest, which is why a MACD pane could never show its

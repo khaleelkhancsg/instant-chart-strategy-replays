@@ -82,6 +82,7 @@
 // is real.
 
 import base from "./donchian_eff_rth.mjs";
+import { ema } from "../src/indicators.mjs";
 
 export default {
   id: "donchian_shipped",
@@ -118,6 +119,86 @@ export default {
   // Signal code is SHARED, not copied, so the two books cannot drift apart.
   // period 30, adx_min 25, adx_period 14, atr_period 14, cooldown_bars 1 —
   // identical to CONFIG.
-  params: base.params,
-  compute: base.compute,
+  //
+  // The visual params below are appended AFTER base.params so the signal keys
+  // keep their positions, and every one of them is prefixed `viz` so it cannot
+  // collide with a key base.compute reads (period, adxMin, adxPeriod,
+  // cooldownBars, atrPeriod). A collision here would silently retune the live
+  // book from a chart control, which is the one thing this file must never do.
+  params: [
+    ...base.params,
+    { key: "vizShowEma", label: "Show EMAs", type: "select", default: "on", group: "Visual only",
+      options: [["on", "Show"], ["off", "Hide"]],
+      hint: "Drawn on the price pane. Display only — the Donchian book does not read an EMA and these do not enter its rules." },
+    { key: "vizEmaFast", label: "EMA fast", type: "int", min: 2, max: 200, step: 1, default: 9, group: "Visual only" },
+    { key: "vizEmaSlow", label: "EMA slow", type: "int", min: 3, max: 400, step: 1, default: 21, group: "Visual only" },
+    { key: "vizEmaTrend", label: "EMA trend (0 hides)", type: "int", min: 0, max: 400, step: 1, default: 50, group: "Visual only" },
+    { key: "vizSubPane", label: "Sub-pane shows", type: "select", default: "macd", group: "Visual only",
+      options: [["macd", "MACD"], ["adx", "ADX (as before)"], ["both", "Both together"]],
+      hint: "There is only one sub-pane. Each overlay maps through its own scale so both CAN share it, but a full-height MACD histogram buries a 0-60 ADX line, so they read far better one at a time. Swapping them changes nothing the engine sees -- ADX still gates the entries either way." },
+    { key: "vizMacdFast", label: "MACD fast", type: "int", min: 2, max: 100, step: 1, default: 12, group: "Visual only" },
+    { key: "vizMacdSlow", label: "MACD slow", type: "int", min: 3, max: 200, step: 1, default: 26, group: "Visual only" },
+    { key: "vizMacdSignal", label: "MACD signal", type: "int", min: 2, max: 50, step: 1, default: 9, group: "Visual only" },
+  ],
+
+  // VISUAL ONLY. base.compute runs untouched and its result is spread through
+  // first, so `sig`, `atr` and everything else the engine reads are the same
+  // objects it would have returned on its own. The only change is extra entries
+  // appended to `overlays`, which nothing in src/engine.mjs ever looks at.
+  //
+  // Note these are computed on the strategy's own 2-MINUTE bars, because that is
+  // what compute() is handed. A 12/26/9 MACD here spans 24/52/18 minutes, not
+  // the 12/26/9 minutes the same numbers mean on a 1-minute chart.
+  compute(bars, p) {
+    const out = base.compute(bars, p);
+    const extra = [];
+
+    if (p.vizShowEma !== "off") {
+      const C = bars.close;
+      const mk = (span, color, dash) => ({
+        name: `EMA ${span}`, pane: "price", color, data: ema(C, span),
+        ...(dash ? { dash } : {}),
+      });
+      const f = Math.max(2, Math.trunc(p.vizEmaFast) || 9);
+      const s = Math.max(f + 1, Math.trunc(p.vizEmaSlow) || 21);
+      extra.push(mk(f, "#4aa3ff"), mk(s, "#e0894a"));
+      const t = Math.trunc(p.vizEmaTrend) || 0;
+      if (t > 0) extra.push(mk(t, "#8f7fd4", [5, 4]));
+    }
+
+    const sub = p.vizSubPane || "macd";
+    if (sub !== "adx") {
+      const C = bars.close;
+      const fast = Math.max(2, Math.trunc(p.vizMacdFast) || 12);
+      const slow = Math.max(fast + 1, Math.trunc(p.vizMacdSlow) || 26);
+      const sigLen = Math.max(2, Math.trunc(p.vizMacdSignal) || 9);
+      const ef = ema(C, fast), es = ema(C, slow);
+      const line = new Float64Array(C.length);
+      for (let i = 0; i < C.length; i++) line[i] = ef[i] - es[i];
+      const signal = ema(line, sigLen);
+      const hist = new Float64Array(C.length);
+      for (let i = 0; i < C.length; i++) hist[i] = line[i] - signal[i];
+      // autoRange, not a fixed span: MACD scales with price and MNQ ran from
+      // ~7,000 to ~29,000 over this dataset, so a range taken across the whole
+      // history is set by the last two years and flattens everything earlier.
+      extra.push(
+        { name: "MACD hist", pane: "sub", kind: "hist", data: hist,
+          colorUp: "#26a65b", colorUpFade: "#7fd4a0",
+          colorDown: "#d1566e", colorDownFade: "#eda2b0",
+          autoRange: true },
+        { name: "MACD", pane: "sub", color: "#4aa3ff", data: line, autoRange: true },
+        { name: "Signal", pane: "sub", color: "#e0894a", data: signal, autoRange: true },
+      );
+    }
+
+    // Dropping ADX from the sub-pane when MACD is chosen is still visual-only:
+    // overlays are never read by src/engine.mjs, and the ADX >= 25 entry gate in
+    // base.compute is unaffected by whether its line is drawn.
+    let kept = out.overlays || [];
+    if (sub === "macd") kept = kept.filter((o) => !(o.pane === "sub" && o.name === "ADX"));
+
+    return extra.length || kept !== out.overlays
+      ? { ...out, overlays: [...kept, ...extra] }
+      : out;
+  },
 };
