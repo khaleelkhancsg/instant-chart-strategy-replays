@@ -23,6 +23,25 @@
 //                                              single ordinary loser at 8 lots
 //   dailyProfitStop          $1,000      $750   tighter soft block
 //   dayLossStopUsd          0 (off)   $1,000   THE PLATFORM'S OWN LIQUIDATION
+//   efficiency gate         >= 0.5    >= 0.5   plus the slow-trend rescue, below
+//
+// ── THE SLOW-TREND RESCUE ────────────────────────────────────────────────
+// A breakout with efficiency 0.45-0.5 also counts when the 2-min EMA 125 is on
+// its side of the 2-min EMA 500 (~4h vs ~17h trend). The engine's filter can
+// only AND conditions and this is an OR, so the efficiency gate lives in
+// compute() now rather than in filterDefaults; the session window is still a
+// filter. Evidence: research/donchian_eff_ema_confirm.mjs. The bot, this file's
+// logic and the Tradovate indicator are held to one another by
+// bot/test_donchian_parity.py and tradovate/verify.mjs.
+//
+// THIS ENGINE CANNOT CREDIT IT, and the reason is the same one that separates
+// its pass rate from the bot's below. The rescued breakouts are the weaker
+// ones; the bot's 0.15xATR stop-entry only fills those that follow through,
+// and this engine fills every signal at its close. So here the rescue shows as
+// a LOSS -- 30.6% -> 28.5% pass -- while on the bot's real entry model it is a
+// gain, 34.5% -> 37.9% (research/lib_shipped.mjs). The bot applies it only in
+// stop-entry mode for exactly this reason. Set "Rescue floor" to 0 to see the
+// book without it.
 //
 // ── THE DAY-LOSS STOP IS THE ONE THAT CHANGES THE PICTURE ────────────────
 // The research book never sets `dayLossStopUsd`, so it defaults to 0 and the
@@ -71,9 +90,10 @@
 //   donchian_eff_rth    42.6%      54.9%         2.5%                     8
 //   donchian_shipped    30.6%      60.4%         9.0%                    12
 //
-// 30.6% is this book alone, entered at the signal bar's close. The bot's own
-// figure is 34.5% with the real entry model, and 50.0% once the ORB book runs
-// alongside it — and the chart simulates neither. The rise in unresolved windows
+// 30.6% is this book alone, entered at the signal bar's close, before the
+// slow-trend rescue (28.5% with it, which this engine cannot credit -- above).
+// The bot's own figure is 37.9% with the real entry model and the rescue, and
+// 51.7% once the ORB book runs alongside it -- and the chart simulates neither. The rise in unresolved windows
 // from 2.5% to 9.0% is the day-loss cap doing its job: it ends days early, which
 // is what stops the breaches, and slows the target down in exchange.
 //
@@ -82,7 +102,11 @@
 // is real.
 
 import base from "./donchian_eff_rth.mjs";
-import { ema } from "../src/indicators.mjs";
+import { ema, efficiencyRatio } from "../src/indicators.mjs";
+
+// trend_min_bars_2m: the bot refuses the rescue with less history than this,
+// and so does this file, bar by bar.
+const TREND_MIN_BARS = 1500;
 
 export default {
   id: "donchian_shipped",
@@ -90,7 +114,9 @@ export default {
   description: "The exact configuration bot/mnq_donchian_bot.py runs: 8 contracts, 5xATR stop / 1.75xATR target, one tick of slippage, $500 breaker, $750 soft profit block, and the platform's $1,000 unrealised daily loss liquidation modelled in 'exact' mode. Same signal as donchian_eff_rth; entry model is NOT the bot's deferred stop entry.",
 
   timeframeMin: base.timeframeMin,
-  warmupBars: base.warmupBars,
+  // More than the research book's 900: the trend EMA 500 needs TREND_MIN_BARS
+  // bars behind the first bar of a chart window, even after a long weekend.
+  warmupBars: 1600,
 
   // Mirrors CONFIG in bot/mnq_donchian_bot.py. If you change one, change both.
   execDefaults: {
@@ -111,8 +137,9 @@ export default {
     dayLossStopUsd: 1000,
     dayLossStopMode: "exact",
   },
-  // signal_start_ct / signal_end_ct / eff_min
-  filterDefaults: { startCt: 8 * 60 + 30, endCt: 15 * 60, effMin: 0.5 },
+  // signal_start_ct / signal_end_ct. eff_min is applied inside compute() with
+  // the rescue -- setting effMin here as well would strip every rescued signal.
+  filterDefaults: { startCt: 8 * 60 + 30, endCt: 15 * 60 },
   // circuit_breaker / daily_profit_block
   rulesDefaults: { circuitBreaker: 500, dailyProfitStop: 750 },
 
@@ -127,6 +154,15 @@ export default {
   // book from a chart control, which is the one thing this file must never do.
   params: [
     ...base.params,
+    // The live gate (eff_min / eff_rescue_min / trend_ema_fast / trend_ema_slow).
+    // Here rather than in the filter panel because the rescue is an OR.
+    { key: "effMin", label: "Efficiency floor", type: "float", min: 0, max: 1, step: 0.05, default: 0.5, group: "Gate",
+      hint: "Kaufman efficiency ratio(20) the breakout must reach. 0 switches the gate off." },
+    { key: "rescueMin", label: "Rescue floor (0 = off)", type: "float", min: 0, max: 1, step: 0.05, default: 0.45, group: "Gate",
+      hint: "Below the efficiency floor but at or above this, a breakout still counts when the slow trend agrees. Donchian alone 34.5% -> 37.9%, with the ORB 50.0% -> 51.7% on the bot's real entry model." },
+    { key: "trendFast", label: "Trend EMA fast (2-min)", type: "int", min: 2, max: 1000, step: 5, default: 125, group: "Gate" },
+    { key: "trendSlow", label: "Trend EMA slow (2-min)", type: "int", min: 3, max: 2000, step: 25, default: 500, group: "Gate",
+      hint: "125/500 two-minute bars is ~4h vs ~17h. The whole 30/120-100/400 neighbourhood (in 5-min terms) scores about the same." },
     { key: "vizShowEma", label: "Show EMAs", type: "select", default: "on", group: "Visual only",
       options: [["on", "Show"], ["off", "Hide"]],
       hint: "Drawn on the price pane. Display only — the Donchian book does not read an EMA and these do not enter its rules." },
@@ -150,7 +186,23 @@ export default {
   // what compute() is handed. A 12/26/9 MACD here spans 24/52/18 minutes, not
   // the 12/26/9 minutes the same numbers mean on a 1-minute chart.
   compute(bars, p) {
-    const out = base.compute(bars, p);
+    const out = base.compute(bars, p);            // raw breakouts + ADX floor, as before
+
+    // The live gate: efficiency >= effMin, or the slow-trend rescue. The
+    // session window is left to filterDefaults, as it always was.
+    const C = bars.close, n = C.length;
+    const eff = efficiencyRatio(C, 20);
+    const tFast = ema(C, Math.max(2, Math.trunc(p.trendFast) || 125));
+    const tSlow = ema(C, Math.max(3, Math.trunc(p.trendSlow) || 500));
+    const sig = new Int8Array(n);
+    for (let i = 0; i < n; i++) {
+      const r = out.sig[i];
+      if (!r) continue;
+      const e = eff[i];
+      if (!(p.effMin > 0) || (Number.isFinite(e) && e >= p.effMin)) { sig[i] = r; continue; }
+      if (p.rescueMin > 0 && i + 1 >= TREND_MIN_BARS && Number.isFinite(e) && e >= p.rescueMin &&
+          (Math.sign(tFast[i] - tSlow[i]) || 0) === r) sig[i] = r;
+    }
     const extra = [];
 
     if (p.vizShowEma !== "off") {
@@ -197,8 +249,7 @@ export default {
     let kept = out.overlays || [];
     if (sub === "macd") kept = kept.filter((o) => !(o.pane === "sub" && o.name === "ADX"));
 
-    return extra.length || kept !== out.overlays
-      ? { ...out, overlays: [...kept, ...extra] }
-      : out;
+    const res = { ...out, sig };
+    return extra.length || kept !== out.overlays ? { ...res, overlays: [...kept, ...extra] } : res;
   },
 };

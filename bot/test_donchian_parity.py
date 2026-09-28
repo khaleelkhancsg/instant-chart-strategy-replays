@@ -689,7 +689,9 @@ def run_live_path_tests(fx, bars):
         # j) the slow-trend rescue reaches the live path. Take the latest bar that
         # ONLY the rescue lets through (outside the ORB's hour, so the two books
         # cannot interact) and drive the real _evaluate over the 1-minute prefix
-        # ending there: it must trade with the rescue on and not with it off.
+        # ending there. The rescue is validated only with the STOP-ENTRY, so this
+        # runs in that mode: the signal must ARM an entry with the rescue on, and
+        # arm nothing with it off, with too little history, or in any other mode.
         sr = fx.get("sigRescue")
         r_idx = None if sr is None else next(
             (i for i in range(len(bars) - 1, 0, -1)
@@ -702,32 +704,42 @@ def run_live_path_tests(fx, bars):
             r_prefix = [{"ms": r[0], "o": r[1], "h": r[2], "l": r[3], "c": r[4]}
                         for r in fx["bars1m"] if r[0] < r_end]
             r_ct = bars[r_idx].ct_min
-            b, api = make_bot(r_prefix, r_ct + 2)
-            asyncio.run(b._evaluate())
-            check("a rescued signal trades through the live path", len(api.orders) == 1,
-                  f"{len(api.orders)} orders")
-            if api.orders:
-                want_side = 0 if sr[r_idx] == 1 else 1
-                check("...on the side it broke", api.orders[0][0] == want_side,
-                      f"side={api.orders[0][0]} want {want_side}")
+            saved_first = bot.CONFIG["scale_in_first"]
             saved_r = bot.CONFIG["eff_rescue_min"]
-            try:
-                bot.CONFIG["eff_rescue_min"] = 0
-                b, api = make_bot(r_prefix, r_ct + 2)
-                asyncio.run(b._evaluate())
-                check("...and does not with the rescue switched off", len(api.orders) == 0,
-                      f"{len(api.orders)} orders")
-            finally:
-                bot.CONFIG["eff_rescue_min"] = saved_r
-            # Too little history: the rescue must stand down, not guess.
             saved_m = bot.CONFIG["trend_min_bars_2m"]
-            try:
-                bot.CONFIG["trend_min_bars_2m"] = 10 ** 9
+
+            def arm_after(first, rescue, min_bars):
+                bot.CONFIG["scale_in_first"] = first
+                bot.CONFIG["eff_rescue_min"] = rescue
+                bot.CONFIG["trend_min_bars_2m"] = min_bars
                 b, api = make_bot(r_prefix, r_ct + 2)
                 asyncio.run(b._evaluate())
+                return b, api
+
+            try:
+                b, api = arm_after(0, saved_r, saved_m)
+                check("a rescued signal ARMS a stop-entry through the live path",
+                      b._add_pending is not None and len(api.orders) == 0,
+                      f"pending={b._add_pending is not None} orders={len(api.orders)}")
+                if b._add_pending is not None:
+                    want_side = 0 if sr[r_idx] == 1 else 1
+                    check("...on the side it broke", b._add_pending["side"] == want_side,
+                          f"side={b._add_pending['side']} want {want_side}")
+                b, api = arm_after(0, 0, saved_m)
+                check("...and arms nothing with the rescue switched off",
+                      b._add_pending is None and len(api.orders) == 0, "")
+                b, api = arm_after(0, saved_r, 10 ** 9)
                 check("...nor when the history is too short for the trend to settle",
-                      len(api.orders) == 0, f"{len(api.orders)} orders")
+                      b._add_pending is None and len(api.orders) == 0, "")
+                # Filled at the signal the rescue makes the book worse, so outside
+                # stop-entry mode it must stand down even with everything else in place.
+                b, api = arm_after(1, saved_r, saved_m)
+                check("...nor when the entry is at the signal instead of a stop-entry",
+                      b._add_pending is None and len(api.orders) == 0,
+                      f"pending={b._add_pending is not None} orders={len(api.orders)}")
             finally:
+                bot.CONFIG["scale_in_first"] = saved_first
+                bot.CONFIG["eff_rescue_min"] = saved_r
                 bot.CONFIG["trend_min_bars_2m"] = saved_m
 
     finally:

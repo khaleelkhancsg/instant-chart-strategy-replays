@@ -65,7 +65,8 @@ STRATEGY (2-minute bars, clock-aligned):
     2-min EMA 125 is on its side of the 2-min EMA 500 (~4h vs ~17h trend), which
     is information the one-hour breakout does not carry. Donchian alone 34.5% ->
     37.9%, with the ORB 50.0% -> 51.7% (research/donchian_eff_ema_confirm.mjs).
-    The trend EMAs run over the WHOLE fetch, not the 600-bar window.
+    The trend EMAs run over the WHOLE fetch, not the 600-bar window. STOP-ENTRY
+    MODE ONLY: filled at the signal instead, the same rescue LOWERS pass rate.
   • Session 08:30-15:00 CT for SIGNALS. Late afternoon is poison: a 12:30-15:00
     window scored 20.9% against 36.2% for full RTH.
   • INVERTED GEOMETRY: 5.0xATR stop, 1.5xATR target (~0.3:1 reward:risk). Under a
@@ -234,6 +235,13 @@ CONFIG = {
     # validated as 5-min 50/200 and 1-min 250/1000, which score the same; 2-min
     # is used so the Tradovate indicator can compute it exactly. 0 = off, and the
     # gate is then exactly the plain efficiency gate.
+    #
+    # It DEPENDS ON THE STOP-ENTRY (scale_in_first 0). The rescued breakouts are
+    # the weaker ones, and the 0.15xATR confirmation is what sorts them: the ones
+    # that do not follow through never fill. Bought at the signal instead, the
+    # rescue makes the book WORSE (lab engine, which fills at the close: 30.6% ->
+    # 28.5%, against 34.5% -> 37.9% with the stop-entry). So _evaluate applies it
+    # only in stop-entry mode and stands down, logged, in any other.
     "eff_rescue_min": 0.45,
     "trend_ema_fast": 125,
     "trend_ema_slow": 500,
@@ -1913,15 +1921,21 @@ class DonchianBot:
         # rescue sits this bar out -- the plain gate still applies.
         trend = None
         if CONFIG.get("eff_rescue_min", 0) > 0:
-            if len(bars) >= CONFIG["trend_min_bars_2m"]:
+            why_off = ""
+            if not self._stop_entry_mode():
+                # Validated only with the stop-entry; at the signal it hurts.
+                why_off = "the entry is not the stop-entry it was validated with"
+            elif len(bars) < CONFIG["trend_min_bars_2m"]:
+                why_off = ("%d 2-min bars fetched, %d needed for EMA %d to settle"
+                           % (len(bars), CONFIG["trend_min_bars_2m"], CONFIG["trend_ema_slow"]))
+            else:
                 trend = trend_series([b.close for b in bars],
                                      CONFIG["trend_ema_fast"], CONFIG["trend_ema_slow"])
             off = trend is None
             if off != getattr(self, "_trend_off", False):
                 if off:
-                    log.warning("⚠  slow-trend rescue OFF: %d 2-min bars fetched, %d needed "
-                                "for EMA %d to settle — plain efficiency gate only",
-                                len(bars), CONFIG["trend_min_bars_2m"], CONFIG["trend_ema_slow"])
+                    log.warning("⚠  slow-trend rescue OFF: %s — plain efficiency gate only",
+                                why_off)
                 else:
                     log.info("slow-trend rescue back ON (%d 2-min bars)", len(bars))
                 self._trend_off = off
