@@ -55,10 +55,14 @@ export const RECENT = days.slice(-500);
 //                back as a LIMIT, and it fills if price returns.
 export function run(sizer, { costMult = 1, breaker = BREAKER,
                              profitBlock = PROFIT_BLOCK,
-                             entryModel = "limit" } = {}) {
+                             entryModel = "limit",
+                             // exitFn(sigBar, pos) -> true closes the position at the
+                             // NEXT bar's open, like the engine's exitSig: it is read
+                             // on a closed bar and acted on one bar later. Optional.
+                             exitFn = null } = {}) {
   const slip = SLIP * costMult, perSide = PERSIDE * costMult;
   const trades = [];
-  let pos = 0, ep = 0, slD = 0, tpD = 0, qty = 0, notional = 0, entCt = 0, entBar = 0, entAtr = 0;
+  let pos = 0, ep = 0, slD = 0, tpD = 0, qty = 0, notional = 0, entCt = 0, entBar = 0, entAtr = 0, entSig = -1;
   let armDir = 0, armPx = 0, armBy = -1, armBar = 0, armEp = 0, armSl = 0, armTp = 0, armQty = 0, armAtr = 0;
   let curTday = -1e9, dayReal = 0, capHit = false, sigSeq = 0;
   let isLimit = false;                  // working as a limit, so the fill side flips
@@ -69,7 +73,8 @@ export function run(sizer, { costMult = 1, breaker = BREAKER,
     const xp = pos === 1 ? px - slip : px + slip;
     const net = exact !== undefined ? exact
               : (xp - avgFill()) * pos * PV * qty - perSide * 2 * qty;
-    trades.push({ tday: TD[i], pnl: net, why, entCt, lots: qty, atr: entAtr, held: (i - entBar) * 2 });
+    trades.push({ tday: TD[i], pnl: net, why, entCt, lots: qty, atr: entAtr, held: (i - entBar) * 2,
+                  sigBar: entSig });
     dayReal += net;
     if (dayReal <= -CAP) capHit = true;
     pos = 0; notional = 0;
@@ -84,7 +89,7 @@ export function run(sizer, { costMult = 1, breaker = BREAKER,
         const fill = () => {
           pos = armDir; qty = armQty; ep = armEp; slD = armSl; tpD = armTp;
           notional = (pos === 1 ? armPx + slip : armPx - slip) * qty;
-          entCt = CT[i]; entBar = i; entAtr = armAtr; armDir = 0;
+          entCt = CT[i]; entBar = i; entAtr = armAtr; entSig = armBar - 1; armDir = 0;
         };
         if (entryModel !== "optimistic" && i === armBar + 1 && !isLimit &&
             (armDir === 1 ? O[i] >= armPx : O[i] <= armPx)) {
@@ -121,13 +126,16 @@ export function run(sizer, { costMult = 1, breaker = BREAKER,
         else if (L[i] <= tp) { close_(tp, i, undefined, "TP"); done = true; }
       }
       if (done) continue;
+      if (exitFn && exitFn(i - 1, pos)) { close_(O[i], i, undefined, "XSIG"); continue; }
       if (s2 !== 0 && s2 !== pos) close_(O[i], i, undefined, "FLIP");
       if (pos !== 0) continue;
     }
     if (pos === 0 && s2 !== 0 && !flatNow && !blocked() && CT[i] < NOENTRY) {
       const a = A[i - 1];
       if (!(a > 0)) continue;
-      const q = sizer(a, CT[i], sigSeq++);
+      // The 4th argument is the ARM bar; the signal bar is the one before it,
+      // and anything a sizer reads there was known when the bot decided.
+      const q = sizer(a, CT[i], sigSeq++, i);
       if (q < 1) continue;
       isLimit = false;
       armDir = s2; armBar = i; armBy = i + ADD_WIN; armEp = O[i]; armQty = q; armAtr = a;
