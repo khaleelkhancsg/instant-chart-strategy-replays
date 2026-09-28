@@ -85,9 +85,13 @@ function simulate(books, opts = {}) {
           costMult = 1,
           // donSig: an alternative gated Donchian signal on the 2-minute bars,
           // in place of the shipped efficiency >= 0.5 one. Optional.
-          donSig = null } = opts;
+          donSig = null,
+          // orbSched: a prebuilt ORB schedule (Map bar -> setup) in place of
+          // the one orbCfg would generate; orbCfg still sets hold and size.
+          // A setup may carry its own riskDollars. Optional.
+          orbSched = null } = opts;
   const SIG2 = donSig || sig2;
-  const orbAt = orbSchedule(orbCfg);
+  const orbAt = orbSched || orbSchedule(orbCfg);
   const SLIPc = SLIP * costMult, FEEc = PERSIDE * costMult;
   const useDon = books !== "orb", useOrb = books !== "don";
   const dayPnl = new Map(); for (const d of days) dayPnl.set(d, 0);
@@ -203,7 +207,8 @@ function simulate(books, opts = {}) {
       resolveOrb();
       if (oPos === 0 && !(exclusive && dPos !== 0) && !blocked() && orbAt.has(i) && ct >= OPEN_CT && ct < ORB_FLAT_CT) {
         const s = orbAt.get(i);
-        oQty = Math.max(1, Math.min(orbCfg.maxLots, Math.floor(orbCfg.riskDollars / (s.risk * PV))));
+        oQty = Math.max(1, Math.min(orbCfg.maxLots,
+                 Math.floor((s.riskDollars ?? orbCfg.riskDollars) / (s.risk * PV))));
         oPos = s.dir; oEntryBar = i;
         oFill = s.dir === 1 ? s.entryPx + SLIPc : s.entryPx - SLIPc;
         // A dollar-denominated stop, when the config asks for one: size and

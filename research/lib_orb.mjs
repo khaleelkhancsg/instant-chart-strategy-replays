@@ -320,7 +320,22 @@ export function setups(cfg) {
       return Math.abs(entryPx - lvl);
     };
 
-    const huntFrom = Math.max(b, OPEN_CT);
+    // armCt: rest the stops later than the bell. A side whose trigger price
+    // has already gone through by then cannot be placed (a stop on the wrong
+    // side of the market is refused), so it is dead for the day.
+    const huntFrom = Math.max(b, cfg.armCt ?? OPEN_CT);
+    // Optional ONE-SIDED arm: sideOf(day) = 1 rests only the buy stop, -1 only
+    // the sell stop, anything else both (the default). With one order resting,
+    // a bar through both levels is not ambiguous -- it fills the one that is
+    // there. Must be decided from bars before the open.
+    let side = cfg.sideOf ? cfg.sideOf(day) : 0;
+    if (cfg.armCt != null && cfg.armCt > OPEN_CT) {
+      let i0 = s0; while (i0 < e0 && CT[i0] < huntFrom) i0++;
+      if (i0 >= e0) continue;
+      const lDead = O[i0] >= hi + buf2 * TICK, sDead = O[i0] <= lo - buf2 * TICK;
+      if ((lDead && sDead) || (lDead && side === 1) || (sDead && side === -1)) continue;
+      if (lDead) side = -1; else if (sDead) side = 1;
+    }
     let st = 0, dir = 0, p1 = 0, lvl = 0, stateBar = -1, retExt = 0, done = false;
     let taken = 0, busyUntil = -1;
 
@@ -332,7 +347,8 @@ export function setups(cfg) {
       // Each block falls through to the next ONLY when sameBar is set, so the
       // strict path still advances at most one state per bar.
       if (st === 0) {
-        const up = H[i] > hi + buf * TICK, dn = L[i] < lo - buf * TICK;
+        let up = H[i] > hi + buf * TICK, dn = L[i] < lo - buf * TICK;
+        if (side === 1) dn = false; else if (side === -1) up = false;
         if (up && dn) {
           // One bar broke BOTH levels and 1-minute OHLC cannot say which came
           // first. Abandoning the whole day for that was too harsh -- it cost
@@ -341,7 +357,16 @@ export function setups(cfg) {
           // nothing about this bar is used.
           diag.bothWays++;
           if (cfg.bothWays === "abandon") break;
-          continue;
+          // ...but "ignore it" is not something the live bot can do. Both
+          // stops REST from the bell, so the level crossed first fills and its
+          // stop -- the level crossed second -- is hit inside the same minute.
+          // "fill" books exactly that. Which level came first is unknowable
+          // from 1-minute bars: the open decides when it had already gapped
+          // through one, otherwise the nearer trigger. The loss is the same
+          // size either way, since both stops sit one level spread away.
+          if (cfg.bothWays === "fill" && mode === "plain") {
+            up = O[i] > hi || (O[i] >= lo && hi - O[i] <= O[i] - lo); dn = !up;
+          } else continue;
         }
         if (!up && !dn) continue;
         dir = up ? 1 : -1; lvl = up ? hi : lo; p1 = up ? H[i] : L[i];
