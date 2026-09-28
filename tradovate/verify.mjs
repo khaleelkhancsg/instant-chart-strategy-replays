@@ -29,7 +29,7 @@ import { fileURLToPath } from "node:url";
 import { loadBars } from "../src/data.mjs";
 import { resample } from "../src/resample.mjs";
 import { buildFilterContext, applyFilters, NO_FILTER } from "../src/filters.mjs";
-import { adx as adxOf, donchian } from "../src/indicators.mjs";
+import { adx as adxOf, donchian, ema } from "../src/indicators.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, "..");
@@ -129,6 +129,7 @@ function runDonFixture(forming) {
     checkOutput(DON, out, "fixture bar " + i);
     const { B } = out._ev;
     rows.push({ atr: B.atr, adx: B.adx, eff: B.eff, dh: B.dh, dl: B.dl, raw: B.raw, sig: B.sig, ct: B.ct,
+                plain: B.plain, tF: B.tF, tS: B.tS, trend: B.trend, rescued: B.rescued,
                 ev: JSON.stringify(out._ev.ev), plots: JSON.stringify(out, (k, v) => (k === "_ev" ? undefined : v)) });
   }, forming);
   return rows;
@@ -136,7 +137,8 @@ function runDonFixture(forming) {
 {
   const rows = runDonFixture(false);
   const I = fx.indicators;
-  const fields = [["atr", "atr"], ["adx", "adx"], ["eff", "eff"], ["dh", "donHigh"], ["dl", "donLow"]];
+  const fields = [["atr", "atr"], ["adx", "adx"], ["eff", "eff"], ["dh", "donHigh"], ["dl", "donLow"],
+                  ["tF", "trendFast"], ["tS", "trendSlow"]];
   for (const [mine, theirs] of fields) {
     let bad = 0, worst = 0;
     for (let i = 0; i < rows.length; i++) {
@@ -147,15 +149,34 @@ function runDonFixture(forming) {
     check(theirs.padEnd(8) + " on " + rows.length.toLocaleString() + " bars", bad === 0,
           bad + " off; worst |diff| " + worst.toExponential(1) + " (fixture is rounded to 6 dp)");
   }
-  let badRaw = 0, badSig = 0, badCt = 0, nSig = 0;
+  // The fixture's parameters must be the indicator's, or the rescue checks
+  // below would verify some other rule.
+  const TP = fx.trendParams || {};
+  const DK = { fast: 125, slow: 500, min: 0.45, floor: 1500 };
+  check("fixture tests the rescue the indicator draws",
+        TP.fast === DK.fast && TP.slow === DK.slow && TP.rescueMin === DK.min,
+        JSON.stringify(TP));
+  let badRaw = 0, badPlain = 0, badTrend = 0, badSig = 0, badCt = 0, nSig = 0, nResc = 0, early = 0;
   for (let i = 0; i < rows.length; i++) {
     if (rows[i].raw !== fx.sigRaw[i]) badRaw++;
-    if (rows[i].sig !== fx.sigMasked[i]) badSig++;
+    if (rows[i].plain !== fx.sigMasked[i]) badPlain++;
+    if (rows[i].trend !== fx.trend[i]) badTrend++;
+    // With 1,500 bars behind it the indicator draws the bot's full gate; before
+    // that it refuses the rescue, as the bot refuses a short fetch.
+    const settled = i + 1 >= DK.floor;
+    const want = settled ? fx.sigRescue[i] : fx.sigMasked[i];
+    if (rows[i].sig !== want) badSig++;
     if (rows[i].ct !== fxBars[i].ct) badCt++;
-    if (fx.sigMasked[i]) nSig++;
+    if (want) nSig++;
+    if (rows[i].rescued) nResc++;
+    if (!settled && fx.sigRescue[i] && !fx.sigMasked[i]) early++;
   }
   check("raw signals exact", badRaw === 0, badRaw + " off");
-  check("gated signals exact (the ones the bot trades)", badSig === 0, badSig + " off of " + nSig + " signals");
+  check("plain efficiency gate exact (the bot's sigMasked)", badPlain === 0, badPlain + " off");
+  check("slow-trend direction exact", badTrend === 0, badTrend + " off");
+  check("gated signals exact, rescue included (the ones the bot trades)", badSig === 0,
+        badSig + " off of " + nSig + " signals, " + nResc + " of them rescued; " + early +
+        " rescues correctly withheld before 1,500 bars");
   check("bar CT minute exact", badCt === 0, badCt + " off");
 
   // 7a. the live bar: an extra half-built call per bar must change nothing
@@ -172,7 +193,11 @@ console.log("");
 console.log("3. Donchian over the full history vs the lab (built as research/lib_shipped.mjs builds it)");
 const tf = resample(bars, 2);
 const nT = tf.close.length;
-const labSig = (() => {
+// The plain gate as lib_shipped builds it, and the slow-trend rescue as
+// research/donchian_eff_ema_confirm.mjs validated it (2-min EMA 125/500 over the
+// whole history, eff >= 0.45), with the 1,500-bar floor the bot and the
+// indicator both enforce.
+const { labSig, labRescue } = (() => {
   const ctx = buildFilterContext(tf);
   const { adx: ax } = adxOf(tf.high, tf.low, tf.close, 14);
   const { high: dh, low: dl } = donchian(tf.high, tf.low, 30);
@@ -181,13 +206,20 @@ const labSig = (() => {
     if (ax[i] < 25) continue;
     if (tf.close[i] > dh[i]) raw[i] = 1; else if (tf.close[i] < dl[i]) raw[i] = -1;
   }
-  return applyFilters(raw, ctx, { ...NO_FILTER, startCt: 510, endCt: 900, effMin: 0.5 });
+  const plain = applyFilters(raw, ctx, { ...NO_FILTER, startCt: 510, endCt: 900, effMin: 0.5 });
+  const low = applyFilters(raw, ctx, { ...NO_FILTER, startCt: 510, endCt: 900, effMin: 0.45 });
+  const ef = ema(tf.close, 125), es = ema(tf.close, 500);
+  const resc = Int8Array.from(plain);
+  for (let k = 1499; k < nT; k++) {
+    if (!plain[k] && low[k] && (Math.sign(ef[k] - es[k]) || 0) === raw[k]) resc[k] = low[k];
+  }
+  return { labSig: plain, labRescue: resc };
 })();
 const tfBars = { length: nT };
 const tfBar = (i) => ({ ts: tf.ts[i], o: tf.open[i], h: tf.high[i], l: tf.low[i], c: tf.close[i] });
 const donEvents = [];          // research-mode orders, for section 4
 {
-  let bad = 0, badCt = 0, labLabel = 0, nSig = 0, arms = 0, fills = 0, limitFills = 0;
+  let bad = 0, badPlain = 0, badCt = 0, labLabel = 0, nSig = 0, nResc = 0, arms = 0, fills = 0, limitFills = 0;
   const calc = new DON.calculator();
   calc.props = { ...defaults(DON), __research: true };
   calc.init();
@@ -197,14 +229,16 @@ const donEvents = [];          // research-mode orders, for section 4
     const out = calc.map(mkD(b, i), i);
     if (i % 997 === 0) checkOutput(DON, out, "history bar " + i);
     const { B, ev, S } = out._ev;
-    if (B.sig !== labSig[i]) bad++;
+    if (B.plain !== labSig[i]) badPlain++;
+    if (B.sig !== labRescue[i]) bad++;
+    if (B.rescued) nResc++;
     // The bot labels a 2-minute bar by its bucket START (Bar2m.ts), as does
     // Tradovate. The lab labels it by the first minute that traded, which is
     // different when that minute printed nothing -- never across a session
     // boundary, since every one of them is an even minute.
     if (B.ct !== DON.__ctOf(tf.ts[i])) badCt++;
     if (tf.ctMin[i] !== B.ct) labLabel++;
-    if (labSig[i]) nSig++;
+    if (labRescue[i]) nSig++;
     if (ev.arm) arms++;
     if (ev.exit && open) {
       donEvents.push({ ...open, exitIdx: i, why: ev.exit.why, capped: !!ev.exit.capped, xp: ev.exit.px });
@@ -217,7 +251,9 @@ const donEvents = [];          // research-mode orders, for section 4
       if (ev.exit) { donEvents.push({ ...open, exitIdx: i, why: ev.exit.why, capped: !!ev.exit.capped, xp: ev.exit.px }); open = null; }
     }
   }
-  check("gated signal on " + nT.toLocaleString() + " two-minute bars", bad === 0, bad + " off of " + nSig.toLocaleString() + " signals");
+  check("plain efficiency gate on " + nT.toLocaleString() + " two-minute bars", badPlain === 0, badPlain + " off");
+  check("gated signal with the slow-trend rescue", bad === 0,
+        bad + " off of " + nSig.toLocaleString() + " signals, " + nResc.toLocaleString() + " of them rescued");
   check("bar CT minute on every 2-minute bar (bucket start, as the bot)", badCt === 0, badCt + " off");
   console.log("        " + labLabel.toLocaleString() + " bars whose first minute never traded: the lab labels those by the next");
   console.log("        minute instead. No session rule sits on an odd minute, so the signals above still match.");
@@ -232,7 +268,8 @@ console.log("4. stop-entry, bracket, cap and exits vs research/lib_shipped.mjs")
   const { run } = await import("../research/lib_shipped.mjs");
   // Daily blocks off, so the only day-dependent rule left is the $1,000 cap,
   // and on the FIRST trade of each day that cap is exact for both.
-  const lib = run(() => 8, { breaker: 0, profitBlock: 0 });
+  // lib_shipped running the rescued signal the indicator draws.
+  const lib = run(() => 8, { breaker: 0, profitBlock: 0, signals: labRescue });
   const PV = 2, QTY = 8, SLIP = 0.25, PERSIDE = 0.75;
   const mine = donEvents.map((t) => {
     const avg = t.fill + t.dir * SLIP;

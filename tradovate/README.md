@@ -16,12 +16,12 @@ Two custom indicators that draw what `bot/mnq_donchian_bot.py` sees and does, on
 ## Chart setup
 
 - **Include the overnight session.** The Donchian channel, ATR and ADX run over every bar, overnight included, exactly as the bot does. An RTH-only chart gives different channels and different signals.
-- **Load at least 3 days.** The ATR and ADX are EMAs that settle within about 100 bars, and the ORB needs 06:30-08:30 CT.
+- **Load at least 5 days on the Donchian chart.** The slow-trend rescue needs 1,500 two-minute bars (about 2½ trading days) behind a signal before it counts, exactly as the bot needs 1,500 in its fetch. With less loaded, the indicator still draws every plain signal but no rescued ones, and the trend EMAs stay hidden until they have settled. The ORB chart only needs 06:30-08:30 CT.
 - **One check on first load:** the ORB level lines should start on the **08:30 CT** candle. If they start one candle late, turn on `barTimeIsClose` in both indicators (it means Tradovate stamps bars at their close rather than their open).
 
 ## Reading it
 
-Donchian: `▲`/`▼` is a signal, the gold line is the stop-entry it arms (signal close ± 0.15×ATR, live for 10 bars from the bar after next), `●` is where it fills (`● lim` when the stop was refused and re-placed as a limit), then `TP`/`SL`/`FLIP`/`FLAT`.
+Donchian: `▲`/`▼` is a signal; hollow `△`/`▽` is a signal the **slow-trend rescue** let through (efficiency 0.45-0.5, taken because the 2-min EMA 125 is on its side of the EMA 500, drawn as the faint blue and purple lines). The gold line is the stop-entry it arms (signal close ± 0.15×ATR, live for 10 bars from the bar after next), `●` is where it fills (`● lim` when the stop was refused and re-placed as a limit), then `TP`/`SL`/`FLIP`/`FLAT`.
 
 ORB: blue lines are the levels, gold the resting stops one tick beyond, grey levels mean the bot stands the day down (levels more than 31 points apart). `▲ 12` is a long entry at 12 lots, `?` a minute that broke both levels.
 
@@ -41,11 +41,11 @@ So a signal the bot skipped is almost always one of those three.
 node --max-old-space-size=6144 tradovate/verify.mjs
 ```
 
-runs both files exactly as Tradovate would, with its tool modules stubbed, and checks 22 things, including:
+runs both files exactly as Tradovate would, with its tool modules stubbed, and checks 28 things, including:
 
-- every indicator value and signal against `bot/fixture_donchian.json`, the golden file the Python bot is tested against;
-- 9,070 Donchian signals over seven years against the lab;
-- all 1,548 trades taken on a flat day against `research/lib_shipped.mjs`, the validated model of the stop-entry, bracket and cap;
+- every indicator value and signal against `bot/fixture_donchian.json`, the golden file the Python bot is tested against, including the trend EMAs and the rescued signals;
+- 10,851 Donchian signals over seven years (1,781 of them rescued) against the research rule;
+- all 1,626 trades taken on a flat day against `research/lib_shipped.mjs`, the validated model of the stop-entry, bracket and cap;
 - ORB levels and entries on 260 days of `bot/fixture_orb.json`, and all 1,045 entries and exits over seven years against `research/lib_orb.mjs`;
 - the CT clock on all 2.5M bars, and that re-calling `map()` on a still-forming bar changes nothing.
 

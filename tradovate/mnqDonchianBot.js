@@ -8,6 +8,12 @@
  *   ▲ / ▼                  a signal the bot acts on: close outside the channel,
  *                          ADX(14) >= 25, efficiency ratio(20) >= 0.5, and the
  *                          bar opening 08:30 <= t < 15:00 CT
+ *   △ / ▽                  a signal the SLOW-TREND RESCUE lets through: the same
+ *                          breakout with efficiency 0.45-0.5, taken because the
+ *                          2-min EMA 125 is on its side of the 2-min EMA 500
+ *                          (~4h vs ~17h trend). Needs 1,500 bars on the chart
+ *                          behind it, as the bot needs 1,500 in its fetch.
+ *   faint blue / purple    the two trend EMAs (125 / 500), once settled
  *   gold line              the STOP-ENTRY the signal arms: signal close +/-
  *                          0.15 x ATR. Parked on the next bar, live on the bar
  *                          after that, for 10 bars. If the stop would already
@@ -46,6 +52,9 @@ try { du = require("./tools/graphics").du || du; } catch (e) { /* lines still wo
 const CFG = {
   period: 30, adxMin: 25, adxPeriod: 14, atrPeriod: 14, cooldownBars: 1,
   effPeriod: 20, effMin: 0.5,
+  rescueMin: 0.45,                 // slow-trend rescue: eff_rescue_min
+  trendFast: 125, trendSlow: 500,  // 2-min EMAs: trend_ema_fast / trend_ema_slow
+  trendMinBars: 1500,              // trend_min_bars_2m: history before a rescue counts
   startCt: 510, endCt: 900,        // signal bars opening 08:30 <= t < 15:00 CT
   noEntryCt: 895,                  // no new arm at/after 14:55 CT
   flattenCt: 904,                  // force flat 15:04 CT
@@ -115,10 +124,24 @@ function barState(bars, i, prev, o, h, l, c, ms, K) {
   const ct = ctOf(ms);
   const inWin = K.startCt <= ct && ct < K.endCt;
   const effOk = !(K.effMin > 0) || (Number.isFinite(eff) && eff >= K.effMin);
-  const sig = raw !== 0 && inWin && effOk ? raw : 0;
+  const plain = raw !== 0 && inWin && effOk ? raw : 0;
+
+  // The slow trend: the bot's trend_series, the same first-value-seeded EMA.
+  // Seeded at the chart's first bar, so it only counts once `trendMinBars` bars
+  // sit behind it -- the chart's version of the bot refusing a short fetch.
+  const aF = 2 / (K.trendFast + 1), aS = 2 / (K.trendSlow + 1);
+  const tF = prev ? aF * c + (1 - aF) * prev.tF : c;
+  const tS = prev ? aS * c + (1 - aS) * prev.tS : c;
+  const trend = Math.sign(tF - tS) || 0;
+  const settled = i + 1 >= K.trendMinBars;
+  // A breakout just under the efficiency floor still counts when the slow
+  // trend points the way it broke. It can only ADD to the plain gate.
+  const rescued = plain === 0 && raw !== 0 && inWin && K.rescueMin > 0 && settled &&
+                  Number.isFinite(eff) && eff >= K.rescueMin && trend === raw;
+  const sig = plain !== 0 ? plain : rescued ? raw : 0;
 
   return { o, h, l, c, ms, ct, tr, atr, trX, pdmX, ndmX, adx, path, eff, dh, dl,
-           raw, lastRaw: raw ? i : lastRaw, sig };
+           raw, lastRaw: raw ? i : lastRaw, plain, tF, tS, trend, settled, rescued, sig };
 }
 
 // ── the bot's order lifecycle, one bar at a time (research/lib_shipped.mjs) ──
@@ -256,6 +279,9 @@ class mnqDonchianBot {
     }
 
     if (P.showChannel !== false && Number.isFinite(B.dh)) { out.dcHigh = B.dh; out.dcLow = B.dl; }
+    // The trend EMAs, drawn only once settled: before that they are the bot's
+    // "not enough history" case and would show a trend the bot would not use.
+    if (P.showTrend !== false && B.settled) { out.trendFast = B.tF; out.trendSlow = B.tS; }
 
     // Lines alternate between two plot sets so consecutive arms are never
     // joined by a diagonal: a plot connects every value it is given.
@@ -277,7 +303,8 @@ class mnqDonchianBot {
       if (B.sig !== 0) {
         items.push({ tag: "Text", key: "s" + idx,
                      point: { x: du(idx), y: du(B.sig === 1 ? B.l - off : B.h + off) },
-                     text: B.sig === 1 ? "▲" : "▼",
+                     // hollow = let through by the slow-trend rescue
+                     text: B.rescued ? (B.sig === 1 ? "△" : "▽") : (B.sig === 1 ? "▲" : "▼"),
                      style: { fontSize: 16, fontWeight: "bold", fill: B.sig === 1 ? "#26a65b" : "#d1566e" },
                      textAlignment: "centerMiddle" });
       }
@@ -309,6 +336,7 @@ module.exports = {
   params: {
     contracts: predef.paramSpecs.period(8),
     showChannel: predef.paramSpecs.bool(true),
+    showTrend: predef.paramSpecs.bool(true),
     showMarkers: predef.paramSpecs.bool(true),
     barTimeIsClose: predef.paramSpecs.bool(false),
   },
@@ -317,6 +345,8 @@ module.exports = {
   plots: {
     dcHigh: { title: "Donchian high" },
     dcLow: { title: "Donchian low" },
+    trendFast: { title: "Trend EMA 125" },
+    trendSlow: { title: "Trend EMA 500" },
     trigA: { title: "Stop-entry" }, stopA: { title: "Stop" }, targetA: { title: "Target" },
     trigB: { title: "Stop-entry (alt)" }, stopB: { title: "Stop (alt)" }, targetB: { title: "Target (alt)" },
   },
@@ -324,6 +354,7 @@ module.exports = {
   schemeStyles: {
     dark: {
       dcHigh: { color: "#3d7a5a" }, dcLow: { color: "#7a3d3d" },
+      trendFast: { color: "#4a6f99" }, trendSlow: { color: "#6f5a99" },
       trigA: { color: "#e0c341" }, stopA: { color: "#d1566e" }, targetA: { color: "#26a65b" },
       trigB: { color: "#e0c341" }, stopB: { color: "#d1566e" }, targetB: { color: "#26a65b" },
     },
