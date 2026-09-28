@@ -22,3 +22,7 @@ bot/*_state.json
 *_state.json
 __pycache__/
 *.pyc
+
+# Research output too large to version (10 MB); regenerate with
+# node research/donchian_joint_search.mjs
+research/donchian_joint_search_results.json

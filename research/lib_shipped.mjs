@@ -30,7 +30,7 @@ for (let i = 30; i < nB; i++) {
   if (tf.close[i] > dh[i]) raw[i] = 1; else if (tf.close[i] < dl[i]) raw[i] = -1;
 }
 const sig = applyFilters(raw, ctx, { ...NO_FILTER, startCt: 510, endCt: 900, effMin: 0.5 });
-const { open: O, high: H, low: L, ctMin: CT, tday: TD, ts: TS } = tf;
+const { open: O, high: H, low: L, close: C, ctMin: CT, tday: TD, ts: TS } = tf;
 
 export const days = [...new Set(TD)].sort((a, b) => a - b);
 export const yearOf = new Map();
@@ -53,17 +53,43 @@ export const RECENT = days.slice(-500);
 //                is not achievable; kept only to reproduce old results.
 //   "limit"      what the bot now does: the stop is refused, the same price goes
 //                back as a LIMIT, and it fills if price returns.
-export function run(sizer, { costMult = 1, breaker = BREAKER,
+// makeRun binds the engine to one set of bars, so the same code can run on
+// another bar size (engineFor below). The exported run is the 2-minute one.
+function makeRun(t, A, sig) {
+  const { open: O, high: H, low: L, close: C, ctMin: CT, tday: TD } = t;
+  const nB = C.length;
+  return function run(sizer, { costMult = 1, breaker = BREAKER,
                              profitBlock = PROFIT_BLOCK,
                              entryModel = "limit",
-                             // exitFn(sigBar, pos) -> true closes the position at the
-                             // NEXT bar's open, like the engine's exitSig: it is read
+                             // exitFn(sigBar, pos, state) -> true closes the position at
+                             // the NEXT bar's open, like the engine's exitSig: it is read
                              // on a closed bar and acted on one bar later. Optional.
                              exitFn = null,
+                             // stopFn(bar, state) -> a stop price, or null. Read on the
+                             // closed bar and in force from the next one; it can only
+                             // TIGHTEN the stop, never loosen it. Optional.
+                             // state = { dir, fill, ep, atr, slD, tpD, entBar, qty, mx,
+                             // mn, sigBar, tsl }: mx/mn are the best and worst price
+                             // since the fill, from the entry bar's CLOSE onward (its
+                             // range may predate the fill), tsl the adjusted stop.
+                             stopFn = null,
+                             // The bracket and the arm, in ATRs at the signal: stop,
+                             // target, stop-entry distance, and how many bars the arm
+                             // stays live. Defaults are the shipped values.
+                             slMult = 5, tpMult = 1.75, trig = TRIG, addWin = ADD_WIN,
                              // signals: an alternative gated signal array (same length
                              // as the 2-minute bars) in place of the shipped one, e.g.
                              // a different efficiency threshold. Optional.
-                             signals = null } = {}) {
+                             signals = null,
+                             // overnight: also trade the Globex session. Flat only
+                             // 15:05-17:00 CT (the account's no-overnight rule) and
+                             // entries allowed 17:00-14:55 CT. The signals passed
+                             // must be gated to match. Default off (RTH only).
+                             overnight = false,
+                             // onTrade(trade): called as each trade is booked, so a
+                             // sizer can react to what has already happened (e.g.
+                             // yesterday's result). Optional.
+                             onTrade = null } = {}) {
   const SIG = signals || sig;
   const slip = SLIP * costMult, perSide = PERSIDE * costMult;
   const trades = [];
@@ -71,7 +97,10 @@ export function run(sizer, { costMult = 1, breaker = BREAKER,
   let armDir = 0, armPx = 0, armBy = -1, armBar = 0, armEp = 0, armSl = 0, armTp = 0, armQty = 0, armAtr = 0;
   let curTday = -1e9, dayReal = 0, capHit = false, sigSeq = 0;
   let isLimit = false;                  // working as a limit, so the fill side flips
+  let mx = 0, mn = 0, tsl = null;       // trade state for the management hooks
   const avgFill = () => notional / qty;
+  const stNow = () => ({ dir: pos, fill: avgFill(), ep, atr: entAtr, slD, tpD, entBar, qty,
+                         mx, mn, sigBar: entSig, tsl });
   const blocked = () => capHit || (breaker > 0 && dayReal <= -breaker)
                               || (profitBlock > 0 && dayReal >= profitBlock);
   const close_ = (px, i, exact, why) => {
@@ -80,13 +109,14 @@ export function run(sizer, { costMult = 1, breaker = BREAKER,
               : (xp - avgFill()) * pos * PV * qty - perSide * 2 * qty;
     trades.push({ tday: TD[i], pnl: net, why, entCt, lots: qty, atr: entAtr, held: (i - entBar) * 2,
                   sigBar: entSig });
+    if (onTrade) onTrade(trades[trades.length - 1]);
     dayReal += net;
     if (dayReal <= -CAP) capHit = true;
     pos = 0; notional = 0;
   };
   for (let i = 1; i < nB; i++) {
     const s2 = SIG[i - 1];
-    const flatNow = CT[i] >= FLAT || CT[i] < 510;
+    const flatNow = overnight ? (CT[i] >= FLAT && CT[i] < 1020) : (CT[i] >= FLAT || CT[i] < 510);
     if (TD[i] !== curTday) { curTday = TD[i]; dayReal = 0; capHit = false; }
     if (pos === 0 && armDir !== 0) {
       if (flatNow || i > armBy || blocked()) armDir = 0;
@@ -95,6 +125,7 @@ export function run(sizer, { costMult = 1, breaker = BREAKER,
           pos = armDir; qty = armQty; ep = armEp; slD = armSl; tpD = armTp;
           notional = (pos === 1 ? armPx + slip : armPx - slip) * qty;
           entCt = CT[i]; entBar = i; entAtr = armAtr; entSig = armBar - 1; armDir = 0;
+          mx = mn = armPx; tsl = null;
         };
         if (entryModel !== "optimistic" && i === armBar + 1 && !isLimit &&
             (armDir === 1 ? O[i] >= armPx : O[i] <= armPx)) {
@@ -113,13 +144,24 @@ export function run(sizer, { costMult = 1, breaker = BREAKER,
     if (pos !== 0) {
       if (flatNow) { close_(O[i], i, undefined, "FLAT"); continue; }
       const dir = pos;
+      const k = i - 1;
+      if (k >= entBar && (stopFn || exitFn)) {
+        if (k === entBar) { if (C[k] > mx) mx = C[k]; if (C[k] < mn) mn = C[k]; }
+        else { if (H[k] > mx) mx = H[k]; if (L[k] < mn) mn = L[k]; }
+        if (stopFn) {
+          const s = stopFn(k, stNow());
+          if (s != null && Number.isFinite(s))
+            tsl = tsl === null ? s : (dir === 1 ? Math.max(tsl, s) : Math.min(tsl, s));
+        }
+      }
       const lossPx = avgFill() - dir * ((CAP + dayReal) / (PV * qty));
       const rawSl = ep - dir * slD;
-      const sl = dir === 1 ? Math.max(rawSl, lossPx) : Math.min(rawSl, lossPx);
+      let sl = dir === 1 ? Math.max(rawSl, lossPx) : Math.min(rawSl, lossPx);
       const isCap = dir === 1 ? (sl === lossPx && lossPx > rawSl) : (sl === lossPx && lossPx < rawSl);
       const tp = ep + dir * tpD;
-      const cut = isCap ? -CAP - dayReal : undefined;
-      const why = isCap ? "SLcap" : "SL";
+      let cut = isCap ? -CAP - dayReal : undefined;
+      let why = isCap ? "SLcap" : "SL";
+      if (tsl !== null && (dir === 1 ? tsl > sl : tsl < sl)) { sl = tsl; cut = undefined; why = "TS"; }
       let done = false;
       if (dir === 1) {
         if (O[i] <= sl) { close_(O[i], i, cut, why); done = true; }
@@ -131,11 +173,11 @@ export function run(sizer, { costMult = 1, breaker = BREAKER,
         else if (L[i] <= tp) { close_(tp, i, undefined, "TP"); done = true; }
       }
       if (done) continue;
-      if (exitFn && exitFn(i - 1, pos)) { close_(O[i], i, undefined, "XSIG"); continue; }
+      if (exitFn && exitFn(i - 1, pos, stNow())) { close_(O[i], i, undefined, "XSIG"); continue; }
       if (s2 !== 0 && s2 !== pos) close_(O[i], i, undefined, "FLIP");
       if (pos !== 0) continue;
     }
-    if (pos === 0 && s2 !== 0 && !flatNow && !blocked() && CT[i] < NOENTRY) {
+    if (pos === 0 && s2 !== 0 && !flatNow && !blocked() && (CT[i] < NOENTRY || (overnight && CT[i] >= 1020))) {
       const a = A[i - 1];
       if (!(a > 0)) continue;
       // The 4th argument is the ARM bar; the signal bar is the one before it,
@@ -143,12 +185,24 @@ export function run(sizer, { costMult = 1, breaker = BREAKER,
       const q = sizer(a, CT[i], sigSeq++, i);
       if (q < 1) continue;
       isLimit = false;
-      armDir = s2; armBar = i; armBy = i + ADD_WIN; armEp = O[i]; armQty = q; armAtr = a;
-      armPx = O[i] + s2 * Math.max(a * TRIG, TICK);
-      armSl = Math.max(a * 5, TICK); armTp = Math.max(a * 1.75, TICK);
+      armDir = s2; armBar = i; armBy = i + addWin; armEp = O[i]; armQty = q; armAtr = a;
+      armPx = O[i] + s2 * Math.max(a * trig, TICK);
+      armSl = Math.max(a * slMult, TICK); armTp = Math.max(a * tpMult, TICK);
     }
   }
   return trades;
+  };
+}
+export const run = makeRun(tf, A, sig);
+
+// The same engine on another bar size: its bars, ATR and filter context, and a
+// run() bound to them. It has no default signal -- pass `signals` built on
+// these bars (Donchian, ADX and efficiency all depend on the bar size).
+export function engineFor(tfMin) {
+  if (tfMin === 2) return { tf, atr: A, ctx, run };
+  const t = resample(bars, tfMin);
+  const a = atr(t.high, t.low, t.close, 14);
+  return { tf: t, atr: a, ctx: buildFilterContext(t), run: makeRun(t, a, new Int8Array(t.close.length)) };
 }
 
 // The combine, parameterised so the result can be checked against metric
