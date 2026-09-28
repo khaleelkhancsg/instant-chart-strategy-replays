@@ -35,11 +35,25 @@ const TF_NAME = { 1: "1m", 5: "5m", 10: "10m", 15: "15m", 30: "30m", 60: "1h", 1
 // Says what the candles ARE, and flags the case where the requested size could
 // not be drawn -- silently showing a different aggregation than the one picked
 // is the sort of thing that gets read off a chart and quoted later.
-function tfNote(want, applied) {
-  if (!want || want === 1) return "";
-  const nm = TF_NAME[want] || want + "m";
-  return applied === want ? "  ·  " + nm + " candles"
-                          : "  ·  " + nm + " too dense here — zoom in";
+// The candle size and the SIGNAL timeframe are different things and the chart
+// has to say so. Drawing 15-minute candles under a MACD still computed on
+// 2-minute bars looks exactly like an indicator that failed to follow the
+// dropdown, so whenever the two diverge the label names both.
+function tfNote(want, applied, signalTf) {
+  const sig = signalTf > 1 ? signalTf : 0;
+  let s = "";
+  if (want && want !== 1) {
+    const nm = TF_NAME[want] || want + "m";
+    s = applied === want ? "  ·  " + nm + " candles"
+                         : "  ·  " + nm + " too dense here — zoom in";
+  }
+  // Only worth saying when they actually differ; when they match, the candle
+  // note already covers it.
+  if (sig && sig !== (applied || want || 1)) {
+    const sn = TF_NAME[sig] || sig + "m";
+    s += (s ? "  ·  " : "  ·  ") + "signals & indicators on " + sn;
+  }
+  return s;
 }
 
 function fmtTime(ms) {
@@ -470,7 +484,9 @@ export class ChartView {
     // Trades
     this._drawTrades(ctx, P, y);
 
-    this._paneLabel(ctx, P, (this.data.title || "Price") + tfNote(this.tfMin, this.tfApplied),
+    const stride = (this.data.tfToLocal && this.data.tfToLocal.stride) || 1;
+    this._paneLabel(ctx, P,
+                    (this.data.title || "Price") + tfNote(this.tfMin, this.tfApplied, stride),
                     "price");
   }
 

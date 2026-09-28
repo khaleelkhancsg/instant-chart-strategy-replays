@@ -281,7 +281,7 @@ function renderSidebar() {
   const tfDesc = {
     key: "timeframeMin", label: "Signal timeframe (min)", type: "int",
     min: 1, max: 60, step: 1, default: S.strategyDesc.timeframeMin,
-    hint: "Bars are rebuilt clock-aligned from the 1-minute source.",
+    hint: "THIS is the one that changes results. Bars are rebuilt clock-aligned from the 1-minute source, and the indicators, the signals and the trades are all recomputed on them — donchian_shipped goes from 4,188 trades at 2m to 2,005 at 5m. The 'Candles' picker in the top bar only changes how the price is drawn.",
   };
   for (const d of [tfDesc, ...(S.strategyDesc.params || [])]) {
     sig.body.appendChild(buildParamControl(d, S.params[d.key], (v) => {
