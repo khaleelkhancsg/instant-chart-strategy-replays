@@ -74,8 +74,11 @@ function checkOutput(mod, out, where) {
     if (!(k in mod.plots)) throw new Error(where + ": undeclared plot " + k);
     if (out[k] !== undefined && !Number.isFinite(out[k])) throw new Error(where + ": plot " + k + " = " + out[k]);
   }
+  // a coordinate is du(v), px(v), or op(coord, op, coord)
+  const coordOk = (c) => !!c && (Number.isFinite(c.du) || Number.isFinite(c.px) ||
+    (Array.isArray(c.op) && coordOk(c.op[0]) && typeof c.op[1] === "string" && coordOk(c.op[2])));
   for (const it of (out.graphics && out.graphics.items) || []) {
-    if (!Number.isFinite(it.point.x.du) || !Number.isFinite(it.point.y.du)) throw new Error(where + ": bad graphics point " + JSON.stringify(it.point));
+    if (!coordOk(it.point.x) || !coordOk(it.point.y)) throw new Error(where + ": bad graphics point " + JSON.stringify(it.point));
     if (typeof it.key !== "string" || typeof it.text !== "string") throw new Error(where + ": bad graphics item");
   }
 }
@@ -218,8 +221,10 @@ const { labSig, labRescue } = (() => {
 const tfBars = { length: nT };
 const tfBar = (i) => ({ ts: tf.ts[i], o: tf.open[i], h: tf.high[i], l: tf.low[i], c: tf.close[i] });
 const donEvents = [];          // research-mode orders, for section 4
+const { adrUsed } = await import("../research/lib_donchian_mgmt.mjs");
 {
   let bad = 0, badPlain = 0, badCt = 0, labLabel = 0, nSig = 0, nResc = 0, arms = 0, fills = 0, limitFills = 0;
+  let badSk = 0, badUsed = 0, badLots = 0, nLate = 0, worstUsed = 0;
   const calc = new DON.calculator();
   calc.props = { ...defaults(DON), __research: true };
   calc.init();
@@ -231,6 +236,15 @@ const donEvents = [];          // research-mode orders, for section 4
     const { B, ev, S } = out._ev;
     if (B.plain !== labSig[i]) badPlain++;
     if (B.sig !== labRescue[i]) bad++;
+    if (B.sk !== tf.tday[i]) badSk++;
+    if (B.sig !== 0) {
+      // the 2026 size rule: 4 lots once the day's range reaches 0.9x its average
+      const u = adrUsed(i);
+      if (Math.abs(B.used - u) > 1e-9) badUsed++;
+      worstUsed = Math.max(worstUsed, Math.abs(B.used - u));
+      if (B.lots !== (u >= 0.9 ? 4 : 7)) badLots++;
+      if (B.lots === 4) nLate++;
+    }
     if (B.rescued) nResc++;
     // The bot labels a 2-minute bar by its bucket START (Bar2m.ts), as does
     // Tradovate. The lab labels it by the first minute that traded, which is
@@ -246,7 +260,7 @@ const donEvents = [];          // research-mode orders, for section 4
     }
     if (ev.fill) {
       fills++; if (ev.fill.limit) limitFills++;
-      open = { entIdx: i, dir: ev.fill.dir, fill: ev.fill.px };
+      open = { entIdx: i, dir: ev.fill.dir, fill: ev.fill.px, lots: ev.fill.lots };
       // a fill and an exit on the same bar
       if (ev.exit) { donEvents.push({ ...open, exitIdx: i, why: ev.exit.why, capped: !!ev.exit.capped, xp: ev.exit.px }); open = null; }
     }
@@ -255,6 +269,11 @@ const donEvents = [];          // research-mode orders, for section 4
   check("gated signal with the slow-trend rescue", bad === 0,
         bad + " off of " + nSig.toLocaleString() + " signals, " + nResc.toLocaleString() + " of them rescued");
   check("bar CT minute on every 2-minute bar (bucket start, as the bot)", badCt === 0, badCt + " off");
+  check("session on every 2-minute bar is the research data's trading day", badSk === 0, badSk + " off");
+  check("day's range vs its 10-session average, at every signal, = research", badUsed === 0,
+        badUsed + " off, worst |diff| " + worstUsed.toExponential(1));
+  check("size at every signal: 7 lots, 4 once the range reaches 0.9x", badLots === 0,
+        badLots + " off; " + nLate.toLocaleString() + " of " + nSig.toLocaleString() + " signals at 4 lots");
   console.log("        " + labLabel.toLocaleString() + " bars whose first minute never traded: the lab labels those by the next");
   console.log("        minute instead. No session rule sits on an odd minute, so the signals above still match.");
   console.log("        " + arms.toLocaleString() + " arms, " + fills.toLocaleString() + " fills (" +
@@ -268,15 +287,21 @@ console.log("4. stop-entry, bracket, cap and exits vs research/lib_shipped.mjs")
   const { run } = await import("../research/lib_shipped.mjs");
   // Daily blocks off, so the only day-dependent rule left is the $1,000 cap,
   // and on the FIRST trade of each day that cap is exact for both.
-  // lib_shipped running the rescued signal the indicator draws.
-  const lib = run(() => 8, { breaker: 0, profitBlock: 0, signals: labRescue });
-  const PV = 2, QTY = 8, SLIP = 0.25, PERSIDE = 0.75;
+  // lib_shipped running the rescued signal the indicator draws, with the 2026
+  // rules exactly as research/donchian_2026_final.mjs measured them: 7 lots,
+  // 4 once the day's range reaches 0.9x its average, and out at the next open
+  // if not +1 ATR by the 20th bar after the entry bar.
+  const lib = run((a, c, s, arm) => (adrUsed(arm - 1) >= 0.9 ? 4 : 7), {
+    breaker: 0, profitBlock: 0, signals: labRescue,
+    exitFn: (k, d, st) => k - st.entBar >= 20 && (st.dir === 1 ? st.mx - st.fill : st.fill - st.mn) < st.atr });
+  const PV = 2, SLIP = 0.25, PERSIDE = 0.75;
   const mine = donEvents.map((t) => {
     const avg = t.fill + t.dir * SLIP;
     const pnl = t.why === "SL" && t.capped ? -1000
-      : ((t.dir === 1 ? t.xp - SLIP : t.xp + SLIP) - avg) * t.dir * PV * QTY - PERSIDE * 2 * QTY;
-    return { tday: tf.tday[t.exitIdx], entCt: tf.ctMin[t.entIdx], why: t.why === "SL" && t.capped ? "SLcap" : t.why,
-             held: (t.exitIdx - t.entIdx) * 2, pnl, crosses: tf.tday[t.entIdx] !== tf.tday[t.exitIdx] };
+      : ((t.dir === 1 ? t.xp - SLIP : t.xp + SLIP) - avg) * t.dir * PV * t.lots - PERSIDE * 2 * t.lots;
+    const why = t.why === "SL" && t.capped ? "SLcap" : t.why === "TIME" ? "XSIG" : t.why;
+    return { tday: tf.tday[t.exitIdx], entCt: tf.ctMin[t.entIdx], why,
+             held: (t.exitIdx - t.entIdx) * 2, pnl, lots: t.lots, crosses: tf.tday[t.entIdx] !== tf.tday[t.exitIdx] };
   });
   // lib_shipped's own day accounting: it zeroes the day at a new session's
   // first bar and adds every exit, including a position carried over an early
@@ -295,13 +320,16 @@ console.log("4. stop-entry, bracket, cap and exits vs research/lib_shipped.mjs")
     if (acc === 0 && !carried) {
       strict++;
       const u = mineBy.get(key(t));
-      if (u && Math.abs(u.pnl - t.pnl) < 1e-6) same++;
+      if (u && Math.abs(u.pnl - t.pnl) < 1e-6 && u.lots === t.lots) same++;
       else { diff++; if (eg.length < 3) eg.push({ lib: t, ind: u || null }); }
     }
     acc += t.pnl;
   }
-  check("every trade taken on a flat day: entry, exit reason, hold, P&L", diff === 0,
+  const byWhy = {};
+  for (const t of lib) byWhy[t.why] = (byWhy[t.why] || 0) + 1;
+  check("every trade taken on a flat day: entry, size, exit reason, hold, P&L", diff === 0,
         same.toLocaleString() + " of " + strict.toLocaleString() + " identical, " + diff + " differ");
+  console.log("        exits in lib_shipped: " + Object.entries(byWhy).map(([w, n]) => (w === "XSIG" ? "TIME" : w) + " " + n).join(", "));
   if (eg.length) console.log("        e.g. " + JSON.stringify(eg[0]));
   // Later trades in a day depend on the account's realised P&L (the cap moves
   // with it, and lib_shipped stops arming once the cap is hit), which the
@@ -312,6 +340,46 @@ console.log("4. stop-entry, bracket, cap and exits vs research/lib_shipped.mjs")
               ", " + (100 * agree / lib.length).toFixed(1) + "% of lib_shipped's matched on entry, exit and hold.");
   console.log("        The rest follow a loss earlier the same day: the cap tightens the stop and, once hit,");
   console.log("        stops new arms. The indicator draws flat-day stops, so it keeps trading those sessions.");
+}
+
+// ── 4b. the lines start on the signal candle ─────────────────────────────
+console.log("");
+console.log("4b. live convention over the full history: every order's lines start ON its signal candle");
+{
+  const calc = new DON.calculator();
+  calc.props = { ...defaults(DON), __research: false };
+  calc.init();
+  let prevPre = null, prevOut = null, arms = 0, withPre = 0, same = 0, joined = 0, stubs = 0, previews = 0;
+  const eg = [];
+  for (let i = 0; i < nT; i++) {
+    const out = calc.map(mkD(tfBar(i), i), i);
+    if (i % 1499 === 0) checkOutput(DON, out, "live history bar " + i);
+    const { ev, pre, S } = out._ev;
+    if (ev.arm) {
+      arms++;
+      if (prevPre) {
+        withPre++;
+        const a = ev.arm, p = prevPre;
+        if (a.px === p.px && a.sl === p.sl && a.tp === p.tp && a.lots === p.lots) same++;
+        else if (eg.length < 2) eg.push({ i, arm: a, preview: p });
+        // and the plotted line carries straight on from the signal candle
+        const k = ["A", "B", "C"][S.armSet];
+        if (prevOut && prevOut["trig" + k] === out["trig" + k] && prevOut["stop" + k] === out["stop" + k] &&
+            prevOut["target" + k] === out["target" + k]) joined++;
+      }
+    } else if (prevPre) stubs++;
+    if (pre) previews++;
+    prevPre = pre; prevOut = out;
+  }
+  check("every arm's levels were drawn on its signal candle first", withPre === arms,
+        withPre.toLocaleString() + " of " + arms.toLocaleString() + " arms");
+  check("...at exactly the prices the order then rests at", same === withPre,
+        same.toLocaleString() + " identical" + (eg.length ? "; e.g. " + JSON.stringify(eg[0]) : ""));
+  check("...and each line runs on from the signal candle without a break", joined === withPre,
+        joined.toLocaleString() + " of " + withPre.toLocaleString());
+  console.log("        " + stubs.toLocaleString() + " of " + previews.toLocaleString() + " signal-candle previews (" +
+              (100 * stubs / previews).toFixed(1) + "%) were not followed by an arm: the next bar filled an older");
+  console.log("        stop-entry or stopped out the open position first. Those show a one-candle stub.");
 }
 
 // ── 5. ORB vs the bot's golden fixture ───────────────────────────────────

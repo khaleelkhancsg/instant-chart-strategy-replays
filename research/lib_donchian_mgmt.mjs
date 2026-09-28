@@ -128,6 +128,26 @@ export const Y25 = yIdx((y) => y === 2025), Y26 = yIdx((y) => y === 2026), Y2526
 const monthOf = new Map();
 for (let i = 0; i < n2; i++) if (!monthOf.has(TD[i])) monthOf.set(TD[i], new Date(tf.ts[i] + 43200e3).getUTCMonth());
 export const Y26a = Y26.filter((k) => monthOf.get(days[k]) < 3), Y26b = Y26.filter((k) => monthOf.get(days[k]) >= 3);
+// "ADR used": the day's RTH range so far (08:30-15:00 CT, up to and including
+// bar k) against the average full RTH range of the previous 10 sessions (those
+// that had one). 0 when there is no history yet. Read at the SIGNAL bar.
+const rthHi = new Float64Array(n2).fill(NaN), rthLo = new Float64Array(n2).fill(NaN);
+const dayRange = new Map();
+{
+  let day = -1, h = -Infinity, l = Infinity;
+  for (let i = 0; i < n2; i++) {
+    if (TD[i] !== day) { if (day !== -1 && h > l) dayRange.set(day, h - l); day = TD[i]; h = -Infinity; l = Infinity; }
+    if (CT[i] >= 510 && CT[i] < 900) { if (H[i] > h) h = H[i]; if (L[i] < l) l = L[i]; rthHi[i] = h; rthLo[i] = l; }
+  }
+  if (h > l) dayRange.set(day, h - l);
+}
+const tdays = [...new Set(TD)], adrOf = new Map();
+for (let j = 1; j < tdays.length; j++) {
+  const r = tdays.slice(Math.max(0, j - 10), j).map((d) => dayRange.get(d)).filter((x) => x > 0);
+  if (r.length) adrOf.set(tdays[j], r.reduce((a, b) => a + b, 0) / r.length);
+}
+export const adrUsed = (k) => { const a = adrOf.get(TD[k]); return a ? (rthHi[k] - rthLo[k]) / a : 0; };
+
 // lots: a number, or a sizer (atrAtSignal, ctMin, seq, armBar) -> lots
 export function evalOpts(opts, lots = 8, signals = RESC) {
   const tr = S.run(typeof lots === "function" ? lots : () => lots, { signals, ...opts });

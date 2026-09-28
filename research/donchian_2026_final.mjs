@@ -33,25 +33,8 @@ import * as S from "./lib_shipped.mjs";
 import * as M from "./lib_donchian_mgmt.mjs";
 
 const { tf } = M;
-const { high: H, low: L, ctMin: CT, tday: TD, ts: TS } = tf;
-const n2 = H.length;
-// "ADR used": the day's RTH range so far against the 10 previous sessions'
-const rthHi = new Float64Array(n2).fill(NaN), rthLo = new Float64Array(n2).fill(NaN);
-const dayRange = new Map();
-{
-  let day = -1, h = -Infinity, l = Infinity;
-  for (let i = 0; i < n2; i++) {
-    if (TD[i] !== day) { if (day !== -1 && h > l) dayRange.set(day, h - l); day = TD[i]; h = -Infinity; l = Infinity; }
-    if (CT[i] >= 510 && CT[i] < 900) { if (H[i] > h) h = H[i]; if (L[i] < l) l = L[i]; rthHi[i] = h; rthLo[i] = l; }
-  }
-  if (h > l) dayRange.set(day, h - l);
-}
-const dk = [...new Set(TD)], adr = new Map();
-for (let j = 1; j < dk.length; j++) {
-  const r = dk.slice(Math.max(0, j - 10), j).map((d) => dayRange.get(d)).filter((x) => x > 0);
-  if (r.length) adr.set(dk[j], r.reduce((a, b) => a + b, 0) / r.length);
-}
-export const adrUsed = (k) => { const a = adr.get(TD[k]); return a ? (rthHi[k] - rthLo[k]) / a : 0; };
+const { ts: TS } = tf;
+const { adrUsed } = M;
 
 const live = M.evalCfg(M.LIVE);
 const at = (arr, ix) => S.passArr(ix.map((k) => arr[k]));
