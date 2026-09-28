@@ -58,9 +58,14 @@ STRATEGY (2-minute bars, clock-aligned):
   • Donchian-30 breakout, taken WITH the break. The channel EXCLUDES the current
     bar, so it is a genuine break of prior structure.
   • ADX(14) >= 25 on the signal bar.
-  • Kaufman efficiency ratio(20) > 0.5 — price must be travelling, not
+  • Kaufman efficiency ratio(20) >= 0.5 — price must be travelling, not
     oscillating. This keeps only ~9.5% of raw signal bars and is the single
     most important gate.
+  • SLOW-TREND RESCUE: a breakout with efficiency 0.45-0.5 still counts when the
+    2-min EMA 125 is on its side of the 2-min EMA 500 (~4h vs ~17h trend), which
+    is information the one-hour breakout does not carry. Donchian alone 34.5% ->
+    37.9%, with the ORB 50.0% -> 51.7% (research/donchian_eff_ema_confirm.mjs).
+    The trend EMAs run over the WHOLE fetch, not the 600-bar window.
   • Session 08:30-15:00 CT for SIGNALS. Late afternoon is poison: a 12:30-15:00
     window scored 20.9% against 36.2% for full RTH.
   • INVERTED GEOMETRY: 5.0xATR stop, 1.5xATR target (~0.3:1 reward:risk). Under a
@@ -223,6 +228,20 @@ CONFIG = {
     "cooldown_bars": 1,                  # bars between signals (1 == no-op, kept for parity)
     "eff_period": 20,
     "eff_min": 0.5,                      # Kaufman efficiency ratio floor. NaN FAILS the gate.
+    # SLOW-TREND RESCUE. Below eff_min but at or above eff_rescue_min, a breakout
+    # still counts when the 2-min EMA trend_ema_fast is on its side of the 2-min
+    # EMA trend_ema_slow. 125/500 two-minute bars is ~4h vs ~17h, the horizon
+    # validated as 5-min 50/200 and 1-min 250/1000, which score the same; 2-min
+    # is used so the Tradovate indicator can compute it exactly. 0 = off, and the
+    # gate is then exactly the plain efficiency gate.
+    "eff_rescue_min": 0.45,
+    "trend_ema_fast": 125,
+    "trend_ema_slow": 500,
+    # The trend EMAs need a long run-up: EMA 500 seeded 600 bars back still carries
+    # ~9% of its starting price. They run over the whole fetch (~2,500 bars), and
+    # with fewer than this the rescue sits the bar out -- the plain gate still
+    # applies -- rather than trade on an unsettled trend.
+    "trend_min_bars_2m": 1500,
 
     # execution (spec)
     # 8, not the 10 the all-history sweep chose. That sweep averaged 2019 (median
@@ -555,6 +574,19 @@ def efficiency_ratio(C: Sequence[float], p: int = 20) -> List[float]:
     return out
 
 
+def trend_series(C: Sequence[float], fast: int, slow: int) -> List[int]:
+    """Slow-trend direction on every bar: +1 when EMA(fast) is above EMA(slow),
+    -1 below, 0 level. The same first-value-seeded EMA as everything else here,
+    so it needs a long run-up -- see CONFIG["trend_min_bars_2m"]."""
+    ef = ema(C, fast)
+    es = ema(C, slow)
+    out: List[int] = []
+    for a, b in zip(ef, es):
+        d = a - b
+        out.append(1 if d > 0 else -1 if d < 0 else 0)
+    return out
+
+
 class Bar2m:
     """A clock-aligned 2-minute bar. `ct_min` is the CT minute the bar OPENS at,
     which is what every session rule keys off — matching src/resample.mjs."""
@@ -655,7 +687,8 @@ def raw_signals(bars: Sequence[Bar2m], cfg: dict) -> Tuple[List[int], List[float
     return sig, a
 
 
-def apply_gate(sig: List[int], bars: Sequence[Bar2m], cfg: dict) -> List[int]:
+def apply_gate(sig: List[int], bars: Sequence[Bar2m], cfg: dict,
+               trend: Optional[Sequence[int]] = None) -> List[int]:
     """Session + efficiency gate. Mirrors src/filters.mjs `applyFilters` with
     {startCt, endCt, effMin}. Returns a NEW list; `sig` is left alone.
 
@@ -663,10 +696,16 @@ def apply_gate(sig: List[int], bars: Sequence[Bar2m], cfg: dict) -> List[int]:
     a short sample it subsumes the ADX floor entirely — every breakout with an
     efficiency ratio above 0.5 in RTH already has ADX above 25. Do not read that
     as ADX being useless; read it as the efficiency ratio doing the work.
+
+    `trend` (from trend_series) enables the slow-trend RESCUE: a signal below
+    eff_min but at or above eff_rescue_min passes when trend[i] points the same
+    way as the breakout. It can only ADD to the plain gate. Omitted, the gate is
+    exactly the plain one -- which is how parity stages 4-6 still test it.
     """
     out = list(sig)
     start, end = cfg["signal_start_ct"], cfg["signal_end_ct"]
     emin = cfg["eff_min"]
+    resc = cfg.get("eff_rescue_min", 0.0) if trend is not None else 0.0
     eff = efficiency_ratio([b.close for b in bars], cfg["eff_period"])
     for i in range(len(out)):
         if out[i] == 0:
@@ -680,14 +719,18 @@ def apply_gate(sig: List[int], bars: Sequence[Bar2m], cfg: dict) -> List[int]:
         # qualifying one. (src/filters.mjs inBand)
         e = eff[i]
         if emin > 0 and (not math.isfinite(e) or e < emin):
+            if resc > 0 and math.isfinite(e) and e >= resc and trend[i] == out[i]:
+                continue            # rescued: borderline efficiency, slow trend agrees
             out[i] = 0
     return out
 
 
-def compute_signals(bars: Sequence[Bar2m], cfg: dict) -> Tuple[List[int], List[float]]:
-    """Return (gated signals, ATR series) for every bar — what the bot trades."""
+def compute_signals(bars: Sequence[Bar2m], cfg: dict,
+                    trend: Optional[Sequence[int]] = None) -> Tuple[List[int], List[float]]:
+    """Return (gated signals, ATR series) for every bar — what the bot trades.
+    `trend` enables the slow-trend rescue; see apply_gate."""
     sig, a = raw_signals(bars, cfg)
-    return apply_gate(sig, bars, cfg), a
+    return apply_gate(sig, bars, cfg, trend), a
 
 
 def trading_day_of(dt_utc: datetime) -> int:
@@ -1865,7 +1908,26 @@ class DonchianBot:
         if len(bars) < need:
             log.info("warming up (%d/%d 2-min bars)", len(bars), need)
             return False
+        # The slow trend runs over EVERYTHING fetched; the other indicators keep
+        # the 600-bar window they were validated at. Too little history and the
+        # rescue sits this bar out -- the plain gate still applies.
+        trend = None
+        if CONFIG.get("eff_rescue_min", 0) > 0:
+            if len(bars) >= CONFIG["trend_min_bars_2m"]:
+                trend = trend_series([b.close for b in bars],
+                                     CONFIG["trend_ema_fast"], CONFIG["trend_ema_slow"])
+            off = trend is None
+            if off != getattr(self, "_trend_off", False):
+                if off:
+                    log.warning("⚠  slow-trend rescue OFF: %d 2-min bars fetched, %d needed "
+                                "for EMA %d to settle — plain efficiency gate only",
+                                len(bars), CONFIG["trend_min_bars_2m"], CONFIG["trend_ema_slow"])
+                else:
+                    log.info("slow-trend rescue back ON (%d 2-min bars)", len(bars))
+                self._trend_off = off
         bars = bars[-CONFIG["warmup_bars_2m"]:]
+        if trend is not None:
+            trend = trend[-len(bars):]
 
         last = bars[-1]
         if last.ts == self._last_bar_ts:
@@ -1878,9 +1940,15 @@ class DonchianBot:
             return False
         self._last_bar_ts = last.ts
 
-        sig, atr_arr = compute_signals(bars, CONFIG)
+        sig, atr_arr = compute_signals(bars, CONFIG, trend)
         s = sig[-1]
         atr_v = atr_arr[-1]
+        # A signal the plain gate would have refused came through the rescue.
+        rescued = ""
+        if s != 0 and trend is not None:
+            e_last = efficiency_ratio([b.close for b in bars], CONFIG["eff_period"])[-1]
+            if not (math.isfinite(e_last) and e_last >= CONFIG["eff_min"]):
+                rescued = " (trend rescue, eff %.2f)" % e_last
 
         if s != 0 and age_s > CONFIG["max_entry_delay_s"]:
             log.warning("⏱  STALE SIGNAL: bar closed %.0fs ago (> %ds) — entry skipped",
@@ -1915,10 +1983,10 @@ class DonchianBot:
 
         blocked, why = self._entry_blocked()
         log.info("%s", DIV)
-        log.info("[2m %02d:%02d CT] O=%.2f H=%.2f L=%.2f C=%.2f V=%.0f | ATR=%.2f | sig=%+d "
+        log.info("[2m %02d:%02d CT] O=%.2f H=%.2f L=%.2f C=%.2f V=%.0f | ATR=%.2f | sig=%+d%s "
                  "| %s | dayP&L=%+.0f bal=%.2f",
                  last.ct_min // 60, last.ct_min % 60,
-                 last.open, last.high, last.low, last.close, last.volume, atr_v, s,
+                 last.open, last.high, last.low, last.close, last.volume, atr_v, s, rescued,
                  ("IN POS " + ("▲" if self._pos_dir == 1 else "▼")) if self.in_position else "flat",
                  self._day_pnl(), self.api.balance)
 
@@ -2079,9 +2147,14 @@ class DonchianBot:
         log.info("MNQ DONCHIAN + EFFICIENCY-GATE BOT | contract=%s live_account=%s",
                  CONFIG["contract_id"], CONFIG["live_account"])
         log.info("signal: Donchian-%d break (excl. current bar), ADX(%d)>=%d, "
-                 "efficiency(%d)>%.2f, %d-min bars",
+                 "efficiency(%d)>=%.2f, %d-min bars",
                  CONFIG["period"], CONFIG["adx_period"], CONFIG["adx_min"],
                  CONFIG["eff_period"], CONFIG["eff_min"], CONFIG["timeframe_min"])
+        if CONFIG.get("eff_rescue_min", 0) > 0:
+            log.info("        + slow-trend rescue: efficiency >= %.2f when 2-min EMA %d/%d "
+                     "agrees (needs %d 2-min bars of history)",
+                     CONFIG["eff_rescue_min"], CONFIG["trend_ema_fast"],
+                     CONFIG["trend_ema_slow"], CONFIG["trend_min_bars_2m"])
         log.info("session CT: signals %02d:%02d-%02d:%02d | last entry %02d:%02d | flatten %02d:%02d",
                  CONFIG["signal_start_ct"] // 60, CONFIG["signal_start_ct"] % 60,
                  CONFIG["signal_end_ct"] // 60, CONFIG["signal_end_ct"] % 60,

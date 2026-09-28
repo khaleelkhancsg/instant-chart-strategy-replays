@@ -20,7 +20,12 @@ import { resolveParams } from "../src/run.mjs";
 import { resample } from "../src/resample.mjs";
 import { runBrackets, resolveExec } from "../src/engine.mjs";
 import { buildFilterContext, applyFilters, NO_FILTER } from "../src/filters.mjs";
-import { adx, atr, donchian, efficiencyRatio } from "../src/indicators.mjs";
+import { adx, atr, donchian, efficiencyRatio, ema } from "../src/indicators.mjs";
+
+// The slow-trend rescue (bot CONFIG eff_rescue_min / trend_ema_fast /
+// trend_ema_slow). The Python test asserts these equal the bot's CONFIG, so the
+// fixture cannot quietly test a different rule than the one that trades.
+const TREND = { fast: 125, slow: 500, rescueMin: 0.45 };
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(HERE, "..", "bot", "fixture_donchian.json");
@@ -70,6 +75,16 @@ const { high: dh, low: dl } = donchian(tf.high, tf.low, params.period);
 const atrArr = atr(tf.high, tf.low, tf.close, params.atrPeriod);
 const effArr = efficiencyRatio(tf.close, 20);
 
+// The rescue stage. EMAs over THIS slice's closes, seeded at its first bar --
+// exactly what the bot's trend_series computes on the same list -- and the
+// rescued gate: every plain-gate signal, plus a borderline one (efficiency in
+// [rescueMin, effMin)) whose slow trend points the way it broke.
+const trendFast = ema(tf.close, TREND.fast), trendSlow = ema(tf.close, TREND.slow);
+const trendDir = Array.from(trendFast, (v, i) => Math.sign(v - trendSlow[i]) || 0);
+const gatedLow = applyFilters(out.sig, ctx, { ...filter, effMin: TREND.rescueMin });
+const rescued = Array.from(masked, (m, i) =>
+  m !== 0 ? m : (gatedLow[i] !== 0 && trendDir[i] === out.sig[i] ? out.sig[i] : 0));
+
 const r6 = (v) => (Number.isFinite(v) ? Number(v.toFixed(6)) : null);
 
 const fixture = {
@@ -102,9 +117,14 @@ const fixture = {
     eff: Array.from(effArr, r6),
     donHigh: Array.from(dh, r6),
     donLow: Array.from(dl, r6),
+    trendFast: Array.from(trendFast, r6),
+    trendSlow: Array.from(trendSlow, r6),
   },
   sigRaw: Array.from(out.sig),
   sigMasked: Array.from(masked),
+  trendParams: TREND,
+  trend: trendDir,
+  sigRescue: rescued,
 
   trades: trades.map((t) => ({
     entryTime: t.entryTime, exitTime: t.exitTime,
@@ -124,5 +144,6 @@ console.log(`wrote ${path.relative(process.cwd(), OUT)}`);
 console.log(`  ${fixture.bars1m.length.toLocaleString()} 1-min bars -> ${fixture.bars2m.length.toLocaleString()} 2-min bars`);
 console.log(`  ${new Date(slice1m.ts[0]).toISOString()} -> ${new Date(endMs).toISOString()}`);
 console.log(`  ${fixture.sigRaw.filter((s) => s !== 0).length} raw signals, ${nSig} surviving the gate`);
+console.log(`  ${fixture.sigRescue.filter((s) => s !== 0).length - nSig} more let through by the slow-trend rescue`);
 console.log(`  ${fixture.trades.length} trades, net $${fixture.trades.reduce((a, t) => a + t.pnl, 0).toFixed(2)}`);
 console.log(`  ${(fs.statSync(OUT).size / 1e6).toFixed(1)} MB`);

@@ -15,6 +15,7 @@ Stages checked:
     2  ATR / ADX / efficiency ratio / Donchian
     3  raw signals
     4  gated signals (session + efficiency)
+    4b the slow-trend rescue (borderline efficiency + 2-min EMA 125/500)
     5  full trade replay: bracket, flatten priority, flips, no same-bar re-entry
     6  warm-up sufficiency at the bot's live retention
     7  daily entry-block semantics
@@ -233,6 +234,53 @@ def main():
     check("...and it is the NaN doing it, not the window",
           any(bot.apply_gate(raw_sig, bars, dict(nan_cfg, eff_min=0))), "")
 
+    # ── 4b. slow-trend rescue ─────────────────────────────────
+    # A breakout below eff_min but at or above eff_rescue_min passes when the
+    # 2-min EMA 125/500 trend points the way it broke. Checked stage by stage
+    # like everything else, and the fixture's parameters must BE the bot's, or
+    # this would verify a rule that is not the one trading.
+    print("\n4b. slow-trend rescue (borderline efficiency + 2-min EMA trend)")
+    tp = fx.get("trendParams")
+    my_trend = my_res = rcfg = None
+    if tp is None:
+        check("fixture carries the rescue stage", False,
+              "regenerate: node research/export_bot_fixture.mjs")
+    else:
+        live = (bot.CONFIG["trend_ema_fast"], bot.CONFIG["trend_ema_slow"],
+                bot.CONFIG["eff_rescue_min"])
+        check("fixture tests the rule the bot trades",
+              (tp["fast"], tp["slow"], tp["rescueMin"]) == live,
+              f"fixture {tp} vs CONFIG {live}")
+        for label, mine, key in (
+            ("trend EMA fast", bot.ema(C, tp["fast"]), "trendFast"),
+            ("trend EMA slow", bot.ema(C, tp["slow"]), "trendSlow"),
+        ):
+            d = max_dev(mine, fx["indicators"][key])
+            check(label, d <= 1e-4, f"max deviation {d:.3e}")
+        my_trend = bot.trend_series(C, tp["fast"], tp["slow"])
+        d_tr = sum(1 for a, b in zip(my_trend, fx["trend"]) if a != b)
+        check("trend direction", d_tr == 0, f"{d_tr} of {len(my_trend)} differ")
+
+        rcfg = dict(cfg, eff_rescue_min=tp["rescueMin"])
+        my_res = bot.apply_gate(raw_sig, bars, rcfg, my_trend)
+        d_res = sum(1 for a, b in zip(my_res, fx["sigRescue"]) if a != b)
+        check("rescued gate", d_res == 0, f"{d_res} of {len(my_res)} differ")
+        check("compute_signals passes the trend through",
+              bot.compute_signals(bars, rcfg, my_trend)[0] == my_res, "")
+
+        added = [i for i in range(len(my_res)) if my_res[i] and not my_sig[i]]
+        check("the rescue only ADDS to the plain gate",
+              all(my_res[i] == my_sig[i] for i in range(len(my_sig)) if my_sig[i]), "")
+        check("...and adds something here", len(added) > 0,
+              "no rescued signal in the fixture -- the path is untested")
+        check("every added signal is borderline and trend-aligned",
+              all(tp["rescueMin"] <= my_eff[i] < cfg["eff_min"] and my_trend[i] == my_res[i]
+                  for i in added), "")
+        check("no trend given -> exactly the plain gate",
+              bot.apply_gate(raw_sig, bars, rcfg) == my_sig, "")
+        check("rescue off -> exactly the plain gate, trend or not",
+              bot.apply_gate(raw_sig, bars, dict(rcfg, eff_rescue_min=0), my_trend) == my_sig, "")
+
     # ── 5. trade replay ───────────────────────────────────────
     print("\n5. execution replay (bracket, flatten, flips)")
     trades = replay(bars, my_sig, my_atr2, exec_cfg)
@@ -304,6 +352,29 @@ def main():
               f"{diff} of the last 200 bars differ")
     else:
         check("warm-up test has enough bars", False, "fixture too short")
+
+    # The trend EMAs run over the WHOLE fetch, and the bot refuses the rescue
+    # with fewer than trend_min_bars_2m bars. At exactly that floor, the trend
+    # and the rescued signals must already match the long-history reading.
+    tmin = bot.CONFIG["trend_min_bars_2m"]
+    if my_trend is not None and len(bars) > tmin + 250:
+        tail = bars[-tmin:]
+        t_tr = bot.trend_series([b.close for b in tail], tp["fast"], tp["slow"])
+        d_t = sum(1 for i in range(1, 201) if t_tr[-i] != my_trend[-i])
+        check(f"trend direction settles within {tmin} bars", d_t == 0,
+              f"{d_t} of the last 200 bars differ")
+        t_rs = bot.apply_gate(bot.raw_signals(tail, cfg)[0], tail, rcfg, t_tr)
+        d_r = sum(1 for i in range(1, 201) if t_rs[-i] != my_res[-i])
+        check("identical rescued signals from that floor", d_r == 0,
+              f"{d_r} of the last 200 bars differ")
+        # The old 600-bar window would NOT do: this is why the trend runs on the
+        # full fetch. Measured, so the reason cannot quietly stop being true.
+        short = bars[-bot.CONFIG["warmup_bars_2m"]:]
+        s_slow = bot.ema([b.close for b in short], tp["slow"])[-1]
+        full_slow = bot.ema(C, tp["slow"])[-1]
+        check("the 600-bar window is too short for EMA 500 (so it is not used)",
+              abs(s_slow - full_slow) > 1.0,
+              f"only {abs(s_slow - full_slow):.2f} pts apart -- the full-fetch rule may be unnecessary")
 
     # ── 7. daily entry blocks ─────────────────────────────────
     print("\n7. daily rule semantics")
@@ -614,6 +685,50 @@ def run_live_path_tests(fx, bars):
         b, api = make_bot(prefix, bot.CONFIG["flatten_ct"] - 1, position=dict(longpos))
         asyncio.run(b._enforce_flatten())
         check("...and does nothing a minute before it", api.closes == 0, "")
+
+        # j) the slow-trend rescue reaches the live path. Take the latest bar that
+        # ONLY the rescue lets through (outside the ORB's hour, so the two books
+        # cannot interact) and drive the real _evaluate over the 1-minute prefix
+        # ending there: it must trade with the rescue on and not with it off.
+        sr = fx.get("sigRescue")
+        r_idx = None if sr is None else next(
+            (i for i in range(len(bars) - 1, 0, -1)
+             if sr[i] != 0 and fx["sigMasked"][i] == 0
+             and not (510 <= bars[i].ct_min < 570)), None)
+        if r_idx is None:
+            check("fixture contains a rescued signal for the live path", False, "none found")
+        else:
+            r_end = bars[r_idx].ts + 120_000
+            r_prefix = [{"ms": r[0], "o": r[1], "h": r[2], "l": r[3], "c": r[4]}
+                        for r in fx["bars1m"] if r[0] < r_end]
+            r_ct = bars[r_idx].ct_min
+            b, api = make_bot(r_prefix, r_ct + 2)
+            asyncio.run(b._evaluate())
+            check("a rescued signal trades through the live path", len(api.orders) == 1,
+                  f"{len(api.orders)} orders")
+            if api.orders:
+                want_side = 0 if sr[r_idx] == 1 else 1
+                check("...on the side it broke", api.orders[0][0] == want_side,
+                      f"side={api.orders[0][0]} want {want_side}")
+            saved_r = bot.CONFIG["eff_rescue_min"]
+            try:
+                bot.CONFIG["eff_rescue_min"] = 0
+                b, api = make_bot(r_prefix, r_ct + 2)
+                asyncio.run(b._evaluate())
+                check("...and does not with the rescue switched off", len(api.orders) == 0,
+                      f"{len(api.orders)} orders")
+            finally:
+                bot.CONFIG["eff_rescue_min"] = saved_r
+            # Too little history: the rescue must stand down, not guess.
+            saved_m = bot.CONFIG["trend_min_bars_2m"]
+            try:
+                bot.CONFIG["trend_min_bars_2m"] = 10 ** 9
+                b, api = make_bot(r_prefix, r_ct + 2)
+                asyncio.run(b._evaluate())
+                check("...nor when the history is too short for the trend to settle",
+                      len(api.orders) == 0, f"{len(api.orders)} orders")
+            finally:
+                bot.CONFIG["trend_min_bars_2m"] = saved_m
 
     finally:
         bot.CONFIG.update(saved)
