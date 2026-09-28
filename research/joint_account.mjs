@@ -82,7 +82,11 @@ const days = [...new Set(TD1)].sort((a, b) => a - b);
 
 function simulate(books, opts = {}) {
   const { exclusive = false, orbCfg = ORB_CFG, donLots = DON_LOTS,
-          costMult = 1 } = opts;
+          costMult = 1,
+          // donSig: an alternative gated Donchian signal on the 2-minute bars,
+          // in place of the shipped efficiency >= 0.5 one. Optional.
+          donSig = null } = opts;
+  const SIG2 = donSig || sig2;
   const orbAt = orbSchedule(orbCfg);
   const SLIPc = SLIP * costMult, FEEc = PERSIDE * costMult;
   const useDon = books !== "orb", useOrb = books !== "don";
@@ -222,7 +226,7 @@ function simulate(books, opts = {}) {
     // ---- DONCHIAN, only when a 2-minute bar completes ---------------------
     const k = closesBar[i];
     if (!useDon || k < 1) continue;
-    const s2 = sig2[k - 1];
+    const s2 = SIG2[k - 1];
     const flatNow = CT2[k] >= FLAT_CT || CT2[k] < OPEN_CT;
 
     if (dPos === 0 && armDir !== 0) {
@@ -326,7 +330,7 @@ const st = (t) => {
   return { n: t.length, win: 100 * w / t.length, pf: gw / gl, exp: (gw - gl) / t.length };
 };
 
-export { simulate, days, pass21, forward, st, ORB_CFG };
+export { simulate, days, pass21, forward, st, ORB_CFG, sig2 };
 const IS_MAIN = process.argv[1] && process.argv[1].endsWith("joint_account.mjs");
 if (!IS_MAIN) { /* imported for sweeps; skip the report */ }
 else {

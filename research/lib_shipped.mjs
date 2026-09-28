@@ -59,7 +59,12 @@ export function run(sizer, { costMult = 1, breaker = BREAKER,
                              // exitFn(sigBar, pos) -> true closes the position at the
                              // NEXT bar's open, like the engine's exitSig: it is read
                              // on a closed bar and acted on one bar later. Optional.
-                             exitFn = null } = {}) {
+                             exitFn = null,
+                             // signals: an alternative gated signal array (same length
+                             // as the 2-minute bars) in place of the shipped one, e.g.
+                             // a different efficiency threshold. Optional.
+                             signals = null } = {}) {
+  const SIG = signals || sig;
   const slip = SLIP * costMult, perSide = PERSIDE * costMult;
   const trades = [];
   let pos = 0, ep = 0, slD = 0, tpD = 0, qty = 0, notional = 0, entCt = 0, entBar = 0, entAtr = 0, entSig = -1;
@@ -80,7 +85,7 @@ export function run(sizer, { costMult = 1, breaker = BREAKER,
     pos = 0; notional = 0;
   };
   for (let i = 1; i < nB; i++) {
-    const s2 = sig[i - 1];
+    const s2 = SIG[i - 1];
     const flatNow = CT[i] >= FLAT || CT[i] < 510;
     if (TD[i] !== curTday) { curTday = TD[i]; dayReal = 0; capHit = false; }
     if (pos === 0 && armDir !== 0) {
