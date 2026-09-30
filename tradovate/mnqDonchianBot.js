@@ -411,8 +411,8 @@ class mnqDonchianBot {
     // "not enough history" case and would show a trend the bot would not use.
     if (P.showTrend !== false && B.settled) { out.trendFast = B.tF; out.trendSlow = B.tS; }
 
-    // Lines alternate between two plot sets so consecutive arms are never
-    // joined by a diagonal: a plot connects every value it is given.
+    // Lines rotate through the three plot sets (see SETS) so consecutive
+    // orders are never joined by a diagonal: a plot connects every value it is given.
     const put = (set, key, v) => { out[key + SETS[set]] = v; };
     // (a) The signal candle itself carries the levels its order will rest at,
     // so every line starts exactly where the signal fires. They are fixed by
