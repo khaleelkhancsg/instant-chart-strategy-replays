@@ -17,15 +17,15 @@
 // Plus the same brackets on RANDOM-direction entries at the same moments, which
 // shows how much of the win rate is the bracket and how much is the signal.
 //
-// RESULT (2026 only): low RR buys win rate, not passes. At RR 0.1 the book wins
-// 91% of trades but loses $21-27 a trade (sim fills / realistic) -- a loss
-// costs ~$1,100 against a ~$80 win -- and passes 3.9-6.2% of 2026 windows,
-// against 34.5-36.9% for the live target. Tick-sized targets lose money even
-// with no costs at all. Random-direction entries do as well as the book at
-// small targets (RR 0.2: 36.4%, both halves), and FADING the breakout beats
-// following it there: RR 0.2-0.5 wins 72-88% at +$24-46 a trade and passes
-// 31-38% (Jan-Mar 33-40, Apr-Jul 21-33) -- about the live book's level, not
-// above it. Found by looking at 2026, so it is a lead, not a result.
+// RESULT (2026 only, honest limit fills): low RR buys win rate, not passes. At
+// RR 0.1 the book still wins 87% of trades but loses $65-70 a trade (sim fills /
+// realistic) -- a loss costs ~$1,090 against a ~$80 win -- and passes under 1%
+// of 2026 windows, against 34.5-36.9% for the live target. Tick-sized targets
+// lose money even with no costs. Random direction does no better (RR 0.2: 22%).
+// Fading the breakout peaks at RR 0.5 (+$30-36 a trade, 29.8-30.5%), below the
+// live book. An earlier version of this file showed the fade at 31-38%: it
+// booked targets on the bar a refused stop filled as a LIMIT using a high that
+// may have printed before the fill (now limitFillTp "close").
 //
 //   node --max-old-space-size=8192 research/donchian_low_rr.mjs
 
@@ -43,7 +43,7 @@ const in2026 = (t) => S.yearOf.get(t.tday) === 2026;
 const MODELS = [["realistic", { slipMult: 1, feeMult: 1 }], ["sim fills", { slipMult: 0, feeMult: 1 }],
                 ["no costs", { slipMult: 0, feeMult: 0 }]];
 function score(opts, signals = M.RESC) {
-  const tr = S.run(() => LOTS, { signals, ...opts }).filter(in2026);
+  const tr = S.run(() => LOTS, { signals, limitFillTp: "close", ...opts }).filter(in2026);
   const arr = S.dayArr(tr, days);
   const w = tr.filter((t) => t.pnl > 0), l = tr.filter((t) => t.pnl <= 0);
   const aw = w.reduce((s, t) => s + t.pnl, 0) / Math.max(1, w.length), al = -l.reduce((s, t) => s + t.pnl, 0) / Math.max(1, l.length);

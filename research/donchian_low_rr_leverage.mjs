@@ -13,12 +13,13 @@
 // Random-direction entries at 50 lots show what leverage does to a book with
 // no edge at all.
 //
-// RESULT (2026 only): every step up in size lowers the pass rate, at every
-// target. Sim fills: the live target goes 36.9% (8 lots) -> 13.5% (16) -> 7.2%
-// (25) -> 2.8% (35) -> 0.8% (50); RR 0.1 is 0.5% at 16 lots and 0% above. At 50
-// lots the cap makes the stop 10 points against a ~26-point 2-min ATR, the win
-// rate at RR 0.1 falls to 31%, and every target loses $580-690 a trade. Turning
-// the profit block off and random direction do not rescue it.
+// RESULT (2026 only, honest limit fills): every step up in size lowers the pass
+// rate, at every target. Sim fills: the live target goes 36.9% (8 lots) -> 13.5%
+// (16) -> 7.2% (25) -> 2.8% (35) -> 0.8% (50); RR 0.1 is 0.9% at 8 lots and 0%
+// from 16 lots up. At 50 lots the cap makes the stop 10 points against a
+// ~26-point 2-min ATR, the win rate at RR 0.1 falls to 30%, and every target
+// loses heavily. Turning the profit block off and random direction do not
+// rescue it.
 //
 //   node --max-old-space-size=8192 research/donchian_low_rr_leverage.mjs
 
@@ -31,7 +32,7 @@ const PV = 2;
 const stopDist = (a, lots) => Math.min(5.15 * a, 1000 / (PV * lots));
 const in2026 = (t) => S.yearOf.get(t.tday) === 2026;
 function score(lots, opts, signals = M.RESC) {
-  const tr = S.run(() => lots, { signals, ...opts }).filter(in2026);
+  const tr = S.run(() => lots, { signals, limitFillTp: "close", ...opts }).filter(in2026);
   const arr = S.dayArr(tr, days);
   const w = tr.filter((t) => t.pnl > 0).length;
   return { n: tr.length, win: (100 * w) / tr.length, exp: tr.reduce((s, t) => s + t.pnl, 0) / tr.length,

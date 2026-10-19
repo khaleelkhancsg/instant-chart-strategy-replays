@@ -98,7 +98,14 @@ function makeRun(t, A, sig) {
                              // from the entry price instead of the signal's reference, so
                              // a target smaller than the stop-entry offset still sits
                              // beyond the fill. Both optional.
-                             tpFn = null, tpFromFill = false } = {}) {
+                             tpFn = null, tpFromFill = false,
+                             // limitFillTp: on the bar a refused stop fills as a LIMIT,
+                             // price came BACK to the entry, so the bar's high (long) may
+                             // have printed before the fill. "high" (the default, every
+                             // earlier result) books the target if the bar reached it;
+                             // "close" only if the bar also CLOSED beyond it, which is
+                             // the only case where the target is certain after the fill.
+                             limitFillTp = "high" } = {}) {
   const SIG = signals || sig;
   const slip = SLIP * (slipMult ?? costMult), perSide = PERSIDE * (feeMult ?? costMult);
   const trades = [];
@@ -108,6 +115,7 @@ function makeRun(t, A, sig) {
   let isLimit = false;                  // working as a limit, so the fill side flips
   let mx = 0, mn = 0, tsl = null;       // trade state for the management hooks
   let tpBase = 0;                       // where the target is measured from
+  let limFill = false;                  // this position filled as a limit
   const avgFill = () => notional / qty;
   const stNow = () => ({ dir: pos, fill: avgFill(), ep, atr: entAtr, slD, tpD, entBar, qty,
                          mx, mn, sigBar: entSig, tsl });
@@ -137,6 +145,7 @@ function makeRun(t, A, sig) {
           entCt = CT[i]; entBar = i; entAtr = armAtr; entSig = armBar - 1; armDir = 0;
           mx = mn = armPx; tsl = null;
           tpBase = tpFromFill ? armPx : armEp;
+          limFill = isLimit;
         };
         if (entryModel !== "optimistic" && i === armBar + 1 && !isLimit &&
             (armDir === 1 ? O[i] >= armPx : O[i] <= armPx)) {
@@ -177,11 +186,11 @@ function makeRun(t, A, sig) {
       if (dir === 1) {
         if (O[i] <= sl) { close_(O[i], i, cut, why); done = true; }
         else if (L[i] <= sl) { close_(sl, i, cut, why); done = true; }
-        else if (H[i] >= tp) { close_(tp, i, undefined, "TP"); done = true; }
+        else if (H[i] >= tp && !(limitFillTp === "close" && limFill && entBar === i && C[i] < tp)) { close_(tp, i, undefined, "TP"); done = true; }
       } else {
         if (O[i] >= sl) { close_(O[i], i, cut, why); done = true; }
         else if (H[i] >= sl) { close_(sl, i, cut, why); done = true; }
-        else if (L[i] <= tp) { close_(tp, i, undefined, "TP"); done = true; }
+        else if (L[i] <= tp && !(limitFillTp === "close" && limFill && entBar === i && C[i] > tp)) { close_(tp, i, undefined, "TP"); done = true; }
       }
       if (done) continue;
       if (exitFn && exitFn(i - 1, pos, stNow())) { close_(O[i], i, undefined, "XSIG"); continue; }
