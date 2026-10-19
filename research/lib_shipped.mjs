@@ -89,15 +89,25 @@ function makeRun(t, A, sig) {
                              // onTrade(trade): called as each trade is booked, so a
                              // sizer can react to what has already happened (e.g.
                              // yesterday's result). Optional.
-                             onTrade = null } = {}) {
+                             onTrade = null,
+                             // Costs split in two: slippage (x one tick a side) and
+                             // commission (x $0.75 a side), each defaulting to costMult.
+                             slipMult = null, feeMult = null,
+                             // tpFn(atrAtSignal, lots) -> the target DISTANCE in points,
+                             // in place of tpMult x ATR. tpFromFill measures the target
+                             // from the entry price instead of the signal's reference, so
+                             // a target smaller than the stop-entry offset still sits
+                             // beyond the fill. Both optional.
+                             tpFn = null, tpFromFill = false } = {}) {
   const SIG = signals || sig;
-  const slip = SLIP * costMult, perSide = PERSIDE * costMult;
+  const slip = SLIP * (slipMult ?? costMult), perSide = PERSIDE * (feeMult ?? costMult);
   const trades = [];
   let pos = 0, ep = 0, slD = 0, tpD = 0, qty = 0, notional = 0, entCt = 0, entBar = 0, entAtr = 0, entSig = -1;
   let armDir = 0, armPx = 0, armBy = -1, armBar = 0, armEp = 0, armSl = 0, armTp = 0, armQty = 0, armAtr = 0;
   let curTday = -1e9, dayReal = 0, capHit = false, sigSeq = 0;
   let isLimit = false;                  // working as a limit, so the fill side flips
   let mx = 0, mn = 0, tsl = null;       // trade state for the management hooks
+  let tpBase = 0;                       // where the target is measured from
   const avgFill = () => notional / qty;
   const stNow = () => ({ dir: pos, fill: avgFill(), ep, atr: entAtr, slD, tpD, entBar, qty,
                          mx, mn, sigBar: entSig, tsl });
@@ -126,6 +136,7 @@ function makeRun(t, A, sig) {
           notional = (pos === 1 ? armPx + slip : armPx - slip) * qty;
           entCt = CT[i]; entBar = i; entAtr = armAtr; entSig = armBar - 1; armDir = 0;
           mx = mn = armPx; tsl = null;
+          tpBase = tpFromFill ? armPx : armEp;
         };
         if (entryModel !== "optimistic" && i === armBar + 1 && !isLimit &&
             (armDir === 1 ? O[i] >= armPx : O[i] <= armPx)) {
@@ -158,7 +169,7 @@ function makeRun(t, A, sig) {
       const rawSl = ep - dir * slD;
       let sl = dir === 1 ? Math.max(rawSl, lossPx) : Math.min(rawSl, lossPx);
       const isCap = dir === 1 ? (sl === lossPx && lossPx > rawSl) : (sl === lossPx && lossPx < rawSl);
-      const tp = ep + dir * tpD;
+      const tp = tpBase + dir * tpD;
       let cut = isCap ? -CAP - dayReal : undefined;
       let why = isCap ? "SLcap" : "SL";
       if (tsl !== null && (dir === 1 ? tsl > sl : tsl < sl)) { sl = tsl; cut = undefined; why = "TS"; }
@@ -187,7 +198,7 @@ function makeRun(t, A, sig) {
       isLimit = false;
       armDir = s2; armBar = i; armBy = i + addWin; armEp = O[i]; armQty = q; armAtr = a;
       armPx = O[i] + s2 * Math.max(a * trig, TICK);
-      armSl = Math.max(a * slMult, TICK); armTp = Math.max(a * tpMult, TICK);
+      armSl = Math.max(a * slMult, TICK); armTp = Math.max(tpFn ? tpFn(a, q) : a * tpMult, TICK);
     }
   }
   return trades;
