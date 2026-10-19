@@ -135,7 +135,12 @@ function makeRun(t, A, sig) {
                              entryLimitAtr = null,
                              // noFlip: an opposite signal does not close the position;
                              // only the bracket, exitFn or the flat time do.
-                             noFlip = false } = {}) {
+                             noFlip = false,
+                             // flipAll: ANY new signal closes the position at the next
+                             // open -- the same direction too -- and its order is then
+                             // placed as usual (a same-direction re-entry). For systems
+                             // whose trade is one signal-to-signal segment.
+                             flipAll = false } = {}) {
   const SIG = signals || sig;
   const slip = SLIP * (slipMult ?? costMult), perSide = PERSIDE * (feeMult ?? costMult);
   const trades = [];
@@ -215,7 +220,7 @@ function makeRun(t, A, sig) {
       let done = false, early = false;
       if (exitFirst && !(dir === 1 ? O[i] <= sl : O[i] >= sl)) {
         if (exitFn && exitFn(i - 1, pos, stNow())) { close_(O[i], i, undefined, "XSIG"); continue; }
-        if (!noFlip && s2 !== 0 && s2 !== pos) { close_(O[i], i, undefined, "FLIP"); early = true; }
+        if (!noFlip && s2 !== 0 && (s2 !== pos || flipAll)) { close_(O[i], i, undefined, "FLIP"); early = true; }
       }
       if (early) { /* flipped at the open: on to the arm below */ }
       else if (dir === 1) {
@@ -230,7 +235,7 @@ function makeRun(t, A, sig) {
       if (done) continue;
       if (!early) {
         if (exitFn && exitFn(i - 1, pos, stNow())) { close_(O[i], i, undefined, "XSIG"); continue; }
-        if (!noFlip && s2 !== 0 && s2 !== pos) close_(O[i], i, undefined, "FLIP");
+        if (!noFlip && s2 !== 0 && (s2 !== pos || flipAll)) close_(O[i], i, undefined, "FLIP");
       }
       if (pos !== 0) continue;
     }
