@@ -17,16 +17,26 @@
 // winner is then stress-tested.
 //
 // RESULT (2026 only): the old settings fail these rules (8 lots, -$500/+$750:
-// 12-35%), because a $750 profit block lets days run past the $625 the
+// 12-33%), because a $750 profit block lets days run past the $625 the
 // consistency rule allows and 8 lots makes the $600 limit a 37.5-pt stop.
 // Best: D, the 2026 Donchian config, at 4 lots (2 late), breaker -$300 (or
 // -$200), profit block +$250 (or +$350): 61.3% (Jan-Mar 63.3, Apr-Jul 63.0),
 // 59.7% over every real window, a 3-5 lot plateau (57 / 61 / 53), and the
 // pick-on-one-half check holds both ways (62.1 / 60.2). Costs, slippage and
 // day-rule neighbours move it 1-2pp; the best 5 days removed leave 51.9%.
-// C (fade 1-min EMA 20/50, 2 lots) scores higher, 65.1%, but is fragile: one
-// bar of entry delay -> 20.1%, 3 lots -> 49.5%, and its Jan-Mar pick reads
-// 40.1% on Apr-Jul.
+// Runner-up: A, fading 1-min MACD crosses, at 4 lots, breaker -$200, profit
+// block +$250: 58.5% (Jan-Mar 52.4, Apr-Jul 68.5); both half-picks choose
+// -$200 / +$250, one bar of delay leaves 52.7%, every month made money -- but
+// only 46.2% of the real calendar windows pass (a weaker January-March).
+// C (fade 1-min EMA 20/50, 2 lots) scores 61.9% but is fragile: one bar of
+// entry delay -> 20.3%, 3 lots -> 49.6%, and its Jan-Mar pick reads 40.8% on
+// Apr-Jul.
+// cancelOpposite: the first run of this file let a resting stop-entry fill on
+// the bar after a signal the OTHER way, then flipped it at that bar's open --
+// a price from before the fill. Cancelling it at that open instead, as anyone
+// watching would, leaves D exactly as it was and moves the 1-min fades, whose
+// signals alternate: A's best 56.9% (-$300) -> 58.5% (-$200), C 65.1 -> 61.9,
+// B 53.2 -> 52.7.
 //
 //   node --max-old-space-size=8192 research/rules_1250_2026.mjs
 
@@ -69,7 +79,8 @@ const CFG = {
   B: { name: "B  1-min anticipation (RTH), target 1x stop", E: E1, sig: SIG.B, opts: { trig: 0.15, tpFromFill: true, tpFn: (a, q) => stopDist(a, q) } },
   C: { name: "C  fade 1-min EMA 20/50 crosses, 1.75 ATR target", E: E1, sig: SIG.C, opts: { trig: 0 } },
 };
-const FILL = { slipMult: 1, feeMult: 1, limitFillTp: "close", dayCap: DAY_CAP };
+// cancelOpposite: a signal the other way cancels a resting order (see RESULT).
+const FILL = { slipMult: 1, feeMult: 1, limitFillTp: "close", dayCap: DAY_CAP, cancelOpposite: true };
 function run(c, L, br, pb, extra = {}, sig = c.sig) {
   const sizer = c.late ? (a, ct, s, arm) => (c.late(arm - 1) ? Math.max(1, Math.round(L * 4 / 7)) : L) : () => L;
   const tr = c.E.run(sizer, { signals: sig, ...FILL, ...c.opts, breaker: br, profitBlock: pb, ...extra }).filter(in2026);
@@ -107,10 +118,10 @@ for (const [id, c] of Object.entries(CFG)) {
 }
 
 // ---- the winner, and the stress test ------------------------------------------------
-bar("STRESS TEST of the best two settings overall");
+bar("STRESS TEST of every config at its best settings");
 const flat = Object.entries(results).flatMap(([id, rs]) => rs.map((r) => ({ id, ...r })));
 const pick = [];
-for (const r of flat.sort((a, b) => b.y26 - a.y26)) { if (!pick.some((p) => p.id === r.id)) pick.push(r); if (pick.length === 2) break; }
+for (const r of flat.sort((a, b) => b.y26 - a.y26)) { if (!pick.some((p) => p.id === r.id)) pick.push(r); }
 const shift1 = (s) => { const o = new Int8Array(s.length); for (let i = 1; i < s.length; i++) o[i] = s[i - 1]; return o; };
 for (const p of pick) {
   const c = CFG[p.id];

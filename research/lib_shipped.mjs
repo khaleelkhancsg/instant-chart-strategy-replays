@@ -109,7 +109,17 @@ function makeRun(t, A, sig) {
                              // dayCap: the platform's daily loss limit in dollars. The
                              // stop tightens so the day cannot lose more, and the day
                              // ends when it is hit. Default the $1,000 the account has.
-                             dayCap = CAP } = {}) {
+                             dayCap = CAP,
+                             // cancelOpposite: a signal the OTHER way cancels a resting
+                             // stop-entry at the next bar's open, before it can fill.
+                             // Off (every earlier result) the old order keeps that bar,
+                             // and if it fills, the new signal flips it at the bar's
+                             // OPEN -- a price from before the fill. That books a trade
+                             // no one could have taken, mostly a winner when the order
+                             // was a limit (it fills on a dip below the open it then
+                             // "sells" at). Matters for signals that alternate, like a
+                             // MACD cross fade; a Donchian book almost never has one.
+                             cancelOpposite = false } = {}) {
   const SIG = signals || sig;
   const slip = SLIP * (slipMult ?? costMult), perSide = PERSIDE * (feeMult ?? costMult);
   const trades = [];
@@ -141,7 +151,7 @@ function makeRun(t, A, sig) {
     const flatNow = overnight ? (CT[i] >= FLAT && CT[i] < 1020) : (CT[i] >= FLAT || CT[i] < 510);
     if (TD[i] !== curTday) { curTday = TD[i]; dayReal = 0; capHit = false; }
     if (pos === 0 && armDir !== 0) {
-      if (flatNow || i > armBy || blocked()) armDir = 0;
+      if (flatNow || i > armBy || blocked() || (cancelOpposite && s2 !== 0 && s2 !== armDir)) armDir = 0;
       else if (i > armBar) {
         const fill = () => {
           pos = armDir; qty = armQty; ep = armEp; slD = armSl; tpD = armTp;
