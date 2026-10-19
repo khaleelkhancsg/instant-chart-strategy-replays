@@ -9,7 +9,9 @@
 //   2. EVERY trade against research/lib_shipped.mjs run with the options the
 //      research measured -- day rules included (breaker -$300 Donchian / -$200
 //      MACD, profit block +$250, $600 daily limit, a signal the other way
-//      cancels a resting order): entry, size, exit reason, hold and dollars
+//      cancels a resting order; for the MACD fade also its weak-cross and
+//      volatility gate and the causal exit order): entry, size, exit reason,
+//      hold and dollars
 //   3. the 2026 pass rate rebuilt from the indicator's own trades
 //   4. the live convention: each order's lines start ON its signal candle
 //   5. a still-forming bar: Tradovate re-calls map() on the live bar as ticks
@@ -287,29 +289,54 @@ console.log("A. mnqDonchian1250 -- Donchian 30 + ADX + efficiency + slow-trend r
 
 // ── B. mnqMacdFade1250 on 1-minute bars ──────────────────────────────────
 console.log("");
-console.log("B. mnqMacdFade1250 -- fade 1-min MACD(12,26,9) histogram crosses, 4 lots, target = the flat-day stop");
+console.log("B. mnqMacdFade1250 -- fade WEAK 1-min MACD(12,26,9) crosses in a moving market, 4 lots, causal exit order");
 {
   const MAC = loadIndicator("mnqMacdFade1250.js");
-  const E1 = S.engineFor(1), t1 = E1.tf, n1 = t1.close.length;
-  // exactly as research/rules_1250_2026.mjs builds config A
-  const hist = macd(t1.close, 12, 26, 9).hist;
+  const E1 = S.engineFor(1), t1 = E1.tf, n1 = t1.close.length, A1 = E1.atr;
+  // the signal exactly as research/rules_1250_2026.mjs builds config A
+  const { line: ML, hist } = macd(t1.close, 12, 26, 9);
   const SIG = new Int8Array(n1);
   for (let i = 1; i < n1; i++) {
     if (!(t1.ctMin[i] >= 510 && t1.ctMin[i] < 900)) continue;
     const c = hist[i] > 0 && hist[i - 1] <= 0 ? 1 : hist[i] < 0 && hist[i - 1] >= 0 ? -1 : 0;
     SIG[i] = -c;
   }
-  let badSig = 0, nSig = 0, badCt = 0;
+  // the entry gate exactly as research/macd_optimize_2026.mjs and
+  // macd_weak_strong_2026.mjs build it: a weak cross (the MACD line on the
+  // fade's side of zero) and ATR >= the mean ATR of the previous 10 sessions'
+  // 08:30-15:00 bars (no gate before 10 sessions of history)
+  const volRel = new Float64Array(n1).fill(NaN);
+  {
+    const days = [], first = new Map(), last = new Map();
+    for (let i = 0; i < n1; i++) if (t1.ctMin[i] >= 510 && t1.ctMin[i] < 900) { if (!first.has(t1.tday[i])) { first.set(t1.tday[i], i); days.push(t1.tday[i]); } last.set(t1.tday[i], i); }
+    const am = new Map();
+    for (const d of days) { let s2 = 0, c2 = 0; for (let i = first.get(d); i <= last.get(d); i++) { s2 += A1[i]; c2++; } am.set(d, s2 / c2); }
+    days.forEach((d, q) => { if (q < 10) return; const avg = days.slice(q - 10, q).reduce((x, p2) => x + am.get(p2), 0) / 10;
+      for (let i = first.get(d); i <= last.get(d); i++) volRel[i] = A1[i] / avg; });
+  }
+  const gate = (k) => SIG[k] !== 0 && Math.sign(ML[k]) === SIG[k] && !(volRel[k] < 1);
+  let badSig = 0, nSig = 0, badCt = 0, badSk = 0, badGate = 0, badVol = 0, nGate = 0, nStrong = 0;
   const mine = runIndicator(MAC, t1, { ...defaults(MAC), __research: true }, (i, out) => {
     const B = out._ev.B;
     if (B.sig !== SIG[i]) badSig++;
     if (B.ct !== t1.ctMin[i]) badCt++;
-    if (B.sig !== 0) nSig++;
+    if (B.sk !== t1.tday[i]) badSk++;
+    if (B.sig !== 0) {
+      nSig++;
+      if (B.enter !== gate(i)) badGate++;
+      if (!((Number.isNaN(B.volRel) && Number.isNaN(volRel[i])) || Math.abs(B.volRel - volRel[i]) < 1e-12)) badVol++;
+      if (B.enter) nGate++;
+      if (!B.weakOk) nStrong++;
+    }
   });
   check("bar CT minute on every one of " + fmt(n1) + " one-minute bars", badCt === 0, badCt + " off");
+  check("session on every bar is the research data's trading day", badSk === 0, badSk + " off");
   check("signal on every bar (the fade of each RTH cross)", badSig === 0, badSig + " off; " + fmt(nSig) + " signals");
-  const lib = E1.run(() => 4, { signals: SIG, ...FILL, breaker: 200, trig: 0.15, tpFromFill: true,
-                                tpFn: (a, q) => Math.min(5.15 * a, 600 / (2 * q)) });
+  check("volatility vs its 10-session average at every signal = research", badVol === 0, badVol + " off");
+  check("which crosses are faded (weak and moving) at every signal = research", badGate === 0,
+        badGate + " off; " + fmt(nGate) + " of " + fmt(nSig) + " faded, " + fmt(nStrong) + " strong");
+  const lib = E1.run((a, ct, sq, arm) => (gate(arm - 1) ? 4 : 0), { signals: SIG, ...FILL, breaker: 200, trig: 0.15, tpFromFill: true,
+                                tpFn: (a, q) => Math.min(5.15 * a, 600 / (2 * q)), exitFirst: true });
   compareTrades("MACD fade", mine, lib);
   report("MACD fade", mine, lib);
   liveLines("MACD fade", MAC, t1);
