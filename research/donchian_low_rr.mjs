@@ -1,4 +1,8 @@
 // Very low reward:risk on the Donchian book -- targets of 0.02x to 1x the stop.
+// 2026 ONLY: every number below comes from 2026 trades and from 21-day windows
+// drawn from 2026 days (2 Jan - 14 Jul, 139 sessions). Earlier history only
+// warms the indicators up. Jan-Mar and Apr-Jul are shown as the check inside
+// 2026.
 //
 // The idea being tested: a target far smaller than the stop wins most trades,
 // and a sim evaluation might reward a high win rate. So the bracket is kept
@@ -12,18 +16,16 @@
 //
 // Plus the same brackets on RANDOM-direction entries at the same moments, which
 // shows how much of the win rate is the bracket and how much is the signal.
-// Weighted to 2026 as asked; 2025 and the full history for context.
 //
-// RESULT: low RR buys win rate, not passes. At RR 0.1 the book wins 92-93% of
-// trades under every fill model, but a loss still costs ~$830 against a ~$70-90
-// win, so the breakeven win rate is 90-92% and the trade nets $3 (realistic),
-// $11 (sim fills) or $23 (no costs). 2026 pass rate at RR 0.1: 3.9% / 6.2% /
-// 12.1%, against 34.5% / 36.9% / 38.0% for the live 1.75 ATR target under the
-// same fills. Tick-sized targets (2-8 ticks) lose money even with sim fills:
-// commission alone is $12 a round trip at 8 lots. Random-direction entries get
-// 88-91% win rates at RR 0.1 too -- the win rate comes from the bracket, not the
-// signal. Pass rate rises with RR across the whole grid; the live target is the
-// best of it in 2026.
+// RESULT (2026 only): low RR buys win rate, not passes. At RR 0.1 the book wins
+// 91% of trades but loses $21-27 a trade (sim fills / realistic) -- a loss
+// costs ~$1,100 against a ~$80 win -- and passes 3.9-6.2% of 2026 windows,
+// against 34.5-36.9% for the live target. Tick-sized targets lose money even
+// with no costs at all. Random-direction entries do as well as the book at
+// small targets (RR 0.2: 36.4%, both halves), and FADING the breakout beats
+// following it there: RR 0.2-0.5 wins 72-88% at +$24-46 a trade and passes
+// 31-38% (Jan-Mar 33-40, Apr-Jul 21-33) -- about the live book's level, not
+// above it. Found by looking at 2026, so it is a lead, not a result.
 //
 //   node --max-old-space-size=8192 research/donchian_low_rr.mjs
 
@@ -31,40 +33,36 @@ import * as S from "./lib_shipped.mjs";
 import * as M from "./lib_donchian_mgmt.mjs";
 
 const days = S.days;
-const yIx = (y) => days.map((d, k) => (S.yearOf.get(d) === y ? k : -1)).filter((k) => k >= 0);
-const Y26 = yIx(2026), Y25 = yIx(2025);
 const at = (arr, ix) => S.passArr(ix.map((k) => arr[k]));
 const LOTS = 8, PV = 2, CAPPTS = 1000 / (PV * LOTS);
 // the stop's distance from the fill on a flat day: 5 ATR from the signal
 // reference plus the 0.15 ATR stop-entry offset, or the day cap if nearer
 const stopDist = (a) => Math.min(5.15 * a, CAPPTS);
+const in2026 = (t) => S.yearOf.get(t.tday) === 2026;
 
 const MODELS = [["realistic", { slipMult: 1, feeMult: 1 }], ["sim fills", { slipMult: 0, feeMult: 1 }],
                 ["no costs", { slipMult: 0, feeMult: 0 }]];
 function score(opts, signals = M.RESC) {
-  const tr = S.run(() => LOTS, { signals, ...opts });
+  const tr = S.run(() => LOTS, { signals, ...opts }).filter(in2026);
   const arr = S.dayArr(tr, days);
   const w = tr.filter((t) => t.pnl > 0), l = tr.filter((t) => t.pnl <= 0);
   const aw = w.reduce((s, t) => s + t.pnl, 0) / Math.max(1, w.length), al = -l.reduce((s, t) => s + t.pnl, 0) / Math.max(1, l.length);
-  const t26 = tr.filter((t) => S.yearOf.get(t.tday) === 2026);
   return { n: tr.length, win: (100 * w.length) / tr.length, aw, al, exp: tr.reduce((s, t) => s + t.pnl, 0) / tr.length,
-           be: (100 * al) / (aw + al), win26: (100 * t26.filter((t) => t.pnl > 0).length) / t26.length,
-           y26: at(arr, Y26), y25: at(arr, Y25), all: S.passArr(arr) };
+           be: (100 * al) / (aw + al), y26: at(arr, M.Y26), a26: at(arr, M.Y26a), b26: at(arr, M.Y26b) };
 }
 const f1 = (x, w = 6) => x.toFixed(1).padStart(w);
 const usd = (x, w = 7) => ((x < 0 ? "-$" : "$") + Math.abs(x).toFixed(0)).padStart(w);
-const HDR = "  " + "target".padEnd(30) + "trades".padStart(7) + "win%".padStart(7) + "2026win%".padStart(9) +
-  "avg win".padStart(8) + "avg loss".padStart(9) + "  b/e win%".padStart(10) + "$/trade".padStart(8) +
-  "   pass 2026  2025   all";
-const row = (label, r) => "  " + label.padEnd(30) + String(r.n).padStart(7) + f1(r.win, 7) + f1(r.win26, 9) +
-  usd(r.aw, 8) + usd(-r.al, 9) + f1(r.be, 10) + usd(r.exp, 8) + "   " + f1(r.y26, 9) + f1(r.y25) + f1(r.all);
+const HDR = "  " + "target".padEnd(30) + "trades".padStart(7) + "win%".padStart(7) + "avg win".padStart(9) +
+  "avg loss".padStart(9) + "b/e win%".padStart(10) + "$/trade".padStart(9) + "   pass 2026  Jan-Mar  Apr-Jul";
+const row = (label, r) => "  " + label.padEnd(30) + String(Math.round(r.n)).padStart(7) + f1(r.win, 7) +
+  usd(r.aw, 9) + usd(-r.al, 9) + f1(r.be, 10) + usd(r.exp, 9) + "   " + f1(r.y26, 9) + f1(r.a26, 9) + f1(r.b26, 9);
 
 const RRS = [0.02, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5, 0.75, 1.0];
 const TICKS = [2, 4, 8, 16];
-const live = (m) => score({ ...m });
+console.log("\n  2026 ONLY -- trades, win rates, dollars and 21-day pass rates from 2 Jan - 14 Jul 2026 (139 sessions), 8 lots");
 for (const [mName, m] of MODELS) {
   console.log("\n" + "=".repeat(124) + "\n" + "FILL MODEL: " + mName.toUpperCase() + "\n" + "=".repeat(124) + "\n" + HDR);
-  console.log(row("live target (1.75 ATR)", live(m)));
+  console.log(row("live target (1.75 ATR)", score({ ...m })));
   for (const rr of RRS)
     console.log(row("RR " + rr + " (target " + rr + "x stop)", score({ ...m, tpFromFill: true, tpFn: (a) => rr * stopDist(a) })));
   for (const t of TICKS)
@@ -72,15 +70,26 @@ for (const [mName, m] of MODELS) {
 }
 
 // The same brackets on random-direction entries, at the live signals' moments.
-console.log("\n" + "=".repeat(124) + "\nRANDOM DIRECTION at the same moments, sim fills (no slippage, commission kept), mean of 5 coin seeds\n" + "=".repeat(124) + "\n" + HDR);
+console.log("\n" + "=".repeat(124) + "\nRANDOM DIRECTION at the same moments, sim fills (no slippage, commission kept), mean of 10 coin seeds\n" + "=".repeat(124) + "\n" + HDR);
 const coin = (k, s) => { let x = (k * 2654435761 + s * 97531) >>> 0; x ^= x >>> 16; x = Math.imul(x, 2246822507) >>> 0; x ^= x >>> 13; return (x >>> 0) / 4294967296; };
-for (const rr of [0.05, 0.1, 0.2, 0.5, 1.0]) {
+for (const rr of [0.05, 0.1, 0.2, 0.5, 1.0, null]) {
   const rs = [];
-  for (let s = 1; s <= 5; s++) {
+  for (let s = 1; s <= 10; s++) {
     const R = Int8Array.from(M.RESC);
     for (let k = 0; k < R.length; k++) if (R[k]) R[k] = coin(k, s) < 0.5 ? 1 : -1;
-    rs.push(score({ slipMult: 0, feeMult: 1, tpFromFill: true, tpFn: (a) => rr * stopDist(a) }, R));
+    rs.push(score({ slipMult: 0, feeMult: 1, ...(rr === null ? {} : { tpFromFill: true, tpFn: (a) => rr * stopDist(a) }) }, R));
   }
   const m = {}; for (const k of Object.keys(rs[0])) m[k] = rs.reduce((a, r) => a + r[k], 0) / rs.length;
-  console.log(row("random dir, RR " + rr, m));
+  console.log(row(rr === null ? "random dir, live target" : "random dir, RR " + rr, m));
+}
+
+// Prompted by the random-direction rows: if random direction at a small target
+// does as well as the live book in 2026, does the OPPOSITE of the breakout do
+// better still? Same moments, same bracket, direction reversed. Selected on 2026
+// by construction, so read its two halves before anything else.
+const FADE = Int8Array.from(M.RESC, (v) => -v);
+for (const [mName, m] of MODELS.slice(0, 2)) {
+  console.log("\n" + "=".repeat(124) + "\nFADE THE BREAKOUT (opposite side, same moments and bracket), " + mName + "\n" + "=".repeat(124) + "\n" + HDR);
+  for (const rr of [0.1, 0.15, 0.2, 0.3, 0.5, 1.0, null])
+    console.log(row(rr === null ? "fade, live target" : "fade, RR " + rr, score({ ...m, ...(rr === null ? {} : { tpFromFill: true, tpFn: (a) => rr * stopDist(a) }) }, FADE)));
 }
