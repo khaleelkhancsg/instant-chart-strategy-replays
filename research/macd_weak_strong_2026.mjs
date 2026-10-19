@@ -15,10 +15,11 @@
 // real (~2 pts gross) but about the size of the round-trip costs. In the full
 // setup, following strong crosses alone passes 33.5% -- no better than random
 // directions at the same crosses (median 31.8%, beaten 16 of 30). Added to the
-// weak-cross fade: 63.0% (fade-weak only 64.5%); with the volatility gate
-// 68.4% vs 67.7%, but Apr-Jul 66.3 vs 73.8, one bar late 34.8% vs 45.0%, and
-// behind under the breaker, profit-block and lot stresses. Holding through
-// same-direction crosses instead is worse (55%).
+// weak-cross fade: 63.0% (fade-weak only 64.5%); with the volatility gate on
+// both, 68.4% vs 67.7% -- ahead under 2 ticks of slippage, a +$350 profit
+// block and 3 lots, level otherwise -- but it trades Apr-Jul for Jan-Mar
+// (66.3 vs 73.8; it fails the half-pick check) and one bar late it is 36.0%
+// vs 45.0%. Holding through same-direction crosses instead is worse (55%).
 //
 //   node --max-old-space-size=8192 research/macd_weak_strong_2026.mjs
 
@@ -186,9 +187,10 @@ for (const [lbl, base, mask] of [["strong crosses only, out at every cross", { e
 // ---- 4. stress the combined systems against the best fade --------------------------------
 const shift1 = (a) => { const o = new Int8Array(a.length); for (let i = 1; i < a.length; i++) o[i] = a[i - 1]; return o; };
 console.log("\n4. STRESS (2026 / Jan-Mar / Apr-Jul)");
-const CAND = [["fade weak + vol gate", { sig: SIGA, enter: (k) => weak(k) && vol(k) }], ["weak+strong, out every cross", { sig: SIGT, flipAll: true }],
+const CAND = [["fade weak + vol gate", { sig: SIGA, enter: (k) => weak(k) && vol(k) }], ["weak+strong + vol gate", { sig: SIGT, flipAll: true, enter: vol }],
+              ["weak+strong, out every cross", { sig: SIGT, flipAll: true }],
               ["weak+strong, held", { sig: SIGT }], ["follow strong only", { sig: SIGT, enter: strong, flipAll: true }]];
-console.log("  " + "".padEnd(24) + CAND.map(([l]) => l.padStart(30)).join(""));
+console.log("  " + "".padEnd(24) + CAND.map(([l]) => l.padStart(26)).join(""));
 for (const [sl, so] of [["as tested", {}], ["one bar later", { late: true }], ["2 ticks slippage", { extra: { slipMult: 2 } }],
                         ["breaker -$300", { extra: { breaker: 300 } }], ["profit block +$350", { extra: { profitBlock: 350 } }],
                         ["3 lots", { lots: 3 }], ["5 lots", { lots: 5 }]]) {
@@ -196,7 +198,7 @@ for (const [sl, so] of [["as tested", {}], ["one bar later", { late: true }], ["
     const o = { ...co, ...so };
     if (so.late) { o.sig = shift1(co.sig); if (co.enter) { const g = co.enter; o.enter = (k) => g(k - 1); } delete o.late; }
     const r = run(o);
-    return (f1(r.y, 5) + " " + f1(r.a, 4) + "/" + f1(r.b, 4).trim()).padStart(30);
+    return (f1(r.y, 5) + " " + f1(r.a, 4) + "/" + f1(r.b, 4).trim()).padStart(26);
   });
   console.log("  " + sl.padEnd(24) + cells.join(""));
 }
