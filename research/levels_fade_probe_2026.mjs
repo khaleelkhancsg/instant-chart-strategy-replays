@@ -5,8 +5,8 @@
 //
 // RESULT (2026 only): the level information is real; the rule is not yet.
 // Against as many signals kept at random, 16 of 24 volume-level variants win
-// at least 19 of 20 times, and every one with a 5- or 10-bar look-back does
-// (+9 to +34 pass points, +$30 to +$117 a trade). The effect fades, and at the
+// at least 19 of 20 times, and every one with a 5- or 10-bar look-back wins
+// at least 18 (+9 to +34 pass points, +$30 to +$117 a trade). The effect fades, and at the
 // tight distance reverses, with a 20-bar look-back (the touch can then be 20
 // minutes old). Fading into break-prone levels instead is worse than random.
 // As a replacement for the unfiltered fade (58.5%) it is fragile: 3 or 5 lots
