@@ -105,7 +105,11 @@ function makeRun(t, A, sig) {
                              // earlier result) books the target if the bar reached it;
                              // "close" only if the bar also CLOSED beyond it, which is
                              // the only case where the target is certain after the fill.
-                             limitFillTp = "high" } = {}) {
+                             limitFillTp = "high",
+                             // dayCap: the platform's daily loss limit in dollars. The
+                             // stop tightens so the day cannot lose more, and the day
+                             // ends when it is hit. Default the $1,000 the account has.
+                             dayCap = CAP } = {}) {
   const SIG = signals || sig;
   const slip = SLIP * (slipMult ?? costMult), perSide = PERSIDE * (feeMult ?? costMult);
   const trades = [];
@@ -129,7 +133,7 @@ function makeRun(t, A, sig) {
                   sigBar: entSig });
     if (onTrade) onTrade(trades[trades.length - 1]);
     dayReal += net;
-    if (dayReal <= -CAP) capHit = true;
+    if (dayReal <= -dayCap) capHit = true;
     pos = 0; notional = 0;
   };
   for (let i = 1; i < nB; i++) {
@@ -174,12 +178,12 @@ function makeRun(t, A, sig) {
             tsl = tsl === null ? s : (dir === 1 ? Math.max(tsl, s) : Math.min(tsl, s));
         }
       }
-      const lossPx = avgFill() - dir * ((CAP + dayReal) / (PV * qty));
+      const lossPx = avgFill() - dir * ((dayCap + dayReal) / (PV * qty));
       const rawSl = ep - dir * slD;
       let sl = dir === 1 ? Math.max(rawSl, lossPx) : Math.min(rawSl, lossPx);
       const isCap = dir === 1 ? (sl === lossPx && lossPx > rawSl) : (sl === lossPx && lossPx < rawSl);
       const tp = tpBase + dir * tpD;
-      let cut = isCap ? -CAP - dayReal : undefined;
+      let cut = isCap ? -dayCap - dayReal : undefined;
       let why = isCap ? "SLcap" : "SL";
       if (tsl !== null && (dir === 1 ? tsl > sl : tsl < sl)) { sl = tsl; cut = undefined; why = "TS"; }
       let done = false;
