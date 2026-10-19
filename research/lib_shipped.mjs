@@ -119,7 +119,23 @@ function makeRun(t, A, sig) {
                              // was a limit (it fills on a dip below the open it then
                              // "sells" at). Matters for signals that alternate, like a
                              // MACD cross fade; a Donchian book almost never has one.
-                             cancelOpposite = false } = {}) {
+                             cancelOpposite = false,
+                             // exitFirst: exits decided on the closed bar (an opposite
+                             // signal's FLIP, exitFn) happen at the next bar's OPEN,
+                             // before that bar's range can touch the stop or target.
+                             // Off (every earlier result) the bar's stop/target are
+                             // checked first, so a trade the flip would have closed at
+                             // the open can still be credited with a target hit later
+                             // in that bar. A gap through the stop at the open still
+                             // comes first either way.
+                             exitFirst = false,
+                             // entryLimitAtr: enter with a LIMIT this many ATRs INTO the
+                             // move being traded against (long: below the arm bar's
+                             // open), live addWin bars, in place of the stop-entry.
+                             entryLimitAtr = null,
+                             // noFlip: an opposite signal does not close the position;
+                             // only the bracket, exitFn or the flat time do.
+                             noFlip = false } = {}) {
   const SIG = signals || sig;
   const slip = SLIP * (slipMult ?? costMult), perSide = PERSIDE * (feeMult ?? costMult);
   const trades = [];
@@ -196,8 +212,13 @@ function makeRun(t, A, sig) {
       let cut = isCap ? -dayCap - dayReal : undefined;
       let why = isCap ? "SLcap" : "SL";
       if (tsl !== null && (dir === 1 ? tsl > sl : tsl < sl)) { sl = tsl; cut = undefined; why = "TS"; }
-      let done = false;
-      if (dir === 1) {
+      let done = false, early = false;
+      if (exitFirst && !(dir === 1 ? O[i] <= sl : O[i] >= sl)) {
+        if (exitFn && exitFn(i - 1, pos, stNow())) { close_(O[i], i, undefined, "XSIG"); continue; }
+        if (!noFlip && s2 !== 0 && s2 !== pos) { close_(O[i], i, undefined, "FLIP"); early = true; }
+      }
+      if (early) { /* flipped at the open: on to the arm below */ }
+      else if (dir === 1) {
         if (O[i] <= sl) { close_(O[i], i, cut, why); done = true; }
         else if (L[i] <= sl) { close_(sl, i, cut, why); done = true; }
         else if (H[i] >= tp && !(limitFillTp === "close" && limFill && entBar === i && C[i] < tp)) { close_(tp, i, undefined, "TP"); done = true; }
@@ -207,8 +228,10 @@ function makeRun(t, A, sig) {
         else if (L[i] <= tp && !(limitFillTp === "close" && limFill && entBar === i && C[i] > tp)) { close_(tp, i, undefined, "TP"); done = true; }
       }
       if (done) continue;
-      if (exitFn && exitFn(i - 1, pos, stNow())) { close_(O[i], i, undefined, "XSIG"); continue; }
-      if (s2 !== 0 && s2 !== pos) close_(O[i], i, undefined, "FLIP");
+      if (!early) {
+        if (exitFn && exitFn(i - 1, pos, stNow())) { close_(O[i], i, undefined, "XSIG"); continue; }
+        if (!noFlip && s2 !== 0 && s2 !== pos) close_(O[i], i, undefined, "FLIP");
+      }
       if (pos !== 0) continue;
     }
     if (pos === 0 && s2 !== 0 && !flatNow && !blocked() && (CT[i] < NOENTRY || (overnight && CT[i] >= 1020))) {
@@ -218,9 +241,10 @@ function makeRun(t, A, sig) {
       // and anything a sizer reads there was known when the bot decided.
       const q = sizer(a, CT[i], sigSeq++, i);
       if (q < 1) continue;
-      isLimit = false;
+      isLimit = entryLimitAtr != null;
       armDir = s2; armBar = i; armBy = i + addWin; armEp = O[i]; armQty = q; armAtr = a;
-      armPx = O[i] + s2 * Math.max(a * trig, TICK);
+      armPx = entryLimitAtr != null ? Math.round((O[i] - s2 * a * entryLimitAtr) / TICK) * TICK
+                                    : O[i] + s2 * Math.max(a * trig, TICK);
       armSl = Math.max(a * slMult, TICK); armTp = Math.max(tpFn ? tpFn(a, q) : a * tpMult, TICK);
     }
   }
