@@ -140,7 +140,11 @@ function makeRun(t, A, sig) {
                              // open -- the same direction too -- and its order is then
                              // placed as usual (a same-direction re-entry). For systems
                              // whose trade is one signal-to-signal segment.
-                             flipAll = false } = {}) {
+                             flipAll = false,
+                             // detail: also record each trade's entry and exit bar,
+                             // direction and average fill (entBar, xBar, dir, avg), so
+                             // a caller can rebuild its path bar by bar.
+                             detail = false } = {}) {
   const SIG = signals || sig;
   const slip = SLIP * (slipMult ?? costMult), perSide = PERSIDE * (feeMult ?? costMult);
   const trades = [];
@@ -160,8 +164,10 @@ function makeRun(t, A, sig) {
     const xp = pos === 1 ? px - slip : px + slip;
     const net = exact !== undefined ? exact
               : (xp - avgFill()) * pos * PV * qty - perSide * 2 * qty;
-    trades.push({ tday: TD[i], pnl: net, why, entCt, lots: qty, atr: entAtr, held: (i - entBar) * 2,
-                  sigBar: entSig });
+    trades.push(detail ? { tday: TD[i], pnl: net, why, entCt, lots: qty, atr: entAtr, held: (i - entBar) * 2,
+                           sigBar: entSig, entBar, xBar: i, dir: pos, avg: avgFill() }
+                       : { tday: TD[i], pnl: net, why, entCt, lots: qty, atr: entAtr, held: (i - entBar) * 2,
+                           sigBar: entSig });
     if (onTrade) onTrade(trades[trades.length - 1]);
     dayReal += net;
     if (dayReal <= -dayCap) capHit = true;
