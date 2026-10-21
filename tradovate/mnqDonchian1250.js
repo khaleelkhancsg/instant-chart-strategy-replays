@@ -3,15 +3,23 @@
  *
  * Built for these account rules: $1,250 profit target, $1,000 trailing maximum
  * loss, $600 daily loss limit, 50% consistency. On 2026 data (honest fills,
- * realistic costs) this setup passed 61.3% of 21-day windows (Jan-Mar 63.3%,
- * Apr-Jul 63.0%) -- research/rules_1250_2026.mjs in the backtesting project.
- * There is no bot for this account yet: these are the rules a bot would run.
+ * realistic costs) this setup passed 71.1% of 21-day windows (Jan-Mar 74.3%,
+ * Apr-Jul 75.1%), against 61.3% without its 10-minute EMA filter --
+ * research/donchian_ema_age_2026.mjs in the backtesting project. There is no
+ * bot for this account yet: these are the rules a bot would run.
  *
  * THE SETUP
  *   signal    2-min close outside the PREVIOUS 30 bars' high/low, ADX(14) >= 25,
  *             efficiency(20) >= 0.5, bar opening 08:30 <= t < 15:00 CT. Or the
  *             slow-trend rescue: efficiency 0.45-0.5 when the 2-min EMA 125 is on
  *             the breakout's side of the EMA 500 (needs 1,500 bars of chart).
+ *   filter    an order only if the 10-MINUTE EMA 9 is on the breakout's side of
+ *             the 10-minute EMA 21: the breakout goes WITH the last few hours'
+ *             trend. 10-minute bars are built from the chart's 2-min bars and
+ *             count once they have closed. A breakout against it places no
+ *             order, but still closes an opposite trade and cancels a resting
+ *             order the other way. (It works on the day's first breakout, which
+ *             is mostly what the day rules let through.)
  *   size      4 lots; 2 once the day's RTH range has covered 90% of its average
  *             (the mean RTH range of the previous 10 sessions)
  *   entry     a stop 0.15 x ATR beyond the signal close, placed one bar later,
@@ -22,7 +30,10 @@
  *             always the stop: ~75 points); target 1.75 x ATR from the signal close
  *   exits     the bracket; out at the next open if the trade has not been 1 ATR
  *             in profit by the 20th bar after entry (40 minutes); an opposite
- *             signal (which also cancels a resting stop-entry); flat at 15:04 CT
+ *             signal (which also cancels a resting stop-entry); flat at 15:04 CT.
+ *             The 40-minute exit and the opposite signal are decided on a closed
+ *             bar and happen at the next open -- before that bar can touch the
+ *             stop or target; only a gap through the stop at the open is first
  *   day       stop for the day once it is -$300 (breaker), +$250 (profit block)
  *             or at the -$600 limit. The +$250 block is what keeps every day
  *             under the $625 the consistency rule allows at a $1,250 pass.
@@ -39,6 +50,10 @@
  *                          no new order. A bare ▲ places nothing (already in
  *                          that trade, or too late). Not drawn once the day
  *                          is done
+ *   ▲ vs 10m trend         grey: a breakout against the 10-minute EMA trend,
+ *                          not traded (it can still close a trade or cancel an
+ *                          order; showSkipped off hides the rest)
+ *   blue / purple lines    the 10-minute EMA 9 and 21 (showEma)
  *   gold / red / green     stop-entry, stop, target -- starting ON the signal
  *                          candle, with price tags there; "· day limit" when
  *                          the $600 line sets the stop
@@ -77,6 +92,7 @@ const CFG = {
   slAtr: 5, tpAtr: 1.75,           // bracket, anchored to the signal close
   contracts: 4, lateContracts: 2, lateRangeAdr: 0.9, adrSessions: 10,
   timeExitBars: 20, timeExitAtr: 1,
+  emaFilter: true, emaTf: 10, emaFast: 9, emaSlow: 21,   // trade only WITH the 10-min EMA 9/21
   dayLossLimit: 600, breaker: 300, profitBlock: 250,
   pointValue: 2, commission: 0.75, slip: 0.25, tick: 0.25, tfMs: 120000,
 };
@@ -151,9 +167,22 @@ function barState(bars, i, prev, o, h, l, c, ms, K) {
   const adrPts = cnt ? sum / cnt : NaN;
   const used = adrPts > 0 && Number.isFinite(rHi) ? (rHi - rLo) / adrPts : 0;
   const lots = K.lateRangeAdr > 0 && used >= K.lateRangeAdr ? K.lateContracts : K.contracts;
+  // The last few hours' trend: EMA fast/slow on clock-aligned emaTf-minute bars
+  // built from these 2-min bars (a bucket's close is its last 2-min close). A
+  // bucket counts once it has closed -- at the close of its last 2-min slot, or
+  // when the next bucket's first bar arrives -- so the reading is always from a
+  // finished bar. EMAs seeded with the first close, alpha 2/(n+1).
+  const bMs = K.emaTf * 60000, bkt = Math.floor(ms / bMs);
+  let hF = prev ? prev.hF : NaN, hS = prev ? prev.hS : NaN, hLast = prev ? prev.hLast : NaN;
+  const aHF = 2 / (K.emaFast + 1), aHS = 2 / (K.emaSlow + 1);
+  const close10 = (x) => { hF = Number.isFinite(hF) ? aHF * x + (1 - aHF) * hF : x; hS = Number.isFinite(hS) ? aHS * x + (1 - aHS) * hS : x; };
+  if (prev && prev.bkt !== bkt && hLast !== prev.bkt) { close10(prev.c); hLast = prev.bkt; }
+  if (ms - bkt * bMs === bMs - K.tfMs) { close10(c); hLast = bkt; }
+  const htf = Number.isFinite(hF) ? Math.sign(hF - hS) || 0 : 0;
+  const enter = sig !== 0 && (!K.emaFilter || htf === sig);
   return { o, h, l, c, ms, ct, tr, atr, trX, pdmX, ndmX, adx, path, eff, dh, dl,
            raw, lastRaw: raw ? i : lastRaw, plain, tF, tS, trend, settled, rescued, sig,
-           sk, hist, rHi, rLo, adrPts, used, lots };
+           sk, hist, rHi, rLo, adrPts, used, lots, bkt, hF, hS, hLast, htf, enter };
 }
 
 // ── the order a signal arms, in the live price convention ─────────────────
@@ -234,7 +263,10 @@ function stepOrders(S0, B, prevB, i, K) {
     }
   }
 
-  // 2. an open position
+  // 2. an open position. In time order: a gap through the stop at this open;
+  // then the exits decided on the closed bar -- the 40-minute exit, an opposite
+  // signal -- at this open; only then can this bar's range touch the stop or
+  // target.
   if (S.pos !== 0) {
     if (flatNow) { book(B.o, "FLAT"); return { S, ev }; }
     const d = S.pos, sl = S.sl, tp = S.tp;
@@ -243,29 +275,31 @@ function stepOrders(S0, B, prevB, i, K) {
       else { S.mx = Math.max(S.mx, prevB.h); S.mn = Math.min(S.mn, prevB.l); }
     }
     const capCut = K.research && S.capped ? -K.dayLossLimit - S.dayReal : undefined;
-    // On the bar a limit filled, the bar's extreme may have printed BEFORE the
-    // fill, so the target only counts if the bar also closed beyond it.
-    const tpOk = (hit) => hit && !(S.limFill && S.entBar === i && (d === 1 ? B.c < tp : B.c > tp));
-    if (d === 1) {
-      if (B.o <= sl) { book(B.o, "SL", capCut); return { S, ev }; }
-      if (B.l <= sl) { book(sl, "SL", capCut); return { S, ev }; }
-      if (tpOk(B.h >= tp)) { book(tp, "TP"); return { S, ev }; }
-    } else {
-      if (B.o >= sl) { book(B.o, "SL", capCut); return { S, ev }; }
-      if (B.h >= sl) { book(sl, "SL", capCut); return { S, ev }; }
-      if (tpOk(B.l <= tp)) { book(tp, "TP"); return { S, ev }; }
-    }
+    if (d === 1 ? B.o <= sl : B.o >= sl) { book(B.o, "SL", capCut); return { S, ev }; }
     if (K.timeExitBars > 0 && i - 1 - S.entBar >= K.timeExitBars) {
       const avg = K.research ? S.fill + d * K.slip : S.fill;
       const fav = d === 1 ? S.mx - avg : avg - S.mn;
       if (fav < K.timeExitAtr * S.entAtr) { book(B.o, "TIME"); return { S, ev }; }
     }
     if (s2 !== 0 && s2 !== S.pos) book(B.o, "FLIP");
-    if (S.pos !== 0) return { S, ev };
+    else {
+      // On the bar a limit filled, the bar's extreme may have printed BEFORE the
+      // fill, so the target only counts if the bar also closed beyond it.
+      const tpOk = (hit) => hit && !(S.limFill && S.entBar === i && (d === 1 ? B.c < tp : B.c > tp));
+      if (d === 1) {
+        if (B.l <= sl) { book(sl, "SL", capCut); return { S, ev }; }
+        if (tpOk(B.h >= tp)) { book(tp, "TP"); return { S, ev }; }
+      } else {
+        if (B.h >= sl) { book(sl, "SL", capCut); return { S, ev }; }
+        if (tpOk(B.l <= tp)) { book(tp, "TP"); return { S, ev }; }
+      }
+      return { S, ev };
+    }
   }
 
-  // 3. the previous bar's signal arms a stop-entry (a newer one replaces it)
-  if (S.pos === 0 && s2 !== 0 && !flatNow && !blockedOf(S, K) && B.ct < K.noEntryCt) {
+  // 3. the previous bar's signal arms a stop-entry (a newer one replaces it) --
+  // if the 10-minute EMA filter lets it through
+  if (S.pos === 0 && s2 !== 0 && prevB.enter && !flatNow && !blockedOf(S, K) && B.ct < K.noEntryCt) {
     const a = prevB.atr, lots = prevB.lots;
     let L = null;
     if (!(a > 0)) L = null;
@@ -293,7 +327,7 @@ function stepOrders(S0, B, prevB, i, K) {
 // A flip closes the open trade at the next open first; its result is estimated
 // at this close, which moves the stop only when the $600 line sets it.
 function previewArm(S, B, K) {
-  if (B.sig === 0 || S.pos === B.sig || !(B.atr > 0) || blockedOf(S, K)) return null;
+  if (B.sig === 0 || !B.enter || S.pos === B.sig || !(B.atr > 0) || blockedOf(S, K)) return null;
   const nct = ctOf(B.ms + K.tfMs);
   if (nct < K.startCt || nct >= K.noEntryCt || nct >= K.flattenCt) return null;
   let day = S.dayReal;
@@ -319,6 +353,10 @@ class mnqDonchian1250 {
       dayLossLimit: num(P.dayLossLimit, CFG.dayLossLimit),
       breaker: num(P.breaker, CFG.breaker),
       profitBlock: num(P.profitBlock, CFG.profitBlock),
+      emaFilter: P.emaFilter !== false,
+      emaTf: Math.max(2, 2 * Math.round(num(P.emaTf, CFG.emaTf) / 2)),     // whole 2-min bars only
+      emaFast: Math.max(1, num(P.emaFast, CFG.emaFast)),
+      emaSlow: Math.max(1, num(P.emaSlow, CFG.emaSlow)),
       research: !!P.__research,
     });
     if (K.research) K.flattenCt = 905;
@@ -350,6 +388,7 @@ class mnqDonchian1250 {
     }
     if (P.showChannel !== false && Number.isFinite(B.dh)) { out.dcHigh = B.dh; out.dcLow = B.dl; }
     if (P.showTrend !== false && B.settled) { out.trendFast = B.tF; out.trendSlow = B.tS; }
+    if (P.showEma !== false && Number.isFinite(B.hF)) { out.htfFast = B.hF; out.htfSlow = B.hS; }
 
     // Lines rotate through three plot sets so consecutive orders never join.
     const put = (set, key, v) => { out[key + SETS[set]] = v; };
@@ -369,7 +408,16 @@ class mnqDonchian1250 {
       const off = Math.max(B.atr * 0.35, K.tick * 4);
       const labels = P.showLineLabels !== false;
       // once the day is done, its later signals are not drawn
-      if (B.sig !== 0 && (pre || !blockedOf(S, K))) {
+      if (B.sig !== 0 && !B.enter && !blockedOf(S, K)) {
+        // a breakout against the 10-minute trend: no order, but it still exits and cancels
+        const long = B.sig === 1;
+        const closes = S.pos === -B.sig, cancels = S.pos === 0 && S.armDir !== 0 && S.armDir !== B.sig;
+        if (P.showSkipped !== false || closes || cancels) {
+          const str = (B.rescued ? (long ? "△" : "▽") : (long ? "▲" : "▼")) + " vs " + K.emaTf + "m trend" +
+                      (closes ? " · closes trade" : cancels ? " · cancels " + (S.armDir === 1 ? "buy" : "sell") + " stop" : "");
+          text("s", du(idx), long ? B.l - off : B.h + off, str, COL.grey, "centerMiddle", 11, false);
+        }
+      } else if (B.sig !== 0 && (pre || !blockedOf(S, K))) {
         const long = B.sig === 1;
         const mark = B.rescued ? (long ? "△" : "▽") : (long ? "▲" : "▼");
         let str = mark;
@@ -422,9 +470,15 @@ module.exports = {
     dayLossLimit: predef.paramSpecs.number(600, 50, 0),
     breaker: predef.paramSpecs.number(300, 50, 0),
     profitBlock: predef.paramSpecs.number(250, 50, 0),
+    emaFilter: predef.paramSpecs.bool(true),
+    emaTf: predef.paramSpecs.period(10),
+    emaFast: predef.paramSpecs.period(9),
+    emaSlow: predef.paramSpecs.period(21),
     showChannel: predef.paramSpecs.bool(true),
     showTrend: predef.paramSpecs.bool(true),
+    showEma: predef.paramSpecs.bool(true),
     showMarkers: predef.paramSpecs.bool(true),
+    showSkipped: predef.paramSpecs.bool(true),
     showLineLabels: predef.paramSpecs.bool(true),
     showCheckpoint: predef.paramSpecs.bool(true),
     barTimeIsClose: predef.paramSpecs.bool(false),
@@ -434,6 +488,7 @@ module.exports = {
   plots: {
     dcHigh: { title: "Donchian high" }, dcLow: { title: "Donchian low" },
     trendFast: { title: "Trend EMA 125" }, trendSlow: { title: "Trend EMA 500" },
+    htfFast: { title: "10-min EMA fast" }, htfSlow: { title: "10-min EMA slow" },
     trigA: { title: "Stop-entry" }, stopA: { title: "Stop" }, targetA: { title: "Target" }, checkA: { title: "40-min checkpoint" },
     trigB: { title: "Stop-entry (2)" }, stopB: { title: "Stop (2)" }, targetB: { title: "Target (2)" }, checkB: { title: "40-min checkpoint (2)" },
     trigC: { title: "Stop-entry (3)" }, stopC: { title: "Stop (3)" }, targetC: { title: "Target (3)" }, checkC: { title: "40-min checkpoint (3)" },
@@ -442,6 +497,7 @@ module.exports = {
   schemeStyles: {
     dark: {
       dcHigh: { color: "#3d7a5a" }, dcLow: { color: "#7a3d3d" }, trendFast: { color: "#4a6f99" }, trendSlow: { color: "#6f5a99" },
+      htfFast: { color: "#5aa9e6" }, htfSlow: { color: "#b07fe0" },
       trigA: { color: "#e0c341" }, stopA: { color: "#d1566e" }, targetA: { color: "#26a65b" }, checkA: { color: "#e0893a" },
       trigB: { color: "#e0c341" }, stopB: { color: "#d1566e" }, targetB: { color: "#26a65b" }, checkB: { color: "#e0893a" },
       trigC: { color: "#e0c341" }, stopC: { color: "#d1566e" }, targetC: { color: "#26a65b" }, checkC: { color: "#e0893a" },

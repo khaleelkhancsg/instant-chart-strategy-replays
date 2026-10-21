@@ -9,9 +9,9 @@
 //   2. EVERY trade against research/lib_shipped.mjs run with the options the
 //      research measured -- day rules included (breaker -$300 Donchian / -$200
 //      MACD, profit block +$250, $600 daily limit, a signal the other way
-//      cancels a resting order; for the MACD fade also its weak-cross and
-//      volatility gate and the causal exit order): entry, size, exit reason,
-//      hold and dollars
+//      cancels a resting order, the causal exit order; the Donchian's 10-min
+//      EMA filter and the MACD fade's weak-cross and volatility gate): entry,
+//      size, exit reason, hold and dollars
 //   3. the 2026 pass rate rebuilt from the indicator's own trades
 //   4. the live convention: each order's lines start ON its signal candle
 //   5. a still-forming bar: Tradovate re-calls map() on the live bar as ticks
@@ -31,6 +31,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildFilterContext, applyFilters, NO_FILTER } from "../src/filters.mjs";
 import { adx as adxOf, donchian, ema, macd } from "../src/indicators.mjs";
+import { resample } from "../src/resample.mjs";
+import { loadBars } from "../src/data.mjs";
 import * as S from "../research/lib_shipped.mjs";
 import * as M from "../research/lib_donchian_mgmt.mjs";
 
@@ -241,7 +243,7 @@ console.log("=".repeat(100));
 
 // ── A. mnqDonchian1250 on 2-minute bars ──────────────────────────────────
 console.log("");
-console.log("A. mnqDonchian1250 -- Donchian 30 + ADX + efficiency + slow-trend rescue, 4 lots (2 late), 40-min exit");
+console.log("A. mnqDonchian1250 -- Donchian 30 + ADX + efficiency + rescue, 10-min EMA 9/21 filter, 4 lots (2 late), 40-min exit, causal exit order");
 {
   const DON = loadIndicator("mnqDonchian1250.js");
   const tf = M.tf, nT = tf.close.length;
@@ -265,21 +267,43 @@ console.log("A. mnqDonchian1250 -- Donchian 30 + ADX + efficiency + slow-trend r
   for (let k = 1499; k < nT; k++) if (SIG[k] !== M.RESC[k]) resDiff++;
   check("signal built here = the research's RESC after the 1,500-bar floor", resDiff === 0, resDiff + " off");
 
-  let badSig = 0, badLots = 0, nSig = 0, nLate = 0;
+  // the 10-min EMA 9/21 as research/donchian_ema_age_2026.mjs reads it: built
+  // from the 1-MINUTE bars, the last 10-min bar that has closed by the time the
+  // 2-min bar closes
+  const HTF = new Int8Array(nT);
+  {
+    const { bars: b1 } = loadBars();
+    const T10 = resample(b1, 10), f10 = ema(T10.close, 9), s10 = ema(T10.close, 21);
+    let j = -1;
+    for (let k = 0; k < nT; k++) {
+      const lim = tf.ts[k] + 120000 - 600000;
+      while (j + 1 < T10.ts.length && T10.ts[j + 1] <= lim) j++;
+      HTF[k] = j >= 0 ? Math.sign(f10[j] - s10[j]) || 0 : 0;
+    }
+  }
+  const gate = (k) => SIG[k] !== 0 && HTF[k] === SIG[k];
+  let badSig = 0, badLots = 0, nSig = 0, nLate = 0, badHtf = 0, badGate = 0, nGate = 0;
   const mine = runIndicator(DON, tf, { ...defaults(DON), __research: true }, (i, out) => {
     const B = out._ev.B;
     if (B.sig !== SIG[i]) badSig++;
+    if (B.htf !== HTF[i]) badHtf++;
     if (B.sig !== 0) {
       nSig++;
       if (B.lots !== (M.adrUsed(i) >= 0.9 ? 2 : 4)) badLots++;
       if (B.lots === 2) nLate++;
+      if (B.enter !== gate(i)) badGate++;
+      if (B.enter) nGate++;
     }
   });
   check("signal on every one of " + fmt(nT) + " two-minute bars", badSig === 0, badSig + " off; " + fmt(nSig) + " signals");
   check("size at every signal: 4 lots, 2 once the day's range reaches 0.9x its 10-session average", badLots === 0,
         badLots + " off; " + fmt(nLate) + " at 2 lots");
+  check("10-min EMA 9/21 direction on every 2-minute bar = research (built from 1-min bars)", badHtf === 0, badHtf + " off");
+  check("which breakouts are traded (the EMA agrees) at every signal = research", badGate === 0,
+        badGate + " off; " + fmt(nGate) + " of " + fmt(nSig) + " traded");
   const exit20 = (k, d, st) => k - st.entBar >= 20 && (st.dir === 1 ? st.mx - st.fill : st.fill - st.mn) < st.atr;
-  const lib = S.run((a, c, s, arm) => (M.adrUsed(arm - 1) >= 0.9 ? 2 : 4), { signals: SIG, ...FILL, breaker: 300, exitFn: exit20 });
+  const lib = S.run((a, c, s, arm) => (gate(arm - 1) ? (M.adrUsed(arm - 1) >= 0.9 ? 2 : 4) : 0),
+                    { signals: SIG, ...FILL, breaker: 300, exitFn: exit20, exitFirst: true });
   compareTrades("Donchian", mine, lib);
   report("Donchian", mine, lib);
   liveLines("Donchian", DON, tf);
