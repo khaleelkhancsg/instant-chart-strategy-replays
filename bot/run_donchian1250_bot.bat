@@ -11,6 +11,10 @@
 ::     PROJECT_X_USERNAME=your_platform_username
 ::     PROJECT_X_API_KEY=your_api_key
 ::
+:: and, for phone alerts (the same ntfy topic as the signal bot):
+::
+::     MNQ_NOTIFY_WEBHOOK=https://ntfy.sh/your-private-topic
+::
 :: .env is gitignored. Never paste the key into this .bat -- it would be
 :: committed to the repo in plaintext.
 

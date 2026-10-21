@@ -48,6 +48,7 @@ import logging
 import math
 import os
 import sys
+import threading
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -95,6 +96,10 @@ CONFIG = {
     "hard_flat_ct": 15 * 60 + 7,
     "state_file": "donchian1250_state.json",
     "tag": "D1250",
+    # Phone pushes go to MNQ_NOTIFY_WEBHOOK in bot/.env -- the same ntfy topic as
+    # mnq_signal_bot.py. A "still running" push this often during the session
+    # (MNQ_HEARTBEAT_MIN in .env overrides it; 0 = off).
+    "heartbeat_min": 60,
 }
 
 ORDER_LIMIT, ORDER_MARKET, ORDER_STOP = 1, 2, 4
@@ -128,6 +133,81 @@ def add_file_log() -> Path:
     fh.setFormatter(logging.Formatter("%(asctime)s  %(levelname)-7s  %(message)s", "%Y-%m-%d %H:%M:%S"))
     log.addHandler(fh)
     return p
+
+
+# ─────────────────────────────────────────────────────────────
+#  PHONE NOTIFICATIONS (ntfy)
+# ─────────────────────────────────────────────────────────────
+# The same channel and topic as mnq_signal_bot.py: MNQ_NOTIFY_WEBHOOK in
+# bot/.env, e.g.  MNQ_NOTIFY_WEBHOOK=https://ntfy.sh/your-private-topic
+# Posted to ntfy's JSON endpoint with the topic in the body: its header API puts
+# the title in an ASCII-only HTTP header, where a title with an emoji is lost.
+#   high     something is wrong or needs a hand: a failed close, a position the
+#            bot did not open, an order refused, the bot stopping
+#   default  what happened: started, filled, closed (with the day's total), the
+#            day done, the session summary
+#   low      orders placed and cancelled, the hourly "still running" -- quiet
+#            enough that you never learn to swipe the channel away
+_NTFY_PRIORITY = {"min": 1, "low": 2, "default": 3, "high": 4, "urgent": 5}
+
+
+def push_payload(webhook: str, title: str, body: str, priority: str):
+    """(url, json) to post -- the same shape mnq_signal_bot.py sends."""
+    if "ntfy" in webhook:
+        base, _, topic = webhook.rstrip("/").rpartition("/")
+        return base or "https://ntfy.sh", {"topic": topic, "title": title, "message": body,
+                                           "priority": _NTFY_PRIORITY.get(priority, 3)}
+    # Discord and Slack both take a JSON body; sending both keys lets one URL serve either
+    return webhook, {"content": f"**{title}**\n```\n{body}\n```", "text": f"*{title}*\n```\n{body}\n```"}
+
+
+class Notifier:
+    """Best-effort phone pushes: never raises, never blocks the trading loop (each
+    push goes out on its own thread). With no webhook it only logs, and keeps
+    what it would have sent -- which is how the tests read it."""
+
+    def __init__(self, webhook: str = "", post=None):
+        self.webhook = (webhook or "").strip()
+        self.post = post or (lambda url, payload: httpx.post(url, json=payload, timeout=8))
+        self.sent: List[Tuple[str, str, str]] = []
+        self._last: Dict[str, float] = {}
+
+    @property
+    def enabled(self) -> bool:
+        return bool(self.webhook)
+
+    def where(self) -> str:
+        if not self.webhook:
+            return "OFF -- no MNQ_NOTIFY_WEBHOOK in bot/.env"
+        base, _, topic = self.webhook.rstrip("/").rpartition("/")
+        return f"on, {base}/{topic[:3]}{'*' * max(0, len(topic) - 3)}"
+
+    def __call__(self, title: str, lines=(), priority: str = "default", key: Optional[str] = None,
+                 every_s: float = 0.0, now: Optional[float] = None, wait: bool = False) -> bool:
+        if key is not None and every_s > 0:
+            t = time.time() if now is None else now
+            if t - self._last.get(key, -1e18) < every_s:
+                return False                      # the same alert, too soon: once is enough
+            self._last[key] = t
+        body = lines if isinstance(lines, str) else "\n".join(lines)
+        self.sent.append((title, body, priority))
+        log.info("notify [%s] %s%s", priority, title, ("  |  " + body.replace("\n", "  |  ")) if body else "")
+        if not self.webhook:
+            return False
+        url, payload = push_payload(self.webhook, title, body, priority)
+
+        def go():
+            try:
+                r = self.post(url, payload)
+                if getattr(r, "status_code", 200) >= 300:
+                    log.warning("ntfy refused the push: HTTP %s", r.status_code)
+            except Exception as e:
+                log.warning("ntfy push failed: %s", e)
+        if wait:
+            go()
+        else:
+            threading.Thread(target=go, daemon=True).start()
+        return True
 
 
 # ─────────────────────────────────────────────────────────────
@@ -332,8 +412,9 @@ class Bot:
     """
 
     def __init__(self, api: ProjectX, cfg: Optional[dict] = None, clock=time.time, sleep=time.sleep,
-                 state_path: Optional[Path] = None):
+                 state_path: Optional[Path] = None, notifier: Optional[Notifier] = None):
         self.api = api
+        self.notify = notifier or Notifier("")      # phone pushes; main() hands in the real one
         self.cfg = dict(CONFIG, **(cfg or {}))
         self.clock, self.sleep = clock, sleep
         self.state_path = Path(state_path) if state_path else HERE / self.cfg["state_file"]
@@ -360,6 +441,11 @@ class Bot:
         self.pending_close: Optional[str] = None    # a close that did not go through, retried every poll
         self.retry_entry: Optional[core.Action] = None   # an entry order lost to a network error
         self.halted = ""                            # why the bot stopped opening trades, if it has
+        self.day_exits: List[dict] = []             # today's closed trades, for the session summary
+        self.day_exits_tday: Optional[int] = None
+        self.rth_days: set = set()                  # trading days that had a session (summaries)
+        self.summary_tday: Optional[int] = None     # the last trading day summarised
+        self.last_heartbeat: Optional[float] = None
 
     # ---------- helpers ----------
     def now_ms(self) -> float:
@@ -404,6 +490,13 @@ class Bot:
         self._restore()
         log.info("ready: %s on %s, %d two-minute bars of history, day so far %+.2f",
                  self.account_name, self.cid, len(self.strat.info), self.strat.day_real)
+        s = self.strat
+        self.notify("▶ MNQ Donchian bot started", [
+            f"{self.account_name} · {self.cid}",
+            f"day so far {s.day_real:+,.2f}"
+            + (f" · in a trade: {'LONG' if s.pos == 1 else 'SHORT'} {s.lots}" if s.pos else "")
+            + (" · an entry order is working" if self.entry else ""),
+            "trades 08:30-15:06 CT; the day stops at -$300, +$250 or the -$600 limit"])
 
     def _pick_account(self) -> None:
         accts = self.api.accounts()
@@ -497,6 +590,7 @@ class Bot:
         td = core.trading_day(self.now_ms())
         if td == self.session_tday:
             return
+        self._summarise(self.session_tday)          # the day before, if its 15:06 never came (early close)
         self.session_tday = td
         self.seen = {t["id"]: t for t in self._fetch_trades()}
         if not self.busy_orders():
@@ -506,6 +600,7 @@ class Bot:
             except Exception as e:                                  # pragma: no cover
                 log.error("contract check failed: %s", e)
             if old is not None and self.cid != old:
+                self.notify("🔁 Contract roll", [f"{old} -> {self.cid}", "history reloaded for the new contract"])
                 self.rows.clear()
                 self.last_row_ts = None
                 self.strat = core.Strategy()
@@ -722,7 +817,8 @@ class Bot:
         e.setdefault("fills", []).append((float(t["price"]), q))
         qty = sum(x for _, x in e["fills"])
         avg = sum(p * x for p, x in e["fills"]) / qty
-        if self.trade is None:
+        first = self.trade is None
+        if first:
             self.strat.on_entry_fill(self.strat.cur, avg, qty)
             self.trade = {"since": t["_ms"], "dir": e["dir"], "qty": qty}
             log.info("FILLED  %s %d @ %.2f (%s %.2f)", "BUY" if e["dir"] == 1 else "SELL", qty, avg,
@@ -737,7 +833,21 @@ class Bot:
             log.warning("entry partly filled (%d of %d) -- cancelling the rest", e["filled"], e["lots"])
             self._drop_entry("partial fill")
         self._protect(replace=True)
+        if first:
+            self._notify_fill(e["dir"], qty, avg, e["lots"])
         self._save()
+
+    def _notify_fill(self, d: int, qty: int, avg: float, want: int) -> None:
+        sl, tp = self.legs.get("sl", {}), self.legs.get("tp", {})
+        if sl.get("px") is not None and tp.get("px") is not None:
+            lines = [f"stop {sl['px']:,.2f}{' (the day limit)' if sl.get('cap') else ''} · target {tp['px']:,.2f}",
+                     f"risk ${abs(avg - sl['px']) * PV * qty:,.0f} · reward ${abs(tp['px'] - avg) * PV * qty:,.0f}"]
+        else:
+            lines = ["the stop or target was NOT placed -- check the platform"]
+        if qty < want:
+            lines.append(f"only {qty} of {want} filled; the rest was cancelled")
+        self.notify(f"✅ {'BOUGHT' if d == 1 else 'SOLD'} {qty} MNQ @ {avg:,.2f}", lines,
+                    "default" if sl.get("px") is not None else "high")
 
     def _reconcile(self) -> None:
         """The broker's position against the bot's, once every fill is in."""
@@ -747,6 +857,9 @@ class Bot:
         held = tr["qty"] * tr["dir"] if tr else 0
         if d * size != held:
             log.error("the broker shows %+d contracts, the bot expects %+d", d * size, held)
+            self.notify(f"⚠ Position mismatch: broker {d * size:+d}, bot {held:+d}",
+                        ["the bot is putting it right" + (" (closing it)" if size else ""), "check the platform"],
+                        "high", key="mismatch", every_s=60, now=self.clock())
             if size == 0 and tr is not None:
                 tr["qty"] = 0                      # closed by something the bot did not see fill
                 if tr.get("late"):
@@ -767,8 +880,8 @@ class Bot:
             for k in list(self.legs):
                 self._cancel(self.legs[k]["id"], "flat")
             self.legs.clear()
-        if self.strat.pos != 0 and size and "sl" not in self.legs:
-            log.warning("the open trade has no stop working -- placing it")
+        if self.strat.pos != 0 and size and ("sl" not in self.legs or "tp" not in self.legs):
+            log.warning("the open trade is missing its %s -- placing it", "stop" if "sl" not in self.legs else "target")
             self._protect()
 
     def _trade_net(self) -> float:
@@ -785,6 +898,7 @@ class Bot:
         else:
             why = (self.trade or {}).get("closing") or "EXT"
         s = self.strat
+        d, lots, entry_px, exit_px = s.pos, s.lots, s.avg, self._exit_px(s.pos)
         self._event("exit", why=why, net=net, lots=s.lots, dir=s.pos)
         log.info("CLOSED  %s %d  %s  %+.2f   day %+.2f", "LONG" if s.pos == 1 else "SHORT", s.lots, why, net, s.day_real + net)
         s.on_exit(s.cur, net, why)
@@ -795,7 +909,62 @@ class Bot:
         self.trade = None
         if s.blocked():
             log.info("day done: %s (%+.2f)", s.block_reason(), s.day_real)
+        self._day_record(why, net)
+        icon = "🟢" if net > 0 else "🔴" if net < 0 else "⚪"
+        side = "LONG" if d == 1 else "SHORT"
+        lines = [f"{side} {lots} @ {entry_px:,.2f} -> {exit_px:,.2f}" if exit_px is not None else f"{side} {lots} @ {entry_px:,.2f}"]
+        if s.blocked():
+            lines.append(f"day done ({s.block_reason()}) -- no more trades today")
+        self.notify(f"{icon} {self.WHY.get(why, why)} {net:+,.2f} · day {s.day_real:+,.2f}", lines)
         self._save()
+
+    WHY = {"TP": "TARGET", "SL": "STOP", "SLcap": "DAY-LIMIT STOP", "TIME": "40-MIN EXIT", "FLIP": "REVERSED",
+           "FLAT": "FLAT AT 15:06", "EXT": "CLOSED", "UNKNOWN": "CLOSED", "LATE": "CLOSED"}
+
+    def _exit_px(self, d: int) -> Optional[float]:
+        """Average price of the fills that closed the trade."""
+        since = self.trade["since"] if self.trade else 0.0
+        q = px = 0.0
+        for t in self.seen.values():
+            if t["_ms"] >= since and (1 if t.get("side") == SIDE_BUY else -1) == -d:
+                q += float(t["size"])
+                px += float(t["price"]) * float(t["size"])
+        return px / q if q else None
+
+    def _day_record(self, why: str, net: float) -> None:
+        s = self.strat
+        if s.cur_tday != self.day_exits_tday:
+            self.day_exits, self.day_exits_tday = [], s.cur_tday
+        self.day_exits.append({"why": why, "net": net})
+
+    def _summarise(self, tday: Optional[int]) -> None:
+        """One push per trading day that had a session: the day's result."""
+        if tday is None or tday == self.summary_tday or tday not in self.rth_days:
+            return
+        self.summary_tday = tday
+        ex = self.day_exits if self.day_exits_tday == tday else []
+        day = self.strat.day_real if self.strat.cur_tday == tday else sum(x["net"] for x in ex)
+        wins = sum(1 for x in ex if x["net"] > 0)
+        lines = [f"{len(ex)} trade{'' if len(ex) == 1 else 's'}: {wins} won, {len(ex) - wins} lost" if ex else "no trades today"]
+        if ex:
+            lines.append(", ".join(f"{self.WHY.get(x['why'], x['why']).lower()} {x['net']:+,.0f}" for x in ex))
+        self._event("summary", tday=tday, day=day, n=len(ex))
+        self.notify(f"📊 Session done {day:+,.2f}", lines)
+
+    def _session_notes(self, T: float) -> None:
+        """At a boundary: the summary once the session is over; the heartbeat during it."""
+        ct, s = core.ct_minute(T), self.strat
+        if ct >= core.CFG["flat_ct"] and s.cur_tday is not None:
+            self._summarise(s.cur_tday)
+        hb = self.cfg["heartbeat_min"]
+        if hb and hb > 0 and core.CFG["start_ct"] <= ct < core.CFG["flat_ct"]:
+            if self.last_heartbeat is None:
+                self.last_heartbeat = T
+            elif T - self.last_heartbeat >= hb * 60_000:
+                self.last_heartbeat = T
+                state = (f"in a trade: {'LONG' if s.pos == 1 else 'SHORT'} {s.lots}" if s.pos
+                         else "an entry order is working" if self.entry else "flat")
+                self.notify("💓 MNQ Donchian bot running", [f"{state} · day {s.day_real:+,.2f}"], "low")
 
     def _book_late(self) -> None:
         net = self._trade_net()
@@ -804,6 +973,10 @@ class Bot:
             self.strat.cap_hit = True
         self._event("late_closed", net=net)
         log.info("late fill closed: %+.2f, day %+.2f", net, self.strat.day_real)
+        self._day_record("LATE", net)
+        self.notify(f"⚠ Closed a position the strategy did not hold {net:+,.2f}", [
+            f"day {self.strat.day_real:+,.2f}",
+            "an entry filled as it was being cancelled, or a trade was opened outside the bot"], "high")
         self.trade = None
         self._save()
 
@@ -813,6 +986,8 @@ class Bot:
             r = self.api.cancel(self.account_id, oid)
         except GatewayError as e:
             log.error("cancel %s (%s) failed: %s -- CHECK THE PLATFORM", oid, why, e)
+            self.notify(f"⚠ Could not cancel order {oid}", [f"{why}: {e}"[:300], "check the platform"], "high",
+                        key="cancel-fail", every_s=300, now=self.clock())
             return False
         if r.get("success"):
             log.info("cancelled %s (%s)", oid, why)
@@ -821,6 +996,8 @@ class Bot:
             # "Live accounts not supported" / follower accounts: the API cannot cancel here
             self.halted = f"the account cannot cancel orders through the API ({r.get('errorMessage')})"
             log.critical("%s -- NO NEW TRADES. Cancel order %s on the platform by hand.", self.halted, oid)
+            self.notify("🛑 Bot stopped opening trades", [self.halted, f"cancel order {oid} on the platform by hand"],
+                        "high", key="halt", every_s=3600, now=self.clock())
             return False
         log.warning("cancel %s (%s) not accepted: errorCode %s %s -- it may have filled", oid, why, r.get("errorCode"),
                     r.get("errorMessage") or "")
@@ -850,6 +1027,8 @@ class Bot:
                                stop_price=px if kind == ORDER_STOP else None, tag=self._tag("entry"))
         except GatewayError as e:
             log.error("entry order failed (%s) -- will retry while the order is still due", e)
+            self.notify("⚠ Entry order failed to send -- retrying", [str(e)[:300]], "high",
+                        key="entry-fail", every_s=300, now=self.clock())
             self.retry_entry = a
             return
         what = f"{'BUY' if side == SIDE_BUY else 'SELL'} {a.lots} {'LIMIT' if a.limit else 'STOP'} @ {px:.2f}"
@@ -857,6 +1036,10 @@ class Bot:
             self.entry = {"id": r["orderId"], "dir": a.dir, "px": px, "lots": a.lots, "limit": a.limit, "filled": 0}
             log.info("ORDER   %s  (exact %.4f)", what, a.px)
             self._event("order", dir=a.dir, px=px, lots=a.lots, limit=a.limit)
+            s = self.strat
+            self.notify(f"📥 {what}", [
+                f"target {s.arm_ep + a.dir * s.arm_tp:,.2f} · stop {s.arm_ep - a.dir * s.arm_sl:,.2f} (or the day limit, if nearer)",
+                "good for 10 bars (20 minutes)"], "low")
             return
         log.warning("%s refused: errorCode %s %s", what, r.get("errorCode"), r.get("errorMessage") or "")
         if kind == ORDER_STOP:
@@ -869,9 +1052,13 @@ class Bot:
                               "market": True}
                 log.info("ORDER   %s %d at MARKET (the stop was already through)", "BUY" if side == SIDE_BUY else "SELL", a.lots)
                 self._event("order", dir=a.dir, px=None, lots=a.lots, limit=False, market=True)
+                self.notify(f"📥 {'BUY' if side == SIDE_BUY else 'SELL'} {a.lots} at MARKET",
+                            [f"the market went through the {px:,.2f} stop before the order got there"], "low")
                 self._sync()
                 return
             log.error("market entry refused too: errorCode %s %s", r.get("errorCode"), r.get("errorMessage") or "")
+        self.notify("⚠ Entry order refused", [f"{what}: errorCode {r.get('errorCode')} {r.get('errorMessage') or ''}"],
+                    "high", key="entry-refused", every_s=300, now=self.clock())
 
     def _protect(self, replace: bool = False) -> None:
         """Stop and target for the open trade, at the strategy's prices."""
@@ -898,6 +1085,8 @@ class Bot:
                          s.lots, p, "  (day limit)" if cap else "")
             else:
                 log.warning("%s refused: errorCode %s %s", k, r.get("errorCode"), r.get("errorMessage") or "")
+                self.notify(f"⚠ {'Stop' if k == 'sl' else 'Target'} order refused" + (" -- closing at market" if k == "sl" else ""),
+                            [f"errorCode {r.get('errorCode')} {r.get('errorMessage') or ''}"], "high")
                 if k == "sl":
                     # the market is already through the stop: the engine has this trade stopped out
                     self._flatten("SL")
@@ -915,6 +1104,8 @@ class Bot:
             # The close did not go through. The trade must not sit without its stop
             # while the close is retried.
             log.error("the %s close did not go through -- stop and target back on, retrying every poll", why)
+            self.notify(f"🛑 Close FAILED ({why}) -- retrying", ["the stop and target are back on", "check the platform"],
+                        "high", key="close-fail", every_s=300, now=self.clock())
             self.pending_close = why
             if not self.trade.get("late"):
                 self._protect()
@@ -946,6 +1137,10 @@ class Bot:
 
     # ---------- the clock ----------
     def _begin(self, bucket: float, o: float, ct: int, tday: int) -> None:
+        if core.CFG["start_ct"] <= ct < core.CFG["flat_ct"]:
+            self.rth_days.add(tday)
+            if len(self.rth_days) > 10:
+                self.rth_days.discard(min(self.rth_days))
         i = len(self.strat.info)
         acts = self.strat.begin_bar(i, o, tday, ct)
         self.cur_bucket, self.pending_open = bucket, None
@@ -991,6 +1186,7 @@ class Bot:
             self.pending_open = T
         if not self.busy_orders() and self.clock() - self.last_pos_check > 600:
             self._sync()                               # idle: still look for a fill or a position nobody expects
+        self._session_notes(T)
         self._save()
 
     def poll(self) -> None:
@@ -1024,6 +1220,9 @@ class Bot:
         if self.strat.pos != 0 or self.entry is not None or self.legs:
             log.error("past %02d:%02d CT with an order or a trade live -- closing everything",
                       self.cfg["hard_flat_ct"] // 60, self.cfg["hard_flat_ct"] % 60)
+            self.notify("🛑 Still live at 15:07 CT -- closing everything", ["the 15:06 flat did not go through",
+                        "Topstep's deadline is 15:10 CT -- check the platform"], "high",
+                        key="hard-flat", every_s=120, now=self.clock())
             self._drop_entry("hard flat")
             if self.strat.pos != 0 or self.trade is not None:
                 self._flatten("FLAT")
@@ -1041,6 +1240,8 @@ class Bot:
                     self.poll()
             except (GatewayError, httpx.HTTPError) as e:
                 log.error("gateway: %s", e)
+                self.notify("⚠ Gateway error", [str(e)[:300], "the bot keeps trying"], "high",
+                            key="gateway", every_s=900, now=self.clock())
             nxt = (T + core.BUCKET_MS) / 1000 + self.cfg["bar_settle_s"]
             wait = self.cfg["poll_s"] if self.busy() else max(0.2, nxt - self.clock())
             self.sleep(min(wait, 30.0))
@@ -1056,6 +1257,24 @@ def make_api() -> ProjectX:
     except ImportError:                                             # pragma: no cover
         pass
     return ProjectX(os.environ.get("PROJECT_X_USERNAME", ""), os.environ.get("PROJECT_X_API_KEY", ""))
+
+
+def test_notify(n: Notifier) -> int:
+    """Send one test push and say whether ntfy took it."""
+    if not n.enabled:
+        log.error("no MNQ_NOTIFY_WEBHOOK in bot/.env -- nothing to send to")
+        return 1
+    url, payload = push_payload(n.webhook, "🔔 MNQ Donchian bot: test",
+                                "If this reached your phone, the bot's alerts will too.", "default")
+    try:
+        r = httpx.post(url, json=payload, timeout=10)
+    except Exception as e:
+        log.error("the test notification could not be sent: %s", e)
+        return 1
+    ok = r.status_code < 300
+    (log.info if ok else log.error)("test notification %s: HTTP %s (%s)", "accepted by ntfy" if ok else "REFUSED",
+                                    r.status_code, n.where())
+    return 0 if ok else 1
 
 
 def check_only(api: ProjectX, cfg: Optional[dict] = None) -> int:
@@ -1084,18 +1303,32 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="MNQ Donchian, $1,250-target evaluation, TopstepX")
     ap.add_argument("--check", action="store_true", help="read-only connectivity check; places nothing")
     ap.add_argument("--account", default=None, help="the account's exact name (overrides CONFIG['account_name'])")
+    ap.add_argument("--test-notify", action="store_true", help="send one test notification to your phone and exit")
     args = ap.parse_args()
     log.info("log file %s", add_file_log())
-    api = make_api()
-    cfg = {"account_name": args.account} if args.account else None
+    api = make_api()                                    # loads bot/.env
+    notifier = Notifier(os.environ.get("MNQ_NOTIFY_WEBHOOK", ""))
+    log.info("phone notifications: %s", notifier.where())
+    if args.test_notify:
+        return test_notify(notifier)
+    cfg = {"account_name": args.account} if args.account else {}
+    if os.environ.get("MNQ_HEARTBEAT_MIN", "").strip():
+        cfg["heartbeat_min"] = int(os.environ["MNQ_HEARTBEAT_MIN"])
     if args.check:
         return check_only(api, cfg)
-    bot = Bot(api, cfg=cfg)
-    bot.start()
+    bot = Bot(api, cfg=cfg, notifier=notifier)
     try:
+        bot.start()
         bot.run()
     except KeyboardInterrupt:
         log.info("stopped by hand -- any working order or open trade is left as it is: check the platform")
+        notifier("⏹ MNQ Donchian bot stopped", ["stopped by hand",
+                 "any working order or open trade is left as it is -- check the platform"], "default", wait=True)
+    except Exception as e:
+        log.exception("the bot stopped on an error")
+        notifier("🛑 MNQ Donchian bot STOPPED on an error", [f"{type(e).__name__}: {e}"[:400],
+                 "it is not trading -- check the platform, then restart it"], "high", wait=True)
+        return 1
     return 0
 
 

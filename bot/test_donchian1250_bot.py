@@ -391,6 +391,9 @@ def replay(rows, from_tday, to_tday=None, cfg=None, hooks=None, state_dir=None, 
     if tmp is not None:
         tmp.cleanup()
     b.all_events = [e for x in bots for e in x.events]
+    b.all_sent = [n for x in bots for n in x.notify.sent]
+    b.notify_on = any(x.notify.enabled for x in bots)
+    b.starts = [x.notify.sent[0] for x in bots if x.notify.sent]
     return b, fake
 
 
@@ -460,9 +463,33 @@ def run_all(meta, rows, check, pass_rates, quick=False):
           f"{len(left)} orders, {fake.qty} contracts")
     by = Counter(t["why"] for t in mine)
     print("        exits: " + ", ".join(f"{k} {v}" for k, v in by.most_common()))
+    sent = b.all_sent
+    fills_n = [n for n in sent if n[0].startswith("✅")]
+    exits_n = [n for n in sent if n[0][:1] in ("🟢", "🔴", "⚪")]
+    ex_events = [e for e in b.all_events if e["kind"] == "exit"]
+    money_ok = len(ex_events) == len(exits_n) and all(f"{e['net']:+,.2f}" in n[0] for e, n in zip(ex_events, exits_n))
+    check("phone: nothing was sent anywhere during the test (no webhook here)", not b.notify_on)
+    check("phone: a push for every fill and every exit, each exit with its dollars and the day's total",
+          len(fills_n) == len(mine) and len(exits_n) == len(mine) and money_ok,
+          f"{len(fills_n)} fill and {len(exits_n)} exit pushes for {len(mine)} trades")
+    rth = set()
+    for r in rows:
+        if core.CFG["start_ct"] <= core.ct_minute(r[0]) < core.CFG["flat_ct"]:
+            rth.add(core.trading_day(r[0]))
+    days = [d for d in meta["days2026"] if d >= start and d in rth]
+    sums = {e["tday"]: e for e in b.all_events if e["kind"] == "summary"}
+    booked_day = {}
+    for t in mine:
+        booked_day[t["tday"]] = booked_day.get(t["tday"], 0.0) + t["pnl"]
+    bad = [d for d in days if d not in sums or abs(sums[d]["day"] - booked_day.get(d, 0.0)) > 1e-6]
+    check("phone: a session summary every trading day, with that day's result", not bad,
+          f"{len(sums)} summaries for {len(days)} trading days" + (f"; wrong or missing on {bad[:3]}" if bad else ""))
+    print("        pushes by priority: " + ", ".join(f"{k} {v}" for k, v in Counter(n[2] for n in sent).most_common())
+          + f"  (about {len(sent) / max(1, len(days)):.0f} a day)")
     if quick:
         print("\n6. THE LIVE ORDER PATH where the replay cannot reach")
         scenario_tests(rows, meta, theirs, check, b.all_events)
+        notifier_tests(check)
         return
 
     print("\n   ...with orders on the tick grid, as live (the only change: prices rounded to 0.25)")
@@ -483,6 +510,7 @@ def run_all(meta, rows, check, pass_rates, quick=False):
 
     print("\n6. THE LIVE ORDER PATH where the replay cannot reach")
     scenario_tests(rows, meta, theirs, check, b.all_events)
+    notifier_tests(check)
 
 
 def scenario_tests(rows, meta, theirs, check, events):
@@ -508,8 +536,9 @@ def scenario_tests(rows, meta, theirs, check, events):
     fills = [e for e in ev if e["kind"] == "fill"]
     tags = [str(o.get("customTag")) for o in fake.orders.values()]
     first_legs = [t for t in tags if t.endswith("-sl") or t.endswith("-sl-cap") or t.endswith("-tp")][:2]
+    pushed = any("at MARKET" in n[0] for n in b.all_sent)
     check("a refused entry stop (the market got there first) goes in at MARKET and gets its stop and target",
-          len(mkt) == 1 and len(fills) >= 1 and len(first_legs) == 2 and fake.qty == 0,
+          len(mkt) == 1 and len(fills) >= 1 and len(first_legs) == 2 and fake.qty == 0 and pushed,
           f"{len(mkt)} market entry, {len(fills)} fills, legs {first_legs}, flat at the end: {fake.qty == 0}")
 
     # b) an entry that fills in part: the rest is cancelled, the legs sized to what filled
@@ -539,6 +568,7 @@ def scenario_tests(rows, meta, theirs, check, events):
         b, fake = replay(rows, cancel_day, cancel_day, hooks=lambda f: setattr(f, "fill_next_cancel", True))
         late = [e for e in b.all_events if e["kind"] == "late_fill"]
         closed = [e for e in b.all_events if e["kind"] == "late_closed"]
+        closed = closed if any(n[2] == "high" and n[0].startswith("⚠ Closed a position") for n in b.all_sent) else []
         check("an entry that fills as it is being cancelled is closed at once and its dollars count for the day",
               len(late) == 1 and len(closed) == 1 and fake.qty == 0 and abs(b.strat.day_real - sum(
                   (t["profitAndLoss"] or 0) - t["fees"] for t in fake.trades if core.trading_day(t["_ms"]) == cancel_day)) < 1e-6,
@@ -555,8 +585,9 @@ def scenario_tests(rows, meta, theirs, check, events):
     mine = bot_trades(b.all_events)
     eng = [t for t in theirs if t["tday"] == d0]
     same, _ = compare(mine, eng)
+    told = len(b.starts) == 2 and "in a trade" in b.starts[1][1]
     check("a restart with a trade open picks up the trade, its stop and target, and ends the day like the engine",
-          same == len(eng) == len(mine) and fake.qty == 0,
+          same == len(eng) == len(mine) and fake.qty == 0 and told,
           f"{same} of {len(eng)} trades that day identical across the restart")
 
     # e) a position nobody placed (a manual trade, a platform bracket) is found and closed
@@ -579,6 +610,38 @@ def scenario_tests(rows, meta, theirs, check, events):
     closes = [e for e in b.all_events if e["kind"] == "close" and e["why"] in ("UNKNOWN", "LATE")]
     within = closes and closes[0]["ms"] - noon.get("ms", 0) <= 12 * 60_000
     day = sum((t["profitAndLoss"] or 0) - t["fees"] for t in fake.trades if core.trading_day(t["_ms"]) == d1)
+    alerted = any(n[2] == "high" for n in b.all_sent)
     check("a position the bot did not open (a manual trade) is found and closed within minutes, its dollars counted",
-          bool(noon) and bool(within) and fake.qty == 0 and abs(b.strat.day_real - day) < 1e-6,
+          bool(noon) and bool(within) and fake.qty == 0 and abs(b.strat.day_real - day) < 1e-6 and alerted,
           f"closed {(closes[0]['ms'] - noon['ms']) / 60000:.0f} min later" if closes and noon else "not closed")
+
+
+def notifier_tests(check):
+    print("\n7. PHONE NOTIFICATIONS (ntfy)")
+    import inspect
+    url, p = botmod.push_payload("https://ntfy.sh/abcdef", "✅ BOUGHT 4 MNQ", "line one\nline two", "high")
+    check("posted to ntfy's JSON endpoint, topic in the body, so emoji titles survive",
+          url == "https://ntfy.sh" and p == {"topic": "abcdef", "title": "✅ BOUGHT 4 MNQ", "message": "line one\nline two",
+                                             "priority": 4} and bool(json.dumps(p, ensure_ascii=False).encode("utf-8")))
+    sig = (Path(botmod.__file__).parent / "mnq_signal_bot.py").read_text(encoding="utf-8")
+    check("the same topic as before: read from MNQ_NOTIFY_WEBHOOK, as mnq_signal_bot.py does, from bot/.env",
+          'os.environ.get("MNQ_NOTIFY_WEBHOOK"' in inspect.getsource(botmod.main) and "MNQ_NOTIFY_WEBHOOK" in sig
+          and "load_dotenv(HERE / \".env\")" in inspect.getsource(botmod.make_api))
+    got = []
+    n = botmod.Notifier("https://ntfy.sh/abcdef", post=lambda u, pl: got.append((u, pl)))
+    n("A", ["x"], "high", key="k", every_s=60, now=0.0, wait=True)
+    n("A", ["x"], "high", key="k", every_s=60, now=30.0, wait=True)
+    n("A", ["x"], "high", key="k", every_s=60, now=61.0, wait=True)
+    check("the same alert is not repeated inside its quiet period", len(got) == 2 and got[0][1]["priority"] == 4)
+
+    def boom(u, pl):
+        raise RuntimeError("no network")
+    try:
+        botmod.Notifier("https://ntfy.sh/abcdef", post=boom)("B", wait=True)
+        safe = True
+    except Exception:
+        safe = False
+    check("a failed push never stops the bot", safe)
+    check("the topic is masked in the log", "abcdef" not in n.where() and n.where().startswith("on, https://ntfy.sh/abc"))
+    off = botmod.Notifier("")
+    check("with no webhook nothing is sent", off("x") is False and not off.enabled)

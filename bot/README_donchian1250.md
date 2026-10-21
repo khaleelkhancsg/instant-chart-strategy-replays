@@ -23,9 +23,10 @@ pip install httpx python-dotenv
 ```
 PROJECT_X_USERNAME=your_platform_username
 PROJECT_X_API_KEY=your_api_key
+MNQ_NOTIFY_WEBHOOK=https://ntfy.sh/your-private-topic
 ```
 
-The username is your platform login, not your email. Keys are made under **Settings > API** at topstepx.com.
+The username is your platform login, not your email. Keys are made under **Settings > API** at topstepx.com. `MNQ_NOTIFY_WEBHOOK` is the same ntfy topic the signal bot uses (see [Phone notifications](#phone-notifications)).
 
 **In the platform, before the first run:**
 
@@ -48,6 +49,24 @@ Checked against TopstepX on 2026-10-21 (practice account): login, accounts, the 
 Then start the bot with `run_donchian1250_bot.bat`, or `python mnq_donchian1250_bot.py`. Start it before 08:30 CT: it loads 30 days of 1-minute history on start, which takes a few seconds. It runs around the clock. Outside 08:30–15:06 CT it only keeps its indicators current.
 
 The bot is for **simulated accounts** (evaluations, practice). The API's cancel and close endpoints do not support live accounts. If a cancel is refused for that reason, the bot stops opening trades and says so.
+
+## Phone notifications
+
+The bot pushes to your phone through ntfy, on the topic in `MNQ_NOTIFY_WEBHOOK` in `bot/.env`. That is the same variable and topic `mnq_signal_bot.py` uses. Without it the bot still trades; it only logs.
+
+| Priority | When |
+|---|---|
+| **high** (breaks through) | Something needs you: a stop or target refused, a close that failed (it retries with the stop back on), a position the bot did not open, an order that filled while being cancelled, a gateway error, still live at 15:07, the bot stopping on an error |
+| **default** | What happened: started, filled (stop, target, risk, reward), closed (reason, dollars, day total, and "day done" when a day rule ends it), the session summary at 15:06, a contract roll, stopped by hand |
+| **low** (silent) | An entry order placed; "still running" every 60 minutes during the session (`MNQ_HEARTBEAT_MIN` in `.env`, 0 turns it off) |
+
+That is about three default pushes a day, plus the silent ones. The same alert is not repeated inside its quiet period, and a failed push never stops the bot.
+
+```bash
+python mnq_donchian1250_bot.py --test-notify
+```
+
+The `--test-notify` run sends one test push and says whether ntfy accepted it.
 
 ## What it does, and when
 
@@ -77,7 +96,7 @@ Orders are placed on the tick grid, rounded so they trigger on exactly the same 
 
 ## How it was verified
 
-`python test_donchian1250_parity.py` runs 24 checks, against a fixture written from the same data and the same engine run as the research:
+`python test_donchian1250_parity.py` runs 33 checks, against a fixture written from the same data and the same engine run as the research:
 
 | Check | Result |
 |---|---|
@@ -88,6 +107,7 @@ Orders are placed on the tick grid, rounded so they trigger on exactly the same 
 | **The bot itself** (its ProjectX client, order handling, fill tracking and P&L) through 2026, against a simulated gateway built to the docs | **128 of 128 trades identical, 71.1%** |
 | The same with orders rounded to the tick grid, as live | the same 128 trades on the same bars for the same reasons; +$28 over 2026; 71.1% |
 | Order path the replay cannot reach | handled: a refused stop, a partial fill, an order filling as it is cancelled, a restart mid-trade, a position the bot did not open |
+| Phone notifications | a push for every fill and exit (with its dollars and the day's total) and a summary every trading day matching that day's result; nothing sent during tests; same `MNQ_NOTIFY_WEBHOOK` as the signal bot |
 
 The simulated gateway answers the documented endpoints with the documented shapes, so the bot's real HTTP client runs. It fills like the research engine, which is why a faithful bot must reproduce the research's trades exactly. It also checks that the bot:
 
