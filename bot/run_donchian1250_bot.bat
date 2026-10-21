@@ -2,6 +2,7 @@
 :: ─────────────────────────────────────────────────────────────────
 ::  MNQ Donchian, $1,250-target evaluation -- TopstepX bot launcher
 ::  Double-click to run, or from a command prompt: run_donchian1250_bot.bat
+::  Arguments pass through, e.g.  run_donchian1250_bot.bat --account "EXACT-ACCOUNT-NAME"
 :: ─────────────────────────────────────────────────────────────────
 
 :: Credentials are read from a .env file in this folder, NOT from this script.
@@ -39,6 +40,6 @@ if errorlevel 1 (
 
 echo.
 echo Starting the bot ...
-python mnq_donchian1250_bot.py
+python mnq_donchian1250_bot.py %*
 
 pause
