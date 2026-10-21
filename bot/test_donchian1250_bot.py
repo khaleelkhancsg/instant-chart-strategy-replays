@@ -57,7 +57,7 @@ class Clock:
 
 
 class FakeGateway:
-    ACCOUNT = {"id": 4711, "name": "TEST-1250", "balance": 50000.0, "canTrade": True, "isVisible": True}
+    ACCOUNT = {"id": 4711, "name": "TEST_1250", "balance": 50000.0, "canTrade": True, "isVisible": True}
     CONTRACT = {"id": "CON.F.US.MNQ.Z26", "name": "MNQZ6", "description": "Micro E-mini Nasdaq-100: December 2026",
                 "tickSize": 0.25, "tickValue": 0.5, "activeContract": True, "symbolId": "F.US.MNQ"}
 
@@ -102,7 +102,8 @@ class FakeGateway:
             "/api/Auth/loginKey": self._login, "/api/Auth/validate": self._validate,
             "/api/Account/search": lambda b: self._ok(accounts=[dict(self.ACCOUNT)]),
             "/api/Contract/search": lambda b: self._ok(contracts=[dict(self.CONTRACT)]),
-            "/api/Contract/searchById": lambda b: self._ok(contract=dict(self.CONTRACT)),
+            "/api/Contract/searchById": lambda b: self._ok(
+                contract=dict(self.CONTRACT) if b.get("contractId") == self.CONTRACT["id"] else None),
             "/api/History/retrieveBars": self._bars,
             "/api/Order/place": self._place, "/api/Order/cancel": self._cancel, "/api/Order/modify": self._modify,
             "/api/Order/searchOpen": lambda b: self._ok(orders=[self._pub(o) for o in self.orders.values() if o["status"] == 1]),
@@ -356,7 +357,9 @@ def replay(rows, from_tday, to_tday=None, cfg=None, hooks=None, state_dir=None, 
         hooks(fake)
     tmp = tempfile.TemporaryDirectory() if state_dir is None else None
     path = Path(state_dir or tmp.name) / "state.json"
-    cfg = dict({"round_to_tick": False}, **(cfg or {}))
+    # The test's own account and contract, whatever CONFIG names for live trading
+    # (those are checked against the real gateway by `mnq_donchian1250_bot.py --check`).
+    cfg = {"round_to_tick": False, **(cfg or {}), "account_name": FakeGateway.ACCOUNT["name"], "contract_id": ""}
 
     def new_bot():
         api = botmod.ProjectX("tester", "key", base="https://gateway.test", transport=httpx.MockTransport(fake.handler),

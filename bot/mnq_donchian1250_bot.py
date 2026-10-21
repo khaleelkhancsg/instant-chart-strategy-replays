@@ -426,7 +426,8 @@ class Bot:
         if self.cfg["contract_id"]:
             c = self.api.contract_by_id(self.cfg["contract_id"])
             if not c:
-                raise GatewayError(f"contract {self.cfg['contract_id']} not found")
+                raise GatewayError(f"contract {self.cfg['contract_id']!r} not found -- ProjectX contract ids look like "
+                                   f"'CON.F.US.MNQ.Z26' (not 'MNQZ6'); leave contract_id empty to use the active MNQ contract")
             if not c.get("activeContract"):
                 log.warning("contract %s is NOT the active contract -- orders will be refused (errorCode 9)", c.get("id"))
         else:

@@ -203,7 +203,12 @@ def main():
             for h in list(bm.log.handlers):
                 bm.log.removeHandler(h)
         bm.log.addHandler(_Count())
-        tb.run_all(meta, rows, check, pass_rates, quick="--quick" in sys.argv)
+        try:
+            tb.run_all(meta, rows, check, pass_rates, quick="--quick" in sys.argv)
+        except Exception as e:                                    # report it, do not just die
+            import traceback
+            traceback.print_exc()
+            check("the bot replay ran to the end (it CRASHED -- see the traceback above)", False, repr(e))
         print(f"        (the bot logged {counts['WARNING']} warnings and {counts['ERROR']} errors across all of section 5-6;"
               f" the scenarios in 6 provoke some on purpose)")
     bad = [n for n, ok in RESULTS if not ok]
