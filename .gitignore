@@ -26,3 +26,7 @@ __pycache__/
 # Research output too large to version (10 MB); regenerate with
 # node research/donchian_joint_search.mjs
 research/donchian_joint_search_results.json
+
+# Golden fixtures for the bot parity tests are raw market data; regenerate with
+# node --max-old-space-size=8192 research/export_bot1250_fixture.mjs
+bot/fixtures/
