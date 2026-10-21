@@ -50,16 +50,11 @@
 //
 //   node --max-old-space-size=8192 research/combos_2026.mjs
 
-import fs from "node:fs";
-import { macd, ema } from "../src/indicators.mjs";
-import { resample } from "../src/resample.mjs";
-import { loadBars } from "../src/data.mjs";
 import * as S from "./lib_shipped.mjs";
 import * as M from "./lib_donchian_mgmt.mjs";
-import * as ORB from "./lib_orb.mjs";
+import { in26, HTF, SIGA, ML, volRel, E1, NODAY, exit20, donTrades, macTrades, orbTrades, account, score } from "./lib_combo.mjs";
 
 const T0 = Date.now();
-const PV = 2;
 const COMBINES = {
   "$1,250": { rules: { target: 1250, dd: 1000, consistency: 0.5 }, cap: 600,
               don: [2, 3, 4, 5, 6], mac: [2, 3, 4, 5, 6], orb: [200, 300, 400, 500],
@@ -68,155 +63,7 @@ const COMBINES = {
               don: [4, 5, 6, 7, 8, 9, 10, 12], mac: [4, 5, 6, 8, 10, 12], orb: [300, 500, 750, 1000],
               brk: [0, 300, 500, 700], pb: [0, 300, 400, 500, 750, 1000] },
 };
-const in26 = (td) => S.yearOf.get(td) === 2026;
-const { bars } = loadBars();
 
-// ---- shared inputs --------------------------------------------------------------------
-const tf2 = M.tf, n2 = tf2.close.length;
-const E1 = S.engineFor(1), t1 = E1.tf, A1 = E1.atr, n1 = t1.close.length;
-// Donchian: the 10-min EMA 9/21 direction at each 2-min bar's close
-const HTF = new Int8Array(n2);
-{
-  const T10 = resample(bars, 10), f10 = ema(T10.close, 9), s10 = ema(T10.close, 21);
-  for (let k = 0, j = -1; k < n2; k++) { const lim = tf2.ts[k] + 120000 - 600000; while (j + 1 < T10.ts.length && T10.ts[j + 1] <= lim) j++; HTF[k] = j >= 0 ? Math.sign(f10[j] - s10[j]) || 0 : 0; }
-}
-// MACD fade: signals, the weak-cross test and the volatility gate
-const { line: ML, hist: HS } = macd(t1.close, 12, 26, 9);
-const SIGA = new Int8Array(n1);
-for (let i = 1; i < n1; i++) if (t1.ctMin[i] >= 510 && t1.ctMin[i] < 900) SIGA[i] = -(HS[i] > 0 && HS[i - 1] <= 0 ? 1 : HS[i] < 0 && HS[i - 1] >= 0 ? -1 : 0);
-const volRel = new Float64Array(n1).fill(NaN);
-{
-  const days = [], first = new Map(), last = new Map();
-  for (let i = 0; i < n1; i++) if (t1.ctMin[i] >= 510 && t1.ctMin[i] < 900) { if (!first.has(t1.tday[i])) { first.set(t1.tday[i], i); days.push(t1.tday[i]); } last.set(t1.tday[i], i); }
-  const am = new Map();
-  for (const d of days) { let s = 0, c = 0; for (let i = first.get(d); i <= last.get(d); i++) { s += A1[i]; c++; } am.set(d, s / c); }
-  days.forEach((d, q) => { if (q < 10) return; const avg = days.slice(q - 10, q).reduce((x, p) => x + am.get(p), 0) / 10; for (let i = first.get(d); i <= last.get(d); i++) volRel[i] = A1[i] / avg; });
-}
-// Levels: break-prone levels per 2026 session, in this lab's prices (levels_2026.json)
-const LV = JSON.parse(fs.readFileSync(new URL("./levels_2026.json", import.meta.url), "utf8"));
-const dateOf = (td) => new Date(td * 86400000).toISOString().slice(0, 10);
-const lvCache = new Map();
-function brkLevels(td) {
-  if (lvCache.has(td)) return lvCache.get(td);
-  const e = LV[dateOf(td)];
-  let out = null;
-  if (e && e.off != null) out = { off: e.off, p: e.levels.filter(([, t]) => /^(prior_day_high|prior_day_low|overnight_high|overnight_low)$/.test(t)).map(([, , p]) => p + e.off) };
-  lvCache.set(td, out);
-  return out;
-}
-// a break-prone level (or a raw-price round 100) crossed going from `from` to `to`
-function crossedBrk(td, from, to) {
-  const L = brkLevels(td);
-  if (!L) return null;
-  const lo = Math.min(from, to), hi = Math.max(from, to);
-  if (L.p.some((p) => p > lo && p <= hi)) return true;
-  return Math.floor((hi - L.off) / 100) * 100 > lo - L.off;
-}
-// Donchian / ORB: did the breakout go through one in the last 10 minutes? (null = no data: allowed)
-function brokeThrough(T, k, W, dir, px) {
-  let ext = dir === 1 ? Infinity : -Infinity;
-  for (let j = Math.max(0, k - W + 1); j <= k; j++) ext = dir === 1 ? Math.min(ext, T.low[j]) : Math.max(ext, T.high[j]);
-  return crossedBrk(T.tday[k], ext, px);
-}
-
-// ---- each strategy alone, no day rules: candidate trades with their paths ----------------------
-// path[q] = worst P&L so far (raw, before exit costs) by bar q of the trade -- what the
-// daily-limit stop compares with the remaining budget
-const exit20 = (k, d, st) => k - st.entBar >= 20 && (st.dir === 1 ? st.mx - st.fill : st.fill - st.mn) < st.atr;
-const NODAY = { slipMult: 1, feeMult: 1, limitFillTp: "close", cancelOpposite: true, exitFirst: true, breaker: 0, profitBlock: 0, dayCap: 1e9, detail: true };
-function fromEngine(id, pri, t, T) {
-  const openExit = t.why === "FLIP" || t.why === "XSIG" || t.why === "FLAT";
-  const path = [], ts = [];
-  let w = Infinity;
-  for (let j = t.entBar; j <= t.xBar; j++) {
-    const adv = j === t.xBar && openExit ? T.open[j] : (t.dir === 1 ? Math.min(T.open[j], T.low[j]) : Math.max(T.open[j], T.high[j]));
-    w = Math.min(w, (adv - t.avg) * t.dir * PV * t.lots);
-    path.push(w); ts.push(T.ts[j]);
-  }
-  return { id, pri, tday: t.tday, t0: T.ts[t.entBar], t1: T.ts[t.xBar], pnl: t.pnl, path, ts };
-}
-const shift1 = (a) => { const o = new Int8Array(a.length); for (let i = 1; i < a.length; i++) o[i] = a[i - 1]; return o; };
-const RESC1 = shift1(M.RESC), SIGA1 = shift1(SIGA);
-function donTrades(cap, lots, levels, { late: delay = false, slip = 1 } = {}) {
-  const late = Math.max(1, Math.round((lots * 4) / 7));
-  const sizer = (a, c, s, arm) => {
-    const k = arm - 1 - (delay ? 1 : 0);                       // the bar the signal really came from
-    if (HTF[k] !== M.RESC[k]) return 0;
-    if (levels && brokeThrough(tf2, k, 5, M.RESC[k], tf2.close[k]) === false) return 0;
-    return M.adrUsed(k) >= 0.9 ? late : lots;
-  };
-  return S.run(sizer, { signals: delay ? RESC1 : M.RESC, ...NODAY, slipMult: slip, exitFn: exit20 }).filter((t) => in26(t.tday)).map((t) => fromEngine("Donchian", 0, t, tf2));
-}
-function macTrades(cap, lots, levels, { late: delay = false, slip = 1 } = {}) {
-  const sizer = (a, c, s, arm) => {
-    const k = arm - 1 - (delay ? 1 : 0), sg = SIGA[k];
-    if (!(Math.sign(ML[k]) === sg && !(volRel[k] < 1))) return 0;
-    if (levels && brokeThrough(t1, k, 10, -sg, t1.close[k]) === true) return 0;       // the push went the other way
-    return lots;
-  };
-  return E1.run(sizer, { signals: delay ? SIGA1 : SIGA, ...NODAY, slipMult: slip, trig: 0.15, tpFromFill: true, tpFn: (a, q) => Math.min(5.15 * a, cap / (2 * q)) })
-    .filter((t) => in26(t.tday)).map((t) => fromEngine("MACD", 1, t, t1));
-}
-const ORB_CFG = { levelMode: "touch", refWin: "PRE120", pivotK: 3, tolFrac: 0.08, minTouch: 3, mode: "plain", stopAt: "opposite",
-                  rMult: 3, maxHoldMin: 5, retraceFrac: 0.33, giveUpCt: 570, maxLots: 50, maxPerDay: 1, bothWays: "fill", maxWidthPts: 31 };
-const orbSetups = ORB.setups(ORB_CFG).out.filter((s) => in26(s.day));
-function orbTrades(cap, risk, levels) {
-  const out = [];
-  for (const s of orbSetups) {
-    if (levels && brokeThrough(t1, s.bar, 10, s.dir, s.entryPx) === false) continue;
-    const r = ORB.resolve(s, { ...ORB_CFG, riskDollars: risk });
-    const i = s.bar, x = i + r.held, fill = s.entryPx + s.dir * ORB.SLIP;
-    const openExit = r.why === "FLAT" || r.why === "TIME" || (x > i && (s.dir === 1 ? ORB.O[x] <= s.entryPx - s.dir * s.risk || ORB.O[x] >= s.entryPx + s.dir * s.risk * ORB_CFG.rMult
-                                                                                 : ORB.O[x] >= s.entryPx - s.dir * s.risk || ORB.O[x] <= s.entryPx + s.dir * s.risk * ORB_CFG.rMult));
-    const path = [], ts = [];
-    let w = Infinity;
-    for (let j = i; j <= x; j++) {
-      const adv = j === x && openExit ? ORB.O[j] : (s.dir === 1 ? Math.min(ORB.O[j], ORB.L[j]) : Math.max(ORB.O[j], ORB.H[j]));
-      w = Math.min(w, (adv - fill) * s.dir * PV * r.lots);
-      path.push(w); ts.push(ORB.TS[j]);
-    }
-    out.push({ id: "ORB", pri: 2, tday: s.day, t0: ORB.TS[i], t1: ORB.TS[x], pnl: r.raw, path, ts });
-  }
-  return out;
-}
-
-// ---- one account ------------------------------------------------------------------------------
-function account(trades, { cap, brk, pb, model }) {
-  const byDay = new Map();
-  for (const t of trades) { const a = byDay.get(t.tday) || []; a.push(t); byDay.set(t.tday, a); }
-  const day = new Map();
-  let nTaken = 0;
-  for (const [d, list] of byDay) {
-    list.sort((a, b) => a.t0 - b.t0 || a.pri - b.pri);
-    let real = 0, capHit = false;
-    const open = [];
-    const settle = (t) => {
-      open.sort((a, b) => a.t1 - b.t1);
-      while (open.length && open[0].t1 <= t) { real += open.shift().pnl; if (real <= -cap) capHit = true; }
-    };
-    for (const tr of list) {
-      settle(tr.t0);
-      if (capHit || (brk > 0 && real <= -brk) || (pb > 0 && real >= pb)) continue;
-      if (model === "B" && open.length) continue;
-      const budget = cap + real;
-      let pnl = tr.pnl, t1x = tr.t1;
-      for (let q = 0; q < tr.path.length; q++) if (tr.path[q] <= -budget) { pnl = -budget; t1x = tr.ts[q]; break; }
-      open.push({ t1: t1x, pnl }); nTaken++;
-    }
-    settle(Infinity);
-    day.set(d, Math.max(real, -cap));
-  }
-  return { day, nTaken };
-}
-function score(acct, rules) {
-  const arr = S.days.map((d) => acct.day.get(d) || 0);
-  const p = (ix) => S.passArr(ix.map((k) => arr[k]), rules);
-  const d26 = M.Y26.map((k) => arr[k]);
-  let cp = 0, cn = 0;
-  for (let q = 0; q + 21 <= d26.length; q++) { cp += S.evWith(d26.slice(q, q + 21), rules); cn++; }
-  const tot = d26.reduce((s, v) => s + v, 0);
-  return { y: p(M.Y26), a: p(M.Y26a), b: p(M.Y26b), real: (100 * cp) / cn, n: acct.nTaken, perDay: acct.nTaken / M.Y26.length, exp: tot / Math.max(1, acct.nTaken) };
-}
 const f1 = (x, w = 6) => (Number.isFinite(x) ? x.toFixed(1) : "-").padStart(w);
 const f2 = (x, w = 6) => (Number.isFinite(x) ? x.toFixed(2) : "-").padStart(w);
 function bestRules(trades, C, model) {
