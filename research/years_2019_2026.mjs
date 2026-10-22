@@ -40,8 +40,23 @@
 // volatility lowers every strategy (Donchian 36.0 -> 22.7). In a calm year a
 // smaller size turns drawdown failures into evaluations that run out of days:
 // Donchian 2021 at 4 lots 30 pass / 46 fail / 24 out of days, at 2 lots 10 / 11 / 79.
+// 42-DAY EVALUATIONS (--days 42), same draws otherwise:
+//                        2026   before 2026   coin-flip null before 2026   by year 2019..2025
+//   Donchian $1,250      75.7      45.2             24.3                   5.3 30.2 42.0 62.1 44.6 42.0 51.4
+//   MACD fade $1,250     68.2      30.7             27.4                   4.4 33.3 41.5 30.7 27.5 38.4 29.7
+//   Donchian $3,000      70.2      37.5             16.7                   1.5 21.6 33.7 60.9 34.2 34.2 46.6
+//   Both, $3,000         71.6      31.8               -                    2.5 24.6 34.6 36.0 38.1 37.0 33.6
+// Twice the time helps what has an edge and was running out of days -- the
+// Donchian, most of all on $3,000 (21.8 -> 37.5 before 2026; 59.3 -> 70.2 in
+// 2026) -- and barely moves the MACD, whose misses were drawdowns, not time
+// (2025 at 42 days: 30 pass / 70 drawdown / 0 out of days). Out of days nearly
+// vanishes for everything. Outside 2026 the Donchian alone now beats the pair
+// on $3,000 (37.5 vs 31.8): the MACD's gift was speed. Smaller sizes still do
+// not help overall (best size each year 46.4 vs shipped 45.2; to volatility 41.7).
+// Real 42-day calendar windows read lower than the bootstrap outside 2026
+// (Donchian $1,250 37.4%): bad stretches cluster in time.
 //
-//   node --max-old-space-size=8192 research/years_2019_2026.mjs
+//   node --max-old-space-size=8192 research/years_2019_2026.mjs [--days 42]
 
 import { atr } from "../src/indicators.mjs";
 import * as S from "./lib_shipped.mjs";
@@ -50,6 +65,8 @@ import { E1, tf2, SIGA, ML, volRel, HTF, exit20, donTrades, macTrades, account }
 
 const T0 = Date.now();
 const PV = 2;
+// the evaluation length in trading days: node research/years_2019_2026.mjs --days 42
+const DAYS = (() => { const i = process.argv.indexOf("--days"); return i > 0 ? Number(process.argv[i + 1]) : 21; })();
 const R1250 = { target: 1250, dd: 1000, consistency: 0.5 }, R3000 = { target: 3000, dd: 2000, consistency: 0.5 };
 const YEARS = [2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026];
 const yr = (td) => S.yearOf.get(td);
@@ -123,15 +140,33 @@ const STRATS = [
 ];
 
 function passOn(arr, ix, rules) {
-  if (ix.length < 25) return { p: NaN, real: NaN };
+  if (ix.length < DAYS + 4) return { p: NaN, real: NaN };
   const v = ix.map((k) => arr[k]);
   let cp = 0, cn = 0;
-  for (let q = 0; q + 21 <= v.length; q++) { cp += S.evWith(v.slice(q, q + 21), rules); cn++; }
-  return { p: S.passArr(v, rules), real: (100 * cp) / cn };
+  for (let q = 0; q + DAYS <= v.length; q++) { cp += S.evWith(v.slice(q, q + DAYS), rules); cn++; }
+  return { p: S.passArr(v, { ...rules, window: DAYS }), real: (100 * cp) / cn };
+}
+// of the same draws S.passArr makes: passed / hit the drawdown / ran out of days
+function outcomes(arr, ix, { target, dd, consistency }) {
+  const v = ix.map((k) => arr[k]), n = v.length, rnd = S.mul(4242), o = { pass: 0, fail: 0, time: 0 };
+  for (let d = 0; d < 12000; d++) {
+    const buf = [];
+    while (buf.length < DAYS) { const st = Math.floor(rnd() * Math.max(1, n - 5)); for (let j = 0; j < 5 && buf.length < DAYS; j++) buf.push(v[(st + j) % n]); }
+    let c = 0, pk = 0, lk = false, md = -1e18, r = "time";
+    for (const x of buf) {
+      c += x; if (x > md) md = x;
+      if (c <= (lk ? 0 : pk - dd)) { r = "fail"; break; }
+      if (c > pk) pk = c;
+      if (!lk && pk >= dd) lk = true;
+      if (c >= target && (consistency <= 0 || md <= consistency * c)) { r = "pass"; break; }
+    }
+    o[r]++;
+  }
+  return o;
 }
 
 console.log("=".repeat(132));
-console.log("THE 2026 STRATEGIES ON EVERY OTHER YEAR -- every parameter as shipped; outside 2026 only the lot size may change, and only down");
+console.log("THE 2026 STRATEGIES ON EVERY OTHER YEAR -- " + DAYS + "-DAY EVALUATIONS -- every parameter as shipped; outside 2026 only the lot size may change, and only down");
 console.log("=".repeat(132));
 console.log("\nVOLATILITY: each year's median 2-minute ATR in the 08:30-15:00 session, and against 2026");
 console.log("   " + YEARS.map((y) => String(y).padStart(9)).join(""));
@@ -151,7 +186,7 @@ for (const st of STRATS) {
   console.log("\n" + "-".repeat(132) + "\n" + st.name + "\n" + "-".repeat(132));
   const head = st.sizes.map((L) => (lab(L) + (L === ship ? "*" : "")).padStart(7)).join("");
   console.log("        AT THE SHIPPED SIZE                                              |  PASS RATE BY SIZE (* shipped)");
-  console.log("year    trades  /day  win%     net $   $/trade  ATRs/trade   real 21d  |" + head + "   best");
+  console.log("year    trades  /day  win%     net $   $/trade  ATRs/trade   real " + String(DAYS).padStart(2) + "d  |" + head + "   best");
   const best = {};
   for (const y of YEARS) {
     const { arr, trades } = runs.get(ship);
@@ -177,12 +212,17 @@ for (const st of STRATS) {
     console.log("      the strategy minus the null: " + YEARS.map((y, i) => `${y} ${sg(passOn(shipArr, IDX[y], st.rules).p - st.nullYears[i], 0)}`).join("   ") +
                 `   | before 2026 ${sg(passOn(shipArr, PRE, st.rules).p - st.nullPre, 0)}`);
   }
+  {
+    const arr = runs.get(ship).arr;
+    console.log("OUTCOMES at the shipped size, of 100 evaluations: passed / hit the drawdown / ran out of days");
+    console.log("      " + YEARS.map((y) => { const o = outcomes(arr, IDX[y], st.rules); return `${y} ` + [o.pass, o.fail, o.time].map((x) => Math.round(x / 120)).join("/"); }).join("   "));
+  }
   // sizing outside 2026
   const compose = (pick) => S.days.map((d, k) => runs.get(yr(d) === 2026 ? ship : pick(d, k)).arr[k]);
   const volSize = (k) => { const r = trailRatio[k]; if (!Number.isFinite(r)) return ship; const L = Math.max(1, Math.min(ship, Math.round(ship * r))); return st.sizes.includes(L) ? L : ship; };
   const pol = [["shipped size", () => ship], ["best size each year (picked on the year: an upper bound)", (d) => best[yr(d)]],
                ["sized to volatility (tradeable)", (d, k) => volSize(k)]];
-  console.log("   before 2026 (May 2019-Dec 2025, " + PRE.length + " sessions)                         pass   real 21d   |  5 years Jul 2021-Jul 2026 (with 2026 as shipped)");
+  console.log("   before 2026 (May 2019-Dec 2025, " + PRE.length + " sessions)                         pass   real " + DAYS + "d   |  5 years Jul 2021-Jul 2026 (with 2026 as shipped)");
   const row = {};
   for (const [lbl, pick] of pol) {
     const arr = compose(pick);
@@ -203,7 +243,7 @@ for (const st of STRATS) {
   process.stderr.write(`  ${st.short} done ${((Date.now() - T0) / 1000).toFixed(0)}s\n`);
 }
 
-console.log("\n" + "=".repeat(132) + "\nSUMMARY -- pass rate of 21-day evaluations");
+console.log("\n" + "=".repeat(132) + "\nSUMMARY -- pass rate of " + DAYS + "-day evaluations");
 console.log("   " + "".padEnd(26) + "2026 (null)     before 2026: shipped (null)   best size/yr   to volatility  |  " + YEARS.filter((y) => y < 2026).map((y) => String(y).padStart(6)).join(""));
 for (const s of summary)
   console.log("   " + s.name.padEnd(26) + f1(s.p26, 6) + (" (" + (Number.isFinite(s.null26) ? s.null26.toFixed(1) : " - ") + ")").padEnd(9) +
