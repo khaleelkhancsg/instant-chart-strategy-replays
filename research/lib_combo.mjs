@@ -82,6 +82,7 @@ function brokeThrough(T, k, W, dir, px) {
 }
 
 // ---- each strategy alone, no day rules: candidate trades with their paths ---------------------
+// 2026 only, unless `all` asks for every year
 // path[q] = worst P&L so far (raw, before exit costs) by bar q of the trade -- what the
 // daily-limit stop compares with the remaining budget
 export const exit20 = (k, d, st) => k - st.entBar >= 20 && (st.dir === 1 ? st.mx - st.fill : st.fill - st.mn) < st.atr;
@@ -100,7 +101,7 @@ function fromEngine(id, pri, t, T) {
 const shift1 = (a) => { const o = new Int8Array(a.length); for (let i = 1; i < a.length; i++) o[i] = a[i - 1]; return o; };
 const RESC1 = shift1(M.RESC), SIGA1 = shift1(SIGA);
 // late: lots once the day's range reaches 0.9x its average (default round(lots x 4/7), as tested)
-export function donTrades(cap, lots, levels, { late: delay = false, slip = 1, lateLots = null } = {}) {
+export function donTrades(cap, lots, levels, { late: delay = false, slip = 1, lateLots = null, all = false } = {}) {
   const late = lateLots ?? Math.max(1, Math.round((lots * 4) / 7));
   const sizer = (a, c, s, arm) => {
     const k = arm - 1 - (delay ? 1 : 0);                       // the bar the signal really came from
@@ -108,11 +109,11 @@ export function donTrades(cap, lots, levels, { late: delay = false, slip = 1, la
     if (levels && brokeThrough(tf2, k, 5, M.RESC[k], tf2.close[k]) === false) return 0;
     return M.adrUsed(k) >= 0.9 ? late : lots;
   };
-  return S.run(sizer, { signals: delay ? RESC1 : M.RESC, ...NODAY, slipMult: slip, exitFn: exit20 }).filter((t) => in26(t.tday)).map((t) => fromEngine("Donchian", 0, t, tf2));
+  return S.run(sizer, { signals: delay ? RESC1 : M.RESC, ...NODAY, slipMult: slip, exitFn: exit20 }).filter((t) => all || in26(t.tday)).map((t) => fromEngine("Donchian", 0, t, tf2));
 }
 // tpCap: the dollar distance the MACD's target is capped at (its stop on a flat day) -- the
 // daily limit by default, as tested
-export function macTrades(cap, lots, levels, { late: delay = false, slip = 1, tpCap = cap } = {}) {
+export function macTrades(cap, lots, levels, { late: delay = false, slip = 1, tpCap = cap, all = false } = {}) {
   const sizer = (a, c, s, arm) => {
     const k = arm - 1 - (delay ? 1 : 0), sg = SIGA[k];
     if (!(Math.sign(ML[k]) === sg && !(volRel[k] < 1))) return 0;
@@ -120,7 +121,7 @@ export function macTrades(cap, lots, levels, { late: delay = false, slip = 1, tp
     return lots;
   };
   return E1.run(sizer, { signals: delay ? SIGA1 : SIGA, ...NODAY, slipMult: slip, trig: 0.15, tpFromFill: true, tpFn: (a, q) => Math.min(5.15 * a, tpCap / (2 * q)) })
-    .filter((t) => in26(t.tday)).map((t) => fromEngine("MACD", 1, t, t1));
+    .filter((t) => all || in26(t.tday)).map((t) => fromEngine("MACD", 1, t, t1));
 }
 export const ORB_CFG = { levelMode: "touch", refWin: "PRE120", pivotK: 3, tolFrac: 0.08, minTouch: 3, mode: "plain", stopAt: "opposite",
                          rMult: 3, maxHoldMin: 5, retraceFrac: 0.33, giveUpCt: 570, maxLots: 50, maxPerDay: 1, bothWays: "fill", maxWidthPts: 31 };
