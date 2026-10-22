@@ -19,11 +19,12 @@
 // 21-day evaluation drawn from days of one kind only.
 //
 // RESULT: it lowers the pass rate everywhere in the history ($1,250 rules,
-// 21-day evaluations; 2026 (Jan-Mar / Apr-Jul) and May 2019-Dec 2025):
-//   shipped: 4 lots, stop cut to the $600 line   71.1 (74.3 / 75.1)   36.0
-//   full 5 ATR stop, at most 4 lots              22.0 (14.8 / 31.4)   21.7
-//   full 5 ATR stop, up to 12 lots when calm     21.6 (14.3 / 31.2)   25.7
-//   at least 4 / 3 / 2.5 ATR of stop, max 4      34.5 / 54.2 / 59.9   26.8 / 31.5 / 33.3
+// 21-day evaluations; 2026 and May 2019-Dec 2025):
+//                                                2026 (Jan-Mar / Apr-Jul)  before   real windows 2026 / before
+//   shipped: 4 lots, stop cut to the $600 line   71.1 (74.3 / 75.1)       36.0     74.8 / 30.2
+//   full 5 ATR stop, at most 4 lots              22.0 (14.8 / 31.4)       21.7     21.8 / 19.1
+//   full 5 ATR stop, up to 12 lots when calm     21.6 (14.3 / 31.2)       25.7     20.2 / 25.2
+//   at least 4 / 3 / 2.5 ATR of stop, max 4      34.5 / 54.2 / 59.9       26.8 / 31.5 / 33.3
 // Lower in every year 2020-2025 (level in 2019) and on every kind of day:
 // wild days 58.1 -> 28.3, busy 38.8 -> 16.9. The cut stop is what the 2026
 // result was earned with: the $600 line was nearer than 5 ATR on 78% of 2026's
@@ -101,6 +102,8 @@ function pass(arr, ix) {
   if (ix.length < 25) return NaN;
   return S.passArr(ix.map((k) => arr[k]), RULES);
 }
+// real windows: every 21-day stretch of consecutive sessions, in calendar order
+const realPass = (arr, ix) => { let p = 0, n = 0; for (let s = 0; s + 21 <= ix.length; s++, n++) p += S.evWith(ix.slice(s, s + 21).map((k) => arr[k]), RULES); return n ? (100 * p) / n : NaN; };
 
 console.log("=".repeat(128));
 console.log("FULL 5 ATR STOP INSIDE $600 -- sizing each Donchian trade so its whole stop fits the day limit (the $1,250 bot)");
@@ -116,11 +119,13 @@ for (const [name, fn] of SIZES) {
                        stop: (100 * T.filter((t) => t.why === "SL" || t.why === "SLcap").length) / T.length, per: T.reduce((s, t) => s + t.pnl, 0) / T.length,
                        net: T.reduce((s, t) => s + t.pnl, 0) });
   res.push({ name, arr, tr, s26: st(T26), sp: st(TP), y: pass(arr, Y26), a: pass(arr, M.Y26a), b: pass(arr, M.Y26b), pre: pass(arr, PRE),
+             r26: realPass(arr, Y26), rpre: realPass(arr, PRE),
              bands: BANDS.map(([, ix]) => pass(arr, ix)), years: [2019, 2020, 2021, 2022, 2023, 2024, 2025].map((y) => pass(arr, IX((d) => yr(d) === y))) });
 }
-console.log("\n1. PASS RATE (21-day evaluations)                              2026 (Jan-Mar / Apr-Jul)   before 2026  |  2019  2020  2021  2022  2023  2024  2025");
+console.log("\n1. PASS RATE (21-day evaluations)                              2026 (Jan-Mar / Apr-Jul)   before 2026  |  2019  2020  2021  2022  2023  2024  2025  | real windows 2026 / before");
 for (const r of res)
-  console.log("   " + r.name.padEnd(56) + f1(r.y) + " (" + r.a.toFixed(1) + " / " + r.b.toFixed(1) + ")" + f1(r.pre, 11) + "    |" + r.years.map((x) => f1(x, 6)).join(""));
+  console.log("   " + r.name.padEnd(56) + f1(r.y) + " (" + r.a.toFixed(1) + " / " + r.b.toFixed(1) + ")" + f1(r.pre, 11) + "    |" + r.years.map((x) => f1(x, 6)).join("") +
+              "  |" + f1(r.r26, 8) + " /" + f1(r.rpre, 6));
 console.log("\n2. BY HOW VOLATILE THE DAYS ARE (evaluations made only of days of that kind, all years)");
 console.log("   " + "".padEnd(56) + BANDS.map(([n]) => n.split(" (")[0].padStart(14)).join(""));
 for (const r of res) console.log("   " + r.name.padEnd(56) + r.bands.map((x) => f1(x, 14)).join(""));
