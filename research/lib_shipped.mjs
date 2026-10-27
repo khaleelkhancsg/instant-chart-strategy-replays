@@ -144,7 +144,16 @@ function makeRun(t, A, sig) {
                              // detail: also record each trade's entry and exit bar,
                              // direction and average fill (entBar, xBar, dir, avg), so
                              // a caller can rebuild its path bar by bar.
-                             detail = false } = {}) {
+                             detail = false,
+                             // fillBarStop / sameBarTie: what the bars cannot say. On the
+                             // bar a trade fills, its open and its low (long) may predate
+                             // the fill: "touch" (the default, every earlier result)
+                             // books the stop anyway, "close" only if the bar also
+                             // CLOSED beyond it. When one bar reaches both the stop and
+                             // the target, "stop" (the default) books the stop,
+                             // "target" the target. "close" + "target" is the best case
+                             // for tight brackets, the defaults the worst.
+                             fillBarStop = "touch", sameBarTie = "stop" } = {}) {
   const SIG = signals || sig;
   const slip = SLIP * (slipMult ?? costMult), perSide = PERSIDE * (feeMult ?? costMult);
   const trades = [];
@@ -229,14 +238,13 @@ function makeRun(t, A, sig) {
         if (!noFlip && s2 !== 0 && (s2 !== pos || flipAll)) { close_(O[i], i, undefined, "FLIP"); early = true; }
       }
       if (early) { /* flipped at the open: on to the arm below */ }
-      else if (dir === 1) {
-        if (O[i] <= sl) { close_(O[i], i, cut, why); done = true; }
-        else if (L[i] <= sl) { close_(sl, i, cut, why); done = true; }
-        else if (H[i] >= tp && !(limitFillTp === "close" && limFill && entBar === i && C[i] < tp)) { close_(tp, i, undefined, "TP"); done = true; }
-      } else {
-        if (O[i] >= sl) { close_(O[i], i, cut, why); done = true; }
-        else if (H[i] >= sl) { close_(sl, i, cut, why); done = true; }
-        else if (L[i] <= tp && !(limitFillTp === "close" && limFill && entBar === i && C[i] > tp)) { close_(tp, i, undefined, "TP"); done = true; }
+      else {
+        const fb = fillBarStop === "close" && entBar === i;
+        const tpHit = dir === 1 ? H[i] >= tp && !(limitFillTp === "close" && limFill && entBar === i && C[i] < tp)
+                                : L[i] <= tp && !(limitFillTp === "close" && limFill && entBar === i && C[i] > tp);
+        if (!fb && (dir === 1 ? O[i] <= sl : O[i] >= sl)) { close_(O[i], i, cut, why); done = true; }
+        else if ((dir === 1 ? L[i] <= sl && !(fb && C[i] > sl) : H[i] >= sl && !(fb && C[i] < sl)) && !(sameBarTie === "target" && tpHit)) { close_(sl, i, cut, why); done = true; }
+        else if (tpHit) { close_(tp, i, undefined, "TP"); done = true; }
       }
       if (done) continue;
       if (!early) {
