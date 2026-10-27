@@ -34,6 +34,7 @@ export default {
     { key: "requireSlope", label: "Require histogram expanding", type: "select", default: "off",
       options: [["off", "No"], ["on", "Yes — filters stalling crosses"]], group: "Signal" },
     { key: "adxMin", label: "ADX minimum (0 = off)", type: "int", min: 0, max: 60, step: 1, default: 0, group: "Signal" },
+    { key: "adxPeriod", label: "ADX period", type: "int", min: 2, max: 60, step: 1, default: 14, group: "Signal" },
     { key: "atrPeriod", label: "ATR period", type: "int", min: 2, max: 60, step: 1, default: 14, group: "Signal" },
   ],
 
@@ -42,7 +43,7 @@ export default {
     const n = C.length;
     const a = atr(H, L, C, p.atrPeriod);
     const m = macd(C, p.fast, Math.max(p.slow, p.fast + 1), p.signal);
-    const adxArr = p.adxMin > 0 ? adx(H, L, C, 14).adx : null;
+    const adxArr = p.adxMin > 0 ? adx(H, L, C, Math.max(2, Math.trunc(p.adxPeriod) || 14)).adx : null;
     const wantSlope = p.requireSlope === "on";
 
     const sig = new Int8Array(n);

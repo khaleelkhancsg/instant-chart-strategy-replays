@@ -51,7 +51,9 @@ export function describe(s) {
     description: s.description || "",
     file: s.file,
     timeframeMin: s.timeframeMin ?? 1,
-    warmupBars: s.warmupBars ?? 300,
+    // A function of the params when the lookback is one; the browser asks the
+    // module itself (src/window.mjs), so only a fixed count travels here.
+    warmupBars: typeof s.warmupBars === "function" ? null : (s.warmupBars ?? 300),
     params: s.params || [],
     // A signal is only meaningful alongside the risk envelope it was tuned with —
     // stop width, target, and sizing change the outcome more than the signal does.

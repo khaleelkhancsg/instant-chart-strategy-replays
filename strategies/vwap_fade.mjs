@@ -36,6 +36,7 @@ export default {
     { key: "adxMax", label: "ADX maximum (0 = off)", type: "int", min: 0, max: 60, step: 1, default: 30, group: "Signal",
       hint: "Fades want chop. Set 0 and use follow mode for trends." },
     { key: "cooldownBars", label: "Cooldown bars", type: "int", min: 1, max: 60, step: 1, default: 3, group: "Signal" },
+    { key: "adxPeriod", label: "ADX period", type: "int", min: 2, max: 60, step: 1, default: 14, group: "Signal" },
     { key: "atrPeriod", label: "ATR period", type: "int", min: 2, max: 60, step: 1, default: 14, group: "Signal" },
   ],
 
@@ -44,19 +45,21 @@ export default {
     const n = C.length;
     const a = atr(H, L, C, p.atrPeriod);
     const vw = vwap(H, L, C, V, tday);
-    const adxArr = p.adxMax > 0 ? adx(H, L, C, 14).adx : null;
+    const adxArr = p.adxMax > 0 ? adx(H, L, C, Math.max(2, Math.trunc(p.adxPeriod) || 14)).adx : null;
 
     const fade = p.direction === "fade";
     const sig = new Int8Array(n);
     const upBand = new Float64Array(n).fill(NaN);
     const dnBand = new Float64Array(n).fill(NaN);
-    let last = -Infinity;
+    let last = -Infinity, day = -1;
 
     for (let i = 1; i < n; i++) {
       if (!Number.isFinite(a[i]) || a[i] <= 0) continue;
       upBand[i] = vw[i] + p.devMin * a[i];
       dnBand[i] = vw[i] - p.devMin * a[i];
 
+      // The cooldown restarts each session, so signal spacing never reaches back before today.
+      if (tday[i] !== day) { day = tday[i]; last = -Infinity; }
       if (i - last < p.cooldownBars) continue;
       if (adxArr && adxArr[i] > p.adxMax) continue;
 

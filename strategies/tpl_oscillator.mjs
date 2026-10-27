@@ -39,6 +39,9 @@ export default {
       options: [["level", "Any bar beyond the level"], ["crossback", "Cross back through it"]], group: "Signal",
       hint: "Cross-back avoids fading a trend that simply keeps going." },
     { key: "period", label: "Oscillator period", type: "int", min: 2, max: 200, step: 1, default: 14, group: "Signal" },
+    { key: "stochLine", label: "Stochastic line", type: "select", default: "k", group: "Signal",
+      options: [["k", "%K (fast)"], ["d", "%D (smoothed %K)"]], hint: "Stochastic only." },
+    { key: "stochD", label: "Stochastic %D smoothing", type: "int", min: 1, max: 20, step: 1, default: 3, group: "Signal" },
     { key: "upper", label: "Overbought level", type: "float", min: 0, max: 100, step: 0.5, default: 70, group: "Signal",
       hint: "For z-score this is read in sigma — try 2.0." },
     { key: "lower", label: "Oversold level", type: "float", min: -100, max: 100, step: 0.5, default: 30, group: "Signal",
@@ -46,24 +49,30 @@ export default {
     { key: "adxMax", label: "ADX maximum (0 = off)", type: "int", min: 0, max: 60, step: 1, default: 0, group: "Signal",
       hint: "Fades work best in chop — cap ADX to stay out of trends." },
     { key: "cooldownBars", label: "Cooldown bars", type: "int", min: 1, max: 60, step: 1, default: 3, group: "Signal" },
+    { key: "adxPeriod", label: "ADX period", type: "int", min: 2, max: 60, step: 1, default: 14, group: "Signal" },
     { key: "atrPeriod", label: "ATR period", type: "int", min: 2, max: 60, step: 1, default: 14, group: "Signal" },
   ],
 
   compute(bars, p) {
-    const { high: H, low: L, close: C } = bars;
+    const { high: H, low: L, close: C, tday } = bars;
     const n = C.length;
     const a = atr(H, L, C, p.atrPeriod);
-    const adxArr = p.adxMax > 0 ? adx(H, L, C, 14).adx : null;
+    const adxArr = p.adxMax > 0 ? adx(H, L, C, Math.max(2, Math.trunc(p.adxPeriod) || 14)).adx : null;
 
     let o, range;
-    if (p.osc === "stoch") { o = stochastic(H, L, C, p.period, 3).k; range = [0, 100]; }
+    if (p.osc === "stoch") {
+      const st = stochastic(H, L, C, p.period, Math.max(1, Math.trunc(p.stochD) || 3));
+      o = p.stochLine === "d" ? st.d : st.k; range = [0, 100];
+    }
     else if (p.osc === "zscore") { o = zscore(C, p.period); range = [-4, 4]; }
     else { o = rsi(C, p.period); range = [0, 100]; }
 
     const fade = p.direction === "fade";
     const sig = new Int8Array(n);
-    let last = -Infinity;
+    let last = -Infinity, day = -1;
     for (let i = 1; i < n; i++) {
+      // The cooldown restarts each session, so signal spacing never reaches back before today.
+      if (tday[i] !== day) { day = tday[i]; last = -Infinity; }
       if (i - last < p.cooldownBars) continue;
       if (!Number.isFinite(o[i]) || !Number.isFinite(o[i - 1])) continue;
       if (adxArr && adxArr[i] > p.adxMax) continue;

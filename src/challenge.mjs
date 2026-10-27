@@ -51,7 +51,7 @@ export const DEFAULT_RULES = {
   minTradingDays: 0,
   windowDays: 30,
   evaluateOn: "realized",   // 'realized' | 'intraday'
-  maxContracts: 10,
+  maxContracts: 20,         // account-wide cap for the portfolio replay
 };
 
 export function resolveRules(r = {}) {

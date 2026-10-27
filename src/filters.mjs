@@ -23,6 +23,19 @@ export const NO_FILTER = {
   bwMin: 0, bwMax: 0,           // Bollinger bandwidth (squeeze gauge)
 };
 
+// The periods the gate indicators are computed with -- buildFilterContext's
+// defaults, settable per run through the same filter object.
+export const FILTER_PERIODS = { adxPeriod: 14, atrPeriod: 14, volMaPeriod: 60, effPeriod: 20, chopPeriod: 14, bwPeriod: 20 };
+
+export function filterPeriods(f = {}) {
+  const out = {};
+  for (const [k, v] of Object.entries(FILTER_PERIODS)) {
+    const x = Math.trunc(f[k]);
+    out[k] = Number.isFinite(x) && x >= 2 ? x : v;
+  }
+  return out;
+}
+
 /**
  * Precompute every gate series for a bar set. Do this ONCE per (bars, timeframe)
  * and reuse it across all strategies and parameter combinations.

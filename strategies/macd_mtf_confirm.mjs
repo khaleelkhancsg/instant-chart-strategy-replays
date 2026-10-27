@@ -79,7 +79,7 @@ import { atr, ema } from "../src/indicators.mjs";
 import { resample } from "../src/resample.mjs";
 import base from "./macd_1m_flip.mjs";
 
-const MTF = 5;
+const MTF_DEFAULT = 5;
 
 export default {
   ...base,
@@ -89,7 +89,9 @@ export default {
   description: "The 5-minute anticipation sets a direction, a 1-minute MACD crossover in that direction opens the trade, a 1-minute EMA cross confirms holding it, and the position runs to a 3x ATR target. Signals from the 5-minute frame are anchored to the close of their bar, so nothing reads ahead.",
 
   timeframeMin: 1,
-  warmupBars: 2000,
+  // The arm frame's MACD and its |hist| average, in 1-minute bars: 2000 at the
+  // shipped 5-minute frame, more when the frame or the average is longer.
+  warmupBars: (p) => Math.max(2000, Math.ceil(1.5 * ((Math.trunc(p.scaleBars) || 200) + 60) * (Math.trunc(p.armTfMin) || MTF_DEFAULT))),
   // The same ADR gate as macd_5m_quiet_anticipate: `adrDays` completed sessions
   // before the window, or the live chart disagrees with the sweep.
   warmupSessions: (p) => Math.max(2, Math.trunc(p.adrDays) || 14) + 1,
@@ -105,6 +107,9 @@ export default {
   params: [
     ...base.params,
 
+    { key: "armTfMin", label: "Arm timeframe (min)", type: "int",
+      min: 2, max: 60, step: 1, default: MTF_DEFAULT, group: "5-min arm",
+      hint: "The frame the anticipation is read on. 5 is what the quiet gate was validated at." },
     { key: "prox", label: "5-min proximity to zero", type: "float",
       min: 0.025, max: 1.5, step: 0.025, default: 0.075, group: "5-min arm",
       hint: "How close the 5-minute histogram must be to zero, as a fraction of its own trailing average. This is the setting the quiet gate was validated on." },
@@ -145,6 +150,8 @@ export default {
   compute(bars, p) {
     const { high: H, low: L, close: C, ctMin, tday } = bars;
     const n = C.length;
+    // The arm frame, a whole multiple of the 1-minute base.
+    const MTF = Math.max(2, Math.trunc(p.armTfMin) || MTF_DEFAULT);
 
     // ── the 1-minute layer ────────────────────────────────────────────
     // base.compute gives the 1-minute MACD and its crossover signal, which is

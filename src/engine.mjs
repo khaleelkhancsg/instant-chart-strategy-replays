@@ -31,6 +31,9 @@ export const SESSION = {
 // The two bounds sit inside the same calendar day here (15:05 -> 17:00), so a
 // plain range test is correct; a rule that wrapped past midnight would not be.
 function inFlatWindow(ctMin, flattenCt, reopenCt) {
+  // Equal times are an empty window, not the whole day -- read as a wrapped
+  // range they made every minute "flat", so nothing could ever trade.
+  if (reopenCt === flattenCt) return false;
   return reopenCt > flattenCt
     ? ctMin >= flattenCt && ctMin < reopenCt
     : ctMin >= flattenCt || ctMin < reopenCt;
@@ -46,7 +49,10 @@ export const DEFAULT_EXEC = {
   // suicidal or inert in the other.
   sizingMode: "fixed",      // 'fixed' | 'risk'
   riskDollars: 400,         // target loss per stop-out when sizingMode = 'risk'
-  maxContracts: 10,         // firm cap; also bounds 'risk' sizing
+  // The firm's cap on contracts per position. Bounds BOTH sizing modes: a fixed
+  // size above it trades the cap. Research pinned to the old 10-lot rule sets
+  // maxContracts: 10 explicitly.
+  maxContracts: 20,
   tickSize: 0.25,
   pointValue: 2.0,          // MNQ: $2 per index point per contract
   // Commission: 'per-contract' is what a broker actually charges. The legacy
@@ -177,7 +183,8 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
   const x = resolveExec(cfg);
   const { open: O, high: H, low: L, close: C, ts: TS } = bars;
   const n = O.length;
-  const q = Math.max(1, Math.trunc(x.contracts));
+  const cap = Math.max(1, Math.trunc(x.maxContracts) || 1);
+  const q = Math.max(1, Math.min(cap, Math.trunc(x.contracts)));
   const pv = x.pointValue;
   const slip = x.slippageTicks * x.tickSize;
   const maxBars = Math.trunc(x.maxBarsInTrade) || 0;
@@ -216,6 +223,18 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
     } else {
       exitPrice = pos === 1 ? rawExit - slip : rawExit + slip;
       gross = (exitPrice - entryFill) * pos * pv * qCur;
+      // 'exact' promises the day never loses more than the cap: the platform
+      // liquidates the instant the day reaches it. The cap's stop price is set
+      // on gross P&L, so a nearer strategy stop could still breach it NET of
+      // commission (fuzz-found: -$302.93 on a -$300 cap with $12 of fees), and a
+      // gap through both could breach it outright. Either way the platform
+      // would have closed at the limit, so the exit is booked there.
+      const floorNet = -dayLoss - dayRealised;
+      if (exactLoss && dayLoss > 0 && !dayLossHit && gross - fees < floorNet - 1e-9) {
+        gross = floorNet + fees;
+        exitPrice = entryFill + gross / (pos * pv * qCur);
+        reason = EXIT.DAYLOSS;
+      }
     }
     const mfe = (pos === 1 ? hiSeen - entryFill : entryFill - loSeen) * pv * qCur;
     const mae = (pos === 1 ? loSeen - entryFill : entryFill - hiSeen) * pv * qCur;
@@ -344,16 +363,21 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
         else if (L[i] <= tp) { close_(tp, isCap ? EXIT.DAYCAP : EXIT.TP, i); exited = true; }
       }
       if (exited && !x.sameBarReentry) continue;
-      if (x.scaleInOrder === "after") tryAdd(i);
-      // Deliberately AFTER the bracket test. Both would fill at this bar's open,
-      // and when a gap takes out the stop on the same bar the signal says to
-      // leave, the stop is the pessimistic reading -- the same convention the
-      // rest of this engine uses when one bar contains two answers.
-      if (xs && ((pos === 1 && (xs & 1)) || (pos === -1 && (xs & 2)))) {
-        close_(O[i], EXIT.SIGNAL, i); continue;
+      // With sameBarReentry the bracket may already have closed the trade, and
+      // everything below is about the OPEN position -- run against a closed one
+      // it booked phantom TIME / FLIP trades with dir 0 (fuzz-found).
+      if (pos !== 0) {
+        if (x.scaleInOrder === "after") tryAdd(i);
+        // Deliberately AFTER the bracket test. Both would fill at this bar's open,
+        // and when a gap takes out the stop on the same bar the signal says to
+        // leave, the stop is the pessimistic reading -- the same convention the
+        // rest of this engine uses when one bar contains two answers.
+        if (xs && ((pos === 1 && (xs & 1)) || (pos === -1 && (xs & 2)))) {
+          close_(O[i], EXIT.SIGNAL, i); continue;
+        }
+        if (maxBars > 0 && i - ei >= maxBars) { close_(O[i], EXIT.TIME, i); continue; }
+        if (x.flipOnOpposite && s !== 0 && s !== pos) close_(O[i], EXIT.FLIP, i); // may re-enter below
       }
-      if (maxBars > 0 && i - ei >= maxBars) { close_(O[i], EXIT.TIME, i); continue; }
-      if (x.flipOnOpposite && s !== 0 && s !== pos) close_(O[i], EXIT.FLIP, i); // may re-enter below
       if (pos !== 0) continue;   // still holding: no entry logic this bar
     }
 
@@ -377,7 +401,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
           : Math.max(a * x.tpAtrMult, x.tickSize);
         // Size from the stop distance known at entry — never from anything later.
         const full = x.sizingMode === "risk"
-          ? Math.max(1, Math.min(Math.trunc(x.maxContracts), Math.round(x.riskDollars / (slDist * pv))))
+          ? Math.max(1, Math.min(cap, Math.round(x.riskDollars / (slDist * pv))))
           : q;
         if (scaleFrac > 0 && full >= 2) {
           qCur = Math.max(1, Math.round(full * scaleFrac));

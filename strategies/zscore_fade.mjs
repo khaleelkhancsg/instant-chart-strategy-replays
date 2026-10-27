@@ -43,20 +43,23 @@ export default {
       hint: "Skip abnormally volatile bars. Sharp local optimum — search finely." },
     { key: "volMaPeriod", label: "ATR average period", type: "int", min: 5, max: 200, step: 5, default: 60, group: "Signal" },
     { key: "cooldownBars", label: "Cooldown bars", type: "int", min: 1, max: 60, step: 1, default: 1, group: "Signal" },
+    { key: "adxPeriod", label: "ADX period", type: "int", min: 2, max: 60, step: 1, default: 14, group: "Signal" },
     { key: "atrPeriod", label: "ATR period", type: "int", min: 2, max: 60, step: 1, default: 14, group: "Signal" },
   ],
 
   compute(bars, p) {
-    const { high: H, low: L, close: C } = bars;
+    const { high: H, low: L, close: C, tday } = bars;
     const n = C.length;
     const a = atr(H, L, C, p.atrPeriod);
     const z = zscore(C, p.zLookback);
-    const { adx: adxArr } = adx(H, L, C, 14);
+    const { adx: adxArr } = adx(H, L, C, Math.max(2, Math.trunc(p.adxPeriod) || 14));
     const atrAvg = sma(a, p.volMaPeriod);
 
     const sig = new Int8Array(n);
-    let last = -Infinity;
+    let last = -Infinity, day = -1;
     for (let i = 1; i < n; i++) {
+      // The cooldown restarts each session, so signal spacing never reaches back before today.
+      if (tday[i] !== day) { day = tday[i]; last = -Infinity; }
       if (i - last < p.cooldownBars) continue;
       if (!Number.isFinite(z[i])) continue;
       if (adxArr[i] > p.adxMax) continue;

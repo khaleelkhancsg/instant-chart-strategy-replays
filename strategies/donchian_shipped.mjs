@@ -105,7 +105,7 @@ import base from "./donchian_eff_rth.mjs";
 import { ema, efficiencyRatio } from "../src/indicators.mjs";
 
 // trend_min_bars_2m: the bot refuses the rescue with less history than this,
-// and so does this file, bar by bar.
+// and so does this file, bar by bar. The default; `trendMinBars` overrides it.
 const TREND_MIN_BARS = 1500;
 
 export default {
@@ -114,9 +114,12 @@ export default {
   description: "The exact configuration bot/mnq_donchian_bot.py runs: 8 contracts, 5xATR stop / 1.75xATR target, one tick of slippage, $500 breaker, $750 soft profit block, and the platform's $1,000 unrealised daily loss liquidation modelled in 'exact' mode. Same signal as donchian_eff_rth; entry model is NOT the bot's deferred stop entry.",
 
   timeframeMin: base.timeframeMin,
-  // More than the research book's 900: the trend EMA 500 needs TREND_MIN_BARS
-  // bars behind the first bar of a chart window, even after a long weekend.
-  warmupBars: 1600,
+  // More than the research book's 900: the trend EMA needs the rescue's history
+  // requirement behind the first bar of a chart window, even after a long
+  // weekend, and about three of its own periods to forget its seed. 1600 at the
+  // shipped 500 / 1500.
+  warmupBars: (p) => Math.max(1600, (Math.trunc(p.trendMinBars ?? TREND_MIN_BARS) || 0) + 100,
+                              Math.ceil(3.2 * (Math.trunc(p.trendSlow) || 500))),
 
   // Mirrors CONFIG in bot/mnq_donchian_bot.py. If you change one, change both.
   execDefaults: {
@@ -157,7 +160,10 @@ export default {
     // The live gate (eff_min / eff_rescue_min / trend_ema_fast / trend_ema_slow).
     // Here rather than in the filter panel because the rescue is an OR.
     { key: "effMin", label: "Efficiency floor", type: "float", min: 0, max: 1, step: 0.05, default: 0.5, group: "Gate",
-      hint: "Kaufman efficiency ratio(20) the breakout must reach. 0 switches the gate off." },
+      hint: "Kaufman efficiency ratio the breakout must reach. 0 switches the gate off." },
+    { key: "effPeriod", label: "Efficiency ratio period", type: "int", min: 2, max: 200, step: 1, default: 20, group: "Gate" },
+    { key: "trendMinBars", label: "Rescue needs history (bars)", type: "int", min: 0, max: 5000, step: 50, default: TREND_MIN_BARS, group: "Gate",
+      hint: "The bot refuses the slow-trend rescue until it has this many bars behind it." },
     { key: "rescueMin", label: "Rescue floor (0 = off)", type: "float", min: 0, max: 1, step: 0.05, default: 0.45, group: "Gate",
       hint: "Below the efficiency floor but at or above this, a breakout still counts when the slow trend agrees. Donchian alone 34.5% -> 37.9%, with the ORB 50.0% -> 51.7% on the bot's real entry model." },
     { key: "trendFast", label: "Trend EMA fast (2-min)", type: "int", min: 2, max: 1000, step: 5, default: 125, group: "Gate" },
@@ -191,16 +197,17 @@ export default {
     // The live gate: efficiency >= effMin, or the slow-trend rescue. The
     // session window is left to filterDefaults, as it always was.
     const C = bars.close, n = C.length;
-    const eff = efficiencyRatio(C, 20);
+    const eff = efficiencyRatio(C, Math.max(2, Math.trunc(p.effPeriod) || 20));
     const tFast = ema(C, Math.max(2, Math.trunc(p.trendFast) || 125));
     const tSlow = ema(C, Math.max(3, Math.trunc(p.trendSlow) || 500));
+    const minBars = Math.max(0, Math.trunc(p.trendMinBars ?? TREND_MIN_BARS) || 0);
     const sig = new Int8Array(n);
     for (let i = 0; i < n; i++) {
       const r = out.sig[i];
       if (!r) continue;
       const e = eff[i];
       if (!(p.effMin > 0) || (Number.isFinite(e) && e >= p.effMin)) { sig[i] = r; continue; }
-      if (p.rescueMin > 0 && i + 1 >= TREND_MIN_BARS && Number.isFinite(e) && e >= p.rescueMin &&
+      if (p.rescueMin > 0 && i + 1 >= minBars && Number.isFinite(e) && e >= p.rescueMin &&
           (Math.sign(tFast[i] - tSlow[i]) || 0) === r) sig[i] = r;
     }
     const extra = [];

@@ -40,12 +40,27 @@ const $ = (id) => document.getElementById(id);
 const DAY = 86400000;
 
 // ─────────────────────── parameter descriptors ───────────────────────
+// A `bool` descriptor is an on/off select over a boolean config value.
+const onOff = (on = "On", off = "Off") => [["on", on], ["off", off]];
 const EXEC_PARAMS = [
-  { key: "contracts", label: "Contracts", type: "int", min: 1, max: 10, step: 1, default: 8,
-    hint: "Prop firms cap MNQ size — 10 is the rule this project works under." },
-  { key: "slAtrMult", label: "Stop (× ATR)", type: "float", min: 0.25, max: 8, step: 0.25, default: 2 },
-  { key: "tpAtrMult", label: "Target (× ATR)", type: "float", min: 0.25, max: 40, step: 0.25, default: 12 },
-  { key: "maxBarsInTrade", label: "Time stop (bars)", type: "int", min: 0, max: 400, step: 1, default: 0, hint: "0 = off" },
+  { key: "contracts", label: "Contracts", type: "int", min: 1, max: 20, step: 1, default: 8,
+    hint: "Up to 20 MNQ. Capped by 'Max contracts' below." },
+  { key: "maxContracts", label: "Max contracts (firm cap)", type: "int", min: 1, max: 20, step: 1, default: 20,
+    hint: "The account's per-position limit. Bounds both fixed and risk sizing." },
+  { key: "slAtrMult", label: "Stop (× ATR)", type: "float", min: 0.25, max: 1000, step: 0.25, default: 2,
+    hint: "Strategies that exit on their own signals ship with 1000 (no stop)." },
+  { key: "tpMode", label: "Target set by", type: "select", default: "atr",
+    options: [["atr", "ATR multiple"], ["rr", "Reward : risk (× the stop)"]] },
+  { key: "tpAtrMult", label: "Target (× ATR)", type: "float", min: 0.25, max: 1000, step: 0.25, default: 12,
+    hint: "1000 = no target, so the strategy's own exit decides." },
+  { key: "tpRR", label: "Target (× stop, R:R mode)", type: "float", min: 0.1, max: 30, step: 0.1, default: 1.2 },
+  { key: "maxBarsInTrade", label: "Time stop (bars)", type: "int", min: 0, max: 2000, step: 1, default: 0, hint: "0 = off" },
+  { key: "flipOnOpposite", label: "Close on opposite signal", type: "select", bool: true, default: "on", options: onOff("Yes — and reverse", "No — hold"),
+    hint: "Off for signals that are a persistent state rather than an event, which would otherwise thrash." },
+  { key: "cooldownAfterStopMins", label: "After a stop, wait (mins)", type: "int", min: 0, max: 600, step: 5, default: 0,
+    hint: "No re-entry in the same direction for this long after a stop-out. 0 = off." },
+  { key: "sameBarReentry", label: "Re-enter on the exit bar", type: "select", bool: true, default: "off", options: onOff(),
+    hint: "NOT tradeable — the re-entry fills at the bar's open, before the exit. Only to reproduce other tooling." },
   { key: "commissionModel", label: "Commission model", type: "select", default: "per-contract",
     options: [["per-contract", "Per contract (realistic)"], ["flat", "Flat per trade (legacy)"]],
     hint: "Legacy lite_backtester runs used flat $5/trade, which understates cost ~2-3× at 8-10 lots." },
@@ -64,6 +79,17 @@ const EXEC_PARAMS = [
     hint: "Closes the open trade the moment the day is down this much -- a daily loss limit enforced on live P&L, as platforms do. The rules' 'Firm daily loss limit' only stops new entries." },
   { key: "dayLossStopMode", label: "Hard loss cap fills", type: "select", default: "price",
     options: [["price", "At the stop price (a gap fills worse)"], ["exact", "Exactly at the cap (platform liquidation)"]] },
+  // Scale-in: a fraction at the signal, the rest once price moves the right way.
+  { key: "scaleInFrac", label: "Scale-in: share at entry (0 = off)", type: "float", min: 0, max: 0.9, step: 0.05, default: 0,
+    hint: "e.g. 0.5 = half at the signal, half once price has moved the trigger distance in the trade's favour." },
+  { key: "scaleInTrigger", label: "Scale-in: add after (× ATR in favour)", type: "float", min: 0, max: 5, step: 0.05, default: 0.25 },
+  { key: "scaleInWindowBars", label: "Scale-in: give up after (bars)", type: "int", min: 1, max: 500, step: 1, default: 10 },
+  { key: "scaleInOrder", label: "Scale-in vs bracket, same bar", type: "select", default: "before",
+    options: [["before", "Add first"], ["after", "Bracket first (pessimistic)"]] },
+  { key: "scaleInSlipTicks", label: "Scale-in: extra slippage (ticks)", type: "float", min: 0, max: 8, step: 0.25, default: 0 },
+  // The instrument. The data is MNQ; NQ is the same index at 10x the point value.
+  { key: "pointValue", label: "Point value $ (MNQ 2, NQ 20)", type: "float", min: 0.5, max: 50, step: 0.5, default: 2 },
+  { key: "tickSize", label: "Tick size (points)", type: "float", min: 0.25, max: 1, step: 0.25, default: 0.25 },
 ];
 
 // Funded stage. No consistency requirement here — a payout is unlocked by
@@ -78,6 +104,7 @@ const FUNDED_PARAMS = [
     hint: "Assumed — many firms cap early withdrawals." },
   { key: "minBuffer", label: "Profit that must stay in $", type: "int", min: 0, max: 5000, step: 100, default: 0,
     hint: "Assumed — some firms require a buffer above the starting balance." },
+  { key: "resetWinDaysAfterPayout", label: "Winning days reset after a payout", type: "select", bool: true, default: "on", options: onOff("Yes", "No") },
 ];
 
 // Signal gates, applied to any strategy. Defaults are off; the hints carry what
@@ -97,10 +124,20 @@ const FILTER_PARAMS = [
     hint: "Capping volatility HURT badly (25.1%) — it removes the dollar throughput needed to reach the target." },
   { key: "chopMin", label: "Choppiness min", type: "int", min: 0, max: 100, step: 1, default: 0, group: "Filters" },
   { key: "chopMax", label: "Choppiness max", type: "int", min: 0, max: 100, step: 1, default: 0, group: "Filters" },
+  { key: "bwMin", label: "Bollinger bandwidth min", type: "float", min: 0, max: 0.1, step: 0.0005, default: 0, group: "Filters",
+    hint: "(upper - lower) / middle of 2-sigma bands. A minimum skips squeezes; a maximum trades only them." },
+  { key: "bwMax", label: "Bollinger bandwidth max", type: "float", min: 0, max: 0.1, step: 0.0005, default: 0, group: "Filters" },
+  // The gate indicators' own periods, on the signal timeframe's bars.
+  { key: "adxPeriod", label: "Filter ADX period", type: "int", min: 2, max: 100, step: 1, default: 14, group: "Filters" },
+  { key: "atrPeriod", label: "Filter ATR period", type: "int", min: 2, max: 100, step: 1, default: 14, group: "Filters" },
+  { key: "volMaPeriod", label: "ATR average length", type: "int", min: 2, max: 500, step: 1, default: 60, group: "Filters" },
+  { key: "effPeriod", label: "Efficiency ratio period", type: "int", min: 2, max: 200, step: 1, default: 20, group: "Filters" },
+  { key: "chopPeriod", label: "Choppiness period", type: "int", min: 2, max: 100, step: 1, default: 14, group: "Filters" },
+  { key: "bwPeriod", label: "Bollinger period", type: "int", min: 2, max: 200, step: 1, default: 20, group: "Filters" },
 ];
 
 const SESSION_PARAMS = [
-  { key: "intradayOnly", label: "No overnight positions", type: "select", default: "on",
+  { key: "intradayOnly", label: "No overnight positions", type: "select", bool: true, default: "on",
     options: [["on", "Enforced — flat by deadline"], ["off", "Allow overnight holds"]],
     hint: "Most funded accounts require this. It truncates long-running winners, so it changes results a lot." },
   { key: "flattenCt", label: "Flatten by (CT)", type: "time", min: 0, max: 1439, step: 5, default: 15 * 60 + 5 },
@@ -115,6 +152,8 @@ const RULES_PARAMS = [
   { key: "trailingMode", label: "Drawdown trails on", type: "select", default: "eod",
     options: [["eod", "Daily closes (lenient)"], ["intraday", "Intraday peak (strict)"]],
     hint: "EOD trailing means an intraday spike you give back before the close does not tighten your floor." },
+  { key: "lockAtBreakeven", label: "Floor locks at breakeven", type: "select", bool: true, default: "on", options: onOff("Yes — once the peak reaches the drawdown", "No — trails for ever"),
+    hint: "Most firms stop trailing once the floor reaches the starting balance." },
   { key: "evaluateOn", label: "Breach measured on", type: "select", default: "realized",
     options: [["realized", "Realised P&L only"], ["intraday", "Open equity (per-trade MAE)"]],
     hint: "Real firms breach on live equity. 'Open equity' checks each trade's worst excursion, pessimistically ordered." },
@@ -126,7 +165,7 @@ const RULES_PARAMS = [
     hint: "Your own tighter stop. The single biggest pass-rate lever in this project's testing. 0 = off." },
   { key: "consistencyPct", label: "Consistency cap % (0 = off)", type: "int", min: 0, max: 100, step: 5, default: 50,
     hint: "No single day may exceed this share of total profit. A day counts at its net P&L, so the window must reach max(target, best day / cap): a $12,000 day at 50% means $24,000 before it can pass." },
-  { key: "consistencyGatesPass", label: "Consistency blocks the pass", type: "select", default: "on",
+  { key: "consistencyGatesPass", label: "Consistency blocks the pass", type: "select", bool: true, default: "on",
     options: [["on", "Yes — must dilute first"], ["off", "No — pass on target"]],
     hint: "The evaluation enforces this: reaching the target on one oversized day does not pass, the window must keep trading until the best day is under the cap. The equity panel draws what that raises the target to. Payouts have no consistency rule — they gate on winning days instead." },
   { key: "minTradingDays", label: "Min trading days", type: "int", min: 0, max: 30, step: 1, default: 0 },
@@ -298,60 +337,32 @@ function renderSidebar() {
   for (const d of [tfDesc, ...(S.strategyDesc.params || [])]) {
     sig.body.appendChild(buildParamControl(d, S.params[d.key], (v) => {
       S.params[d.key] = v;
-      onParamsChanged(d.key === "timeframeMin");
+      // A longer lookback can need more history than the window loaded.
+      onParamsChanged(d.key === "timeframeMin" || warmupGrew());
     }));
   }
   host.appendChild(sig);
 
-  const ex = buildGroup("Execution & costs");
-  for (const d of EXEC_PARAMS) {
-    ex.body.appendChild(buildParamControl(d, S.exec[d.key], (v) => {
-      S.exec[d.key] = v;
-      onParamsChanged();
-    }));
-  }
-  host.appendChild(ex);
-
-  const fi = buildGroup("Signal filters", true);
-  for (const d of FILTER_PARAMS) {
-    fi.body.appendChild(buildParamControl(d, S.filter[d.key], (v) => {
-      S.filter[d.key] = v;
-      onParamsChanged();
-    }));
-  }
-  host.appendChild(fi);
-
-  const se = buildGroup("Session rules");
-  for (const d of SESSION_PARAMS) {
-    // intradayOnly is a boolean in the config but reads better as on/off here.
-    const cur = d.key === "intradayOnly" ? (S.exec.intradayOnly ? "on" : "off") : S.exec[d.key];
-    se.body.appendChild(buildParamControl(d, cur, (v) => {
-      S.exec[d.key] = d.key === "intradayOnly" ? v === "on" : v;
-      onParamsChanged();
-    }));
-  }
-  host.appendChild(se);
-
-  const ru = buildGroup("Combine rules");
-  for (const d of RULES_PARAMS) {
-    const cur = d.key === "consistencyGatesPass" ? (S.rules.consistencyGatesPass ? "on" : "off") : S.rules[d.key];
-    ru.body.appendChild(buildParamControl(d, cur, (v) => {
-      const needsReload = d.key === "windowDays";
-      S.rules[d.key] = d.key === "consistencyGatesPass" ? v === "on" : v;
-      if (needsReload) loadWindow(S.windowStart);
-      else onParamsChanged();
-    }));
-  }
-  host.appendChild(ru);
-
-  const fu = buildGroup("Funded stage rules", true);
-  for (const d of FUNDED_PARAMS) {
-    fu.body.appendChild(buildParamControl(d, S.funded[d.key], (v) => {
-      S.funded[d.key] = v;
-      onParamsChanged();
-    }));
-  }
-  host.appendChild(fu);
+  // One control per descriptor, bound to a config object. A `bool` descriptor
+  // shows on/off but stores a boolean; a key the object lacks shows its default.
+  const bind = (group, descs, obj, after = () => onParamsChanged()) => {
+    for (const d of descs) {
+      const raw = obj[d.key] ?? (d.bool ? d.default === "on" : d.default);
+      group.body.appendChild(buildParamControl(d, d.bool ? (raw ? "on" : "off") : raw, (v) => {
+        obj[d.key] = d.bool ? v === "on" : v;
+        after(d);
+      }));
+    }
+    host.appendChild(group);
+  };
+  bind(buildGroup("Execution & costs"), EXEC_PARAMS, S.exec);
+  // An active filter, or a longer filter period, can need more warm-up.
+  bind(buildGroup("Signal filters", true), FILTER_PARAMS, S.filter, () => onParamsChanged(warmupGrew()));
+  // Allowing overnight holds needs a longer warm-up (src/window.mjs).
+  bind(buildGroup("Session rules"), SESSION_PARAMS, S.exec, () => onParamsChanged(warmupGrew()));
+  bind(buildGroup("Combine rules"), RULES_PARAMS, S.rules,
+       (d) => (d.key === "windowDays" ? loadWindow(S.windowStart) : onParamsChanged()));
+  bind(buildGroup("Funded stage rules", true), FUNDED_PARAMS, S.funded);
 
   paintSweepStats();
   paintFundedStats();
@@ -539,10 +550,12 @@ function recompute() {
   const cut = run.trades.findIndex((t) => t.entryTime >= endMs);
   const res = cut < 0 ? run : { ...run, trades: run.trades.slice(0, cut) };
   // A window trade closed only because the loaded bars ran out would be cut short
-  // of the exit the sweep gives it. Load a longer tail once and run again.
+  // of the exit the sweep gives it. Load a 10x longer tail and run again, until
+  // the trade closes or the bars reach the end of the data (an overnight hold
+  // with no exit signal can run for months).
   const lastT = res.trades[res.trades.length - 1];
-  if (lastT && lastT.reason === "EOD" && S.tailMin < 30 * 1440) {
-    S.tailMin = 30 * 1440;
+  if (lastT && lastT.reason === "EOD" && S.blob.ts[S.blob.ts.length - 1] < S.meta.endMs) {
+    S.tailMin *= 10;
     loadWindow(S.windowStart, { keepTail: true });
     return;
   }
@@ -675,14 +688,23 @@ function paintStats(res, replay) {
 }
 
 // ─────────────────────────── window loading ───────────────────────────
+// Windows start where the sweep's do -- the data's first bar plus whole days --
+// so the window on screen is always one the sweep scored.
+function snapToSweep(ms) {
+  const last = Math.floor((S.meta.endMs - S.rules.windowDays * DAY - S.meta.startMs) / DAY);
+  return S.meta.startMs + Math.max(0, Math.min(last, Math.round((ms - S.meta.startMs) / DAY))) * DAY;
+}
+
 async function loadWindow(startMs, { keepTail = false } = {}) {
+  startMs = snapToSweep(startMs);
   S.windowStart = startMs;
   if (!keepTail) S.tailMin = DEFAULT_TAIL_MIN;
   // Warm-up and tail as src/window.mjs sets them: enough history before the
   // window for the strategy's indicators to match the full-history run, and
   // enough after it for the window's last trade to finish. test.mjs checks the
   // result against the sweep for every strategy.
-  const { warmupMin, tailMin } = windowSpan(S.strategyMod, S.params, { tailMin: S.tailMin });
+  const { warmupMin, tailMin } = windowSpan(S.strategyMod, S.params, { tailMin: S.tailMin, filter: S.filter, exec: S.exec });
+  S.loadedWarmupMin = warmupMin;
 
   const url = `/api/window?start=${startMs}&days=${S.rules.windowDays}&warmupMin=${warmupMin}&tailMin=${tailMin}`;
   const ab = await fetch(url).then((r) => r.arrayBuffer());
@@ -690,14 +712,21 @@ async function loadWindow(startMs, { keepTail = false } = {}) {
   S.winStartLocal = indexAtOrAfter(S.blob.ts, startMs);
   S.winEndLocal = indexAtOrAfter(S.blob.ts, startMs + S.rules.windowDays * DAY);
 
-  const d = new Date(startMs);
-  $("startDate").value = d.toISOString().slice(0, 10);
+  // The box shows the trading day the window opens on (its session starts the
+  // evening before), so a typed date comes back as the same date.
+  const first = S.blob.tday[Math.min(S.winStartLocal, S.blob.tday.length - 1)];
+  $("startDate").value = new Date(first * DAY).toISOString().slice(0, 10);
   const end = new Date(startMs + S.rules.windowDays * DAY);
   $("winRange").textContent = `→ ${end.toISOString().slice(0, 10)} · ${(S.winEndLocal - S.winStartLocal).toLocaleString()} 1-min bars`;
   if (S.nav) { S.nav.cursorMs = startMs; S.nav.draw(); }
 
   recompute();
   scheduleSweep();
+}
+
+// The current settings need more history before the window than is loaded.
+function warmupGrew() {
+  return windowSpan(S.strategyMod, S.params, { filter: S.filter, exec: S.exec }).warmupMin > (S.loadedWarmupMin || 0);
 }
 
 function stepWindow(days) {

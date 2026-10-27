@@ -39,6 +39,7 @@ export default {
     { key: "trendMa", label: "Trend filter MA (0 = off)", type: "int", min: 0, max: 400, step: 5, default: 0, group: "Signal",
       hint: "Only go long above this MA, short below it." },
     { key: "adxMin", label: "ADX minimum (0 = off)", type: "int", min: 0, max: 60, step: 1, default: 0, group: "Signal" },
+    { key: "adxPeriod", label: "ADX period", type: "int", min: 2, max: 60, step: 1, default: 14, group: "Signal" },
     { key: "atrPeriod", label: "ATR period", type: "int", min: 2, max: 60, step: 1, default: 14, group: "Signal" },
   ],
 
@@ -50,7 +51,7 @@ export default {
     const f = MA(C, p.fast);
     const s = MA(C, Math.max(p.slow, p.fast + 1));
     const trend = p.trendMa > 0 ? MA(C, p.trendMa) : null;
-    const adxArr = p.adxMin > 0 ? adx(H, L, C, 14).adx : null;
+    const adxArr = p.adxMin > 0 ? adx(H, L, C, Math.max(2, Math.trunc(p.adxPeriod) || 14)).adx : null;
     const a = atr(H, L, C, p.atrPeriod);
 
     const sig = new Int8Array(n);

@@ -5,7 +5,7 @@
 
 import { resample } from "./resample.mjs";
 import { runBrackets, tradeStats, resolveExec } from "./engine.mjs";
-import { buildFilterContext, applyFilters, NO_FILTER } from "./filters.mjs";
+import { buildFilterContext, applyFilters, NO_FILTER, filterPeriods } from "./filters.mjs";
 
 // Only pay for the gate indicators when a gate is actually set.
 function filterIsActive(f) {
@@ -33,7 +33,7 @@ export function runStrategy(bars1m, strategy, params, exec, opts = {}) {
   let sig = out.sig;
   let gated = 0;
   if (filterIsActive(opts.filter)) {
-    const ctx = buildFilterContext(tf);
+    const ctx = buildFilterContext(tf, filterPeriods(opts.filter));
     sig = applyFilters(out.sig, ctx, opts.filter);
     for (let i = 0; i < out.sig.length; i++) if (out.sig[i] && !sig[i]) gated++;
   }

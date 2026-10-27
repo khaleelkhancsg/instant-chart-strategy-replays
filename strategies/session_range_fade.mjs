@@ -58,7 +58,7 @@ export default {
 
     for (let i = 1; i < n; i++) {
       const ct = ctMin ? ctMin[i] : 0;
-      if (tday[i] !== curDay) { curDay = tday[i]; dayHi = -Infinity; dayLo = Infinity; }
+      if (tday[i] !== curDay) { curDay = tday[i]; dayHi = -Infinity; dayLo = Infinity; last = -Infinity; }
 
       // The range keeps developing all session; it is simply not fadeable yet.
       if (H[i] > dayHi) dayHi = H[i];

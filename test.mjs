@@ -38,8 +38,11 @@ function arrClose(a, b, tol = 1e-9, msg = "") {
 }
 function section(s) { console.log(`\n${s}\n${"-".repeat(s.length)}`); }
 
-// Deterministic PRNG so failures reproduce.
-let seed = 12345;
+// Deterministic PRNG so failures reproduce. FUZZ_SEED picks another sequence and
+// FUZZ_SCALE multiplies the fuzz sections' case counts, for longer bug hunts:
+//   FUZZ_SEED=7 FUZZ_SCALE=5 node test.mjs
+let seed = Number(process.env.FUZZ_SEED) || 12345;
+const SCALE = Math.max(1, Number(process.env.FUZZ_SCALE) || 1);
 const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
 
 function synthBars(n, startMs = Date.UTC(2024, 0, 1), stepMs = 60000, px = 18000) {
@@ -462,8 +465,12 @@ t("sameBarReentry:true opts into the non-causal fill", () => {
   const sig = new Int8Array(4).fill(1);
   const off = runBrackets(b, sig, flatAtr(4, 10), { ...NOFEE, slAtrMult: 1, tpAtrMult: 20 }).trades;
   const on = runBrackets(b, sig, flatAtr(4, 10), { ...NOFEE, slAtrMult: 1, tpAtrMult: 20, sameBarReentry: true }).trades;
-  if (!(on.length > off.length)) throw new Error("flag had no effect");
+  // The stop fills on bar 2. Off, the next entry waits for bar 3; on, it is taken
+  // on bar 2 itself. (This used to check on.length > off.length, which only held
+  // because the engine also booked a phantom dir-0 trade on that bar.)
+  eq(off.some((t2) => t2.entryIdx === 2), false, "off: nothing enters on the exit bar:");
   eq(on.some((t2) => t2.entryIdx === 2), true, "opting in allows the same-bar entry:");
+  eq(on.every((t2) => t2.dir !== 0) && off.every((t2) => t2.dir !== 0), true, "no phantom trade with no direction:");
 });
 
 t("tpMode:'rr' sets the target from the stop distance", () => {
@@ -1609,10 +1616,24 @@ if (bars_) {
 //   no lookahead   -- signals, ATR and exit signals computed on data cut short
 //                     equal the full run's for every completed bar;
 //   live = sweep   -- the browser's path (the window plus the warm-up and tail
-//                     src/window.mjs sets, retried with a 30-day tail if its last
-//                     trade ran out of bars, as public/app.js does) gives the same
+//                     src/window.mjs sets, the tail grown 10x while its last trade
+//                     ran out of bars, as public/app.js does) gives the same
 //                     window result as the server's full-history run.
 section("7. Strategies: no lookahead, and the live window matches the sweep");
+
+// One window's trades the way the browser gets them.
+function liveWindow(H, s, p, exec, filter, start, endMs) {
+  const n = H.ts.length;
+  for (let tailMin = 0; ;) {
+    const span = windowSpan(s, p, tailMin ? { tailMin, filter, exec } : { filter, exec });
+    const si = indexAtOrAfter(H.ts, start - span.warmupMin * 60000);
+    const ei = Math.min(indexAtOrAfter(H.ts, endMs + span.tailMin * 60000) + 1, n);
+    const lt = runStrategy(sliceBars(H, si, ei), s, p, exec, { fromMs: start, filter }).trades.filter((x) => x.entryTime < endMs);
+    if (!(lt.length && lt[lt.length - 1].reason === "EOD" && ei < n)) return lt;
+    tailMin = span.tailMin * 10;
+  }
+}
+
 if (bars_) {
   const { bars: B } = bars_;
   const N = 300000, H = sliceBars(B, B.count - N, B.count);
@@ -1648,15 +1669,7 @@ if (bars_) {
         // the sweep's start time of day, and a date-picker start mid-session
         for (const [k, offMin] of [[50, 0], [93, 6 * 60], [136, 0], [179, 13 * 60]]) {
           const start = H.ts[0] + k * DAY + offMin * 60000, endMs = start + rules.windowDays * DAY;
-          const live = (tailMin) => {
-            const span = windowSpan(s, p, tailMin ? { tailMin } : {});
-            const si = indexAtOrAfter(H.ts, start - span.warmupMin * 60000);
-            const ei = indexAtOrAfter(H.ts, endMs + span.tailMin * 60000);
-            return runStrategy(sliceBars(H, si, Math.min(ei + 1, N)), s, p, exec, { fromMs: start, filter })
-              .trades.filter((x) => x.entryTime < endMs);
-          };
-          let lt = live(0);
-          if (lt.length && lt[lt.length - 1].reason === "EOD") lt = live(30 * 1440);
+          const lt = liveWindow(H, s, p, exec, filter, start, endMs);
           const a = replayWindow(full.trades, start, rules), b = replayWindow(lt, start, rules);
           if (a.outcome !== b.outcome || Math.abs(a.stats.netPnl - b.stats.netPnl) > 0.01 || a.stats.trades !== b.stats.trades) {
             throw new Error(`${overnight ? "overnight, " : ""}window ${new Date(start).toISOString().slice(0, 16)}: sweep ${a.outcome} ` +
@@ -1666,6 +1679,270 @@ if (bars_) {
       }
     });
   }
+}
+
+// ══════════════════════════════ 8-11. FUZZ ══════════════════════════════
+// Random configurations, checked against the rules the code promises. Every
+// failure prints the case so it can be replayed; the PRNG is seeded, so a run
+// reproduces exactly.
+const pick = (a) => a[Math.floor(rnd() * a.length)];
+const uni = (lo, hi) => lo + rnd() * (hi - lo);
+const iuni = (lo, hi) => Math.floor(uni(lo, hi + 1));
+const inFlatCt = (ct, f, r) => (r > f ? ct >= f && ct < r : ct >= f || ct < r);
+
+function randomExec() {
+  return {
+    contracts: iuni(1, 20), maxContracts: iuni(1, 20), sizingMode: pick(["fixed", "fixed", "risk"]), riskDollars: iuni(50, 1500),
+    slAtrMult: pick([0.25, 0.5, 1, 1.5, 2, 3, 5, 8, 1000]), tpMode: pick(["atr", "atr", "rr"]),
+    tpAtrMult: pick([0.25, 0.5, 1, 2, 4, 12, 40, 1000]), tpRR: pick([0.3, 1, 1.2, 2, 5]),
+    commissionModel: pick(["per-contract", "per-contract", "flat"]), commissionPerSide: pick([0, 0.75, 1.5]), commissionFlat: pick([0, 5, 12]),
+    slippageTicks: pick([0, 0, 1, 2]), flipOnOpposite: rnd() < 0.7, sameBarReentry: rnd() < 0.15,
+    cooldownAfterStopMins: pick([0, 0, 15, 90]), maxBarsInTrade: pick([0, 0, 5, 40, 200]),
+    intradayOnly: rnd() < 0.7, flattenCt: pick([15 * 60 + 5, 14 * 60, 12 * 60 + 30]), reopenCt: 17 * 60, noEntryMinsBeforeFlat: pick([0, 0, 10, 60]),
+    dayProfitStopUsd: pick([0, 0, 300, 1500]), dayLossStopUsd: pick([0, 0, 300, 1000]), dayLossStopMode: pick(["price", "exact"]),
+    scaleInFrac: pick([0, 0, 0, 0.5, 0.25]), scaleInTrigger: pick([0, 0.25, 1]), scaleInWindowBars: pick([1, 10, 30]),
+    scaleInOrder: pick(["before", "after"]), scaleInSlipTicks: pick([0, 1]), pointValue: pick([2, 2, 20]),
+  };
+}
+
+section("8. Fuzz: engine invariants over random configurations, on real bars");
+if (bars_) {
+  const { bars: B } = bars_;
+  const CASES = 400 * SCALE;
+  let checked = 0;
+  t(`${CASES} random configurations: every trade obeys the engine's rules`, () => {
+    for (let c = 0; c < CASES; c++) {
+      const tfMin = pick([1, 1, 2, 5, 15]);
+      const s0 = iuni(0, B.count - 40000), slice = sliceBars(B, s0, s0 + 30000);
+      const tf = resample(slice, tfMin), n = tf.close.length;
+      const a = atr(tf.high, tf.low, tf.close, 14);
+      const sig = new Int8Array(n), dens = pick([0.005, 0.02, 0.08]);
+      for (let i = 0; i < n; i++) if (rnd() < dens) sig[i] = rnd() < 0.5 ? 1 : -1;
+      const x = randomExec();
+      if (rnd() < 0.3) { x.exitSig = new Int8Array(n); for (let i = 0; i < n; i++) if (rnd() < 0.03) x.exitSig[i] = iuni(1, 3); }
+      const cfg = resolveExec(x);
+      const { trades } = runBrackets(tf, sig, a, cfg);
+      const again = runBrackets(tf, sig, a, cfg).trades;
+      const where = () => `case ${c} (tf ${tfMin}, ${JSON.stringify({ ...x, exitSig: x.exitSig ? "mask" : undefined })})`;
+      if (again.length !== trades.length || again.some((t2, k) => t2.pnl !== trades[k].pnl)) throw new Error(`not deterministic: ${where()}`);
+      const cap = Math.max(1, Math.trunc(cfg.maxContracts));
+      const slip = cfg.slippageTicks * cfg.tickSize;
+      const day = new Map();
+      let prev = null, lastStop = null;
+      for (const tr of trades) {
+        checked++;
+        const fail = (m) => { throw new Error(`${m} -- trade ${JSON.stringify({ e: tr.entryIdx, x: tr.exitIdx, dir: tr.dir, q: tr.contracts, why: tr.reason, pnl: tr.pnl })}, ${where()}`); };
+        if (!(tr.exitIdx >= tr.entryIdx) || tr.exitTime < tr.entryTime) fail("exit before entry");
+        if (prev) {
+          const flipped = prev.reason === "FLIP" || cfg.sameBarReentry;
+          if (tr.entryIdx < prev.exitIdx || (tr.entryIdx === prev.exitIdx && !flipped)) fail("overlaps the previous trade");
+        }
+        if (!(tr.contracts >= 1 && tr.contracts <= cap)) fail(`contracts outside 1..${cap}`);
+        if (cfg.sizingMode === "fixed" && !(cfg.scaleInFrac > 0) && tr.contracts !== Math.min(cap, Math.max(1, Math.trunc(cfg.contracts)))) fail("fixed size not the configured size");
+        const fees = cfg.commissionModel === "flat" ? cfg.commissionFlat : cfg.commissionPerSide * 2 * tr.contracts;
+        if (Math.abs(tr.fees - fees) > 1e-9) fail(`fees ${tr.fees} != ${fees}`);
+        if (Math.abs(tr.pnl - (tr.gross - tr.fees)) > 1e-6) fail("pnl != gross - fees");
+        if (!(tr.mae <= 1e-9 && tr.mfe >= -1e-9)) fail("MAE above zero or MFE below");
+        if (tr.reason === "TP" && !(cfg.scaleInFrac > 0) && Math.abs(tr.exitPrice - (tr.target - tr.dir * slip)) > 1e-6) fail("target exit not at the target");
+        if (tr.reason === "SL" && (tr.dir === 1 ? tr.exitPrice > tr.stop - slip + 1e-6 : tr.exitPrice < tr.stop + slip - 1e-6)) fail("stop exit better than the stop");
+        if (cfg.maxBarsInTrade > 0 && tr.bars > cfg.maxBarsInTrade) fail("held past the time stop");
+        if (cfg.intradayOnly && tf.ctMin) {
+          for (let k = tr.entryIdx; k < tr.exitIdx; k++) if (inFlatCt(tf.ctMin[k], cfg.flattenCt, cfg.reopenCt)) fail("held through the flat window");
+          if (inFlatCt(tf.ctMin[tr.entryIdx], cfg.flattenCt, cfg.reopenCt)) fail("entered in the flat window");
+        }
+        if (cfg.cooldownAfterStopMins > 0 && lastStop && tr.dir === lastStop.dir && tr.entryTime - lastStop.at < cfg.cooldownAfterStopMins * 60000) fail("re-entered during the stop cooldown");
+        if (tr.reason === "SL") lastStop = { dir: tr.dir, at: tr.exitTime };
+        const d = tr.tday;
+        day.set(d, (day.get(d) || 0) + tr.pnl);
+        if (cfg.dayProfitStopUsd > 0 && day.get(d) > cfg.dayProfitStopUsd + 1e-6 && tr.reason !== "FLAT" && tr.reason !== "EOD") {
+          // the cap is a resting take-profit at the threshold; only an exit the cap does not police may pass it
+          if (tr.reason === "DAYCAP" || tr.reason === "TP") fail(`day ${d} realised ${day.get(d).toFixed(2)} above the ${cfg.dayProfitStopUsd} cap`);
+        }
+        if (cfg.dayLossStopUsd > 0 && cfg.dayLossStopMode === "exact" && day.get(d) < -cfg.dayLossStopUsd - 1e-6) fail(`day ${d} realised ${day.get(d).toFixed(2)} below the exact -${cfg.dayLossStopUsd} cap`);
+        prev = tr;
+      }
+    }
+  });
+  t("P&L is linear in contracts when nothing depends on the dollar size", () => {
+    for (let c = 0; c < 60 * SCALE; c++) {
+      const tfMin = pick([1, 2, 5]);
+      const s0 = iuni(0, B.count - 40000), tf = resample(sliceBars(B, s0, s0 + 30000), tfMin), n = tf.close.length;
+      const a = atr(tf.high, tf.low, tf.close, 14), sig = new Int8Array(n);
+      for (let i = 0; i < n; i++) if (rnd() < 0.03) sig[i] = rnd() < 0.5 ? 1 : -1;
+      const x = { ...randomExec(), sizingMode: "fixed", dayProfitStopUsd: 0, dayLossStopUsd: 0, scaleInFrac: 0, commissionModel: "per-contract", maxContracts: 20 };
+      const one = runBrackets(tf, sig, a, { ...x, contracts: 1 }).trades;
+      for (const q of [3, 13, 20]) {
+        const many = runBrackets(tf, sig, a, { ...x, contracts: q }).trades;
+        eq(many.length, one.length, `trade count at ${q} lots:`);
+        for (let k = 0; k < one.length; k++) close(many[k].pnl, one[k].pnl * q, 1e-6, `trade ${k} at ${q} lots:`);
+      }
+    }
+  });
+  console.log(`         (${checked.toLocaleString()} trades checked)`);
+}
+
+section("9. Fuzz: the combine rules against a plain reference implementation");
+// Written from the rules as stated, not from replayWindow: one pass, no event or
+// day bookkeeping. Realised evaluation; an independent check of the bookkeeping.
+function refReplay(trades, start, R) {
+  const end = start + R.windowDays * DAY, cap = R.consistencyPct / 100, eod = R.trailingMode === "eod";
+  let cum = 0, peak = 0, eodPeak = 0, locked = false, best = 0, dayP = 0, day = null, traded = false, tdays = 0, n = 0;
+  for (const t of trades) {
+    if (t.entryTime < start) continue;
+    if (t.entryTime >= end) break;
+    if (t.tday !== day) {
+      if (day !== null) {
+        best = Math.max(best, dayP);
+        if (eod) { eodPeak = Math.max(eodPeak, cum); if (R.lockAtBreakeven && eodPeak >= R.trailingDD) locked = true; }
+      }
+      day = t.tday; dayP = 0; traded = false;
+    }
+    if ((R.dailyProfitStop > 0 && dayP >= R.dailyProfitStop) || (R.circuitBreaker > 0 && dayP <= -R.circuitBreaker) ||
+        (R.dailyLossLimit > 0 && dayP <= -R.dailyLossLimit)) continue;
+    if (!traded) { traded = true; tdays++; }
+    n++;
+    cum += t.pnl; dayP += t.pnl;
+    if (!eod) { peak = Math.max(peak, cum); if (R.lockAtBreakeven && peak >= R.trailingDD) locked = true; }
+    const floor = locked ? 0 : (eod ? eodPeak : peak) - R.trailingDD;
+    if (cum <= floor) return { outcome: OUTCOME.FAIL, net: cum, n };
+    const ok = !R.consistencyGatesPass || !(cap > 0) || Math.max(best, dayP) <= cap * cum;
+    if (cum >= R.profitTarget && ok && tdays >= R.minTradingDays) return { outcome: OUTCOME.PASS, net: cum, n };
+  }
+  return { outcome: OUTCOME.OPEN, net: cum, n };
+}
+t(`${(2000 * SCALE).toLocaleString()} random trade lists and rule sets: replayWindow agrees with the reference`, () => {
+  for (let c = 0; c < 2000 * SCALE; c++) {
+    const R = resolveRules({
+      profitTarget: pick([500, 1250, 3000, 9000]), trailingDD: pick([250, 1000, 2000, 5000]), trailingMode: pick(["eod", "intraday"]),
+      lockAtBreakeven: rnd() < 0.8, dailyLossLimit: pick([0, 500, 1000]), dailyProfitStop: pick([0, 0, 750, 1500]), circuitBreaker: pick([0, 0, 150, 500]),
+      consistencyPct: pick([0, 30, 50, 50, 100]), consistencyGatesPass: rnd() < 0.8, minTradingDays: pick([0, 0, 3, 8]), windowDays: pick([5, 21, 30, 60]),
+    });
+    const trades = [], base0 = Date.UTC(2024, 0, 1, 14);
+    let ms = base0;
+    for (let d = 0; d < 70; d++) {
+      const k = iuni(0, 5);
+      for (let j = 0; j < k; j++) {
+        const pnl = Math.round((rnd() < 0.08 ? uni(-4000, 6000) : uni(-600, 700)) * 4) / 4;
+        const entryTime = base0 + d * DAY + j * 3600000;
+        trades.push({ entryTime, exitTime: entryTime + 1800000, tday: Math.floor((base0 + d * DAY) / DAY), pnl,
+                      mae: Math.min(0, pnl) - rnd() * 200, mfe: Math.max(0, pnl) + rnd() * 200, fees: 0 });
+      }
+      ms = base0 + d * DAY;
+    }
+    const start = base0 + iuni(0, 20) * DAY - 3600000;
+    const a = replayWindow(trades, start, R), b = refReplay(trades, start, R);
+    if (a.outcome !== b.outcome || Math.abs(a.stats.netPnl - b.net) > 1e-6 || a.stats.trades !== b.n) {
+      throw new Error(`case ${c}: replayWindow ${a.outcome} ${a.stats.netPnl} (${a.stats.trades}) vs reference ${b.outcome} ${b.net} (${b.n}); rules ${JSON.stringify(R)}`);
+    }
+    // what the events say must hold on their own
+    const ev = a.events.filter((e) => e.taken);
+    for (let k = 1; k < ev.length; k++) if (ev[k].floor < ev[k - 1].floor - 1e-9) throw new Error(`case ${c}: the trailing floor moved down`);
+    for (const e of a.events) if (e.need < R.profitTarget - 1e-9) throw new Error(`case ${c}: needed less than the target`);
+    if (a.outcome === OUTCOME.PASS && R.consistencyGatesPass && R.consistencyPct > 0 && a.stats.bestDay > (R.consistencyPct / 100) * a.stats.netPnl + 1e-6) {
+      throw new Error(`case ${c}: passed with the best day over the cap`);
+    }
+  }
+});
+
+section("10. Fuzz: every strategy with random settings -- no lookahead, live window = sweep");
+if (bars_) {
+  const { bars: B } = bars_;
+  const N = 200000, H = sliceBars(B, B.count - N, B.count);
+  const strategies = await loadStrategies();
+  const same = (a, b) => a === b || (Number.isNaN(a) && Number.isNaN(b));
+  const randomParams = (s) => {
+    const p = resolveParams(s, {});
+    for (const d of s.params || []) {
+      if (rnd() < 0.35) continue;                    // keep some defaults, so mixtures are tried too
+      if (d.type === "select") p[d.key] = pick(d.options)[0];
+      else if (d.type === "int" || d.type === "time") p[d.key] = Math.round(uni(d.min, d.max) / (d.step || 1)) * (d.step || 1);
+      else if (d.type === "float") p[d.key] = Math.round(uni(d.min, d.max) / (d.step || 0.01)) * (d.step || 0.01);
+    }
+    if (rnd() < 0.25) p.timeframeMin = pick([1, 2, 3, 5, 10, 15]);
+    return p;
+  };
+  const randomFilter = () => (rnd() < 0.6 ? {} : {
+    adxMin: pick([0, 20]), effMin: pick([0, 0.3]), volMax: pick([0, 1.5]), chopMax: pick([0, 60]),
+    adxPeriod: pick([14, 30]), effPeriod: pick([20, 50]), volMaPeriod: pick([60, 120]),
+  });
+  for (const [id, s] of strategies) {
+    t(`${id}: ${3 * SCALE} random settings`, () => {
+      for (let c = 0; c < 3 * SCALE; c++) {
+        const p = randomParams(s);
+        // an empty flat window (flatten time = resume time) holds overnight as well
+        const ct = iuni(0, 1439), flat = rnd() < 0.1 ? { flattenCt: ct, reopenCt: ct } : {};
+        const exec = resolveExec({ ...(s.execDefaults || {}), contracts: iuni(1, 20), intradayOnly: rnd() < 0.6, ...flat });
+        const rules = resolveRules({ ...(s.rulesDefaults || {}) });
+        const filter = { ...NO_FILTER, ...(s.filterDefaults || {}), ...randomFilter() };
+        const tag = () => `settings ${JSON.stringify(p)} filter ${JSON.stringify(filter)} contracts ${exec.contracts} intraday ${exec.intradayOnly}` +
+                          ` flat ${exec.flattenCt}-${exec.reopenCt}`;
+        // no lookahead
+        const oF = s.compute(resample(H, p.timeframeMin), p);
+        const tfP = resample(sliceBars(H, 0, Math.floor(N * 0.7)), p.timeframeMin), oP = s.compute(tfP, p);
+        for (const k of ["sig", "atr", "exitSig"]) {
+          if (!oF[k] && !oP[k]) continue;
+          for (let i = 0; i < tfP.close.length - 1; i++) if (!same(oF[k][i], oP[k][i])) throw new Error(`${k} at bar ${i} reads ahead -- ${tag()}`);
+        }
+        // live window = sweep
+        const full = runStrategy(H, s, p, exec, { filter });
+        for (const [k, offMin] of [[60, 0], [101, 8 * 60]]) {
+          const start = H.ts[0] + k * DAY + offMin * 60000, endMs = start + rules.windowDays * DAY;
+          const lt = liveWindow(H, s, p, exec, filter, start, endMs);
+          const a = replayWindow(full.trades, start, rules), b = replayWindow(lt, start, rules);
+          if (a.outcome !== b.outcome || Math.abs(a.stats.netPnl - b.stats.netPnl) > 0.01 || a.stats.trades !== b.stats.trades) {
+            throw new Error(`window ${new Date(start).toISOString().slice(0, 16)}: sweep ${a.outcome} ${a.stats.netPnl.toFixed(2)} (${a.stats.trades}), ` +
+                            `live ${b.outcome} ${b.stats.netPnl.toFixed(2)} (${b.stats.trades}) -- ${tag()}`);
+          }
+        }
+      }
+    });
+  }
+}
+
+section("11. Contract cap");
+{
+  const tf = synthBars(4000), a = atr(tf.high, tf.low, tf.close, 14), sig = new Int8Array(4000);
+  for (let i = 50; i < 4000; i += 37) sig[i] = (i / 37) % 2 ? 1 : -1;
+  t("20 contracts trade 20; a fixed size over the firm cap trades the cap", () => {
+    eq(runBrackets(tf, sig, a, { contracts: 20, intradayOnly: false }).trades[0].contracts, 20, "20 lots:");
+    eq(runBrackets(tf, sig, a, { contracts: 20, maxContracts: 10, intradayOnly: false }).trades[0].contracts, 10, "capped at 10:");
+  });
+  t("risk sizing never exceeds the cap, at the default 20 or a lower one", () => {
+    for (const cap of [20, 7]) {
+      const tr = runBrackets(tf, sig, a, { sizingMode: "risk", riskDollars: 1e6, maxContracts: cap, intradayOnly: false }).trades;
+      for (const x of tr) if (x.contracts !== cap) throw new Error(`risk size ${x.contracts} with cap ${cap}`);
+    }
+  });
+}
+
+section("12. Live window span");
+t("overnight holds load all the history before the window; intraday-only runs keep a bounded warm-up", () => {
+  const years = (x) => windowSpan({ params: [], warmupBars: 300 }, {}, { exec: x }).warmupMin / (365 * 1440);
+  if (!(years(resolveExec({ intradayOnly: false })) >= 20)) throw new Error("overnight holds: the warm-up stops short of the data");
+  if (!(years(resolveExec({ flattenCt: 600, reopenCt: 600 })) >= 20)) throw new Error("an empty flat window: the warm-up stops short of the data");
+  if (!(years(resolveExec({})) < 1)) throw new Error("intraday-only: the warm-up should stay bounded");
+});
+if (bars_) {
+  const { bars: B } = bars_;
+  const s = (await loadStrategies()).get("macd_5m_quiet_anticipate");
+  t("a position held months into a window, and one closing months after it, match the sweep", () => {
+    // fuzz seed 55: overnight, and no exit but the opposite signal, so holds run for months
+    const p = { ...resolveParams(s, {}), fast: 35, slow: 31, signal: 9, source: "open", oscMaType: "wma", sigMaType: "ema", shrinkBars: 3, prox: 0.075,
+                scaleBars: 200, trigger: "prox", etaBars: 2, slopeBars: 3, sessionGate: "rth", adrMax: 0.4, adrDays: 15, fadeBars: 0, timeframeMin: 5 };
+    const exec = resolveExec({ ...(s.execDefaults || {}), contracts: 5, intradayOnly: false });
+    const rules = resolveRules({ ...(s.rulesDefaults || {}) }), filter = { ...NO_FILTER, ...(s.filterDefaults || {}) };
+    const full = runStrategy(B, s, p, exec, { filter });
+    const cases = [["2025-08-09T22:03:00Z", (t, start) => t.entryTime < start - 60 * DAY && t.exitTime > start],
+                   ["2026-03-29T22:03:00Z", (t, start, end) => t.entryTime < end && t.exitTime > end + 30 * DAY]];
+    for (const [iso, shape] of cases) {
+      const start = Date.parse(iso), endMs = start + rules.windowDays * DAY;
+      if (!full.trades.some((t) => shape(t, start, endMs))) throw new Error(`window ${iso} no longer has the long hold it tests`);
+      const a = replayWindow(full.trades, start, rules), b = replayWindow(liveWindow(B, s, p, exec, filter, start, endMs), start, rules);
+      if (a.outcome !== b.outcome || Math.abs(a.stats.netPnl - b.stats.netPnl) > 0.01 || a.stats.trades !== b.stats.trades) {
+        throw new Error(`window ${iso}: sweep ${a.outcome} ${a.stats.netPnl.toFixed(2)} (${a.stats.trades}), live ${b.outcome} ${b.stats.netPnl.toFixed(2)} (${b.stats.trades})`);
+      }
+    }
+  });
 }
 
 // ══════════════════════════════ RESULT ══════════════════════════════

@@ -41,6 +41,12 @@ export default {
     { key: "basePeriod", label: "Fastest period", type: "int", min: 2, max: 60, step: 1, default: 4, group: "Consensus" },
     { key: "growth", label: "Speed growth factor", type: "float", min: 1.1, max: 3, step: 0.05, default: 1.5, group: "Consensus",
       hint: "Each speed is this multiple of the one before. 1.5 reproduces the 4/6/9/13 ladder." },
+    { key: "macdSlowMult", label: "MACD slow = fast ×", type: "float", min: 1.2, max: 5, step: 0.1, default: 2.2, group: "Consensus",
+      hint: "MACD family only. 2.2 ~ the classic 12/26." },
+    { key: "macdSigMult", label: "MACD signal = fast ×", type: "float", min: 0.25, max: 3, step: 0.05, default: 0.75, group: "Consensus",
+      hint: "MACD family only. 0.75 ~ the classic 12/9." },
+    { key: "zLenMult", label: "Z-score lookback = period ×", type: "float", min: 1, max: 20, step: 0.5, default: 5, group: "Consensus",
+      hint: "Z-score family only." },
     { key: "minAgree", label: "Members that must fire", type: "int", min: 1, max: 6, step: 1, default: 1, group: "Consensus",
       hint: "Above 1, a bar needs this many members actively agreeing — not just an absence of conflict." },
     { key: "direction", label: "Trade the consensus", type: "select", default: "follow",
@@ -52,6 +58,7 @@ export default {
     { key: "adxMin", label: "ADX minimum (0 = off)", type: "int", min: 0, max: 60, step: 1, default: 0, group: "Filters" },
     { key: "startCt", label: "Signals from (CT)", type: "time", min: 0, max: 1439, step: 5, default: 8 * 60 + 30, group: "Session" },
     { key: "endCt", label: "Signals until (CT)", type: "time", min: 0, max: 1439, step: 5, default: 15 * 60, group: "Session" },
+    { key: "adxPeriod", label: "ADX period", type: "int", min: 2, max: 60, step: 1, default: 14, group: "ATR" },
     { key: "atrPeriod", label: "ATR period", type: "int", min: 2, max: 60, step: 1, default: 14, group: "ATR" },
   ],
 
@@ -71,9 +78,10 @@ export default {
     let members, priceScaled;
     if (p.family === "macd") {
       priceScaled = true;
+      const slowMult = p.macdSlowMult > 1 ? p.macdSlowMult : 2.2, sigMult = p.macdSigMult > 0 ? p.macdSigMult : 0.75;
       members = periods.map((f) => {
-        const slow = Math.max(f + 1, Math.round(f * 2.2));
-        const sigP = Math.max(2, Math.round(f * 0.75));
+        const slow = Math.max(f + 1, Math.round(f * slowMult));
+        const sigP = Math.max(2, Math.round(f * sigMult));
         const ef = ema(C, f), es = ema(C, slow);
         const line = new Float64Array(n);
         for (let i = 0; i < n; i++) line[i] = ef[i] - es[i];
@@ -84,7 +92,8 @@ export default {
       });
     } else if (p.family === "zscore") {
       priceScaled = false;
-      members = periods.map((per) => zscore(C, Math.max(5, per * 5)));
+      const zMult = p.zLenMult > 0 ? p.zLenMult : 5;
+      members = periods.map((per) => zscore(C, Math.max(5, Math.round(per * zMult))));
     } else if (p.family === "roc") {
       priceScaled = false;
       members = periods.map((per) => roc(C, per));
@@ -107,7 +116,7 @@ export default {
     }
 
     const useAdx = p.adxMin > 0 || p.adxMax > 0;
-    const adxArr = useAdx ? adx(H, L, C, 14).adx : null;
+    const adxArr = useAdx ? adx(H, L, C, Math.max(2, Math.trunc(p.adxPeriod) || 14)).adx : null;
     const fade = p.direction === "fade";
 
     const sig = new Int8Array(n);

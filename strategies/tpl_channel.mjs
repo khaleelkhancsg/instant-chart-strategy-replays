@@ -41,14 +41,15 @@ export default {
     { key: "adxMax", label: "ADX maximum (0 = off)", type: "int", min: 0, max: 60, step: 1, default: 0, group: "Signal",
       hint: "Set this instead for fades — they need chop." },
     { key: "cooldownBars", label: "Cooldown bars", type: "int", min: 1, max: 60, step: 1, default: 1, group: "Signal" },
+    { key: "adxPeriod", label: "ADX period", type: "int", min: 2, max: 60, step: 1, default: 14, group: "Signal" },
     { key: "atrPeriod", label: "ATR period", type: "int", min: 2, max: 60, step: 1, default: 14, group: "Signal" },
   ],
 
   compute(bars, p) {
-    const { high: H, low: L, close: C } = bars;
+    const { high: H, low: L, close: C, tday } = bars;
     const n = C.length;
     const a = atr(H, L, C, p.atrPeriod);
-    const adxArr = (p.adxMin > 0 || p.adxMax > 0) ? adx(H, L, C, 14).adx : null;
+    const adxArr = (p.adxMin > 0 || p.adxMax > 0) ? adx(H, L, C, Math.max(2, Math.trunc(p.adxPeriod) || 14)).adx : null;
 
     let up, dn, mid = null;
     if (p.channel === "bollinger") {
@@ -64,8 +65,10 @@ export default {
 
     const fade = p.direction === "fade";
     const sig = new Int8Array(n);
-    let last = -Infinity;
+    let last = -Infinity, day = -1;
     for (let i = 1; i < n; i++) {
+      // The cooldown restarts each session, so signal spacing never reaches back before today.
+      if (tday[i] !== day) { day = tday[i]; last = -Infinity; }
       if (i - last < p.cooldownBars) continue;
       if (!Number.isFinite(up[i]) || !Number.isFinite(dn[i])) continue;
       if (adxArr) {

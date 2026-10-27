@@ -39,7 +39,7 @@ export default {
   ],
 
   compute(bars, p) {
-    const { high: H, low: L, close: C } = bars;
+    const { high: H, low: L, close: C, tday } = bars;
     const n = C.length;
 
     const { adx: adxArr } = adx(H, L, C, p.adxPeriod);
@@ -47,8 +47,10 @@ export default {
     const a = atr(H, L, C, p.atrPeriod);
 
     const sig = new Int8Array(n);
-    let last = -Infinity;
+    let last = -Infinity, day = -1;
     for (let i = p.donchian; i < n; i++) {
+      // The cooldown restarts each session, so signal spacing never reaches back before today.
+      if (tday[i] !== day) { day = tday[i]; last = -Infinity; }
       if (i - last < p.cooldownBars) continue;
       if (adxArr[i] < p.adxMin) continue;
       if (C[i] > dh[i]) { sig[i] = 1; last = i; }
