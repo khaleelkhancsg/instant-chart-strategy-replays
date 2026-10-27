@@ -6,13 +6,15 @@
 
 import { loadBars } from "../src/data.mjs";
 import { loadStrategies } from "../src/registry.mjs";
-import { runStrategy, resolveParams } from "../src/run.mjs";
+import { runStrategy } from "../src/run.mjs";
 import { resolveExec, DEFAULT_EXEC, LEGACY_EXEC } from "../src/engine.mjs";
 import { resolveRules, replayWindow, DEFAULT_RULES, OUTCOME } from "../src/challenge.mjs";
 import { NO_FILTER, FILTER_PERIODS } from "../src/filters.mjs";
 import { sliceBars, indexAtOrAfter } from "../src/resample.mjs";
 import { windowSpan } from "../src/window.mjs";
 import { dayVector, bootstrapPass } from "../src/dayeval.mjs";
+import { evalBase, evalOf, DEFAULT_EVAL } from "../src/evals.mjs";
+import { resolveStudies, gateKey, isGating, studyLabel, studyBars } from "../src/studies.mjs";
 
 export const DAY = 86400000;
 
@@ -66,6 +68,10 @@ function checkParamValues(s, params) {
   }
 }
 
+// The evaluation (src/evals.mjs) sets the base: the firm's rules, the platform
+// loss cap where the book models one, and the strategy's own settings for that
+// eval. Indicator studies (src/studies.mjs) ride along; those with a gate refuse
+// the entries their state does not allow.
 export async function resolveConfig(input = {}) {
   const all = await strategies();
   const s = all.get(input.strategy);
@@ -75,10 +81,14 @@ export async function resolveConfig(input = {}) {
   checkKeys("exec", input.exec, new Set(Object.keys(DEFAULT_EXEC)));
   checkKeys("rules", input.rules, new Set(Object.keys(DEFAULT_RULES)));
   checkKeys("filter", input.filter, new Set([...Object.keys(NO_FILTER), ...Object.keys(FILTER_PERIODS)]));
-  const params = resolveParams(s, input.params || {});
-  const exec = resolveExec({ ...(s.execDefaults || {}), ...(input.legacy ? LEGACY_EXEC : {}), ...(input.exec || {}) });
-  const rules = resolveRules({ ...(s.rulesDefaults || {}), ...(input.rules || {}) });
-  const filter = { ...NO_FILTER, ...(s.filterDefaults || {}), ...(input.filter || {}) };
+  let ev, studies;
+  try { ev = evalOf(input.eval); } catch (e) { throw new UserError(e.message); }
+  try { studies = resolveStudies(input.studies, { strict: true }); } catch (e) { throw new UserError(`studies: ${e.message}; call list_studies`); }
+  const base = evalBase(s, ev.id);
+  const params = { ...base.params, ...(input.params || {}) };
+  const exec = resolveExec({ ...base.exec, ...(input.legacy ? LEGACY_EXEC : {}), ...(input.exec || {}) });
+  const rules = resolveRules({ ...base.rules, ...(input.rules || {}) });
+  const filter = { ...base.filter, ...(input.filter || {}) };
   if (exec.sameBarReentry) throw new UserError("exec.sameBarReentry re-enters at an open that came BEFORE the exit -- not a sequence anyone could trade. Leave it false.");
   const warnings = [];
   if (exec.entryType === "stop" && exec.entryRefused === "optimistic") warnings.push("entryRefused 'optimistic' fills stops the platform would refuse: an upper bound, not a result.");
@@ -87,7 +97,7 @@ export async function resolveConfig(input = {}) {
   if (input.legacy) warnings.push("legacy engine conventions (LEGACY_EXEC): reproduces pre-consolidation results, not the physically consistent fills.");
   if (exec.intradayOnly === false && (exec.dayLossStopUsd > 0 || exec.dayProfitStopUsd > 0))
     warnings.push("day caps with overnight holds: a carried position counts its P&L since the fill toward the new day's cap, where a platform marks it at the session open.");
-  return { s, params, exec, rules, filter, warnings };
+  return { s, eval: ev.id, params, exec, rules, filter, studies, warnings };
 }
 
 export function costLine(x) {
@@ -95,29 +105,36 @@ export function costLine(x) {
   return `${fee}, ${x.slippageTicks} tick${x.slippageTicks === 1 ? "" : "s"} slippage/side, $${x.pointValue}/point`;
 }
 
-// The settings that differ from the strategy's own defaults: what a result is
-// actually about, without the noise of every default.
+// The settings that differ from the strategy's own defaults under its eval: what
+// a result is actually about, without the noise of every default -- plus the
+// eval when it is not the default one, and the indicator studies.
 export function changed(cfg) {
   const out = {};
-  const p0 = resolveParams(cfg.s, {}), x0 = resolveExec(cfg.s.execDefaults || {});
-  const r0 = resolveRules(cfg.s.rulesDefaults || {}), f0 = { ...NO_FILTER, ...(cfg.s.filterDefaults || {}) };
-  for (const [name, now, base] of [["params", cfg.params, p0], ["exec", cfg.exec, x0], ["rules", cfg.rules, r0], ["filter", cfg.filter, f0]]) {
+  if (cfg.eval && cfg.eval !== DEFAULT_EVAL) out.eval = cfg.eval;
+  const b = evalBase(cfg.s, cfg.eval);
+  const x0 = resolveExec(b.exec), r0 = resolveRules(b.rules);
+  for (const [name, now, base] of [["params", cfg.params, b.params], ["exec", cfg.exec, x0], ["rules", cfg.rules, r0], ["filter", cfg.filter, b.filter]]) {
     const d = {};
     for (const k of Object.keys(now)) if (typeof now[k] !== "function" && JSON.stringify(now[k]) !== JSON.stringify(base[k])) d[k] = now[k];
     if (Object.keys(d).length) out[name] = d;
   }
+  if (cfg.studies && cfg.studies.length) out.studies = cfg.studies.map((st) => `${studyLabel(st)}${isGating(st) ? `, gate ${st.gate}` : ""}`);
   return out;
 }
+
+// The signal bars a full run's trades index into (their sigIdx), shared per
+// timeframe: resampling is deterministic, so these are the run's own bars.
+export const signalBars = (cfg) => studyBars(bars(), cfg.params.timeframeMin || cfg.s.timeframeMin || 1);
 
 // ── runs, cached ─────────────────────────────────────────────────────────
 const runCache = new Map();
 const RUN_CACHE_MAX = 16;
 export function fullRun(cfg) {
-  const key = JSON.stringify([cfg.s.id, cfg.params, cfg.exec, cfg.filter]);
+  const key = JSON.stringify([cfg.s.id, cfg.params, cfg.exec, cfg.filter, gateKey(cfg.studies)]);
   const hit = runCache.get(key);
   if (hit) { runCache.delete(key); runCache.set(key, hit); return hit; }
   const t0 = performance.now();
-  const r = runStrategy(bars(), cfg.s, cfg.params, cfg.exec, { filter: cfg.filter });
+  const r = runStrategy(bars(), cfg.s, cfg.params, cfg.exec, { filter: cfg.filter, studies: cfg.studies });
   const out = { trades: r.trades, tfMin: cfg.params.timeframeMin || 1, ms: Math.round(performance.now() - t0) };
   runCache.set(key, out);
   while (runCache.size > RUN_CACHE_MAX) runCache.delete(runCache.keys().next().value);
@@ -129,13 +146,13 @@ export function fullRun(cfg) {
 // runs once and the full history would be wasted work.
 export function rangeRun(cfg, fromMs, toMs) {
   const b = bars();
-  const span = windowSpan(cfg.s, cfg.params, { filter: cfg.filter, exec: cfg.exec, tailMin: 30 * 1440 });
+  const span = windowSpan(cfg.s, cfg.params, { filter: cfg.filter, exec: cfg.exec, tailMin: 30 * 1440, studies: cfg.studies });
   const si = indexAtOrAfter(b.ts, fromMs - span.warmupMin * 60000);
   // A book that can carry a position overnight can hold it for months, so its
   // last window's trade is only exact with every bar after it.
   const x = cfg.exec, carries = x.intradayOnly === false || (x.flattenCt === x.reopenCt && x.sessionEndFlat === "none");
   const ei = carries ? b.count : Math.min(indexAtOrAfter(b.ts, toMs + span.tailMin * 60000) + 1, b.count);
-  return runStrategy(sliceBars(b, si, ei), cfg.s, cfg.params, cfg.exec, { filter: cfg.filter, fromMs }).trades;
+  return runStrategy(sliceBars(b, si, ei), cfg.s, cfg.params, cfg.exec, { filter: cfg.filter, fromMs, studies: cfg.studies }).trades;
 }
 
 // ── periods, and the two pass-rate methods ───────────────────────────────

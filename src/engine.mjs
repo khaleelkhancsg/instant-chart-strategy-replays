@@ -23,7 +23,7 @@
 // an opposite signal while in a position closes at this bar's open AND may
 // re-enter on the same bar. A stop/target exit, by contrast, ends the bar.
 
-export const EXIT = { SL: "SL", TP: "TP", FLIP: "FLIP", EOD: "EOD", TIME: "TIME", FLAT: "FLAT", DAYCAP: "DAYCAP", DAYLOSS: "DAYLOSS", SIGNAL: "SIGNAL", TRAIL: "TRAIL" };
+export const EXIT = { SL: "SL", TP: "TP", FLIP: "FLIP", EOD: "EOD", TIME: "TIME", FLAT: "FLAT", DAYCAP: "DAYCAP", DAYLOSS: "DAYLOSS", SIGNAL: "SIGNAL", TRAIL: "TRAIL", STALE: "STALE" };
 
 // Intraday-only session rules, in America/Chicago minutes-of-day.
 //
@@ -94,6 +94,13 @@ export const DEFAULT_EXEC = {
   cooldownAfterStopMins: 0,
   atrPeriod: 14,
   maxBarsInTrade: 0,        // 0 = no time stop
+  // STALE EXIT: once a trade has run `staleBars` bars, leave at the next open if
+  // it has never been `staleMfeAtr` x ATR in its favour (the best price since the
+  // fill, read on closed bars). A trade that has not moved by then is mostly one
+  // that will not. The $1,250 bot's 40-minute exit is 20 two-minute bars, 1 ATR
+  // (research/export_bot1250_fixture.mjs). 0 = off.
+  staleBars: 0,
+  staleMfeAtr: 1,
   // Intraday-only mode: flat by `flattenCt`, no re-entry until `reopenCt`.
   intradayOnly: true,
   flattenCt: SESSION.flattenCt,
@@ -292,6 +299,9 @@ const NO_DAY = -2147483648;
  * @param cfg   execution config (see DEFAULT_EXEC). Research may also pass, as
  *              JS only:
  *   exitSig   Int8Array mask per bar: 1 closes a long, 2 a short (from compute())
+ *   entryGate(sigBar, dir) -> false refuses a signal's ENTRY only: the signal
+ *             still closes an opposite position and cancels a working order
+ *             (src/studies.mjs builds it from indicator studies)
  *   sizer(atrAtSignal, ctMin, seq, bar) -> contracts; below 1 skips the signal
  *   tpFn(atrAtSignal, contracts)        -> target distance in points
  *   exitFn(closedBar, dir, state)       -> true closes at the next open
@@ -318,13 +328,14 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
   const pv = x.pointValue, tick = x.tickSize;
   const slip = x.slippageTicks * tick;
   const maxBars = Math.trunc(x.maxBarsInTrade) || 0;
+  const staleBars = Math.trunc(x.staleBars) || 0;
   // An optional SIGNAL exit, as a BITMASK per bar: 1 closes a long, 2 closes a
   // short, 3 closes either. A mask rather than a direction because the array is
   // built in compute(), which has no idea which way the book will be positioned
   // when the bar arrives -- it can only say "a long should leave here" and "a
   // short should leave here", and sometimes both are true.
   const exitSig = x.exitSig || null;
-  const { sizer, tpFn, exitFn, stopFn, onTrade, haltFn } = x;
+  const { sizer, tpFn, exitFn, stopFn, onTrade, haltFn, entryGate } = x;
   const entries = x.entries || null;
   const nEntries = entries ? entries.length : 0;
 
@@ -525,6 +536,9 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
     const xs = exitSig ? exitSig[i - 1] : 0;
     if (xs && ((pos === 1 && (xs & 1)) || (pos === -1 && (xs & 2)))) { close_(O[i], EXIT.SIGNAL, i); return "end"; }
     if (exitFn && exitFn(i - 1, pos, state())) { close_(O[i], EXIT.SIGNAL, i); return "end"; }
+    if (staleBars > 0 && i - 1 - ei >= staleBars && (pos === 1 ? mx - notional / qIn : notional / qIn - mn) < x.staleMfeAtr * atrSig) {
+      close_(O[i], EXIT.STALE, i); return "end";
+    }
     if (maxBars > 0 && i - ei >= maxBars) { close_(O[i], EXIT.TIME, i); return "end"; }
     const s = sig[i - 1];
     if (x.flipOnOpposite && s !== 0 && (s !== pos || x.flipOnAnySignal)) { close_(O[i], EXIT.FLIP, i); return "flip"; }
@@ -591,7 +605,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
 
       // The management hooks read the bar that just closed, from the fill on.
       const k = i - 1;
-      if (k >= ei && (stopFn || exitFn)) {
+      if (k >= ei && (stopFn || exitFn || staleBars > 0)) {
         if (k === ei && kind !== "market") { if (C[k] > mx) mx = C[k]; if (C[k] < mn) mn = C[k]; }
         else { if (H[k] > mx) mx = H[k]; if (L[k] < mn) mn = L[k]; }
         if (stopFn) {
@@ -669,6 +683,9 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
     // A stop-out in this direction may still be cooling off.
     if (x.cooldownAfterStopMins > 0 && s === lastStopDir &&
         TS[i] - lastStopMs < x.cooldownAfterStopMins * 60000) continue;
+    // An indicator gate may refuse the entry. By here the signal has already done
+    // everything else -- closed an opposite position, cancelled an order.
+    if (entryGate && !entryGate(i - 1, s)) continue;
     const a = atrArr[i - 1];
     if (!(Number.isFinite(a) && a > 0)) continue;
 

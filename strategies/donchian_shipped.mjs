@@ -150,6 +150,15 @@ export default {
   // The breaker and profit block live in the engine (above), so the rules
   // layer's post-hoc copies are off rather than applied twice.
   rulesDefaults: { circuitBreaker: 0, dailyProfitStop: 0 },
+  // On the $1,250 evaluation (src/evals.mjs; the $600 day cap follows the eval):
+  // the size and day blocks research/rules_1250_2026.mjs found for these rules.
+  // 8 lots makes the $600 limit a 37.5-point stop, and a +$750 block lets a day
+  // run past the $625 the consistency rule allows. Calendar windows: 2026 17.0%
+  // at the $3,000 settings, 44.2% at these (Jan-Mar 45.6, Apr-Jul 42.7). The
+  // live $1,250 bot also gates on the 10-minute EMA 9/21 -- add it as an "EMA
+  // cross" study on 10m with the gate "with": 59.4% (47.8 / 73.3) -- and has a
+  // 40-minute exit and smaller late-day size, which this file does not model.
+  evals: { "1250": { exec: { contracts: 4, dayBreakerUsd: 300, dayProfitBlockUsd: 250 } } },
 
   // Signal code is SHARED, not copied, so the two books cannot drift apart.
   // period 30, adx_min 25, adx_period 14, atr_period 14, cooldown_bars 1 —

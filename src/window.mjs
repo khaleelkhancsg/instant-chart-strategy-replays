@@ -15,6 +15,7 @@
 // active signal filter adds its own indicators' lookback.
 
 import { NO_FILTER, filterPeriods } from "./filters.mjs";
+import { studyWarmupMin } from "./studies.mjs";
 
 const DAY_MIN = 1440;
 export const DEFAULT_TAIL_MIN = 3 * DAY_MIN;   // covers any intraday trade, weekends included
@@ -61,7 +62,9 @@ const ALL_HISTORY_MIN = 50 * 365 * DAY_MIN;
 const holdsOvernight = (x) => !!x && (x.intradayOnly === false ||
   (x.flattenCt != null && x.flattenCt === x.reopenCt && x.sessionEndFlat === "none"));
 
-export function windowSpan(strategy, params = {}, { tailMin = DEFAULT_TAIL_MIN, filter = null, exec = null } = {}) {
+// Indicator studies (src/studies.mjs) need their own history: a gate's reading
+// must match the full run's, and a drawn line should too.
+export function windowSpan(strategy, params = {}, { tailMin = DEFAULT_TAIL_MIN, filter = null, exec = null, studies = null } = {}) {
   const tf = params.timeframeMin || strategy.timeframeMin || 1;
   const warmupBars = Math.max(valueOf(strategy.warmupBars, params, 300), lookbackBars(strategy, params), filterBars(filter));
   const sessions = valueOf(strategy.warmupSessions, params, 0);
@@ -70,5 +73,6 @@ export function windowSpan(strategy, params = {}, { tailMin = DEFAULT_TAIL_MIN, 
   // Sessions to calendar minutes: 7/5 for weekends, plus 4 days for holidays.
   const bySessions = sessions > 0 ? Math.ceil((sessions * 7) / 5 + 4) * DAY_MIN : 0;
   const overnight = holdsOvernight(exec) ? ALL_HISTORY_MIN : 0;
-  return { warmupMin: Math.max(byBars, bySessions, overnight), tailMin };
+  const byStudies = Math.max(0, ...(studies || []).map((st) => studyWarmupMin(st, tf)));
+  return { warmupMin: Math.max(byBars, bySessions, overnight, byStudies), tailMin };
 }

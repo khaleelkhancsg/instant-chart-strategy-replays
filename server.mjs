@@ -17,11 +17,12 @@ import { fileURLToPath } from "node:url";
 
 import { loadBars, packBars } from "./src/data.mjs";
 import { loadStrategies, describe } from "./src/registry.mjs";
-import { runStrategy, resolveParams } from "./src/run.mjs";
+import { runStrategy } from "./src/run.mjs";
 import { resolveExec, DEFAULT_EXEC } from "./src/engine.mjs";
 import { sweepWindows, sweepFunded, DEFAULT_RULES, DEFAULT_FUNDED, resolveRules, resolveFunded } from "./src/challenge.mjs";
-import { NO_FILTER } from "./src/filters.mjs";
 import { indexAtOrAfter } from "./src/resample.mjs";
+import { evalBase, evalOf } from "./src/evals.mjs";
+import { resolveStudies, gateKey, studyOnSignal, studyEdge } from "./src/studies.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 5178;
@@ -39,19 +40,20 @@ console.log(`  ${strategies.size} strategies: ${[...strategies.keys()].join(", "
 const runCache = new Map();
 const RUN_CACHE_MAX = 8;
 
-function cacheKey(strategyId, params, exec, filter) {
-  return JSON.stringify([strategyId, params, exec, filter]);
+// Only the studies that gate change the trades, so only they key the cache.
+function cacheKey(strategyId, params, exec, filter, studies) {
+  return JSON.stringify([strategyId, params, exec, filter, gateKey(studies)]);
 }
 
-function fullRun(strategyId, params, exec, filter) {
-  const key = cacheKey(strategyId, params, exec, filter);
+function fullRun(strategyId, params, exec, filter, studies) {
+  const key = cacheKey(strategyId, params, exec, filter, studies);
   const hit = runCache.get(key);
   if (hit) return hit;
 
   const s = strategies.get(strategyId);
   if (!s) throw new Error(`Unknown strategy: ${strategyId}`);
   const t = Date.now();
-  const res = runStrategy(bars, s, params, exec, { filter });
+  const res = runStrategy(bars, s, params, exec, { filter, studies });
   res.ms = Date.now() - t;
 
   runCache.set(key, res);
@@ -229,16 +231,20 @@ const server = http.createServer(async (req, res) => {
       const s = strategies.get(body.strategyId);
       if (!s) return sendJson(res, 400, { error: `Unknown strategy: ${body.strategyId}` });
 
-      // A strategy's own defaults are the BASE, with the request layered on top.
-      // Without this the API silently ignores the gate and risk envelope a
-      // strategy ships with, and returns numbers that do not match the UI —
-      // which is exactly how a spec ends up quoting figures nothing reproduces.
-      const params = resolveParams(s, body.params);
-      const exec = resolveExec({ ...(s.execDefaults || {}), ...(body.exec || {}) });
-      const rules = resolveRules({ ...(s.rulesDefaults || {}), ...(body.rules || {}) });
-      const filter = { ...NO_FILTER, ...(s.filterDefaults || {}), ...(body.filter || {}) };
+      // A strategy's own defaults under the chosen evaluation are the BASE, with
+      // the request layered on top. Without this the API silently ignores the
+      // gate and risk envelope a strategy ships with, and returns numbers that do
+      // not match the UI — which is exactly how a spec ends up quoting figures
+      // nothing reproduces.
+      let base, studies;
+      try { base = evalBase(s, body.eval); studies = resolveStudies(body.studies); }
+      catch (e) { return sendJson(res, 400, { error: e.message }); }
+      const params = { ...base.params, ...(body.params || {}) };
+      const exec = resolveExec({ ...base.exec, ...(body.exec || {}) });
+      const rules = resolveRules({ ...base.rules, ...(body.rules || {}) });
+      const filter = { ...base.filter, ...(body.filter || {}) };
 
-      const run = fullRun(body.strategyId, params, exec, filter);
+      const run = fullRun(body.strategyId, params, exec, filter, studies);
       const tSweep = Date.now();
       const sweep = sweepWindows(
         run.trades, bars.ts[0], bars.ts[bars.count - 1], rules,
@@ -271,15 +277,23 @@ const server = http.createServer(async (req, res) => {
         const rows = (m) => [...m.values()].map((g) => ({ ...g, net: Math.round(g.net) }));
         return { all: rows(out.all), y2026: rows(out.y2026) };
       };
+      // Every study's states at the trades' signals: how the book did with and
+      // against each indicator, gating or not.
+      const tE = Date.now();
+      const edge = studies.map((st) => ({ id: st.id ?? null, ...studyEdge(run.trades, studyOnSignal(bars, run.tf, st)) }));
       return sendJson(res, 200, {
+        eval: evalOf(body.eval).id,
         stats: run.stats,
         backtestMs: run.ms,
         sweepMs,
         fundedMs: Date.now() - tF,
+        edgeMs: Date.now() - tE,
         funded: funded.summary,
         // entry hour in Chicago time; weekday of the trading day the trade closed in
         byHourCt: breakdown((t) => (t.entryCt == null ? null : Math.floor(t.entryCt / 60))),
         byWeekday: breakdown((t) => new Date(t.tday * 86400000).getUTCDay()),
+        studyGated: run.studyGated || 0,
+        edge,
         ...sweep,
       });
     }

@@ -176,6 +176,45 @@ button.mini { padding: 2px 8px; font-size: 10.5px; font-family: var(--mono); fle
 .bk-v { text-align: right; }
 .bk-v.pos { color: var(--bull); } .bk-v.neg { color: var(--bear); }
 
+/* evaluation tabs */
+.evalfield { padding-bottom: 0; }
+.evaltabs { display: flex; gap: 2px; background: var(--line); border-radius: 6px; padding: 2px; }
+.evaltabs button {
+  flex: 1; border: 0; border-radius: 4px; background: transparent; color: var(--muted);
+  font-weight: 600; font-size: 12px; padding: 6px 4px;
+}
+.evaltabs button:hover { color: #fff; background: var(--panel-2); }
+.evaltabs button.on { background: var(--accent); color: #071018; }
+
+/* indicator studies */
+.st-pick { margin-bottom: 9px; }
+.st-card { border: 1px solid var(--line-2); border-radius: 6px; margin-bottom: 7px; background: var(--panel-2); }
+.st-head { display: flex; align-items: center; gap: 6px; padding: 5px 6px; }
+.st-color { width: 18px; height: 18px; padding: 0; border: 0; border-radius: 4px; background: none; cursor: pointer; flex: 0 0 18px; }
+.st-color::-webkit-color-swatch-wrapper { padding: 0; }
+.st-color::-webkit-color-swatch { border: 0; border-radius: 4px; }
+.st-name { flex: 1; min-width: 0; font-size: 11.5px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-name:hover { color: #fff; }
+.st-gate {
+  font-family: var(--mono); font-size: 8.5px; font-weight: 700; letter-spacing: .5px;
+  color: #071018; background: var(--warn); border-radius: 3px; padding: 1px 4px;
+}
+.st-btn { padding: 0 5px; font-size: 11px; line-height: 18px; border-color: transparent; background: transparent; color: var(--muted); }
+.st-btn:hover { border-color: var(--line-2); }
+.st-body { display: none; padding: 4px 8px 2px; border-top: 1px solid var(--line); }
+.st-card.open .st-body { display: block; }
+.st-card.hidden-st .st-name { color: var(--dim); text-decoration: line-through; }
+
+/* indicator edge: one row per state, diverging bars as in the hour table */
+.ek-study { margin-bottom: 12px; }
+.ek-name { font-weight: 600; font-size: 11.5px; margin-bottom: 3px; display: flex; gap: 6px; align-items: center; }
+.ek-title { font-size: 9.5px; color: var(--dim); margin: 5px 0 3px; }
+.ek { display: grid; grid-template-columns: 1fr 44px 1fr 44px; align-items: center; gap: 2px 5px; font-family: var(--mono); font-size: 10px; margin-bottom: 6px; }
+.ek.head { color: var(--dim); font-size: 9px; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 3px; }
+.ek.head .bk-h { grid-column: span 2; text-align: center; }
+.ek-k { grid-column: 1 / -1; color: var(--muted); font-family: var(--sans); font-size: 10px; line-height: 1.3; }
+.ek-k i { font-style: normal; color: var(--dim); font-family: var(--mono); font-size: 9px; margin-left: 4px; }
+
 .sidebar-actions { padding: 12px 14px 20px; display: flex; gap: 8px; margin-top: auto; }
 button {
   font-family: var(--sans); font-size: 12px; cursor: pointer;

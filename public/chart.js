@@ -24,12 +24,16 @@ const CSS = {
 };
 
 const PANE_WEIGHTS = { price: 0.46, sub: 0.12, equity: 0.27, daily: 0.15 };
+// Each oscillator study added beside the strategy gets a pane of its own.
+const STUDY_PANE_WEIGHT = 0.11;
 const PAD = { l: 8, r: 74, t: 8, b: 22 };
 const AXIS_H = 20;
 
 const fmtUsd = (v, dp = 0) =>
   (v < 0 ? "-$" : "$") + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: dp, maximumFractionDigits: dp });
 const fmtPx = (v) => v.toFixed(2);
+// An indicator reading: prices to the tick, small numbers to 3 significant figures.
+const fmtVal = (v) => (Math.abs(v) >= 1000 ? v.toFixed(2) : Math.abs(v) >= 10 ? v.toFixed(1) : String(+v.toPrecision(3)));
 
 const TF_NAME = { 1: "1m", 5: "5m", 10: "10m", 15: "15m", 30: "30m", 60: "1h", 1440: "1d" };
 // Says what the candles ARE, and flags the case where the requested size could
@@ -144,7 +148,7 @@ export class ChartView {
   // Which pane a pixel row belongs to.
   _paneAt(my) {
     if (!this.panes) return null;
-    for (const k of ["price", "sub", "equity", "daily"]) {
+    for (const k of this.paneOrder || ["price", "sub", "equity", "daily"]) {
       const P = this.panes[k];
       if (P && P.height > 0 && my >= P.top && my <= P.bottom) return k;
     }
@@ -183,19 +187,32 @@ export class ChartView {
     this.requestDraw();
   }
 
+  // Panes top to bottom: price, the strategy's own indicator pane when it has
+  // one, a pane per oscillator study, equity, daily. Weights are shares of the
+  // height, renormalised when studies add panes.
+  _studyPanes() {
+    const d = this.data;
+    return d && d.studyOverlays ? d.studyOverlays.filter((o) => o.pane === "sub" && !o.hidden) : [];
+  }
   _layout() {
     const showSub = !!(this.data && this.data.subOverlays && this.data.subOverlays.length);
     const weights = { ...PANE_WEIGHTS };
     if (!showSub) { weights.price += weights.sub; weights.sub = 0; }
+    const studies = this._studyPanes();
+    for (const o of studies) weights[o.key] = STUDY_PANE_WEIGHT;
+    const order = ["price", ...(showSub ? ["sub"] : []), ...studies.map((o) => o.key), "equity", "daily"];
+    const total = order.reduce((s, k) => s + weights[k], 0);
 
     const usable = this.h - PAD.t - PAD.b - AXIS_H;
     let y = PAD.t;
     this.panes = {};
-    for (const k of ["price", "sub", "equity", "daily"]) {
-      const ph = Math.round(usable * weights[k]);
+    for (const k of order) {
+      const ph = Math.round((usable * weights[k]) / total);
       this.panes[k] = { top: y, height: ph, bottom: y + ph };
       y += ph + (ph > 0 ? 6 : 0);
     }
+    if (!this.panes.sub) this.panes.sub = { top: y, height: 0, bottom: y };
+    this.paneOrder = order;
     this.plotL = PAD.l;
     this.plotR = this.w - PAD.r;
     this.plotW = Math.max(10, this.plotR - this.plotL);
@@ -282,10 +299,8 @@ export class ChartView {
       fn.call(this, ctx);
       ctx.restore();
     };
-    clipped("price", this._drawPricePane);
-    clipped("sub", this._drawSubPane);
-    clipped("equity", this._drawEquityPane);
-    clipped("daily", this._drawDailyPane);
+    const DRAW = { price: this._drawPricePane, sub: this._drawSubPane, equity: this._drawEquityPane, daily: this._drawDailyPane };
+    for (const k of this.paneOrder) clipped(k, DRAW[k] || ((c) => this._drawStudyPane(c, k)));
     this._drawDimAfterResolution(ctx);
     this._drawSessionBands(ctx);
     this._drawResolutionMarker(ctx);
@@ -489,6 +504,11 @@ export class ChartView {
 
     // Strategy overlays (Donchian bands, moving averages, …)
     for (const ov of this.data.priceOverlays || []) this._drawOverlayLine(ctx, ov, P, y);
+    // Indicator studies added beside the strategy, each on its own bars.
+    for (const st of this.data.studyOverlays || []) {
+      if (st.pane !== "price" || st.hidden) continue;
+      for (const ln of st.lines) this._drawOverlayLine(ctx, { ...ln, color: ln.color || st.color, width: 1.3 }, P, y, st.map);
+    }
 
     // Trades
     this._drawTrades(ctx, P, y);
@@ -499,26 +519,34 @@ export class ChartView {
                     "price");
   }
 
-  _drawOverlayLine(ctx, ov, P, y) {
-    const map = this.data.tfToLocal;
+  // `map` places point k on the 1-minute axis: at its bar's centre, or -- for a
+  // study on a longer timeframe than the signal (map.step) -- as a step from its
+  // bar's close to the next one's, which is when the value became known and so
+  // what a gate reading it saw.
+  _drawOverlayLine(ctx, ov, P, y, map = this.data.tfToLocal) {
     if (!map || !ov.data) return;
     ctx.strokeStyle = ov.color || "#888";
-    ctx.lineWidth = 1;
+    ctx.lineWidth = ov.width || 1;
+    ctx.globalAlpha = ov.alpha || 1;
     ctx.setLineDash(ov.dash || []);
     ctx.beginPath();
     let started = false;
-    const step = Math.max(1, Math.floor((this.i1 - this.i0) / this.plotW / (map.stride || 1)));
-    for (let k = 0; k < ov.data.length; k += step) {
+    const n = ov.data.length, stride = map.stride || 1, margin = Math.max(10, 2 * stride);
+    const step = Math.max(1, Math.floor((this.i1 - this.i0) / this.plotW / stride));
+    for (let k = 0; k < n; k += step) {
       const li = map.localIdx[k];
-      if (li < this.i0 - 10 || li > this.i1 + 10) { started = false; continue; }
+      const lEnd = map.step ? (k + step < n ? map.localIdx[k + step] : li + stride) : li;
+      if (lEnd < this.i0 - margin || li > this.i1 + margin) { started = false; continue; }
       const v = ov.data[k];
       if (!Number.isFinite(v)) { started = false; continue; }
       const px = this.x(li), py = y(v);
       if (py < P.top - 50 || py > P.bottom + 50) { started = false; continue; }
       if (started) ctx.lineTo(px, py); else { ctx.moveTo(px, py); started = true; }
+      if (map.step) ctx.lineTo(this.x(lEnd), py);
     }
     ctx.stroke();
     ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
   }
 
   _drawTrades(ctx, P, y) {
@@ -641,19 +669,9 @@ export class ChartView {
   // Min/max of the given overlays across the visible bars only, padded, and
   // always symmetric about zero so the zero line a crossover happens on sits
   // in the middle of the pane rather than drifting with the data.
-  _visibleSpan(ovs) {
-    const map = this.data.tfToLocal;
+  _visibleSpan(ovs, map = this.data.tfToLocal) {
     if (!map) return null;
-    const vals = [];
-    for (const o of ovs) {
-      if (!o.data) continue;
-      for (let k = 0; k < o.data.length; k++) {
-        const li = map.localIdx[k];
-        if (li < this.i0 || li > this.i1) continue;
-        const v = Math.abs(o.data[k]);
-        if (Number.isFinite(v)) vals.push(v);
-      }
-    }
+    const vals = this._visibleValues(ovs, map, true);
     if (!vals.length) return null;
     // A PERCENTILE, not the maximum. One news bar can throw a MACD several
     // times its usual amplitude, and scaling to that leaves every ordinary
@@ -666,6 +684,82 @@ export class ChartView {
     return [-m * 1.15, m * 1.15];
   }
 
+  // The values of these series on screen (absolute values when `abs`).
+  _visibleValues(ovs, map, abs = false) {
+    const vals = [];
+    for (const o of ovs) {
+      if (!o.data) continue;
+      for (let k = 0; k < o.data.length; k++) {
+        const li = map.localIdx[k];
+        if (li < this.i0 || li > this.i1) continue;
+        const v = abs ? Math.abs(o.data[k]) : o.data[k];
+        if (Number.isFinite(v)) vals.push(v);
+      }
+    }
+    return vals;
+  }
+
+  // An unsigned series (ATR, ADX, relative volume): from its 2nd to its 98th
+  // percentile on screen, padded, and from zero when it never goes below.
+  _visibleMinMax(ovs, map) {
+    const vals = this._visibleValues(ovs, map);
+    if (!vals.length) return null;
+    vals.sort((a, b) => a - b);
+    let lo = vals[Math.floor(vals.length * 0.02)], hi = vals[Math.min(vals.length - 1, Math.floor(vals.length * 0.98))];
+    if (!(hi > lo)) { lo -= 1; hi += 1; }
+    const pad = (hi - lo) * 0.12;
+    return [vals[0] >= 0 ? Math.max(0, lo - pad) : lo - pad, hi + pad];
+  }
+
+  // One indicator study in a pane of its own: its lines and histogram, its
+  // levels as dashed guides, its name, and the gate it applies.
+  _drawStudyPane(ctx, key) {
+    const P = this.panes[key];
+    const st = (this.data.studyOverlays || []).find((o) => o.key === key);
+    if (!st || P.height <= 0) return;
+    let nat = st.range;
+    if (!nat) nat = (st.auto === "sym" ? this._visibleSpan(st.lines, st.map) : this._visibleMinMax(st.lines, st.map)) || [0, 1];
+    if (st.auto === "minmax" && st.guides && st.guides.length) {
+      // keep the gate's levels in view, as long as they are near the data
+      const span = nat[1] - nat[0];
+      for (const g of st.guides) if (g > nat[1] && g < nat[1] + span) nat = [nat[0], g + span * 0.08]; else if (g < nat[0] && g > nat[0] - span) nat = [g - span * 0.08, nat[1]];
+    }
+    const V = this._yFor(key, nat[0], nat[1], P), y = V.y;
+    st.y = y;   // for the crosshair readout
+
+    ctx.strokeStyle = CSS.grid;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(this.plotL + 0.5, P.top + 0.5, this.plotW, P.height);
+    ctx.font = "10px ui-monospace, monospace";
+    for (const g of st.guides || []) {
+      const gy = y(g);
+      if (gy < P.top || gy > P.bottom) continue;
+      ctx.strokeStyle = CSS.gridStrong;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(this.plotL, gy); ctx.lineTo(this.plotR, gy); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = CSS.text;
+      ctx.fillText(String(+g.toFixed(4)), this.plotR + 4, gy + 3);
+    }
+    const ordered = [...st.lines].sort((a, b) => (a.kind === "hist" ? 0 : 1) - (b.kind === "hist" ? 0 : 1));
+    for (const ln of ordered) {
+      if (ln.kind === "hist") this._drawOverlayHist(ctx, { ...ln, colorUp: "rgba(38,166,154,0.55)", colorDown: "rgba(239,83,80,0.55)" }, P, y, st.map);
+      else this._drawOverlayLine(ctx, { ...ln, color: ln.color || st.color, width: 1.2 }, P, y, st.map);
+    }
+    this._paneLabel(ctx, P, st.name + (st.gateText ? `  ·  gate: ${st.gateText}` : ""), key);
+  }
+
+  // The value of a series under 1-minute index i: the point whose bar holds it
+  // (nearest centre), or for a step map the last one known by then.
+  _valueAt(map, data, i) {
+    const xs = map.localIdx, at = map.step ? i + 1 : i + 0.5;
+    let lo = 0, hi = xs.length;
+    while (lo < hi) { const m = (lo + hi) >>> 1; if (xs[m] <= at) lo = m + 1; else hi = m; }
+    let k = lo - 1;
+    if (!map.step && lo < xs.length && (k < 0 || Math.abs(xs[lo] - at) < Math.abs(xs[k] - at))) k = lo;
+    return k >= 0 && k < data.length ? data[k] : NaN;
+  }
+
   // Vertical bars from the zero line, coloured by sign — a MACD histogram.
   // Bars are clamped to at least one pixel so a near-zero reading still shows
   // where the crossover actually happened.
@@ -674,16 +768,17 @@ export class ChartView {
   // shade of that colour. The comparison is against the previous bar in the
   // series, not the previous bar drawn, so it stays correct at the left edge of
   // the view where the predecessor is off screen.
-  _drawOverlayHist(ctx, ov, P, y) {
-    const map = this.data.tfToLocal;
+  _drawOverlayHist(ctx, ov, P, y, map = this.data.tfToLocal) {
     if (!map || !ov.data) return;
     const zero = y(0);
     const bw = Math.max(1, Math.min(6, (this.plotW / Math.max(1, this.i1 - this.i0)) *
                                        (map.stride || 1) * 0.7));
     const up = ov.colorUp || "#3fb27f", dn = ov.colorDown || "#d1566e";
     const upF = ov.colorUpFade || up, dnF = ov.colorDownFade || dn;
+    // a step map's bar belongs to the span after its close, where it is known
+    const off = map.step ? (map.stride || 1) / 2 : 0;
     for (let k = 0; k < ov.data.length; k++) {
-      const li = map.localIdx[k];
+      const li = map.localIdx[k] + off;
       if (li < this.i0 || li > this.i1) continue;
       const v = ov.data[k];
       if (!Number.isFinite(v)) continue;
@@ -1115,12 +1210,49 @@ export class ChartView {
       ctx.fillStyle = CSS.textBright;
       ctx.fillText(txt, this.plotL + 4, P.top + 24);
     }
+    // Every study's value at the bar under the cursor: price-pane ones under the
+    // OHLC line, the rest in their own panes. A step-drawn study shows the value
+    // known by the end of that minute -- the one a gate there would read.
+    let row = 0;
+    ctx.font = "10px ui-monospace, monospace";
+    for (const st of this.data.studyOverlays || []) {
+      if (st.hidden) continue;
+      const vals = st.lines.map((ln) => [ln.name, this._valueAt(st.map, ln.data, i)]).filter(([, v]) => Number.isFinite(v));
+      const text = vals.map(([nm, v]) => `${nm} ${fmtVal(v)}`).join("  ");
+      if (st.pane === "price") {
+        if (!text) continue;
+        ctx.fillStyle = st.color;
+        ctx.fillText(`${st.name}: ${text}`, this.plotL + 4, P.top + 37 + 12 * row++);
+      } else {
+        const SP = this.panes[st.key];
+        if (!SP || SP.height <= 0 || !text) continue;
+        const lw = ctx.measureText(st.name + (st.gateText ? `  ·  gate: ${st.gateText}` : "")).width;
+        ctx.fillStyle = "#0b0f14";
+        ctx.fillRect(this.plotL + 8 + lw, SP.top + 2, ctx.measureText(text).width + 8, 12);
+        ctx.fillStyle = st.color;
+        ctx.fillText(text, this.plotL + 12 + lw, SP.top + 11);
+      }
+    }
+    for (const st of this.data.studyOverlays || []) {
+      const SP = this.panes[st.key];
+      if (st.pane === "sub" && SP && st.y && my >= SP.top && my <= SP.bottom) {
+        // the value at the cursor's height, from the pane's own scale
+        const lo = this._invY(st.y, SP.bottom), hi = this._invY(st.y, SP.top);
+        this._gutter(ctx, my, fmtVal(lo + ((SP.bottom - my) / SP.height) * (hi - lo)));
+      }
+    }
     const E = this.panes.equity;
     if (this.eqY && my >= E.top && my <= E.bottom) {
       const lo = this._invEq(E.bottom), hi = this._invEq(E.top);
       const v = lo + ((E.bottom - my) / E.height) * (hi - lo);
       this._gutter(ctx, my, fmtUsd(v));
     }
+  }
+
+  // Invert an affine y-mapping at a pixel row.
+  _invY(y, py) {
+    const y0 = y(0), y1 = y(1);
+    return (py - y0) / (y1 - y0);
   }
 
   _invEq(py) {

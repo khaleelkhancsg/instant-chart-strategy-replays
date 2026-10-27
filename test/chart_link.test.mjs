@@ -88,6 +88,18 @@ await t("a change the page refuses comes back as an error", async () => {
   const r = await post("/api/chart/apply", { exec: { contracs: 3 } });
   eq(r.status, 400); if (!(await r.json()).error.includes("contracs")) throw new Error("the page's reason was lost");
 });
+await t("the sweep takes an eval and indicator studies, and refuses a bad study", async () => {
+  const body = { strategyId: "donchian_shipped", eval: "1250", studies: [{ id: "s1", type: "emacross", tf: 10, params: { fast: 9, slow: 21 }, gate: "with" }, { id: "s2", type: "rsi" }] };
+  const r = await (await post("/api/sweep", body)).json();
+  eq(r.eval, "1250");
+  eq(r.edge.length, 2); eq(r.edge[0].id, "s1"); eq(r.edge[0].gate, "with");
+  if (!(r.studyGated > 0)) throw new Error("the gate refused nothing");
+  if (!(r.summary.passRate > 0 && r.summary.passRate < 100)) throw new Error("no pass rate");
+  const plain = await (await post("/api/sweep", { strategyId: "donchian_shipped", eval: "1250" })).json();
+  if (plain.stats.n === r.stats.n) throw new Error("the gating study did not change the trades");
+  eq((await post("/api/sweep", { strategyId: "donchian_shipped", studies: [{ type: "nope" }] })).status, 400, "a bad study:");
+  eq((await post("/api/sweep", { strategyId: "donchian_shipped", eval: "999" })).status, 400, "a bad eval:");
+});
 page.close();
 await new Promise((r) => setTimeout(r, 300));
 await t("once the page closes, the state is no longer offered as current", async () => {

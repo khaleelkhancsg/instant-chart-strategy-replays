@@ -19,6 +19,9 @@ import { windowSpan } from "./src/window.mjs";
 import { NO_FILTER } from "./src/filters.mjs";
 import { flatten, fastWindow } from "./src/search.mjs";
 import { evalDays } from "./src/dayeval.mjs";
+import { EVALS, EVAL_IDS, evalBase, evalKeys, evalOf } from "./src/evals.mjs";
+import { STUDIES, STUDY_TFS, resolveStudy, studyOnSignal, closedIndexMap, gatePasses, studyEdge, studyWarmupMin } from "./src/studies.mjs";
+import { DEFAULT_RULES } from "./src/challenge.mjs";
 
 let pass = 0, fail = 0;
 const failures = [];
@@ -1775,13 +1778,13 @@ if (bars_) {
 section("7. Strategies: no lookahead, and the live window matches the sweep");
 
 // One window's trades the way the browser gets them.
-function liveWindow(H, s, p, exec, filter, start, endMs) {
+function liveWindow(H, s, p, exec, filter, start, endMs, studies = null) {
   const n = H.ts.length;
   for (let tailMin = 0; ;) {
-    const span = windowSpan(s, p, tailMin ? { tailMin, filter, exec } : { filter, exec });
+    const span = windowSpan(s, p, tailMin ? { tailMin, filter, exec, studies } : { filter, exec, studies });
     const si = indexAtOrAfter(H.ts, start - span.warmupMin * 60000);
     const ei = Math.min(indexAtOrAfter(H.ts, endMs + span.tailMin * 60000) + 1, n);
-    const lt = runStrategy(sliceBars(H, si, ei), s, p, exec, { fromMs: start, filter }).trades.filter((x) => x.entryTime < endMs);
+    const lt = runStrategy(sliceBars(H, si, ei), s, p, exec, { fromMs: start, filter, studies }).trades.filter((x) => x.entryTime < endMs);
     if (!(lt.length && lt[lt.length - 1].reason === "EOD" && ei < n)) return lt;
     tailMin = span.tailMin * 10;
   }
@@ -1862,6 +1865,7 @@ function randomExec() {
     tpGapFill: pick(["open", "level"]), entryGapFill: pick(["open", "level"]), sessionEndFlat: pick(["close", "close", "none"]),
     dayBreakerUsd: pick([0, 0, 200, 600]), dayProfitBlockUsd: pick([0, 0, 300, 900]), scaleOutFrac: pick([0, 0, 0, 0.5]),
     scaleOutAtr: pick([0.5, 1, 2]), flipOnAnySignal: rnd() < 0.1, capEndsDay: rnd() < 0.85,
+    staleBars: pick([0, 0, 0, 5, 20, 60]), staleMfeAtr: pick([0.25, 1, 3]),
   };
 }
 
@@ -1911,6 +1915,7 @@ if (bars_) {
             !(cfg.tpGapFill === "open" && atOpen(raw) && tr.dir * (raw - tr.target) > 0)) fail("target exit not at the target");
         if (tr.reason === "SL" && (tr.dir === 1 ? tr.exitPrice > tr.stop - slip + 1e-6 : tr.exitPrice < tr.stop + slip - 1e-6)) fail("stop exit better than the stop");
         if (cfg.maxBarsInTrade > 0 && tr.bars > cfg.maxBarsInTrade) fail("held past the time stop");
+        if (tr.reason === "STALE" && !(cfg.staleBars > 0 && tr.bars >= cfg.staleBars + 1)) fail("a stale exit before its bars had run");
         if (cfg.intradayOnly && tf.ctMin) {
           for (let k = tr.entryIdx; k < tr.exitIdx; k++) if (inFlatCt(tf.ctMin[k], cfg.flattenCt, cfg.reopenCt)) fail("held through the flat window");
           if (inFlatCt(tf.ctMin[tr.entryIdx], cfg.flattenCt, cfg.reopenCt)) fail("entered in the flat window");
@@ -2178,6 +2183,271 @@ if (bars_) {
         throw new Error(`window ${iso}: sweep ${a.outcome} ${a.stats.netPnl.toFixed(2)} (${a.stats.trades}), live ${b.outcome} ${b.stats.netPnl.toFixed(2)} (${b.stats.trades})`);
       }
     }
+  });
+}
+
+// ══════════════════════════════ 13. EVALUATIONS ══════════════════════════════
+section("13. Evaluation presets");
+{
+  const strategies = await loadStrategies();
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  t("the $3,000 eval changes nothing: every strategy's base is its defaults as before", () => {
+    for (const [id, s] of strategies) {
+      const b = evalBase(s, "3000");
+      if (!same(b.params, resolveParams(s, {}))) throw new Error(`${id}: params`);
+      const x = resolveExec(s.execDefaults || {});
+      if (!same(resolveExec(b.exec), x)) throw new Error(`${id}: exec`);
+      if (!same(resolveRules(b.rules), resolveRules(s.rulesDefaults || {}))) throw new Error(`${id}: rules`);
+      if (!same(b.filter, { ...NO_FILTER, ...(s.filterDefaults || {}) })) throw new Error(`${id}: filter`);
+    }
+    if (!same({ ...DEFAULT_RULES, ...EVALS["3000"].rules }, DEFAULT_RULES)) throw new Error("the $3,000 rules are not DEFAULT_RULES");
+  });
+  t("the $1,250 eval: the firm's numbers, the loss cap only where a book models one, a strategy's own settings and rules on top", () => {
+    for (const [id, s] of strategies) {
+      const b = evalBase(s, "1250");
+      eq(b.rules.profitTarget, 1250, `${id} target:`); eq(b.rules.trailingDD, 1000, `${id} drawdown:`); eq(b.rules.dailyLossLimit, 600, `${id} daily limit:`);
+      eq(b.exec.dayLossStopUsd, (s.execDefaults || {}).dayLossStopUsd > 0 ? 600 : (s.execDefaults || {}).dayLossStopUsd || 0, `${id} platform cap:`);
+      for (const [k, v] of Object.entries(s.rulesDefaults || {})) if (!(s.evals && s.evals["1250"] && s.evals["1250"].rules && k in s.evals["1250"].rules)) eq(b.rules[k], v, `${id} rulesDefaults.${k}:`);
+    }
+    const d = evalBase(strategies.get("donchian_shipped"), "1250");
+    eq(d.exec.contracts, 4); eq(d.exec.dayBreakerUsd, 300); eq(d.exec.dayProfitBlockUsd, 250); eq(d.rules.dailyProfitStop, 0, "the engine does the block, so the rules layer's stays off:");
+    eq(evalBase(strategies.get("momentum_roc"), "1250").rules.dailyProfitStop, 625, "a book without its own: half the target:");
+  });
+  t("evalKeys names what a switch resets; ids are ordered and checked", () => {
+    const k = evalKeys(strategies.get("donchian_shipped"));
+    for (const x of ["rules.profitTarget", "rules.trailingDD", "rules.dailyLossLimit", "exec.dayLossStopUsd", "exec.contracts", "exec.dayBreakerUsd"]) if (!k.has(x)) throw new Error(`missing ${x}`);
+    if (evalKeys(strategies.get("momentum_roc")).has("exec.dayLossStopUsd")) throw new Error("a book without a cap gets one");
+    eq(EVAL_IDS.join(), "3000,1250"); eq(evalOf(null).id, "3000");
+    let threw = false; try { evalOf("5000"); } catch { threw = true; }
+    if (!threw) throw new Error("an unknown eval accepted");
+  });
+}
+
+// ══════════════════════════════ 14. INDICATOR STUDIES ══════════════════════════════
+section("14. Indicator studies: causal readings, gates on entries only, live = sweep");
+t("hand-traced: a 2-minute signal bar reads the 15-minute bar that last CLOSED, never the one forming", () => {
+  // 1-minute bars from 09:00 UTC; an EMA of length 1 is exactly its bar's close,
+  // so the reading names the 15-minute bar it came from.
+  const n = 120, b = synthBars(n, Date.UTC(2024, 0, 2, 9, 0));
+  const sig = resample(b, 2);
+  // built by hand: resolveStudy would clamp the length up to its minimum of 2
+  const r = studyOnSignal(b, sig, { type: "ema", tf: 15, params: { length: 1, source: "close" }, gate: "off" });
+  const at = (h, m) => sig.ts.findIndex((x) => x === Date.UTC(2024, 0, 2, h, m));
+  const closeOf = (h, m) => b.close[b.ts.findIndex((x) => x === Date.UTC(2024, 0, 2, h, m))];
+  close(r.v[at(10, 2)], closeOf(9, 59), 1e-9, "10:02-10:04 reads 09:45-10:00:");
+  close(r.v[at(9, 58)], closeOf(9, 59), 1e-9, "09:58-10:00 closes with it, so reads it:");
+  close(r.v[at(9, 56)], closeOf(9, 44), 1e-9, "09:56-09:58 still reads 09:30-09:45:");
+  if (!Number.isNaN(r.v[at(9, 0)])) throw new Error("before any 15-minute bar has closed there is no reading");
+  const s15 = resample(b, 15), m = closedIndexMap(sig, s15);
+  for (let k = 0; k < sig.ts.length; k++) {
+    const j = m[k];
+    if (j >= 0 && s15.ts[j] + 15 * 60000 > sig.ts[k] + 2 * 60000) throw new Error(`bar ${k} reads a 15-minute bar still forming`);
+    if (j + 1 < s15.ts.length && s15.ts[j + 1] + 15 * 60000 <= sig.ts[k] + 2 * 60000) throw new Error(`bar ${k} skips a closed 15-minute bar`);
+  }
+});
+t("gate modes against their definitions, NaN failing every active one", () => {
+  const rd = (type, v, dir = 0, params = {}, gate = "with") => {
+    const st = resolveStudy({ type, params, gate }), S0 = STUDIES[type];
+    return { st, S: S0, v: Float64Array.of(v), dir: Int8Array.of(dir), levels: S0.levels ? S0.levels(st.params) : null };
+  };
+  const want = { with: [false, true], against: [true, false], nochase: [true, false], fade: [true, false],
+                 above: [false, false], below: [true, true], inside: [false, false], outside: [true, true] };
+  for (const [mode, [L, Sh]] of Object.entries(want)) {
+    const r = rd("rsi", 20, 0, {}, mode);              // RSI 20 with levels 30 / 70
+    eq(gatePasses(r, 0, 1), L, `rsi 20 ${mode} long:`); eq(gatePasses(r, 0, -1), Sh, `rsi 20 ${mode} short:`);
+    eq(gatePasses(rd("rsi", NaN, 0, {}, mode), 0, 1), false, `NaN ${mode}:`);
+  }
+  eq(gatePasses(rd("emacross", 1, 1, {}, "with"), 0, 1), true); eq(gatePasses(rd("emacross", 1, 1, {}, "with"), 0, -1), false);
+  eq(gatePasses(rd("emacross", -1, -1, {}, "against"), 0, 1), true); eq(gatePasses(rd("emacross", 0, 0, {}, "with"), 0, 1), false, "no direction yet:");
+  eq(gatePasses(rd("bollinger", 1.2, 0, {}, "fade"), 0, -1), true, "short over the upper band:");
+  eq(gatePasses(rd("bollinger", 1.2, 0, {}, "nochase"), 0, 1), false, "long over the upper band is a chase:");
+  eq(gatePasses(rd("adx", 30, -1, {}, "above"), 0, 1), true); eq(gatePasses(rd("adx", 30, -1, {}, "with"), 0, 1), false, "-DI on top refuses a long:");
+});
+{
+  // A long, then a short signal the gate refuses: the long still closes (FLIP),
+  // and no short opens. The same signal still cancels a working stop order.
+  const rows = [];
+  for (let i = 0; i < 40; i++) rows.push([100, 101, 99, 100]);
+  const tf = bars(rows), atr0 = flatAtr(40, 1), sig = new Int8Array(40);
+  sig[5] = 1; sig[15] = -1;
+  const x = { ...NOFEE, intradayOnly: false, slAtrMult: 50, tpAtrMult: 50 };
+  t("a gate refuses entries only: a refused opposite signal still closes the position", () => {
+    const free = runBrackets(tf, sig, atr0, x).trades;
+    eq(free.length, 2, "without the gate, long then short:");
+    const gated = runBrackets(tf, sig, atr0, { ...x, entryGate: (k, d) => d === 1 }).trades;
+    eq(gated.length, 1, "with shorts refused:"); eq(gated[0].dir, 1); eq(gated[0].reason, EXIT.FLIP, "the long still flips out:");
+    eq(gated[0].exitIdx, 16, "at the open after the short signal:");
+    eq(runBrackets(tf, sig, atr0, { ...x, entryGate: () => false }).trades.length, 0, "refusing everything:");
+  });
+  t("a refused opposite signal still cancels a working stop entry", () => {
+    const s2 = new Int8Array(40); s2[5] = 1; s2[6] = -1;
+    const st = { ...x, entryType: "stop", entryTriggerAtr: 5, entryWindowBars: 20, cancelOpposite: true };
+    const rows2 = rows.map((r, i) => (i >= 12 ? [110, 112, 109, 111] : r));
+    const tf2 = bars(rows2);
+    eq(runBrackets(tf2, s2.map((v, i) => (i === 6 ? 0 : v)), atr0, st).trades.length, 1, "uncancelled, the stop fills on the rally:");
+    eq(runBrackets(tf2, s2, atr0, { ...st, entryGate: (k, d) => d === 1 }).trades.length, 0, "the refused short still cancels it:");
+  });
+}
+if (bars_) {
+  const { bars: B } = bars_;
+  const N = 200000, H = sliceBars(B, B.count - N, B.count);
+  const strategies = await loadStrategies();
+  const same = (a, b) => a === b || (Number.isNaN(a) && Number.isNaN(b));
+  const randomStudyOf = (type, gating) => {
+    const D = STUDIES[type], params = {};
+    for (const d of D.params) {
+      if (rnd() < 0.4) continue;
+      params[d.key] = d.type === "select" ? pick(d.options)[0] : d.type === "int" ? iuni(d.min, Math.min(d.max, 120)) : Math.round(uni(d.min, d.max) * 100) / 100;
+    }
+    if ("lo" in params && "hi" in params && params.lo > params.hi) [params.lo, params.hi] = [params.hi, params.lo];
+    return resolveStudy({ type, tf: pick([0, 0, 1, 2, 5, 15, 60]), params, gate: gating && D.gates.length ? pick(D.gates) : "off" });
+  };
+  const randomStudy = (gating) => randomStudyOf(pick(Object.keys(STUDIES)), gating);
+  t(`every study type reads causally on the signal bars (${6 * SCALE} random settings each)`, () => {
+    for (const type of Object.keys(STUDIES)) {
+      for (let c = 0; c < 6 * SCALE; c++) {
+        const st = randomStudyOf(type, false);
+        const sigTf = pick([1, 2, 3, 5]);
+        const full = studyOnSignal(H, resample(H, sigTf), st);
+        const cut = sliceBars(H, 0, Math.floor(N * uni(0.5, 0.9)));
+        const sigC = resample(cut, sigTf), part = studyOnSignal(cut, sigC, st);
+        for (let k = 0; k < sigC.close.length - 1; k++) {
+          if (!same(full.v[k], part.v[k]) || full.dir[k] !== part.dir[k])
+            throw new Error(`${type} ${JSON.stringify(st.params)} tf ${st.tf} on ${sigTf}m: reading ${k} changes when later bars exist (${full.v[k]} vs ${part.v[k]})`);
+        }
+      }
+    }
+  });
+  t("a gate that allows everything leaves the trades as they were; one that refuses everything leaves none", () => {
+    const s = strategies.get("momentum_roc"), p = resolveParams(s, {}), x = resolveExec(s.execDefaults || {});
+    const base = runStrategy(H, s, p, x).trades;
+    const all = runStrategy(H, s, p, x, { studies: [resolveStudy({ type: "atr", params: { period: 14, lo: 0 }, gate: "above" })] }).trades;
+    eq(all.length, base.length, "ATR >= 0 lets every entry through:");
+    eq(all.reduce((a, q) => a + q.pnl, 0).toFixed(6), base.reduce((a, q) => a + q.pnl, 0).toFixed(6), "same P&L:");
+    eq(runStrategy(H, s, p, x, { studies: [resolveStudy({ type: "atr", params: { hi: 0 }, gate: "below" })] }).trades.length, 0, "ATR <= 0 refuses all:");
+  });
+  t("edge buckets cover every trade they can read; the with/against split matches the gate", () => {
+    const s = strategies.get("donchian_shipped"), b0 = evalBase(s, "3000");
+    const run = runStrategy(H, s, b0.params, b0.exec, { filter: b0.filter });
+    const st = resolveStudy({ type: "emacross", tf: 10 });
+    const e = studyEdge(run.trades, studyOnSignal(H, run.tf, st));
+    const tbl = e.tables[0], n = tbl.rows.reduce((a, r) => a + r.all.trades, 0);
+    eq(n + tbl.unread, run.trades.length, "buckets + unread:");
+    const gated = runStrategy(H, s, b0.params, b0.exec, { filter: b0.filter, studies: [{ ...st, gate: "with" }] });
+    const e2 = studyEdge(gated.trades, studyOnSignal(H, gated.tf, st));
+    eq(e2.tables[0].rows.find((r) => r.key === "against").all.trades, 0, "gating 'with' leaves no 'against' trade:");
+  });
+  t(`live window = sweep with indicator gates, studies on their own timeframes (${3 * SCALE} random cases)`, () => {
+    const ids = ["donchian_shipped", "momentum_roc", "macd_cross", "orb", "vwap_fade", "tpl_ma_cross"];
+    for (let c = 0; c < 3 * SCALE; c++) {
+      for (const id of ids) {
+        const s = strategies.get(id), ev = pick(EVAL_IDS), b0 = evalBase(s, ev);
+        const studies = [randomStudy(true), ...(rnd() < 0.5 ? [randomStudy(true)] : [])];
+        const exec = resolveExec(b0.exec), rules = resolveRules(b0.rules), filter = b0.filter;
+        const full = runStrategy(H, s, b0.params, exec, { filter, studies });
+        for (const k of [70, 121]) {
+          const start = H.ts[0] + k * DAY, endMs = start + rules.windowDays * DAY;
+          const lt = liveWindow(H, s, b0.params, exec, filter, start, endMs, studies);
+          const a = replayWindow(full.trades, start, rules), b = replayWindow(lt, start, rules);
+          if (a.outcome !== b.outcome || Math.abs(a.stats.netPnl - b.stats.netPnl) > 0.01 || a.stats.trades !== b.stats.trades)
+            throw new Error(`${id} ${ev} window ${new Date(start).toISOString().slice(0, 10)} studies ${JSON.stringify(studies)}: sweep ${a.outcome} ${a.stats.netPnl.toFixed(2)} (${a.stats.trades}), live ${b.outcome} ${b.stats.netPnl.toFixed(2)} (${b.stats.trades})`);
+        }
+      }
+    }
+  });
+}
+if (bars_) {
+  // The session studies against literal, per-bar recomputation on real 1-minute bars.
+  const { bars: B } = bars_;
+  const b = sliceBars(B, B.count - 9000, B.count), n = b.close.length, CT = b.ctMin, TD = b.tday;
+  const rth = (i) => CT[i] >= 510 && CT[i] < 900;
+  t("VWAP (session and RTH), day levels and the opening range match a naive recomputation", () => {
+    const vs = STUDIES.vwap.compute(b, { anchor: "session", bands: 2 }), vr = STUDIES.vwap.compute(b, { anchor: "rth", bands: 0 });
+    const dl = STUDIES.daylevels.compute(b, {}), or = STUDIES.openrange.compute(b, { minutes: 15 });
+    for (let i = 0; i < n; i += 7) {
+      // session VWAP and its 2-sigma band, over the bars of this trading day so far
+      let pv = 0, vv = 0, pv2 = 0;
+      for (let j = i; j >= 0 && TD[j] === TD[i]; j--) { const tp = (b.high[j] + b.low[j] + b.close[j]) / 3; pv += tp * b.volume[j]; vv += b.volume[j]; pv2 += tp * tp * b.volume[j]; }
+      const m = pv / vv;
+      close(vs.line[i], m, 1e-6, `session VWAP at ${i}:`);
+      close(vs.lines[1].data[i], m + 2 * Math.sqrt(Math.max(0, pv2 / vv - m * m)), 1e-4, `+2 sigma at ${i}:`);
+      // RTH VWAP: blank outside 08:30-15:00
+      if (!rth(i)) { if (!Number.isNaN(vr.line[i])) throw new Error(`RTH VWAP drawn outside RTH at ${i}`); }
+      else {
+        let p2 = 0, v2 = 0;
+        for (let j = i; j >= 0 && TD[j] === TD[i] && rth(j); j--) { p2 += ((b.high[j] + b.low[j] + b.close[j]) / 3) * b.volume[j]; v2 += b.volume[j]; }
+        close(vr.line[i], p2 / v2, 1e-6, `RTH VWAP at ${i}:`);
+      }
+      // prior RTH session: the last one complete by bar i
+      let hi = -Infinity, lo = Infinity, cl = NaN, j = i;
+      while (j >= 0 && (TD[j] === TD[i] && !(CT[i] >= 900 && rth(j)))) j--;     // skip today, unless today's RTH is over
+      while (j >= 0 && !rth(j)) j--;
+      const d = j >= 0 ? TD[j] : null;
+      for (; j >= 0 && TD[j] === d; j--) if (rth(j)) { hi = Math.max(hi, b.high[j]); lo = Math.min(lo, b.low[j]); if (Number.isNaN(cl)) cl = b.close[j]; }
+      if (d != null && i > 3000) { close(dl.hi[i], hi, 1e-9, `PDH at ${i}:`); close(dl.lo[i], lo, 1e-9, `PDL at ${i}:`); close(dl.lines[2].data[i], cl, 1e-9, `PDC at ${i}:`); }
+      // opening range: 08:30-08:45 of this day, shown from 08:45 to 15:00
+      if (CT[i] >= 525 && CT[i] < 900) {
+        let oh = -Infinity, ol = Infinity;
+        for (let q = i; q >= 0 && TD[q] === TD[i]; q--) if (CT[q] >= 510 && CT[q] < 525) { oh = Math.max(oh, b.high[q]); ol = Math.min(ol, b.low[q]); }
+        if (oh > -Infinity) { close(or.hi[i], oh, 1e-9, `OR high at ${i}:`); close(or.lo[i], ol, 1e-9, `OR low at ${i}:`); }
+      } else if (!Number.isNaN(or.hi[i])) throw new Error(`opening range shown at ${CT[i]} CT`);
+    }
+  });
+}
+t("resolveStudy fills defaults, clamps or refuses, and the warm-up grows with the study", () => {
+  const r = resolveStudy({ type: "rsi" });
+  eq(r.tf, 0); eq(r.gate, "off"); eq(r.params.length, 14); eq(r.params.lo, 30);
+  eq(resolveStudy({ type: "rsi", params: { length: 9999 } }).params.length, 200, "clamped:");
+  for (const bad of [{ type: "nope" }, { type: "rsi", tf: 7 }, { type: "rsi", gate: "sideways" }, { type: "vwap", params: { anchor: "noon" } }]) {
+    let threw = false; try { resolveStudy(bad); } catch { threw = true; }
+    if (!threw) throw new Error(`accepted ${JSON.stringify(bad)}`);
+  }
+  for (const bad of [{ type: "rsi", params: { lenght: 3 } }, { type: "rsi", params: { length: 9999 } }, { type: "rsi", colour: "red" }]) {
+    let threw = false; try { resolveStudy(bad, { strict: true }); } catch { threw = true; }
+    if (!threw) throw new Error(`strict accepted ${JSON.stringify(bad)}`);
+  }
+  if (!(studyWarmupMin(resolveStudy({ type: "ema", tf: 60, params: { length: 200 } }), 2) > studyWarmupMin(resolveStudy({ type: "ema", tf: 5, params: { length: 200 } }), 2)))
+    throw new Error("a longer timeframe should need more history");
+  const span = (st) => windowSpan({ params: [], warmupBars: 300 }, { timeframeMin: 2 }, { studies: st }).warmupMin;
+  if (!(span([resolveStudy({ type: "ema", tf: 60, params: { length: 200 } })]) > span([]))) throw new Error("windowSpan ignores a study's warm-up");
+  eq(Object.keys(STUDIES).every((k) => STUDY_TFS.length && STUDIES[k].gates.every((g) => typeof g === "string")), true);
+});
+
+// ══════════════════════════════ 15. STALE EXIT ══════════════════════════════
+section("15. Stale exit");
+{
+  // Flat bars after a long entry at bar 6's open (100): it never gains, so it
+  // leaves at the open after its 10th bar. A copy that rallies 1.5 ATR first stays.
+  const rows = [];
+  for (let i = 0; i < 40; i++) rows.push([100, 100.5, 99.5, 100]);
+  const sig = new Int8Array(40); sig[5] = 1;
+  const x = { ...NOFEE, intradayOnly: false, slAtrMult: 50, tpAtrMult: 50, staleBars: 10, staleMfeAtr: 1 };
+  t("hand-traced: a trade that never gains leaves at the open after its stale bars; one that gained stays", () => {
+    const a = runBrackets(bars(rows), sig, flatAtr(40, 1), x).trades;
+    eq(a[0].reason, EXIT.STALE); eq(a[0].entryIdx, 6); eq(a[0].exitIdx, 17, "closed bar 16 is the 10th after the fill, so out at 17's open:");
+    const up = rows.map((r, i) => (i >= 9 && i <= 11 ? [101, 101.6, 100.9, 101.5] : r));
+    eq(runBrackets(bars(up), sig, flatAtr(40, 1), x).trades[0].reason, EXIT.EOD, "1.6 points up at most, ATR 1: not stale:");
+    eq(runBrackets(bars(up), sig, flatAtr(40, 1), { ...x, staleMfeAtr: 2 }).trades[0].reason, EXIT.STALE, "but stale against a 2-ATR bar:");
+  });
+}
+if (bars_) {
+  const { bars: B } = bars_;
+  const H = sliceBars(B, B.count - 300000, B.count);
+  const s = (await loadStrategies()).get("donchian_shipped"), b0 = evalBase(s, "1250");
+  t("the stale exit is the $1,250 research's exit hook (20 bars, 1 ATR), trade for trade", () => {
+    const tf = resample(H, 2), out = s.compute(tf, b0.params);
+    const sig = applyFilters(out.sig, buildFilterContext(tf), b0.filter);
+    const x = resolveExec(b0.exec);
+    const hook = runBrackets(tf, sig, out.atr, { ...x, exitFn: (k, d, st) => k - st.entBar >= 20 && (st.dir === 1 ? st.mx - st.fill : st.fill - st.mn) < st.atr }).trades;
+    const native = runBrackets(tf, sig, out.atr, { ...x, staleBars: 20, staleMfeAtr: 1 }).trades;
+    eq(native.length, hook.length, "trades:");
+    let stale = 0;
+    for (let k = 0; k < hook.length; k++) {
+      const p = hook[k], q = native[k];
+      if (p.entryIdx !== q.entryIdx || p.exitIdx !== q.exitIdx || Math.abs(p.pnl - q.pnl) > 1e-9) throw new Error(`trade ${k} differs`);
+      if (p.reason === "SIGNAL") { eq(q.reason, "STALE"); stale++; } else eq(q.reason, p.reason);
+    }
+    if (!(stale > 20)) throw new Error(`only ${stale} stale exits to compare`);
   });
 }
 

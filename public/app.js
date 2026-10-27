@@ -7,12 +7,14 @@
 // the network is the one-off window blob and the (debounced) 5-year sweep.
 
 import { ChartView, Navigator, fmtUsd } from "/chart.js";
-import { runStrategy, resolveParams } from "/src/run.mjs";
+import { runStrategy } from "/src/run.mjs";
 import { replayWindow, DEFAULT_RULES } from "/src/challenge.mjs";
 import { DEFAULT_EXEC } from "/src/engine.mjs";
 import { NO_FILTER } from "/src/filters.mjs";
 import { indexAtOrAfter } from "/src/resample.mjs";
 import { windowSpan, DEFAULT_TAIL_MIN } from "/src/window.mjs";
+import { EVALS, EVAL_IDS, DEFAULT_EVAL, evalBase, evalKeys } from "/src/evals.mjs";
+import { STUDIES, STUDY_TFS, resolveStudy, studyLabel, isGating, gateLabel, computeStudy } from "/src/studies.mjs";
 
 // The 1-minute x-position a resampled bar should be drawn at: the middle of the
 // minutes it covers. srcLast+1 is the exclusive end, so the centre of bar k is
@@ -55,6 +57,9 @@ const EXEC_PARAMS = [
     hint: "1000 = no target, so the strategy's own exit decides." },
   { key: "tpRR", label: "Target (× stop, R:R mode)", type: "float", min: 0.1, max: 30, step: 0.1, default: 1.2 },
   { key: "maxBarsInTrade", label: "Time stop (bars)", type: "int", min: 0, max: 2000, step: 1, default: 0, hint: "0 = off" },
+  { key: "staleBars", label: "Stale exit after (bars, 0 = off)", type: "int", min: 0, max: 500, step: 1, default: 0,
+    hint: "Leave at the next open once a trade has run this many signal bars without ever being the distance below in its favour. The $1,250 bot's 40-minute exit is 20 two-minute bars at 1 ATR." },
+  { key: "staleMfeAtr", label: "Stale exit unless (× ATR in favour)", type: "float", min: 0.05, max: 10, step: 0.05, default: 1 },
   { key: "flipOnOpposite", label: "Close on opposite signal", type: "select", bool: true, default: "on", options: onOff("Yes — and reverse", "No — hold"),
     hint: "Off for signals that are a persistent state rather than an event, which would otherwise thrash." },
   { key: "cooldownAfterStopMins", label: "After a stop, wait (mins)", type: "int", min: 0, max: 600, step: 5, default: 0,
@@ -227,6 +232,8 @@ const S = {
   rules: { ...DEFAULT_RULES },
   funded: {},
   filter: { ...NO_FILTER },
+  eval: DEFAULT_EVAL,  // which evaluation's rules (src/evals.mjs)
+  studies: [],         // indicators added to the chart (src/studies.mjs), some gating entries
   windowStart: null,
   blob: null,        // parsed window bars
   winStartLocal: 0,  // index of the window start inside the blob
@@ -380,6 +387,11 @@ function renderSidebar() {
   gBreak.body.innerHTML = `<div id="breakPanel"></div>`;
   host.appendChild(gBreak);
 
+  // How the book's trades did in each state of every indicator added below.
+  const gEdge = buildGroup("Indicator edge");
+  gEdge.body.innerHTML = `<div id="edgePanel"></div>`;
+  host.appendChild(gEdge);
+
   // Passing the evaluation is a gate, not the goal — this is what the same book
   // would actually pay out once funded.
   const gFund = buildGroup("Funded stage — payouts");
@@ -401,6 +413,8 @@ function renderSidebar() {
     }));
   }
   host.appendChild(sig);
+
+  host.appendChild(buildStudiesGroup());
 
   // One control per descriptor, bound to a config object. A `bool` descriptor
   // shows on/off but stores a boolean; a key the object lacks shows its default.
@@ -427,7 +441,210 @@ function renderSidebar() {
   paintSweepStats();
   paintFundedStats();
   paintBreakdown();
+  paintEdge();
   if (lastResult) paintTrades(lastResult.replay);
+}
+
+// ─────────────────────────── indicator studies ───────────────────────────
+// Indicators the person adds to the chart, beside the strategy's own: each on its
+// own timeframe, drawn on the price pane or in a pane of its own, and optionally
+// gating the strategy's entries (src/studies.mjs).
+const STUDY_COLORS = ["#f0b429", "#c678dd", "#56b6c2", "#ff9e64", "#9ece6a", "#7aa2f7", "#e0af68", "#f7768e", "#2ac3de", "#bb9af7"];
+const OPEN_STUDIES = new Set();      // cards shown expanded, this visit
+let studySeq = 0;
+const nextStudyId = () => { const used = new Set(S.studies.map((s) => s.id)); let id; do id = `s${++studySeq}`; while (used.has(id)); return id; };
+const nextColor = () => STUDY_COLORS.find((c) => !S.studies.some((s) => s.color === c)) || STUDY_COLORS[S.studies.length % STUDY_COLORS.length];
+// Ids and colours for studies arriving from a URL, a saved layout or the chart
+// link: kept when given (and unique), otherwise the next free ones.
+function adoptStudies(list) {
+  const out = [];
+  for (const st of list) {
+    const usedC = new Set(out.map((s) => s.color)), usedI = new Set(out.map((s) => s.id));
+    const color = st.color || STUDY_COLORS.find((c) => !usedC.has(c)) || STUDY_COLORS[out.length % STUDY_COLORS.length];
+    let id = st.id && !usedI.has(st.id) ? st.id : null;
+    while (!id || usedI.has(id)) id = `s${++studySeq}`;
+    out.push({ ...st, id, color });
+  }
+  return out;
+}
+
+function saveStudies() {
+  try { localStorage.setItem("mnq.studies", JSON.stringify(S.studies)); } catch { /* private mode */ }
+}
+function studiesChanged() {
+  saveStudies();
+  const n = S.studies.length, g = S.studies.filter(isGating).length;
+  const badge = $("studyCount");
+  if (badge) badge.textContent = n ? ` · ${n}${g ? ` (${g} gating)` : ""}` : "";
+  onParamsChanged(warmupGrew());
+}
+
+function addStudy(type) {
+  const st = { ...resolveStudy({ type, tf: 0 }), id: nextStudyId(), color: nextColor() };
+  S.studies.push(st);
+  OPEN_STUDIES.add(st.id);
+  renderSidebar();
+  studiesChanged();
+}
+
+function buildStudiesGroup() {
+  const g = buildGroup("Indicators");
+  g.querySelector(".group-title").insertAdjacentHTML("beforeend", `<span id="studyCount"></span>`);
+  const pick = document.createElement("select");
+  pick.className = "st-pick";
+  const groups = new Map();
+  for (const [type, d] of Object.entries(STUDIES)) {
+    if (!groups.has(d.group)) groups.set(d.group, []);
+    groups.get(d.group).push(`<option value="${type}">${d.name}</option>`);
+  }
+  pick.innerHTML = `<option value="">＋ Add an indicator…</option>` +
+    [...groups].map(([name, opts]) => `<optgroup label="${name}">${opts.join("")}</optgroup>`).join("");
+  pick.onchange = () => { const v = pick.value; pick.value = ""; if (v) addStudy(v); };
+  g.body.appendChild(pick);
+  for (const st of S.studies) g.body.appendChild(buildStudyCard(st));
+  const h = document.createElement("div");
+  h.className = "hint";
+  h.textContent = S.studies.length
+    ? "A gate refuses entries only: a refused signal still closes an opposite position, so a gate never changes how a trade exits. A study on a longer timeframe is read from its last CLOSED bar, drawn as steps where each value became known."
+    : "Add indicators to see them beside the strategy's, and in “Indicator edge” how its trades did in each of their states. Set a gate to trade only the states you pick.";
+  g.body.appendChild(h);
+  const n = S.studies.length, gn = S.studies.filter(isGating).length;
+  g.querySelector("#studyCount").textContent = n ? ` · ${n}${gn ? ` (${gn} gating)` : ""}` : "";
+  return g;
+}
+
+function buildStudyCard(st) {
+  const D = STUDIES[st.type];
+  const card = document.createElement("div");
+  card.className = "st-card" + (OPEN_STUDIES.has(st.id) ? " open" : "") + (st.hidden ? " hidden-st" : "");
+  const head = document.createElement("div");
+  head.className = "st-head";
+  head.innerHTML =
+    `<input type="color" class="st-color" value="${st.color}" title="Colour">` +
+    `<span class="st-name"></span><span class="st-gate" title="This indicator gates the strategy's entries">GATE</span>` +
+    `<button class="st-btn st-eye" title="Hide or show it on the chart">${st.hidden ? "◌" : "●"}</button>` +
+    `<button class="st-btn st-x" title="Remove">✕</button>`;
+  const name = head.querySelector(".st-name"), gateBadge = head.querySelector(".st-gate");
+  name.dataset.id = st.id;
+  const refreshHead = () => {
+    name.textContent = studyLabel(st) + (st.tf ? "" : ` · ${S.params.timeframeMin}m`);
+    name.title = `${D.name} — click to ${card.classList.contains("open") ? "close" : "edit"}`;
+    gateBadge.style.display = isGating(st) ? "" : "none";
+  };
+  refreshHead();
+  name.onclick = () => {
+    card.classList.toggle("open");
+    if (card.classList.contains("open")) OPEN_STUDIES.add(st.id); else OPEN_STUDIES.delete(st.id);
+    refreshHead();
+  };
+  head.querySelector(".st-color").oninput = (e) => { st.color = e.target.value; saveStudies(); repaint(); };
+  head.querySelector(".st-eye").onclick = (e) => {
+    st.hidden = !st.hidden;
+    e.target.textContent = st.hidden ? "◌" : "●";
+    card.classList.toggle("hidden-st", !!st.hidden);
+    saveStudies(); repaint();
+  };
+  head.querySelector(".st-x").onclick = () => {
+    S.studies = S.studies.filter((x) => x !== st);
+    OPEN_STUDIES.delete(st.id);
+    renderSidebar();
+    studiesChanged();
+  };
+  card.appendChild(head);
+
+  const body = document.createElement("div");
+  body.className = "st-body";
+  const sigTf = S.params.timeframeMin;
+  const tfDesc = { key: "tf", label: "Timeframe", type: "select", default: "0",
+                   options: [["0", `The signal's (${sigTf} min)`], ...STUDY_TFS.map((m) => [String(m), m < 60 ? `${m} min` : `${m / 60} hour${m > 60 ? "s" : ""}`])],
+                   hint: "Its own bars, rebuilt clock-aligned from the 1-minute data." };
+  body.appendChild(buildParamControl(tfDesc, String(st.tf || 0), (v) => { st.tf = Number(v); refreshHead(); studiesChanged(); }));
+  // A gate's wording quotes the study's levels, so it is rebuilt when they move.
+  const gateSlot = document.createElement("div");
+  const buildGate = () => {
+    gateSlot.innerHTML = "";
+    const desc = { key: "gate", label: "Gate the strategy's entries", type: "select", default: "off",
+                   options: [["off", "Off — draw only"], ...D.gates.map((m) => [m, gateLabel(st.type, m, st.params)])] };
+    gateSlot.appendChild(buildParamControl(desc, st.gate, (v) => { st.gate = v; refreshHead(); studiesChanged(); }));
+  };
+  for (const d of D.params) {
+    body.appendChild(buildParamControl(d, st.params[d.key], (v) => {
+      st.params[d.key] = v;
+      refreshHead();
+      if (d.key === "lo" || d.key === "hi") buildGate();
+      studiesChanged();
+    }));
+  }
+  buildGate();
+  body.appendChild(gateSlot);
+  if (D.hint) { const h = document.createElement("div"); h.className = "hint"; h.textContent = D.hint; body.appendChild(h); }
+  card.appendChild(body);
+  return card;
+}
+
+// A study on "the signal's" timeframe names it, so its card follows that slider.
+function refreshStudyNames() {
+  for (const el of document.querySelectorAll(".st-name[data-id]")) {
+    const st = S.studies.find((x) => x.id === el.dataset.id);
+    if (st && !st.tf) el.textContent = `${studyLabel(st)} · ${S.params.timeframeMin}m`;
+  }
+}
+
+// The studies drawn on the chart: each computed on its own bars and placed on
+// the 1-minute axis -- at bar centres, or as steps from each bar's close for a
+// timeframe longer than the signal's.
+function studyOverlays(res) {
+  refreshStudyNames();
+  const sigTf = S.params.timeframeMin || 1, out = [];
+  for (const st of S.studies) {
+    const D = STUDIES[st.type];
+    const { bars: sb, out: o, tf } = computeStudy(S.blob, st, sigTf, res.tf);
+    const step = tf > sigTf;
+    const map = step
+      ? { localIdx: Float64Array.from(sb.srcLast, (v) => v + 1), stride: tf, step: true }
+      : { localIdx: centresOf(sb), stride: tf };
+    const lv = D.levels ? D.levels(st.params) : null;
+    const guides = D.pane === "sub" && lv ? [...new Set([lv.lo, lv.mid, lv.hi].filter((v) => v != null && Number.isFinite(v)))] : [];
+    out.push({
+      key: `st:${st.id}`, name: studyLabel(st) + (st.tf ? "" : ` · ${sigTf}m`), color: st.color, pane: D.pane, hidden: !!st.hidden,
+      gateText: isGating(st) ? gateLabel(st.type, st.gate, st.params) : "",
+      lines: o.lines, map, range: D.range || null, auto: D.auto || null, guides,
+    });
+  }
+  return out;
+}
+
+// ───────────────────── indicator edge (from the sweep) ─────────────────────
+function paintEdge() {
+  const host = $("edgePanel");
+  if (!host) return;
+  if (!S.studies.length) {
+    host.innerHTML = `<div class="sweep-empty">Add an indicator under <b>Indicators</b> to split this book's trades by its state at each signal.</div>`;
+    return;
+  }
+  const sw = S.sweep;
+  if (!sw || !sw.edge) {
+    host.innerHTML = `<div class="sweep-empty">${S.sweeping ? "Sweeping…" : "Run the sweep to see how the trades did in each indicator state."}</div>`;
+    return;
+  }
+  const cell = (r, m) => {
+    if (!r || !r.trades) return `<span class="bk-bar"></span><span class="bk-v">—</span>`;
+    const w = (Math.abs(r.net) / m) * 50;
+    return `<span class="bk-bar" title="${r.trades} trades · ${r.winRate}% won · PF ${r.profitFactor ?? "∞"} · ${fmtUsd(r.net)}">` +
+           `<i class="${r.net >= 0 ? "pos" : "neg"}" style="width:${w.toFixed(1)}%"></i></span><span class="bk-v ${r.net >= 0 ? "pos" : "neg"}">${fmtK(r.net)}</span>`;
+  };
+  host.innerHTML = `<div class="${S.sweepStale ? "stale" : ""}">` + sw.edge.map((e) => {
+    const st = S.studies.find((x) => x.id === e.id);
+    const tables = e.tables.map((t) => {
+      const mA = Math.max(1, ...t.rows.map((r) => Math.abs(r.all.net))), m26 = Math.max(1, ...t.rows.map((r) => Math.abs(r.y2026.net)));
+      return `<div class="ek-title">${t.title}</div>` +
+        `<div class="ek head"><span class="bk-h">All history</span><span class="bk-h">2026</span></div>` +
+        t.rows.map((r) => `<div class="ek"><span class="ek-k" title="${r.label}">${r.label}<i>${r.all.trades} trades · ${r.all.winRate ?? "—"}% won${r.y2026.trades ? ` · 2026: ${r.y2026.trades}` : ""}</i></span>` +
+                          `${cell(r.all, mA)}${cell(r.y2026, m26)}</div>`).join("");
+    }).join("");
+    return `<div class="ek-study"><div class="ek-name" style="color:${st ? st.color : "var(--text)"}">${e.label}${e.gate && e.gate !== "off" ? ` <span class="st-gate">GATE</span>` : ""}</div>${tables || `<div class="sweep-empty">Not enough readings.</div>`}</div>`;
+  }).join("") +
+  `<div class="sweep-foot">Every trade of the full run, by the indicator's state at its signal bar -- read as a gate would read it. Net P&amp;L; hover a bar for trades, win rate and profit factor. A gate also changes which trades follow, so confirm one with the pass rate.</div></div>`;
 }
 
 // ───────────────────── trades in this window ─────────────────────
@@ -664,7 +881,8 @@ function paintSweepStats() {
       <div class="sweep-rate">${s.passRate.toFixed(1)}<span>%</span></div>
       <div class="sweep-sub">
         pass rate · <span title="Approximate 95% interval, counting one independent sample per ${W} days of start dates (neighbouring windows share most of their days)">95% CI ${ciText(wilson(s.passRate / 100, s.n / W))}</span><br>
-        <span class="k">${s.n.toLocaleString()} windows · every start date</span>
+        <span class="k">${EVALS[S.sweep.eval || S.eval].label} · ${s.n.toLocaleString()} windows${
+          S.studies.some(isGating) ? ` · ${S.studies.filter(isGating).length} indicator gate${S.studies.filter(isGating).length > 1 ? "s" : ""}` : ""}</span>
       </div>
     </div>
 
@@ -733,7 +951,7 @@ function recompute() {
   if (!S.blob || !S.strategyMod) return;
   const t0 = performance.now();
 
-  const run = runStrategy(S.blob, S.strategyMod, S.params, S.exec, { fromMs: S.windowStart, filter: S.filter });
+  const run = runStrategy(S.blob, S.strategyMod, S.params, S.exec, { fromMs: S.windowStart, filter: S.filter, studies: S.studies });
   // The blob runs past the window end so a trade opened inside it can finish;
   // trades opened in that tail belong to the next window, not this one.
   const endMs = S.windowStart + S.rules.windowDays * DAY;
@@ -759,7 +977,8 @@ function recompute() {
 
   $("perf").innerHTML =
     `<b>${ms.toFixed(1)} ms</b> local re-run<br>${res.tf.close.length.toLocaleString()} × ${S.params.timeframeMin}m bars` +
-    (res.signalsGated ? `<br><span style="color:var(--warn)">${res.signalsGated} signals gated</span>` : "");
+    (res.signalsGated ? `<br><span style="color:var(--warn)">${res.signalsGated} signals gated</span>` : "") +
+    (res.studyGated ? `<br><span style="color:var(--warn)" title="Signal bars whose entry an indicator gate refuses">${res.studyGated} entries refused by indicators</span>` : "");
   queuePostState();
 }
 
@@ -813,6 +1032,7 @@ function paintChart(res, replay) {
     dayBars,
     priceOverlays,
     subOverlays,
+    studyOverlays: studyOverlays(res),
     // Overlays are indexed in signal-timeframe space; stride lets the renderer
     // convert a 1-minute pixel budget into a sane sampling step.
     // Overlay points land at the CENTRE of the bar that produced them, for the
@@ -828,6 +1048,9 @@ function paintChart(res, replay) {
     initialView: [S.winStartLocal, Math.min(blob.count, S.winEndLocal + 1)],
   });
 }
+
+// Redraw without re-running anything: a study's colour or visibility changed.
+function repaint() { if (lastResult) paintChart(lastResult.res, lastResult.replay); }
 
 function statCell(k, v, cls = "") {
   return `<div class="stat"><div class="stat-k">${k}</div><div class="stat-v ${cls}">${v}</div></div>`;
@@ -895,7 +1118,7 @@ async function loadWindow(startMs, { keepTail = false } = {}) {
   // window for the strategy's indicators to match the full-history run, and
   // enough after it for the window's last trade to finish. test.mjs checks the
   // result against the sweep for every strategy.
-  const { warmupMin, tailMin } = windowSpan(S.strategyMod, S.params, { tailMin: S.tailMin, filter: S.filter, exec: S.exec });
+  const { warmupMin, tailMin } = windowSpan(S.strategyMod, S.params, { tailMin: S.tailMin, filter: S.filter, exec: S.exec, studies: S.studies });
   S.loadedWarmupMin = warmupMin;
 
   const url = `/api/window?start=${startMs}&days=${S.rules.windowDays}&warmupMin=${warmupMin}&tailMin=${tailMin}`;
@@ -919,7 +1142,7 @@ async function loadWindow(startMs, { keepTail = false } = {}) {
 
 // The current settings need more history before the window than is loaded.
 function warmupGrew() {
-  return windowSpan(S.strategyMod, S.params, { filter: S.filter, exec: S.exec }).warmupMin > (S.loadedWarmupMin || 0);
+  return windowSpan(S.strategyMod, S.params, { filter: S.filter, exec: S.exec, studies: S.studies }).warmupMin > (S.loadedWarmupMin || 0);
 }
 
 function stepWindow(days) {
@@ -929,8 +1152,10 @@ function stepWindow(days) {
 }
 
 // ──────────────────────── full-history sweep ────────────────────────
+// Colour and visibility are only how a study is drawn.
+const studyConfig = () => S.studies.map(({ id, type, tf, params, gate }) => ({ id, type, tf, params, gate }));
 function sweepKey() {
-  return JSON.stringify([S.strategyDesc.id, S.params, S.exec, S.rules, S.funded, S.filter]);
+  return JSON.stringify([S.strategyDesc.id, S.eval, S.params, S.exec, S.rules, S.funded, S.filter, studyConfig()]);
 }
 
 function scheduleSweep() {
@@ -957,8 +1182,9 @@ async function runSweep() {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        strategyId: S.strategyDesc.id,
+        strategyId: S.strategyDesc.id, eval: S.eval,
         params: S.params, exec: S.exec, rules: S.rules, funded: S.funded, filter: S.filter,
+        studies: studyConfig(),
         stepDays: 1,
       }),
     }).then((x) => x.json());
@@ -972,9 +1198,10 @@ async function runSweep() {
     paintSweepStats();
     paintFundedStats();
     paintBreakdown();
+    paintEdge();
     const s = r.summary;
     $("navSummary").innerHTML =
-      `<span class="k">${s.n.toLocaleString()} × ${S.rules.windowDays}-day windows</span> · ` +
+      `<span class="k">${EVALS[S.eval].label} · ${s.n.toLocaleString()} × ${S.rules.windowDays}-day windows</span> · ` +
       `<span class="pass">${s.passRate.toFixed(1)}% pass</span> · ` +
       `<span class="fail">${s.failRate.toFixed(1)}% breached</span> · ` +
       `${s.openRate.toFixed(1)}% unresolved` +
@@ -1006,7 +1233,10 @@ function chartSnapshot(appliedId, applyError) {
   return {
     appliedId, applyError,
     strategy: S.strategyDesc && S.strategyDesc.id, strategyName: S.strategyDesc && S.strategyDesc.name,
+    eval: S.eval,
     params: S.params, exec: S.exec, rules: S.rules, filter: S.filter, funded: S.funded,
+    studies: S.studies.map((st) => ({ id: st.id, type: st.type, tf: st.tf, params: st.params, gate: st.gate, label: studyLabel(st),
+                                      ...(isGating(st) ? { gateText: gateLabel(st.type, st.gate, st.params) } : {}), ...(st.hidden ? { hidden: true } : {}) })),
     window: { start: isoMin(S.windowStart), tradingDay: $("startDate").value, end: isoMin(S.windowStart + S.rules.windowDays * DAY) },
     view: cb && cb.count ? { from: isoMin(cb.ts[Math.max(0, Math.floor(c.i0))]), to: isoMin(cb.ts[Math.min(cb.count - 1, Math.ceil(c.i1) - 1)]), candleMin: c.tfMin } : null,
     result: rp ? { outcome: rp.outcome, net: Math.round(st.netPnl), trades: st.trades, skipped: st.skipped, winRate: +st.winRate.toFixed(1),
@@ -1014,7 +1244,8 @@ function chartSnapshot(appliedId, applyError) {
                    closestToBreach: st.minCushion == null ? null : Math.round(st.minCushion), resolvedAt: isoMin(rp.passMs ?? rp.failMs) } : null,
     trades: rp ? rp.events.slice(0, 300).map((e) => ({ ...tr(e.t), taken: e.taken, ...(e.skip ? { skipped: e.skip } : {}) })) : [],
     hoveredTrade: window._hoverTrade ? { ...tr(window._hoverTrade), taken: window._hoverTrade.taken } : null,
-    sweep: S.sweep ? { ...S.sweep.summary, stale: !!S.sweepStale, funded: S.sweep.funded || null } : null,
+    sweep: S.sweep ? { ...S.sweep.summary, eval: S.sweep.eval, stale: !!S.sweepStale, funded: S.sweep.funded || null,
+                       ...(S.sweep.edge && S.sweep.edge.length ? { indicatorEdge: S.sweep.edge } : {}) } : null,
   };
 }
 function postState(appliedId, applyError) {
@@ -1031,13 +1262,18 @@ async function applySettings(m) {
   if (m.strategy && !S.strategyList.some((s) => s.id === m.strategy)) throw new Error(`unknown strategy "${m.strategy}"`);
   const startMs = m.date ? Date.parse(m.date + "T00:00:00Z") : S.windowStart;
   if (!Number.isFinite(startMs)) throw new Error(`"${m.date}" is not a date (use YYYY-MM-DD)`);
+  if (m.eval != null && !EVALS[String(m.eval)]) throw new Error(`unknown eval "${m.eval}"; one of ${EVAL_IDS.join(", ")}`);
+  // checked before anything changes, so a bad study leaves the page as it was
+  const studies = m.studies == null ? null : adoptStudies(m.studies.map((st) => resolveStudy(st, { strict: !m.fromUrl })));
   const keysOf = (o) => new Set(Object.keys(o));
   const check = (what, obj, valid) => {
     const bad = Object.keys(obj || {}).filter((k) => !valid.has(k));
     if (bad.length) throw new Error(`unknown ${what} key${bad.length > 1 ? "s" : ""}: ${bad.join(", ")}`);
   };
   if (m.strategy && m.strategy !== S.strategyDesc.id) await selectStrategy(m.strategy);
+  if (m.eval != null) setEval(String(m.eval));
   if (m.reset) Object.assign(S, baseConfig());
+  if (studies) { S.studies = studies; saveStudies(); }
   check("params", m.params, new Set([...(S.strategyMod.params || []).map((d) => d.key), "timeframeMin"]));
   check("exec", m.exec, keysOf(S.meta.defaults.exec));
   check("rules", m.rules, keysOf(S.meta.defaults.rules));
@@ -1048,6 +1284,7 @@ async function applySettings(m) {
     if (m.fromUrl) for (const k of Object.keys(o)) o[k] = coerceLike(S[name][k], o[k]);
     Object.assign(S[name], o);
   }
+  renderEvalTabs();
   renderSidebar();
   await loadWindow(startMs);
   if (m.sweep) {
@@ -1072,19 +1309,71 @@ function connectChartLink() {
   es.addEventListener("apply", (ev) => { try { applyChange(JSON.parse(ev.data)); } catch { /* malformed: ignore */ } });
 }
 
+// ─────────────────────────────── the evaluation tabs ───────────────────────────────
+// The $3,000 and $1,250 evaluations (src/evals.mjs). Switching resets what an eval
+// decides -- the firm's numbers, and the strategy's own settings for that eval --
+// and keeps every other change made since the strategy was picked.
+function setEval(id) {
+  if (id === S.eval) return;
+  const owned = evalKeys(S.strategyMod), before = baseConfig(), keep = {};
+  for (const g of ["params", "exec", "rules", "filter"]) {
+    keep[g] = {};
+    for (const [k, v] of Object.entries(S[g]))
+      if (!owned.has(`${g}.${k}`) && JSON.stringify(v) !== JSON.stringify(before[g][k])) keep[g][k] = v;
+  }
+  S.eval = id;
+  const after = baseConfig();
+  for (const g of ["params", "exec", "rules", "filter"]) S[g] = { ...after[g], ...keep[g] };
+  try { localStorage.setItem("mnq.eval", id); } catch { /* private mode */ }
+}
+async function switchEval(id) {
+  if (id === S.eval || !EVALS[id]) return;
+  setEval(id);
+  renderEvalTabs();
+  renderSidebar();
+  await loadWindow(S.windowStart);
+  toast(`${EVALS[id].label}: ${EVALS[id].blurb}`);
+}
+function renderEvalTabs() {
+  const host = $("evalTabs");
+  host.innerHTML = EVAL_IDS.map((id) =>
+    `<button role="tab" data-eval="${id}" aria-selected="${id === S.eval}" class="${id === S.eval ? "on" : ""}" title="${EVALS[id].blurb} (E switches)">${EVALS[id].label}</button>`).join("");
+  const own = S.strategyMod && S.strategyMod.evals && S.strategyMod.evals[S.eval];
+  const list = own ? ["params", "exec", "filter", "rules"].flatMap((g) => Object.entries(own[g] || {}).map(([k, v]) =>
+    `${(SETTING_LABEL.get(k) || k).toLowerCase()} ${/Usd$/.test(k) ? fmtUsd(v) : v}`)) : [];
+  $("evalDesc").textContent = EVALS[S.eval].blurb + (list.length ? ` · this strategy's own for it: ${list.join(", ")}` : "");
+}
+// A setting's sidebar label, without its units and "(0 = off)" notes.
+const SETTING_LABEL = new Map([...EXEC_PARAMS, ...ORDER_PARAMS, ...SESSION_PARAMS, ...RULES_PARAMS, ...FILTER_PARAMS]
+  .map((d) => [d.key, d.label.replace(/\s*\([^)]*\)\s*$/, "").replace(/\s*\$$/, "")]));
+
 // ─────────────────────────────── the address bar ───────────────────────────────
-// The URL carries the strategy, the window and every setting that differs from
-// the strategy's own defaults (#s=<id>&d=<trading day>&x.slippageTicks=1 ...), so
-// a view can be bookmarked, shared or reloaded and come back exactly.
+// The URL carries the strategy, the window, the evaluation, the indicators and
+// every setting that differs from the strategy's own defaults under that eval
+// (#s=<id>&d=<trading day>&e=1250&x.slippageTicks=1 ...), so a view can be
+// bookmarked, shared or reloaded and come back exactly.
 const URL_GROUPS = { p: "params", x: "exec", r: "rules", f: "filter", u: "funded" };
 function baseConfig() {
-  return {
-    params: resolveParams(S.strategyMod, {}),
-    exec: { ...S.meta.defaults.exec, ...(S.strategyDesc.execDefaults || {}) },
-    rules: { ...S.meta.defaults.rules, ...(S.strategyDesc.rulesDefaults || {}) },
-    filter: { ...NO_FILTER, ...(S.strategyDesc.filterDefaults || {}) },
-    funded: { ...S.meta.defaults.funded },
-  };
+  return { ...evalBase(S.strategyMod, S.eval), funded: { ...S.meta.defaults.funded } };
+}
+// Studies in the address bar: type:tf:key=value,...:gate:colour, joined by "~",
+// with only the params that differ from the study's defaults.
+function studiesToUrl(list) {
+  return list.map((st) => {
+    const d0 = resolveStudy({ type: st.type }).params;
+    const ps = Object.entries(st.params).filter(([k, v]) => v !== d0[k]).map(([k, v]) => `${k}=${v}`).join(",");
+    return [st.type, st.tf || 0, ps, st.gate === "off" ? "" : st.gate, (st.color || "").replace("#", ""), st.hidden ? "h" : ""].join(":").replace(/:+$/, "");
+  }).join("~");
+}
+function studiesFromUrl(s) {
+  if (!s) return [];
+  return s.split("~").filter(Boolean).map((part) => {
+    const [type, tf, ps, gate, color, hidden] = part.split(":");
+    const params = {};
+    for (const kv of (ps || "").split(",").filter(Boolean)) { const i = kv.indexOf("="); if (i > 0) params[kv.slice(0, i)] = kv.slice(i + 1); }
+    for (const [k, v] of Object.entries(params)) { const n = Number(v); if (v.trim() !== "" && !Number.isNaN(n)) params[k] = n; }
+    return { type, tf: Number(tf) || 0, params, gate: gate || "off", ...(color ? { color: "#" + color } : {}), ...(hidden === "h" ? { hidden: true } : {}) };
+  });
 }
 function coerceLike(current, raw) {
   if (raw === "null") return null;
@@ -1100,6 +1389,8 @@ function urlHash() {
   const q = new URLSearchParams(), base = baseConfig();
   q.set("s", S.strategyDesc.id);
   q.set("d", $("startDate").value);
+  if (S.eval !== DEFAULT_EVAL) q.set("e", S.eval);
+  if (S.studies.length) q.set("st", studiesToUrl(S.studies));
   for (const [g, name] of Object.entries(URL_GROUPS))
     for (const [k, v] of Object.entries(S[name]))
       if (typeof v !== "function" && !Object.is(v, base[name][k]) && JSON.stringify(v) !== JSON.stringify(base[name][k])) q.set(`${g}.${k}`, String(v));
@@ -1113,7 +1404,9 @@ function queueHash() {
 function readHash() {
   const q = new URLSearchParams(location.hash.slice(1));
   if (!q.get("s")) return null;
-  const m = { strategy: q.get("s"), date: q.get("d") || null, reset: true, fromUrl: true };
+  // A link names its eval and indicators whenever they are not the defaults.
+  const m = { strategy: q.get("s"), date: q.get("d") || null, reset: true, fromUrl: true,
+              eval: q.get("e") || DEFAULT_EVAL, studies: studiesFromUrl(q.get("st")) };
   for (const name of Object.values(URL_GROUPS)) m[name] = {};
   for (const [k, v] of q) {
     const i = k.indexOf("."), name = i > 0 ? URL_GROUPS[k.slice(0, i)] : null;
@@ -1161,13 +1454,13 @@ async function selectStrategy(id) {
   $("strategyDesc").textContent = S.strategyDesc.description || "";
   const mod = await import(`/strategies/${S.strategyDesc.file}?t=${Date.now()}`);
   S.strategyMod = mod.default;
-  S.params = resolveParams(S.strategyMod, {});
   // Adopt the strategy's own risk envelope if it ships one, since stop width and
   // sizing are part of the result, not incidental settings around it. Same for
-  // its regime gate and daily overlays — a config does not reproduce without them.
-  S.exec = { ...S.meta.defaults.exec, ...(S.strategyDesc.execDefaults || {}) };
-  S.filter = { ...NO_FILTER, ...(S.strategyDesc.filterDefaults || {}) };
-  S.rules = { ...S.meta.defaults.rules, ...(S.strategyDesc.rulesDefaults || {}) };
+  // its regime gate and daily overlays — a config does not reproduce without them
+  // -- and for its settings on the evaluation in force (src/evals.mjs).
+  const b = evalBase(S.strategyMod, S.eval);
+  S.params = b.params; S.exec = b.exec; S.filter = b.filter; S.rules = b.rules;
+  renderEvalTabs();
   // Old sweep belongs to a different strategy — drop it rather than show numbers
   // that no longer describe anything on screen.
   S.sweep = null;
@@ -1229,6 +1522,16 @@ async function boot() {
   const fromUrl = readHash();
   const urlStart = fromUrl && fromUrl.date ? Date.parse(fromUrl.date + "T00:00:00Z") : NaN;
   if (Number.isFinite(urlStart)) S.windowStart = urlStart;
+  // Without a link, the evaluation and indicators of the last visit.
+  if (!fromUrl) {
+    try {
+      const e = localStorage.getItem("mnq.eval");
+      if (e && EVALS[e]) S.eval = e;
+      const saved = JSON.parse(localStorage.getItem("mnq.studies") || "[]");
+      S.studies = adoptStudies(saved.flatMap((st) => { try { return [{ ...resolveStudy(st), id: st.id, color: st.color, hidden: st.hidden }]; } catch { return []; } }));
+    } catch { /* private mode, or a layout from an older version */ }
+  }
+  $("evalTabs").addEventListener("click", (e) => { const b = e.target.closest("button[data-eval]"); if (b) switchEval(b.dataset.eval); });
   await selectStrategy(fromUrl && S.strategyList.some((s) => s.id === fromUrl.strategy) ? fromUrl.strategy : S.strategyList[0].id);
   if (fromUrl) await applySettings(fromUrl).catch((e) => toast(`The link's settings: ${e.message}`, true));
   connectChartLink();
@@ -1270,6 +1573,7 @@ async function boot() {
     if (e.key === "ArrowLeft") { stepWindow(e.shiftKey ? -7 : -1); e.preventDefault(); }
     else if (e.key === "ArrowRight") { stepWindow(e.shiftKey ? 7 : 1); e.preventDefault(); }
     else if (e.key === "r") S.chart.resetView();
+    else if (e.key === "e" && !e.ctrlKey && !e.metaKey && !e.altKey) switchEval(EVAL_IDS[(EVAL_IDS.indexOf(S.eval) + 1) % EVAL_IDS.length]);
   });
 }
 

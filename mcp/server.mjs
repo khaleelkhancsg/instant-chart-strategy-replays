@@ -16,6 +16,7 @@ const INSTRUCTIONS = [
   "Start with list_strategies / describe_strategy. backtest gives trade statistics; pass_rate gives combine pass rates by period;",
   "compare pairs two configurations on the same windows; search runs a grid with an in-sample/out-of-sample split and an overfitting check;",
   "walk_forward tests whether re-choosing from a grid month by month beats holding the base configuration; sensitivity shows how far the pass rate moves when each setting is nudged.",
+  "Every configuration takes eval ('3000' = $3,000 target, the default; '1250' = $1,250 target, $1,000 drawdown, $600 daily limit) and studies: indicators from list_studies, which backtest splits the trades by (byStudy) and which, with a gate, refuse entries -- the way to test a combination of indicators without writing a strategy.",
   "chart_state reads what the person is looking at in the chart; chart_apply changes it. papers holds the methodology library.",
   "House rules: judge on 2026 and check inside 2026 (Jan-Mar vs Apr-Jul) -- the default periods do this; say which pass-rate method a number came from,",
   "and quote its ci95 -- neighbouring 30-day windows share most of their days, so 2026 holds only five or six independent samples;",

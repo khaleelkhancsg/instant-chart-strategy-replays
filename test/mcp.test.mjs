@@ -13,6 +13,8 @@ import { runStrategy, resolveParams } from "../src/run.mjs";
 import { resolveExec } from "../src/engine.mjs";
 import { resolveRules, replayWindow, OUTCOME } from "../src/challenge.mjs";
 import { NO_FILTER } from "../src/filters.mjs";
+import { evalBase } from "../src/evals.mjs";
+import { STUDIES, resolveStudy } from "../src/studies.mjs";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 let pass = 0, fail = 0;
@@ -62,7 +64,7 @@ await t("ping, an unknown method, and tools/list", async () => {
   eq(JSON.stringify((await request("ping")).result), "{}");
   eq((await request("no/such/method")).error.code, -32601);
   const names = (await request("tools/list")).result.tools.map((x) => x.name);
-  for (const n of ["list_strategies", "describe_strategy", "backtest", "pass_rate", "compare", "search", "walk_forward", "sensitivity", "window", "bars", "chart_state", "chart_apply", "papers"])
+  for (const n of ["list_strategies", "list_studies", "describe_strategy", "backtest", "pass_rate", "compare", "search", "walk_forward", "sensitivity", "window", "bars", "chart_state", "chart_apply", "papers"])
     if (!names.includes(n)) throw new Error(`missing tool ${n}`);
 });
 
@@ -168,6 +170,51 @@ await t("window: one window's trades and result, on the chart's grid", async () 
   const start = Date.parse(r.window.start.replace(" ", "T") + ":00Z");
   const real = replayWindow(direct("donchian_shipped"), start, R);
   eq(r.outcome, real.outcome); eq(r.stats.net, Math.round(real.stats.netPnl));
+});
+await t("eval '1250': the $1,250 rules and the strategy's own settings, equal to src/ directly", async () => {
+  const r = await call("pass_rate", { strategy: "donchian_shipped", eval: "1250" });
+  eq(r.eval, "1250"); eq(r.rules.profitTarget, 1250); eq(r.rules.trailingDD, 1000); eq(r.rules.dailyLossLimit, 600);
+  const s = S.get("donchian_shipped"), b = evalBase(s, "1250");
+  eq(b.exec.contracts, 4, "the book's own $1,250 size:");
+  const tr = runStrategy(bars, s, b.params, resolveExec(b.exec), { filter: b.filter }).trades, R = resolveRules(b.rules);
+  const first = bars.ts[0], last = bars.ts[bars.count - 1] - R.windowDays * 86400000;
+  let n = 0, p = 0;
+  for (let st = first + Math.ceil((Date.UTC(2026, 0, 1) - first) / 86400000) * 86400000; st <= last; st += 86400000) { n++; p += replayWindow(tr, st, R).outcome === OUTCOME.PASS; }
+  eq(r.periods.find((x) => x.period === "2026").calendar.pass, Math.round((p / n) * 1000) / 10, "2026 pass rate:");
+  if (!(await call("pass_rate", { strategy: "donchian_shipped", eval: "5000" })).error) throw new Error("an unknown eval accepted");
+  eq(JSON.stringify((await call("backtest", { strategy: "donchian_shipped", eval: "1250" })).changed), JSON.stringify({ eval: "1250" }), "the eval's own settings are not 'changed':");
+});
+await t("studies: list_studies, a gate equal to src/ directly, byStudy adding up, bad studies refused", async () => {
+  const cat = await call("list_studies", {});
+  eq(cat.studies.length, Object.keys(STUDIES).length, "every study type listed:");
+  if (!cat.studies.find((x) => x.type === "emacross").gates.with) throw new Error("no gate wording");
+  const studies = [{ type: "emacross", tf: 10, params: { fast: 9, slow: 21 }, gate: "with" }, { type: "rsi" }];
+  const r = await call("backtest", { strategy: "donchian_shipped", eval: "1250", studies });
+  const s = S.get("donchian_shipped"), b = evalBase(s, "1250");
+  const tr = runStrategy(bars, s, b.params, resolveExec(b.exec), { filter: b.filter, studies: studies.map((x) => resolveStudy(x)) }).trades;
+  eq(r.stats.trades, tr.length, "gated trades:"); eq(r.stats.net, Math.round(tr.reduce((a, x) => a + x.pnl, 0)), "gated net:");
+  eq(r.byStudy.length, 2);
+  for (const e of r.byStudy) for (const tb of e.tables) eq(tb.rows.reduce((a, x) => a + x.all.trades, 0) + tb.unread, r.stats.trades, `${e.label} ${tb.title}:`);
+  eq(r.byStudy[0].tables[0].rows.find((x) => x.key === "against").all.trades, 0, "nothing against the gate:");
+  for (const bad of [[{ type: "nope" }], [{ type: "rsi", gate: "sideways" }], [{ type: "rsi", params: { lenght: 3 } }], [{ type: "rsi", tf: 7 }], { type: "rsi" }])
+    if (!(await call("backtest", { strategy: "donchian_shipped", studies: bad })).error) throw new Error(`accepted studies ${JSON.stringify(bad)}`);
+  const w = await call("window", { strategy: "donchian_shipped", eval: "1250", studies, date: "2026-03-09" });
+  if (!w.outcome) throw new Error("window with studies did not answer");
+});
+await t("search and sensitivity vary a study's settings; a study key without its study is refused", async () => {
+  const studies = [{ type: "emacross", tf: 10, params: { fast: 9, slow: 21 }, gate: "with" }];
+  const g = await call("search", { strategy: "donchian_shipped", eval: "1250", studies, grid: { "studies.0.tf": [5, 10, 15], "studies.0.gate": ["off", "with"] } });
+  eq(g.tried, 6, "combinations:");
+  const off = g.top.filter((r) => r.settings["studies.0.gate"] === "off");
+  if (off.length !== 3 || new Set(off.map((r) => r.inSample)).size !== 1) throw new Error("with the gate off, the timeframe should not matter: " + JSON.stringify(off));
+  const s = await call("sensitivity", { strategy: "donchian_shipped", eval: "1250", studies, keys: ["studies.0.gate", "studies.0.params.slow"] });
+  const gate = s.keys.find((k) => k.key === "studies.0.gate");
+  eq(gate.rows.map((r) => r.value).join(), "off,with,against", "gate values:");
+  eq(gate.rows.find((r) => r.current).value, "with");
+  const plain = await call("pass_rate", { strategy: "donchian_shipped", eval: "1250" });
+  eq(gate.rows.find((r) => r.value === "off").y2026, plain.periods.find((x) => x.period === "2026").calendar.pass, "gate off = no study:");
+  if (!(await call("search", { strategy: "donchian_shipped", studies, grid: { "studies.1.tf": [5] } })).error) throw new Error("a missing study accepted");
+  if (!(await call("search", { strategy: "donchian_shipped", studies, grid: { "studies.0.params.nope": [5] } })).error) throw new Error("a bad study param accepted");
 });
 await t("bars: OHLC rows, resampled", async () => {
   const r = await call("bars", { from: "2026-03-09T14:30", to: "2026-03-09T15:30", timeframeMin: 5 });

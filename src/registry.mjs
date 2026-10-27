@@ -64,5 +64,7 @@ export function describe(s) {
     // reproduce without them.
     filterDefaults: s.filterDefaults || null,
     rulesDefaults: s.rulesDefaults || null,
+    // Its settings for a particular evaluation (src/evals.mjs), if it has any.
+    evals: s.evals || null,
   };
 }

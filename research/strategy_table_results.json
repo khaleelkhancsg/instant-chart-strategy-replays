@@ -1,0 +1,1147 @@
+{
+ "measured": "2026-10-27",
+ "data": "2019-05-05 to 2026-07-14",
+ "method": "calendar windows (the chart's sweep), flat by 15:05 CT, each strategy's own defaults under the eval",
+ "rows": [
+  {
+   "id": "adx_di_trend",
+   "name": "ADX / DI Trend",
+   "tf": 5,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 25961,
+     "profitFactor": 0.92,
+     "expectancy": -17.51,
+     "net": -454534,
+     "passAll": 13,
+     "pass2026": 7.9,
+     "passJanMar": 14.4,
+     "passAprJul": 0,
+     "pass2026OneTick": 4.2,
+     "passAllOneTick": 10.2,
+     "reachPayout": 18.6
+    },
+    "3000": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 25961,
+     "profitFactor": 0.92,
+     "expectancy": -17.51,
+     "net": -454534,
+     "passAll": 12.2,
+     "pass2026": 15.2,
+     "passJanMar": 15.6,
+     "passAprJul": 14.7,
+     "pass2026OneTick": 12.7,
+     "passAllOneTick": 9.9,
+     "reachPayout": 18
+    }
+   }
+  },
+  {
+   "id": "donchian_eff_rth",
+   "name": "MNQ Donchian + Efficiency Gate (best found, 41.9%)",
+   "tf": 2,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 10,
+     "slippageTicks": 0,
+     "trades": 5590,
+     "profitFactor": 1.079,
+     "expectancy": 28.01,
+     "net": 156559,
+     "passAll": 36.8,
+     "pass2026": 31.5,
+     "passJanMar": 33.3,
+     "passAprJul": 29.3,
+     "pass2026OneTick": 29.7,
+     "passAllOneTick": 36.4,
+     "reachPayout": 35.1
+    },
+    "3000": {
+     "contracts": 10,
+     "slippageTicks": 0,
+     "trades": 5590,
+     "profitFactor": 1.079,
+     "expectancy": 28.01,
+     "net": 156559,
+     "passAll": 42,
+     "pass2026": 31.5,
+     "passJanMar": 33.3,
+     "passAprJul": 29.3,
+     "pass2026OneTick": 29.7,
+     "passAllOneTick": 40.3,
+     "reachPayout": 51.7
+    }
+   }
+  },
+  {
+   "id": "donchian_shipped",
+   "name": "MNQ Donchian — SHIPPED live config (8 lots, $1k day stop)",
+   "tf": 2,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 4,
+     "slippageTicks": 1,
+     "trades": 2587,
+     "profitFactor": 1.184,
+     "expectancy": 20.63,
+     "net": 53367,
+     "passAll": 42.1,
+     "pass2026": 44.2,
+     "passJanMar": 45.6,
+     "passAprJul": 42.7,
+     "pass2026OneTick": 44.2,
+     "passAllOneTick": 42.1,
+     "reachPayout": 56.3
+    },
+    "3000": {
+     "contracts": 8,
+     "slippageTicks": 1,
+     "trades": 2945,
+     "profitFactor": 1.176,
+     "expectancy": 40.01,
+     "net": 117841,
+     "passAll": 35.5,
+     "pass2026": 32.1,
+     "passJanMar": 31.1,
+     "passAprJul": 33.3,
+     "pass2026OneTick": 32.1,
+     "passAllOneTick": 35.5,
+     "reachPayout": 55.1
+    }
+   }
+  },
+  {
+   "id": "ema_cross_macd_fade",
+   "name": "EMA crossover — exit on MACD histogram fade (own timeframes)",
+   "tf": 1,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 4,
+     "slippageTicks": 0,
+     "trades": 22224,
+     "profitFactor": 0.806,
+     "expectancy": -5.88,
+     "net": -130723,
+     "passAll": 5.3,
+     "pass2026": 32.1,
+     "passJanMar": 58.9,
+     "passAprJul": 0,
+     "pass2026OneTick": 17.6,
+     "passAllOneTick": 2.3,
+     "reachPayout": 10.9
+    },
+    "3000": {
+     "contracts": 4,
+     "slippageTicks": 0,
+     "trades": 22224,
+     "profitFactor": 0.806,
+     "expectancy": -5.88,
+     "net": -130723,
+     "passAll": 1.5,
+     "pass2026": 8.5,
+     "passJanMar": 15.6,
+     "passAprJul": 0,
+     "pass2026OneTick": 6.1,
+     "passAllOneTick": 0.7,
+     "reachPayout": 20.9
+    }
+   }
+  },
+  {
+   "id": "gap_fade",
+   "name": "Overnight Gap Fade / Drive",
+   "tf": 5,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 1572,
+     "profitFactor": 1.002,
+     "expectancy": 0.53,
+     "net": 830,
+     "passAll": 25.8,
+     "pass2026": 17,
+     "passJanMar": 18.9,
+     "passAprJul": 14.7,
+     "pass2026OneTick": 17,
+     "passAllOneTick": 24.4,
+     "reachPayout": 32
+    },
+    "3000": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 1572,
+     "profitFactor": 1.002,
+     "expectancy": 0.53,
+     "net": 830,
+     "passAll": 15.2,
+     "pass2026": 13.9,
+     "passJanMar": 16.7,
+     "passAprJul": 10.7,
+     "pass2026OneTick": 13.9,
+     "passAllOneTick": 14.8,
+     "reachPayout": 54.6
+    }
+   }
+  },
+  {
+   "id": "macd_1m_anticipate",
+   "name": "MACD 1-min — anticipate the cross from the histogram",
+   "tf": 1,
+   "overnightByDefault": true,
+   "evals": {
+    "1250": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 106560,
+     "profitFactor": 0.902,
+     "expectancy": -11.14,
+     "net": -1187573,
+     "passAll": 2.3,
+     "pass2026": 8.5,
+     "passJanMar": 11.1,
+     "passAprJul": 5.3,
+     "pass2026OneTick": 6.1,
+     "passAllOneTick": 1,
+     "reachPayout": 2.3
+    },
+    "3000": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 106560,
+     "profitFactor": 0.902,
+     "expectancy": -11.14,
+     "net": -1187573,
+     "passAll": 3.7,
+     "pass2026": 10.9,
+     "passJanMar": 18.9,
+     "passAprJul": 1.3,
+     "pass2026OneTick": 7.9,
+     "passAllOneTick": 1.7,
+     "reachPayout": 2.6
+    }
+   }
+  },
+  {
+   "id": "macd_1m_fade",
+   "name": "MACD 1-min cross in, fading histogram out",
+   "tf": 1,
+   "overnightByDefault": true,
+   "evals": {
+    "1250": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 197173,
+     "profitFactor": 0.847,
+     "expectancy": -12.3,
+     "net": -2424900,
+     "passAll": 0.4,
+     "pass2026": 0,
+     "passJanMar": 0,
+     "passAprJul": 0,
+     "pass2026OneTick": 0,
+     "passAllOneTick": 0.2,
+     "reachPayout": 0
+    },
+    "3000": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 197173,
+     "profitFactor": 0.847,
+     "expectancy": -12.3,
+     "net": -2424900,
+     "passAll": 0.3,
+     "pass2026": 0.6,
+     "passJanMar": 0,
+     "passAprJul": 1.3,
+     "pass2026OneTick": 0,
+     "passAllOneTick": 0.1,
+     "reachPayout": 0
+    }
+   }
+  },
+  {
+   "id": "macd_1m_flip",
+   "name": "MACD 1-min crossover ONLY (bare control)",
+   "tf": 1,
+   "overnightByDefault": true,
+   "evals": {
+    "1250": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 197173,
+     "profitFactor": 0.87,
+     "expectancy": -12.65,
+     "net": -2493397,
+     "passAll": 1.1,
+     "pass2026": 0,
+     "passJanMar": 0,
+     "passAprJul": 0,
+     "pass2026OneTick": 0,
+     "passAllOneTick": 0.3,
+     "reachPayout": 0.9
+    },
+    "3000": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 197173,
+     "profitFactor": 0.87,
+     "expectancy": -12.65,
+     "net": -2493397,
+     "passAll": 1.7,
+     "pass2026": 0,
+     "passJanMar": 0,
+     "passAprJul": 0,
+     "pass2026OneTick": 0,
+     "passAllOneTick": 0.3,
+     "reachPayout": 2.9
+    }
+   }
+  },
+  {
+   "id": "macd_1m_quiet_anticipate",
+   "name": "MACD 1-min — quiet-gated anticipation, fade exit",
+   "tf": 1,
+   "overnightByDefault": true,
+   "evals": {
+    "1250": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 29169,
+     "profitFactor": 0.854,
+     "expectancy": -12,
+     "net": -350076,
+     "passAll": 9.2,
+     "pass2026": 13.9,
+     "passJanMar": 18.9,
+     "passAprJul": 8,
+     "pass2026OneTick": 15.8,
+     "passAllOneTick": 4.9,
+     "reachPayout": 8.3
+    },
+    "3000": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 29169,
+     "profitFactor": 0.854,
+     "expectancy": -12,
+     "net": -350076,
+     "passAll": 10.3,
+     "pass2026": 27.9,
+     "passJanMar": 35.6,
+     "passAprJul": 18.7,
+     "pass2026OneTick": 20.6,
+     "passAllOneTick": 5.4,
+     "reachPayout": 18.9
+    }
+   }
+  },
+  {
+   "id": "macd_5m_anticipate",
+   "name": "MACD 5-min — anticipate the cross from the histogram",
+   "tf": 5,
+   "overnightByDefault": true,
+   "evals": {
+    "1250": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 22092,
+     "profitFactor": 0.939,
+     "expectancy": -14.91,
+     "net": -329488,
+     "passAll": 9.1,
+     "pass2026": 10.3,
+     "passJanMar": 17.8,
+     "passAprJul": 1.3,
+     "pass2026OneTick": 7.9,
+     "passAllOneTick": 7.5,
+     "reachPayout": 9.1
+    },
+    "3000": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 22092,
+     "profitFactor": 0.939,
+     "expectancy": -14.91,
+     "net": -329488,
+     "passAll": 12.6,
+     "pass2026": 16.4,
+     "passJanMar": 20,
+     "passAprJul": 12,
+     "pass2026OneTick": 15.8,
+     "passAllOneTick": 11,
+     "reachPayout": 15.1
+    }
+   }
+  },
+  {
+   "id": "macd_5m_fade",
+   "name": "MACD 5-min cross in, fading histogram out",
+   "tf": 5,
+   "overnightByDefault": true,
+   "evals": {
+    "1250": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 38350,
+     "profitFactor": 0.954,
+     "expectancy": -7.99,
+     "net": -306572,
+     "passAll": 6.3,
+     "pass2026": 3,
+     "passJanMar": 4.4,
+     "passAprJul": 1.3,
+     "pass2026OneTick": 1.8,
+     "passAllOneTick": 4.1,
+     "reachPayout": 6.6
+    },
+    "3000": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 38350,
+     "profitFactor": 0.954,
+     "expectancy": -7.99,
+     "net": -306572,
+     "passAll": 10.4,
+     "pass2026": 5.5,
+     "passJanMar": 8.9,
+     "passAprJul": 1.3,
+     "pass2026OneTick": 3.6,
+     "passAllOneTick": 7.1,
+     "reachPayout": 12
+    }
+   }
+  },
+  {
+   "id": "macd_5m_flip",
+   "name": "MACD 5-min crossover ONLY (bare control)",
+   "tf": 5,
+   "overnightByDefault": true,
+   "evals": {
+    "1250": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 38350,
+     "profitFactor": 0.975,
+     "expectancy": -5.38,
+     "net": -206392,
+     "passAll": 6,
+     "pass2026": 10.3,
+     "passJanMar": 14.4,
+     "passAprJul": 5.3,
+     "pass2026OneTick": 8.5,
+     "passAllOneTick": 3.7,
+     "reachPayout": 6.6
+    },
+    "3000": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 38350,
+     "profitFactor": 0.975,
+     "expectancy": -5.38,
+     "net": -206392,
+     "passAll": 10.2,
+     "pass2026": 10.9,
+     "passJanMar": 11.1,
+     "passAprJul": 10.7,
+     "pass2026OneTick": 7.9,
+     "passAllOneTick": 7,
+     "reachPayout": 12.3
+    }
+   }
+  },
+  {
+   "id": "macd_5m_quiet_anticipate",
+   "name": "MACD 5-min — quiet-gated anticipation, fade exit",
+   "tf": 5,
+   "overnightByDefault": true,
+   "evals": {
+    "1250": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 7589,
+     "profitFactor": 1.047,
+     "expectancy": 8.65,
+     "net": 65652,
+     "passAll": 24.5,
+     "pass2026": 18.2,
+     "passJanMar": 21.1,
+     "passAprJul": 14.7,
+     "pass2026OneTick": 15.2,
+     "passAllOneTick": 22,
+     "reachPayout": 27.7
+    },
+    "3000": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 7589,
+     "profitFactor": 1.047,
+     "expectancy": 8.65,
+     "net": 65652,
+     "passAll": 26.3,
+     "pass2026": 26.1,
+     "passJanMar": 23.3,
+     "passAprJul": 29.3,
+     "pass2026OneTick": 23.6,
+     "passAllOneTick": 23.4,
+     "reachPayout": 38.6
+    }
+   }
+  },
+  {
+   "id": "macd_angle_v4",
+   "name": "MACD-Angle Union Burst v4 (2-min, 4-set consensus)",
+   "tf": 2,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 1,
+     "slippageTicks": 0,
+     "trades": 42810,
+     "profitFactor": 0.941,
+     "expectancy": -1.65,
+     "net": -70772,
+     "passAll": 8.2,
+     "pass2026": 24.8,
+     "passJanMar": 45.6,
+     "passAprJul": 0,
+     "pass2026OneTick": 24.2,
+     "passAllOneTick": 6.7,
+     "reachPayout": 28
+    },
+    "3000": {
+     "contracts": 1,
+     "slippageTicks": 0,
+     "trades": 42810,
+     "profitFactor": 0.941,
+     "expectancy": -1.65,
+     "net": -70772,
+     "passAll": 1.2,
+     "pass2026": 12.7,
+     "passJanMar": 23.3,
+     "passAprJul": 0,
+     "pass2026OneTick": 10.9,
+     "passAllOneTick": 0.7,
+     "reachPayout": 43.7
+    }
+   }
+  },
+  {
+   "id": "macd_cross",
+   "name": "MACD — Histogram / Cross / Zero-line",
+   "tf": 5,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 38348,
+     "profitFactor": 0.971,
+     "expectancy": -5.8,
+     "net": -222535,
+     "passAll": 14.7,
+     "pass2026": 25.5,
+     "passJanMar": 30,
+     "passAprJul": 20,
+     "pass2026OneTick": 23.6,
+     "passAllOneTick": 13.7,
+     "reachPayout": 13.4
+    },
+    "3000": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 38348,
+     "profitFactor": 0.971,
+     "expectancy": -5.8,
+     "net": -222535,
+     "passAll": 13.1,
+     "pass2026": 42.4,
+     "passJanMar": 56.7,
+     "passAprJul": 25.3,
+     "pass2026OneTick": 43,
+     "passAllOneTick": 11.6,
+     "reachPayout": 15.4
+    }
+   }
+  },
+  {
+   "id": "macd_mtf_confirm",
+   "name": "MACD multi-timeframe — 5-min arms, 1-min triggers, EMA confirms",
+   "tf": 1,
+   "overnightByDefault": true,
+   "evals": {
+    "1250": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 11253,
+     "profitFactor": 0.77,
+     "expectancy": -9.76,
+     "net": -109805,
+     "passAll": 5.8,
+     "pass2026": 21.8,
+     "passJanMar": 26.7,
+     "passAprJul": 16,
+     "pass2026OneTick": 17,
+     "passAllOneTick": 2.8,
+     "reachPayout": 11.7
+    },
+    "3000": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 11253,
+     "profitFactor": 0.77,
+     "expectancy": -9.76,
+     "net": -109805,
+     "passAll": 2.8,
+     "pass2026": 20.6,
+     "passJanMar": 24.4,
+     "passAprJul": 16,
+     "pass2026OneTick": 10.3,
+     "passAllOneTick": 1.2,
+     "reachPayout": 24.6
+    }
+   }
+  },
+  {
+   "id": "momentum_roc",
+   "name": "Rate-of-Change Momentum (baseline)",
+   "tf": 5,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 12401,
+     "profitFactor": 1.018,
+     "expectancy": 7.76,
+     "net": 96226,
+     "passAll": 20.9,
+     "pass2026": 24.8,
+     "passJanMar": 14.4,
+     "passAprJul": 37.3,
+     "pass2026OneTick": 24.2,
+     "passAllOneTick": 20.1,
+     "reachPayout": 25.7
+    },
+    "3000": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 12401,
+     "profitFactor": 1.018,
+     "expectancy": 7.76,
+     "net": 96226,
+     "passAll": 21.3,
+     "pass2026": 26.7,
+     "passJanMar": 6.7,
+     "passAprJul": 50.7,
+     "pass2026OneTick": 26.7,
+     "passAllOneTick": 19.8,
+     "reachPayout": 27.1
+    }
+   }
+  },
+  {
+   "id": "orb",
+   "name": "Opening Range Breakout (session-anchored)",
+   "tf": 5,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 6,
+     "slippageTicks": 0,
+     "trades": 2240,
+     "profitFactor": 1.034,
+     "expectancy": 17.09,
+     "net": 38280,
+     "passAll": 14.2,
+     "pass2026": 10.3,
+     "passJanMar": 11.1,
+     "passAprJul": 9.3,
+     "pass2026OneTick": 10.3,
+     "passAllOneTick": 13.9,
+     "reachPayout": 22.6
+    },
+    "3000": {
+     "contracts": 6,
+     "slippageTicks": 0,
+     "trades": 2240,
+     "profitFactor": 1.034,
+     "expectancy": 17.09,
+     "net": 38280,
+     "passAll": 16.4,
+     "pass2026": 10.9,
+     "passJanMar": 11.1,
+     "passAprJul": 10.7,
+     "pass2026OneTick": 10.9,
+     "passAllOneTick": 16.2,
+     "reachPayout": 39.7
+    }
+   }
+  },
+  {
+   "id": "prior_day_break",
+   "name": "Prior-Day High/Low Break or Reject",
+   "tf": 5,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 1397,
+     "profitFactor": 1.008,
+     "expectancy": 3.27,
+     "net": 4574,
+     "passAll": 17.1,
+     "pass2026": 15.8,
+     "passJanMar": 8.9,
+     "passAprJul": 24,
+     "pass2026OneTick": 15.8,
+     "passAllOneTick": 15.9,
+     "reachPayout": 23.1
+    },
+    "3000": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 1397,
+     "profitFactor": 1.008,
+     "expectancy": 3.27,
+     "net": 4574,
+     "passAll": 15.5,
+     "pass2026": 22.4,
+     "passJanMar": 13.3,
+     "passAprJul": 33.3,
+     "pass2026OneTick": 22.4,
+     "passAllOneTick": 15.1,
+     "reachPayout": 38
+    }
+   }
+  },
+  {
+   "id": "session_range_fade",
+   "name": "Session Range Fade (intraday-native)",
+   "tf": 5,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 2276,
+     "profitFactor": 0.884,
+     "expectancy": -47.94,
+     "net": -109112,
+     "passAll": 16.4,
+     "pass2026": 8.5,
+     "passJanMar": 14.4,
+     "passAprJul": 1.3,
+     "pass2026OneTick": 8.5,
+     "passAllOneTick": 16.2,
+     "reachPayout": 20.9
+    },
+    "3000": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 2276,
+     "profitFactor": 0.884,
+     "expectancy": -47.94,
+     "net": -109112,
+     "passAll": 14.1,
+     "pass2026": 13.3,
+     "passJanMar": 23.3,
+     "passAprJul": 1.3,
+     "pass2026OneTick": 13.3,
+     "passAllOneTick": 13.4,
+     "reachPayout": 34.6
+    }
+   }
+  },
+  {
+   "id": "supertrend",
+   "name": "Supertrend (ATR trend bands)",
+   "tf": 5,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 12361,
+     "profitFactor": 0.969,
+     "expectancy": -9.64,
+     "net": -119155,
+     "passAll": 13.6,
+     "pass2026": 19.4,
+     "passJanMar": 12.2,
+     "passAprJul": 28,
+     "pass2026OneTick": 19.4,
+     "passAllOneTick": 10.7,
+     "reachPayout": 19.1
+    },
+    "3000": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 12361,
+     "profitFactor": 0.969,
+     "expectancy": -9.64,
+     "net": -119155,
+     "passAll": 11.6,
+     "pass2026": 20.6,
+     "passJanMar": 15.6,
+     "passAprJul": 26.7,
+     "pass2026OneTick": 20.6,
+     "passAllOneTick": 10.7,
+     "reachPayout": 20.6
+    }
+   }
+  },
+  {
+   "id": "tpl_channel",
+   "name": "Template — Channel Breakout / Fade",
+   "tf": 5,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 12894,
+     "profitFactor": 1.003,
+     "expectancy": 1.07,
+     "net": 13832,
+     "passAll": 20.1,
+     "pass2026": 26.1,
+     "passJanMar": 31.1,
+     "passAprJul": 20,
+     "pass2026OneTick": 24.2,
+     "passAllOneTick": 17.6,
+     "reachPayout": 24.3
+    },
+    "3000": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 12894,
+     "profitFactor": 1.003,
+     "expectancy": 1.07,
+     "net": 13832,
+     "passAll": 18.3,
+     "pass2026": 40.6,
+     "passJanMar": 46.7,
+     "passAprJul": 33.3,
+     "pass2026OneTick": 38.8,
+     "passAllOneTick": 15.1,
+     "reachPayout": 31.1
+    }
+   }
+  },
+  {
+   "id": "tpl_consensus",
+   "name": "Template — Multi-Speed Consensus (abstains on conflict)",
+   "tf": 2,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 4,
+     "slippageTicks": 0,
+     "trades": 45500,
+     "profitFactor": 0.942,
+     "expectancy": -6.47,
+     "net": -294320,
+     "passAll": 20.8,
+     "pass2026": 20.6,
+     "passJanMar": 13.3,
+     "passAprJul": 29.3,
+     "pass2026OneTick": 20,
+     "passAllOneTick": 18.5,
+     "reachPayout": 20.9
+    },
+    "3000": {
+     "contracts": 4,
+     "slippageTicks": 0,
+     "trades": 45500,
+     "profitFactor": 0.942,
+     "expectancy": -6.47,
+     "net": -294320,
+     "passAll": 11.4,
+     "pass2026": 9.1,
+     "passJanMar": 16.7,
+     "passAprJul": 0,
+     "pass2026OneTick": 3,
+     "passAllOneTick": 10,
+     "reachPayout": 23.7
+    }
+   }
+  },
+  {
+   "id": "tpl_ma_cross",
+   "name": "Template — MA Cross",
+   "tf": 5,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 22260,
+     "profitFactor": 0.977,
+     "expectancy": -5.51,
+     "net": -122646,
+     "passAll": 14.4,
+     "pass2026": 12.7,
+     "passJanMar": 21.1,
+     "passAprJul": 2.7,
+     "pass2026OneTick": 12.7,
+     "passAllOneTick": 12.5,
+     "reachPayout": 16.9
+    },
+    "3000": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 22260,
+     "profitFactor": 0.977,
+     "expectancy": -5.51,
+     "net": -122646,
+     "passAll": 9.9,
+     "pass2026": 21.8,
+     "passJanMar": 35.6,
+     "passAprJul": 5.3,
+     "pass2026OneTick": 21.8,
+     "passAllOneTick": 8.2,
+     "reachPayout": 17.1
+    }
+   }
+  },
+  {
+   "id": "tpl_oscillator",
+   "name": "Template — Oscillator Fade / Follow",
+   "tf": 5,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 14393,
+     "profitFactor": 0.918,
+     "expectancy": -23.72,
+     "net": -341370,
+     "passAll": 11.2,
+     "pass2026": 4.8,
+     "passJanMar": 0,
+     "passAprJul": 10.7,
+     "pass2026OneTick": 4.8,
+     "passAllOneTick": 9.4,
+     "reachPayout": 13.4
+    },
+    "3000": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 14393,
+     "profitFactor": 0.918,
+     "expectancy": -23.72,
+     "net": -341370,
+     "passAll": 8.3,
+     "pass2026": 4.2,
+     "passJanMar": 0,
+     "passAprJul": 9.3,
+     "pass2026OneTick": 2.4,
+     "passAllOneTick": 8,
+     "reachPayout": 15.4
+    }
+   }
+  },
+  {
+   "id": "trend_neutev",
+   "name": "MNQ Trend — Neutral EV (Donchian 30 / ADX 25)",
+   "tf": 5,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 11036,
+     "profitFactor": 1.006,
+     "expectancy": 2.09,
+     "net": 23113,
+     "passAll": 15.4,
+     "pass2026": 30.3,
+     "passJanMar": 36.7,
+     "passAprJul": 22.7,
+     "pass2026OneTick": 30.9,
+     "passAllOneTick": 13,
+     "reachPayout": 20.9
+    },
+    "3000": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 11036,
+     "profitFactor": 1.006,
+     "expectancy": 2.09,
+     "net": 23113,
+     "passAll": 14.9,
+     "pass2026": 43.6,
+     "passJanMar": 46.7,
+     "passAprJul": 40,
+     "pass2026OneTick": 41.8,
+     "passAllOneTick": 13.7,
+     "reachPayout": 28.6
+    }
+   }
+  },
+  {
+   "id": "trend_vol_adaptive",
+   "name": "MNQ Trend — Vol-Adaptive (3m / Donchian 50 / ADX 20)",
+   "tf": 3,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 17711,
+     "profitFactor": 0.996,
+     "expectancy": -0.76,
+     "net": -13491,
+     "passAll": 6.5,
+     "pass2026": 9.1,
+     "passJanMar": 0,
+     "passAprJul": 20,
+     "pass2026OneTick": 8.5,
+     "passAllOneTick": 5,
+     "reachPayout": 15.1
+    },
+    "3000": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 17711,
+     "profitFactor": 0.996,
+     "expectancy": -0.76,
+     "net": -13491,
+     "passAll": 5.1,
+     "pass2026": 20,
+     "passJanMar": 14.4,
+     "passAprJul": 26.7,
+     "pass2026OneTick": 19.4,
+     "passAllOneTick": 4.2,
+     "reachPayout": 22.3
+    }
+   }
+  },
+  {
+   "id": "triple_ema",
+   "name": "Triple EMA Stack",
+   "tf": 5,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 16045,
+     "profitFactor": 0.994,
+     "expectancy": -1.79,
+     "net": -28696,
+     "passAll": 16.1,
+     "pass2026": 18.2,
+     "passJanMar": 10,
+     "passAprJul": 28,
+     "pass2026OneTick": 18.2,
+     "passAllOneTick": 14.3,
+     "reachPayout": 21.7
+    },
+    "3000": {
+     "contracts": 8,
+     "slippageTicks": 0,
+     "trades": 16045,
+     "profitFactor": 0.994,
+     "expectancy": -1.79,
+     "net": -28696,
+     "passAll": 14.8,
+     "pass2026": 24.8,
+     "passJanMar": 7.8,
+     "passAprJul": 45.3,
+     "pass2026OneTick": 23.6,
+     "passAllOneTick": 13.1,
+     "reachPayout": 26
+    }
+   }
+  },
+  {
+   "id": "vwap_fade",
+   "name": "VWAP Deviation — Fade / Follow",
+   "tf": 5,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 10,
+     "slippageTicks": 0,
+     "trades": 22908,
+     "profitFactor": 0.929,
+     "expectancy": -18.87,
+     "net": -432378,
+     "passAll": 16.1,
+     "pass2026": 13.3,
+     "passJanMar": 24.4,
+     "passAprJul": 0,
+     "pass2026OneTick": 13.3,
+     "passAllOneTick": 12.4,
+     "reachPayout": 14
+    },
+    "3000": {
+     "contracts": 10,
+     "slippageTicks": 0,
+     "trades": 22908,
+     "profitFactor": 0.929,
+     "expectancy": -18.87,
+     "net": -432378,
+     "passAll": 10.2,
+     "pass2026": 9.7,
+     "passJanMar": 17.8,
+     "passAprJul": 0,
+     "pass2026OneTick": 9.1,
+     "passAllOneTick": 7.5,
+     "reachPayout": 10.9
+    }
+   }
+  },
+  {
+   "id": "zscore_fade",
+   "name": "Z-Score Fade (regime + volatility filtered)",
+   "tf": 5,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 10,
+     "slippageTicks": 0,
+     "trades": 770,
+     "profitFactor": 0.833,
+     "expectancy": -87.61,
+     "net": -67463,
+     "passAll": 1.4,
+     "pass2026": 0,
+     "passJanMar": 0,
+     "passAprJul": 0,
+     "pass2026OneTick": 0,
+     "passAllOneTick": 0.9,
+     "reachPayout": 6.6
+    },
+    "3000": {
+     "contracts": 10,
+     "slippageTicks": 0,
+     "trades": 770,
+     "profitFactor": 0.833,
+     "expectancy": -87.61,
+     "net": -67463,
+     "passAll": 2,
+     "pass2026": 0,
+     "passJanMar": 0,
+     "passAprJul": 0,
+     "pass2026OneTick": 0,
+     "passAllOneTick": 1.6,
+     "reachPayout": 11.7
+    }
+   }
+  }
+ ]
+}

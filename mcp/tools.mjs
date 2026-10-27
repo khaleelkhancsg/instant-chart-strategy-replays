@@ -11,6 +11,8 @@ import { replayWindow, OUTCOME } from "../src/challenge.mjs";
 import { resample, sliceBars, indexAtOrAfter } from "../src/resample.mjs";
 import { STRATEGY_DIR } from "../src/registry.mjs";
 import { mulberry32 } from "../src/dayeval.mjs";
+import { EVAL_IDS, evalOf } from "../src/evals.mjs";
+import { STUDIES, STUDY_TFS, gateLabel, studyEdge, studyOnSignal, resolveStudies, gateKey } from "../src/studies.mjs";
 import * as L from "./lab.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -21,9 +23,11 @@ export const CHART = process.env.CHART_LAB_URL || "http://localhost:5178";
 const CFG = {
   strategy: { type: "string", description: "Strategy id, as list_strategies gives it." },
   params: { type: "object", description: "Signal parameters to override; describe_strategy lists each with its default and range. Unknown keys are refused." },
-  exec: { type: "object", description: "Execution overrides (src/engine.mjs DEFAULT_EXEC), e.g. contracts, slAtrMult, tpAtrMult, tpMode, entryType (market|stop|limit), entryTriggerAtr, entryWindowBars, slippageTicks, commissionPerSide, dayLossStopUsd, dayLossStopMode, dayBreakerUsd, dayProfitBlockUsd, maxBarsInTrade, intradayOnly, flattenCt, reopenCt. Unknown keys are refused." },
+  exec: { type: "object", description: "Execution overrides (src/engine.mjs DEFAULT_EXEC), e.g. contracts, slAtrMult, tpAtrMult, tpMode, entryType (market|stop|limit), entryTriggerAtr, entryWindowBars, slippageTicks, commissionPerSide, dayLossStopUsd, dayLossStopMode, dayBreakerUsd, dayProfitBlockUsd, maxBarsInTrade, staleBars + staleMfeAtr (leave a trade that has not gone that many ATRs in its favour within that many bars), intradayOnly, flattenCt, reopenCt. Unknown keys are refused." },
   filter: { type: "object", description: "Signal gates (src/filters.mjs): startCt/endCt in CT minutes of the day, adxMin/adxMax, effMin/effMax, volMin/volMax, chopMin/chopMax, bwMin/bwMax, and their periods." },
   rules: { type: "object", description: "Combine rules (src/challenge.mjs DEFAULT_RULES): profitTarget, trailingDD, trailingMode (eod|intraday), lockAtBreakeven, windowDays, consistencyPct, consistencyGatesPass, dailyLossLimit, circuitBreaker, dailyProfitStop, minTradingDays." },
+  eval: { type: "string", enum: EVAL_IDS, description: "Which evaluation (src/evals.mjs): '3000' = $3,000 target, $2,000 trailing drawdown, $1,000 daily limit (default); '1250' = $1,250 target, $1,000 trailing, $600 daily limit. It sets the firm's rules, the platform loss cap where the book models one, and the strategy's own settings for that eval (describe_strategy shows them); params/exec/rules given here go on top." },
+  studies: { type: "array", items: { type: "object" }, description: "Indicator studies (list_studies), each {type, tf, params, gate}: tf in minutes (0 = the signal's), gate 'off' or one the study offers, e.g. {type: 'emacross', tf: 10, params: {fast: 9, slow: 21}, gate: 'with'}. A gate refuses ENTRIES its state does not allow (a refused signal still closes an opposite position); a study on a longer timeframe is read from its last closed bar. backtest reports every study's edge by state (byStudy)." },
   legacy: { type: "boolean", description: "Run with the engine's pre-consolidation conventions (LEGACY_EXEC) to reproduce an old recorded result. Default false." },
 };
 const PERIODS = { type: "array", items: { type: "object" },
@@ -60,7 +64,24 @@ export const TOOLS = [
       return [...(await L.strategies()).values()]
         .filter((s) => !q || s.id.toLowerCase().includes(q) || (s.name || "").toLowerCase().includes(q))
         .map((s) => ({ id: s.id, name: s.name, timeframeMin: s.timeframeMin ?? 1, params: (s.params || []).length,
-                       entry: s.execDefaults?.entryType ?? "market", overnight: s.execDefaults?.intradayOnly === false }));
+                       entry: s.execDefaults?.entryType ?? "market", overnight: s.execDefaults?.intradayOnly === false,
+                       ...(s.evals ? { ownEvalSettings: Object.keys(s.evals) } : {}) }));
+    },
+  },
+  {
+    name: "list_studies",
+    description: "The indicator studies that can be added to any configuration (the 'studies' argument of the other tools, and the chart's Indicators panel): each type's parameters with defaults and ranges, the timeframes it can run on, and the gates it offers with what each means. A study with gate 'off' only reports its edge by state; with a gate it refuses entries.",
+    inputSchema: obj({}),
+    async run() {
+      return {
+        timeframes: [0, ...STUDY_TFS], note: "tf 0 = the strategy's signal timeframe. Readings are causal: a study on a longer timeframe than the signal is read from its last closed bar.",
+        studies: Object.entries(STUDIES).map(([type, d]) => {
+          const p0 = Object.fromEntries(d.params.map((x) => [x.key, x.default]));
+          return { type, name: d.name, group: d.group, pane: d.pane, kind: d.kind,
+                   params: d.params.map((x) => ({ key: x.key, label: x.label, default: x.default, ...(x.options ? { options: x.options.map((o) => o[0]) } : { min: x.min, max: x.max }) })),
+                   gates: Object.fromEntries(d.gates.map((g) => [g, gateLabel(type, g, p0)])), ...(d.hint ? { hint: d.hint } : {}) };
+        }),
+      };
     },
   },
   {
@@ -81,6 +102,7 @@ export const TOOLS = [
                                                 ...(d.min != null ? { min: d.min, max: d.max } : {}), ...(d.options ? { options: d.options.map((o) => o[0]) } : {}),
                                                 ...(d.hint ? { hint: d.hint } : {}) })),
         execDefaults: s.execDefaults || {}, filterDefaults: s.filterDefaults || {}, rulesDefaults: s.rulesDefaults || {},
+        ...(s.evals ? { evalSettings: s.evals } : {}),
         notes: notes.length > 6000 ? notes.slice(0, 6000) + "\n[... truncated]" : notes,
       };
     },
@@ -114,6 +136,8 @@ export const TOOLS = [
       const table = (m, order) => [...m].filter(([k]) => k != null).sort((p, q) => (order ? order(p[0], q[0]) : 0)).map(([k, t]) => ({ key: k, ...groupStats(t) }));
       const days = L.dailyStats(tr, Number.isFinite(from) ? from : -Infinity, Number.isFinite(to) ? to : Infinity);
       const n = Math.max(0, Math.min(500, Math.trunc(a.trades || 0)));
+      // Every study's states at these trades' signals (src/studies.mjs studyEdge).
+      const byStudy = cfg.studies.length ? cfg.studies.map((st) => studyEdge(tr, studyOnSignal(L.bars(), L.signalBars(cfg), st))) : null;
       return {
         strategy: cfg.s.id, changed: L.changed(cfg), costs: L.costLine(cfg.exec), warnings: cfg.warnings,
         period: { from: tr.length ? L.iso(tr[0].entryTime) : null, to: tr.length ? L.iso(tr[tr.length - 1].entryTime) : null },
@@ -129,7 +153,9 @@ export const TOOLS = [
         byDirection: table(group((t) => (t.dir === 1 ? "long" : "short"))),
         byVolatility: table(vol, (p, q) => p.localeCompare(q)),
         daily: days,
-        notes: { daily: L.DAILY_NOTE, byVolatility: "ATR at the signal relative to the median ATR of that year's trades, in quintiles (Q1 calmest)", byEntryHourCt: "hour of the fill, Chicago time, in session order from 17:00", byWeekday: "the trading day the trade closed in (its session opens at 17:00 CT the evening before)" },
+        ...(byStudy ? { byStudy } : {}),
+        notes: { daily: L.DAILY_NOTE, byVolatility: "ATR at the signal relative to the median ATR of that year's trades, in quintiles (Q1 calmest)", byEntryHourCt: "hour of the fill, Chicago time, in session order from 17:00", byWeekday: "the trading day the trade closed in (its session opens at 17:00 CT the evening before)",
+                 ...(byStudy ? { byStudy: "each study's state at every trade's signal bar, read as a gate would read it; all = these trades, y2026 = those entered in 2026. A bucket shows what gating on it would have kept, before any knock-on effect on the trades that follow -- confirm a gate with pass_rate or compare." } : {}) },
         ...(n ? { trades: tr.slice(-n).map(compactTrade) } : {}),
         runMs: run.ms,
       };
@@ -148,7 +174,7 @@ export const TOOLS = [
         ...(method !== "calendar" ? { bootstrap: L.bootstrap(run.trades, R, p.from, p.to) } : {}),
       }));
       return {
-        strategy: cfg.s.id, changed: L.changed(cfg), costs: L.costLine(cfg.exec),
+        strategy: cfg.s.id, eval: cfg.eval, changed: L.changed(cfg), costs: L.costLine(cfg.exec),
         rules: { profitTarget: R.profitTarget, trailingDD: R.trailingDD, trailingMode: R.trailingMode, lockAtBreakeven: R.lockAtBreakeven,
                  windowDays: R.windowDays, consistencyPct: R.consistencyGatesPass ? R.consistencyPct : 0, dailyLossLimit: R.dailyLossLimit,
                  circuitBreaker: R.circuitBreaker, dailyProfitStop: R.dailyProfitStop, minTradingDays: R.minTradingDays },
@@ -185,7 +211,7 @@ export const TOOLS = [
                  neither: starts.length - both - onlyA - onlyB, aMeanNet: Math.round(na / n), bMeanNet: Math.round(nb / n),
                  monthsAWins: mA, monthsBWins: mB, monthsTied: mT };
       });
-      return { a: { strategy: A.s.id, changed: L.changed(A), costs: L.costLine(A.exec) }, b: { strategy: Bc.s.id, changed: L.changed(Bc), costs: L.costLine(Bc.exec) },
+      return { a: { strategy: A.s.id, eval: A.eval, changed: L.changed(A), costs: L.costLine(A.exec) }, b: { strategy: Bc.s.id, eval: Bc.eval, changed: L.changed(Bc), costs: L.costLine(Bc.exec) },
                warnings: [...A.warnings.map((w) => "a: " + w), ...Bc.warnings.map((w) => "b: " + w)], method: L.CALENDAR, periods: rows };
     },
   },
@@ -193,7 +219,7 @@ export const TOOLS = [
     name: "search",
     description: "Grid-search a strategy with a holdout and an overfitting check. Every combination of the grid is run on the data the periods need (fast), ranked on the IN-SAMPLE pass rate only, and reported with its OUT-OF-SAMPLE pass rate; it also gives the in/out-of-sample rank correlation and the probability of backtest overfitting (CSCV, Bailey et al.) over the whole evaluation span. In-sample windows whose 30 days run into the out-of-sample period are purged, so the in-sample never sees out-of-sample trades. Defaults: in-sample 2026 Jan-Mar, out-of-sample 2026 Apr-Jul.",
     inputSchema: obj({ ...CFG,
-      grid: { type: "object", description: "Values to try, keyed 'params.<key>' | 'exec.<key>' | 'filter.<key>' | 'rules.<key>', e.g. {\"exec.slAtrMult\": [2, 3, 5], \"params.period\": [20, 30, 40]}." },
+      grid: { type: "object", description: "Values to try, keyed 'params.<key>' | 'exec.<key>' | 'filter.<key>' | 'rules.<key>', or for the studies passed 'studies.<n>.params.<key>' | 'studies.<n>.tf' | 'studies.<n>.gate', e.g. {\"exec.slAtrMult\": [2, 3, 5], \"studies.0.params.length\": [20, 50, 100]}." },
       inSample: { type: "object", description: "{from, to} window-start dates for ranking. Default 2026-01-01 to 2026-04-01." },
       outOfSample: { type: "object", description: "{from, to} window-start dates held out. Default 2026-04-01 to the end." },
       top: { type: "integer", description: "How many of the best in-sample to report (default 10)." },
@@ -201,7 +227,7 @@ export const TOOLS = [
       timeBudgetSec: { type: "integer", description: "Stop and report what is done after this long (default 90)." },
       purge: { type: "boolean", description: "Drop in-sample windows whose days run into the out-of-sample period (default true): without it the in-sample already sees out-of-sample trades." } }, ["strategy", "grid"]),
     async run(a) {
-      const space = gridSpace(a.grid, Math.max(1, Math.min(3000, Math.trunc(a.maxConfigs || 300))));
+      const space = gridSpace(a.grid, Math.max(1, Math.min(3000, Math.trunc(a.maxConfigs || 300))), a.studies);
       const isP = { from: L.parseDate(a.inSample?.from, "inSample.from") ?? Date.UTC(2026, 0, 1), to: L.parseDate(a.inSample?.to, "inSample.to") ?? Date.UTC(2026, 3, 1) };
       const oosP = { from: L.parseDate(a.outOfSample?.from, "outOfSample.from") ?? Date.UTC(2026, 3, 1), to: L.parseDate(a.outOfSample?.to, "outOfSample.to") ?? Infinity };
       const base = await L.resolveConfig(a), W = gridWindowDays(base, a.grid), R0 = { windowDays: W };
@@ -274,7 +300,7 @@ export const TOOLS = [
     name: "walk_forward",
     description: "Test the SELECTION, not a configuration: step through time (a month at a time by default), each step choosing the grid's best configuration on the trailing in-sample months -- only windows that had finished before the step began -- and trading it for the step. Reports the walk-forward's out-of-sample pass rate against the base configuration held fixed, the grid's median configuration, the best single configuration in hindsight, and the per-step hindsight ceiling no selection rule can beat -- the honest answer to 'does re-optimising help?'. Default: steps through 2026, three months in-sample.",
     inputSchema: obj({ ...CFG,
-      grid: { type: "object", description: "Values to choose among, keyed 'params.<key>' | 'exec.<key>' | 'filter.<key>' | 'rules.<key>' (as in search)." },
+      grid: { type: "object", description: "Values to choose among, keyed 'params.<key>' | 'exec.<key>' | 'filter.<key>' | 'rules.<key>' | 'studies.<n>.params.<key>' | 'studies.<n>.tf' | 'studies.<n>.gate' (as in search)." },
       from: { type: "string", description: "Start of the first out-of-sample step (YYYY-MM-DD). Default 2026-01-01." },
       to: { type: "string", description: "No step starts on or after this date (YYYY-MM-DD). Default: end of data." },
       inSampleMonths: { type: "integer", description: "Trailing months each step chooses on (default 3)." },
@@ -282,7 +308,7 @@ export const TOOLS = [
       maxConfigs: { type: "integer", description: "Most grid combinations (default 200, at most 1000); a larger grid is sampled." },
       timeBudgetSec: { type: "integer", description: "Stop running configurations after this long and walk forward over those done (default 120)." } }, ["strategy", "grid"]),
     async run(a) {
-      const space = gridSpace(a.grid, Math.max(1, Math.min(1000, Math.trunc(a.maxConfigs || 200))));
+      const space = gridSpace(a.grid, Math.max(1, Math.min(1000, Math.trunc(a.maxConfigs || 200))), a.studies);
       const from = L.parseDate(a.from, "from") ?? Date.UTC(2026, 0, 1), to = L.parseDate(a.to, "to") ?? Infinity;
       const isM = Math.max(1, Math.trunc(a.inSampleMonths || 3)), stepM = Math.max(1, Math.trunc(a.stepMonths || 1));
       const base = await L.resolveConfig(a), W = gridWindowDays(base, a.grid);
@@ -335,7 +361,7 @@ export const TOOLS = [
     name: "sensitivity",
     description: "How fragile a configuration is: each setting moved either side of its value, one at a time, with pass rates over all history and over 2026 -- a knife-edge optimum shows as a sharp drop next to the chosen value. Numbers go to x0.6/0.8/1.2/1.4 (small whole numbers +-1 and +-2, times of day +-30 and +-60 minutes), choices to every option; slippage is stressed at 0-3 ticks. Default settings: the strategy's numeric parameters, the stop and target multiples, and slippage.",
     inputSchema: obj({ ...CFG,
-      keys: { type: "array", items: { type: "string" }, description: "Settings to vary, e.g. ['params.period', 'exec.slAtrMult', 'exec.entryType']. Default: see above." },
+      keys: { type: "array", items: { type: "string" }, description: "Settings to vary, e.g. ['params.period', 'exec.slAtrMult', 'exec.entryType', 'studies.0.params.lo', 'studies.0.tf']. Default: see above." },
       timeBudgetSec: { type: "integer", description: "Stop and report what is done after this long (default 120)." } }, ["strategy"]),
     async run(a) {
       const base = await L.resolveConfig(a);
@@ -355,24 +381,31 @@ export const TOOLS = [
       }
       if (!Array.isArray(keys) || !keys.length) throw new L.UserError("keys must be a non-empty array");
       for (const key of keys) {
+        if (studySlot(key, base.studies)) continue;
         const m = /^(params|exec|filter|rules)\.([A-Za-z0-9_]+)$/.exec(key);
-        if (!m) throw new L.UserError(`key "${key}" must look like params.<key>, exec.<key>, filter.<key> or rules.<key>`);
+        if (!m) throw new L.UserError(`key "${key}" must look like params.<key>, exec.<key>, filter.<key>, rules.<key> or studies.<n>.params.<key> / .tf / .gate`);
         if (!(m[2] in groups[m[1]])) throw new L.UserError(`unknown setting "${key}"`);
       }
       const baseScore = score(base), out = [];
       let stoppedEarly = false;
       for (const key of keys) {
         if (performance.now() - t0 > budget) { stoppedEarly = true; break; }
-        const [g, k] = key.split("."), cur = groups[g][k];
-        const values = sensitivityValues(key, cur, descs.get(k));
+        // A study's setting: its own descriptor, or its timeframes and gates as choices.
+        const slot = studySlot(key, base.studies);
+        const [g, k] = key.split(".");
+        const cur = slot ? (slot.param ? base.studies[slot.n].params[slot.param] : base.studies[slot.n][slot.field]) : groups[g][k];
+        const values = !slot ? sensitivityValues(key, cur, descs.get(k))
+                     : slot.field === "tf" ? [...new Set([0, ...STUDY_TFS.filter((m) => m <= 60), cur])].sort((p, q) => p - q)
+                     : slot.field === "gate" ? ["off", ...STUDIES[base.studies[slot.n].type].gates]
+                     : sensitivityValues(`params.${slot.param}`, cur, slot.desc);
         if (!values) { out.push({ key, current: cur, skipped: "no natural neighbours (a zero or open-ended setting): try explicit values with search" }); continue; }
         const rows = [];
         for (const v of values) {
           if (performance.now() - t0 > budget) { stoppedEarly = true; break; }
           if (v === cur) { rows.push({ value: v, current: true, ...baseScore }); continue; }
-          const o = { params: { ...(a.params || {}) }, exec: { ...(a.exec || {}) }, filter: { ...(a.filter || {}) }, rules: { ...(a.rules || {}) } };
-          o[g][k] = v;
-          rows.push({ value: v, ...score(await L.resolveConfig({ strategy: a.strategy, legacy: a.legacy, ...o })) });
+          const o = { params: { ...(a.params || {}) }, exec: { ...(a.exec || {}) }, filter: { ...(a.filter || {}) }, rules: { ...(a.rules || {}) }, studies: cloneStudies(a.studies) };
+          if (slot) setStudy(o.studies, slot, v); else o[g][k] = v;
+          rows.push({ value: v, ...score(await L.resolveConfig({ strategy: a.strategy, legacy: a.legacy, eval: a.eval, ...o })) });
         }
         const spread = (f) => Math.round((Math.max(...rows.map(f)) - Math.min(...rows.map(f))) * 10) / 10;
         const top = rows.reduce((p, q) => (q.y2026 > p.y2026 ? q : p));
@@ -426,7 +459,7 @@ export const TOOLS = [
   },
   {
     name: "chart_state",
-    description: "What the person is looking at in the chart lab (http://localhost:5178) right now: the strategy and every setting, the 30-day window on screen, the visible time range, the window's result and trades, and the sweep's summary if one has run. Use it before answering about 'this window' or 'this trade'.",
+    description: "What the person is looking at in the chart lab (http://localhost:5178) right now: the evaluation tab, the strategy and every setting, the indicators on the chart (and which gate entries), the 30-day window on screen, the visible time range, the window's result and trades, and the sweep's summary -- with each indicator's edge by state -- if one has run. Use it before answering about 'this window' or 'this trade'.",
     inputSchema: obj({}),
     async run() {
       const r = await chartFetch("/api/chart/state");
@@ -435,14 +468,18 @@ export const TOOLS = [
   },
   {
     name: "chart_apply",
-    description: "Change what the chart lab shows: switch strategy, set params / exec / filter / rules / funded settings (merged over the current ones), move to a window by date, and optionally run the full sweep. Returns the chart's state after it has applied the change -- the same numbers the person now sees.",
-    inputSchema: obj({ strategy: CFG.strategy, params: CFG.params, exec: CFG.exec, filter: CFG.filter, rules: CFG.rules,
+    description: "Change what the chart lab shows: switch strategy or evaluation tab, set params / exec / filter / rules / funded settings (merged over the current ones), replace the indicator studies on the chart, move to a window by date, and optionally run the full sweep. Returns the chart's state after it has applied the change -- the same numbers the person now sees.",
+    inputSchema: obj({ strategy: CFG.strategy, eval: { ...CFG.eval, description: "Switch the evaluation tab ('3000' or '1250'). Settings the eval decides reset; other changes carry over, as the tabs do." },
+                       params: CFG.params, exec: CFG.exec, filter: CFG.filter, rules: CFG.rules,
+                       studies: { ...CFG.studies, description: "REPLACES the chart's indicators: [{type, tf, params, gate}] (list_studies). [] removes them all." },
                        funded: { type: "object", description: "Funded-stage settings." },
                        date: { type: "string", description: "Move to the window starting this trading day (YYYY-MM-DD)." },
-                       reset: { type: "boolean", description: "Start from the strategy's own defaults rather than the current settings." },
+                       reset: { type: "boolean", description: "Start from the strategy's own defaults (under the eval) rather than the current settings." },
                        sweep: { type: "boolean", description: "Also run the full-history sweep and wait for it." } }),
     async run(a) {
-      if (a.strategy) await L.resolveConfig({ strategy: a.strategy, params: a.params, exec: a.exec, filter: a.filter, rules: a.rules });
+      if (a.eval != null) { try { evalOf(a.eval); } catch (e) { throw new L.UserError(e.message); } }
+      if (a.studies != null) { try { resolveStudies(a.studies, { strict: true }); } catch (e) { throw new L.UserError(`studies: ${e.message}; call list_studies`); } }
+      if (a.strategy) await L.resolveConfig({ strategy: a.strategy, eval: a.eval, params: a.params, exec: a.exec, filter: a.filter, rules: a.rules });
       return chartFetch("/api/chart/apply", a);
     },
   },
@@ -472,11 +509,30 @@ const addMonths = (ms, k) => { const d = new Date(ms); return Date.UTC(d.getUTCF
 // without replacement when there are more -- so a run cut short by its time
 // budget has still tried an even spread of the grid. combo(idx, a) is one
 // combination's overrides laid over the caller's own.
-function gridSpace(grid, cap) {
+// A study's setting in a grid or sensitivity key: studies.<index>.tf,
+// studies.<index>.gate or studies.<index>.params.<key>, for the request's studies.
+const STUDY_KEY = /^studies\.(\d+)\.(tf|gate|params\.([A-Za-z0-9_]+))$/;
+function studySlot(key, studies) {
+  const m = STUDY_KEY.exec(key);
+  if (!m) return null;
+  const n = Number(m[1]), st = (studies || [])[n];
+  if (!st) throw new L.UserError(`"${key}": there is no study ${n} -- pass it in 'studies'`);
+  const D = STUDIES[st.type];
+  if (!D) throw new L.UserError(`"${key}": unknown study type "${st.type}"`);
+  if (m[3] && !D.params.some((d) => d.key === m[3])) throw new L.UserError(`"${key}": ${st.type} has no param "${m[3]}"; it has ${D.params.map((d) => d.key).join(", ") || "none"}`);
+  return { n, field: m[3] ? "params" : m[2], param: m[3] || null, desc: m[3] ? D.params.find((d) => d.key === m[3]) : null };
+}
+const cloneStudies = (list) => (list || []).map((st) => ({ ...st, params: { ...(st.params || {}) } }));
+function setStudy(studies, slot, v) {
+  if (slot.param) studies[slot.n].params[slot.param] = v; else studies[slot.n][slot.field] = v;
+}
+
+function gridSpace(grid, cap, studies) {
   const keys = Object.keys(grid || {});
   if (!keys.length) throw new L.UserError("grid is empty");
   for (const k of keys) {
-    if (!/^(params|exec|filter|rules)\.[A-Za-z0-9_]+$/.test(k)) throw new L.UserError(`grid key "${k}" must look like params.<key>, exec.<key>, filter.<key> or rules.<key>`);
+    if (!/^(params|exec|filter|rules)\.[A-Za-z0-9_]+$/.test(k) && !studySlot(k, studies))
+      throw new L.UserError(`grid key "${k}" must look like params.<key>, exec.<key>, filter.<key>, rules.<key> or studies.<n>.params.<key> / .tf / .gate`);
     if (!Array.isArray(grid[k]) || !grid[k].length) throw new L.UserError(`grid["${k}"] must be a non-empty array`);
   }
   const total = keys.reduce((m, k) => m * grid[k].length, 1), r = mulberry32(7);
@@ -492,8 +548,13 @@ function gridSpace(grid, cap) {
     order = [...seen];
   }
   const combo = (idx, a) => {
-    const o = { params: { ...(a.params || {}) }, exec: { ...(a.exec || {}) }, filter: { ...(a.filter || {}) }, rules: { ...(a.rules || {}) } }, set = {};
-    for (const k of keys) { const v = grid[k][idx % grid[k].length]; idx = Math.floor(idx / grid[k].length); const [g, key] = k.split("."); o[g][key] = v; set[k] = v; }
+    const o = { params: { ...(a.params || {}) }, exec: { ...(a.exec || {}) }, filter: { ...(a.filter || {}) }, rules: { ...(a.rules || {}) }, studies: cloneStudies(a.studies) }, set = {};
+    for (const k of keys) {
+      const v = grid[k][idx % grid[k].length]; idx = Math.floor(idx / grid[k].length);
+      const slot = studySlot(k, a.studies);
+      if (slot) setStudy(o.studies, slot, v); else { const [g, key] = k.split("."); o[g][key] = v; }
+      set[k] = v;
+    }
     return { o, set };
   };
   return { total, order, sampled: total > cap, combo };
@@ -509,8 +570,8 @@ async function evalGrid(space, a, starts, W, budgetMs) {
   const t0 = performance.now(), groups = new Map();
   for (const idx of space.order) {
     const { o, set } = space.combo(idx, a);
-    const cfg = await L.resolveConfig({ strategy: a.strategy, legacy: a.legacy, ...o });
-    const rk = JSON.stringify([cfg.params, cfg.exec, cfg.filter]);
+    const cfg = await L.resolveConfig({ strategy: a.strategy, legacy: a.legacy, eval: a.eval, studies: a.studies, ...o });
+    const rk = JSON.stringify([cfg.params, cfg.exec, cfg.filter, gateKey(cfg.studies)]);
     if (!groups.has(rk)) groups.set(rk, []);
     groups.get(rk).push({ cfg, set });
   }

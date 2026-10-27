@@ -6,6 +6,7 @@
 import { resample } from "./resample.mjs";
 import { runBrackets, tradeStats, resolveExec } from "./engine.mjs";
 import { buildFilterContext, applyFilters, NO_FILTER, filterPeriods } from "./filters.mjs";
+import { buildEntryGate } from "./studies.mjs";
 
 // Only pay for the gate indicators when a gate is actually set.
 function filterIsActive(f) {
@@ -22,6 +23,8 @@ function filterIsActive(f) {
  * @param params   resolved signal params
  * @param exec     execution config (contracts, stops, costs) — see DEFAULT_EXEC
  * @param opts.fromMs  discard trades entering before this (warm-up trimming)
+ * @param opts.studies indicator studies (src/studies.mjs); those with a gate
+ *                     refuse entries their state does not allow
  */
 export function runStrategy(bars1m, strategy, params, exec, opts = {}) {
   const tfMin = params.timeframeMin ?? strategy.timeframeMin ?? 1;
@@ -43,6 +46,14 @@ export function runStrategy(bars1m, strategy, params, exec, opts = {}) {
   // It rides on the exec config rather than the signature so nothing that calls
   // runBrackets directly has to change.
   if (out.exitSig) x.exitSig = out.exitSig;
+  // Indicator gates refuse entries only, so they are a hook rather than a mask
+  // on the signal: a refused signal still flips an opposite position.
+  let studyGated = 0;
+  const gate = buildEntryGate(bars1m, tf, opts.studies);
+  if (gate) {
+    x.entryGate = gate;
+    for (let i = 0; i < sig.length; i++) if (sig[i] && !gate(i, sig[i])) studyGated++;
+  }
   const { trades } = runBrackets(tf, sig, out.atr, x);
 
   const kept = opts.fromMs != null
@@ -55,6 +66,7 @@ export function runStrategy(bars1m, strategy, params, exec, opts = {}) {
     overlays: out.overlays || [],
     stats: tradeStats(kept),
     signalsGated: gated,
+    studyGated,
   };
 }
 

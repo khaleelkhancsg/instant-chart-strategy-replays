@@ -11,6 +11,7 @@ from any of them agrees with the others.
 | tool | answers |
 | --- | --- |
 | `list_strategies`, `describe_strategy` | what exists, every parameter, the notes at the top of each file |
+| `list_studies` | the indicator studies any configuration can add: parameters, timeframes, gates |
 | `backtest` | trade stats; by year, exit, entry hour, weekday, direction and volatility; daily Sharpe, PSR and MinTRL |
 | `pass_rate` | combine pass rate by period, `calendar` and/or `bootstrap`, each with a ci95 |
 | `compare` | two configurations on the same windows, paired, with months won |
@@ -21,6 +22,18 @@ from any of them agrees with the others.
 | `chart_state`, `chart_apply` | read and drive the chart page the person has open |
 | `papers` | the methodology library in `papers/` |
 
+Every configuration also takes:
+- **`eval`**: `"3000"` (the default; $3,000 target, $2,000 drawdown, $1,000 daily
+  limit) or `"1250"` ($1,250, $1,000, $600). `src/evals.mjs` `evalBase` layers the
+  firm's numbers, the platform loss cap where a book models one, and a strategy's
+  own `evals` settings.
+- **`studies`**: indicators from `src/studies.mjs`, each `{type, tf, params, gate}`.
+  - With `gate: "off"` they only report: `backtest` returns `byStudy`, the trades
+    split by each study's state at their signal.
+  - With a gate they refuse entries.
+  - `search` / `walk_forward` / `sensitivity` vary them through keys like
+    `studies.0.params.lo`.
+
 When a question needs something the tools cannot do, write the script against
 `src/` (`runStrategy`, `replayWindow`, `src/dayeval.mjs`). Never copy engine or
 rule logic into a script: that is a second engine, and it drifts.
@@ -29,6 +42,12 @@ rule logic into a script: that is a second engine, and it drifts.
 
 - **Judge on 2026, and check inside 2026**: Jan–Mar vs Apr–Jul. The tools' default
   periods do this; all history is context.
+- **Name the eval** a pass rate is for: $3,000 or $1,250. The same book can rank
+  very differently on the two.
+- **An indicator edge is a lead, not a result.** `byStudy` / the Indicator edge
+  panel split the full run's trades; a gate also changes the trades that follow.
+  Confirm a gate with `pass_rate` or `compare`, and with `search` / `walk_forward`
+  if its settings were chosen.
 - **Name the pass-rate method.**
   - `calendar` is the chart's sweep: a window started on every day of the grid
     (`bars.ts[0] + k days`), each replayed with the full rule set.
@@ -61,6 +80,12 @@ rule logic into a script: that is a second engine, and it drifts.
   on purpose.
 - **`sameBarReentry` is non-causal.** It re-enters at an open that came before the
   exit, and the MCP refuses it.
+- **Indicator gates (`entryGate`) refuse entries only.** The refused signal still
+  flips an opposite position and cancels a working order. Studies read their last
+  CLOSED bar (`closedIndexMap`, clock-based like a live bot).
+- **`staleBars` / `staleMfeAtr`** leave a trade at the next open once it has run
+  that many bars without being that many ATRs in favour. It is the $1,250 bot's
+  40-minute exit, and the research's `exitFn` trade for trade.
 - **Day caps and overnight holds.** `dayLossStopUsd` and `dayProfitStopUsd` measure
   an open position from its fill, so use them with intraday-only books.
 - **After any engine change:**
@@ -70,19 +95,38 @@ rule logic into a script: that is a second engine, and it drifts.
 
 ## Tests
 
-- `npm run check`: test.mjs, audit, legacy parity, MCP end to end, chart link.
+- `npm run check`: test.mjs (261), audit, legacy parity (15), MCP end to end (18),
+  chart link (7).
 - `FUZZ_SEED=<n> FUZZ_SCALE=<k> node test.mjs`: the randomised invariants.
 - `PARITY_SEED`, `PARITY_SCALE`: the same for test/legacy_parity.mjs.
 
 ## The chart
 
 - `node server.mjs` serves http://localhost:5178; the preview config is "chart-lab".
+- **Restart the server after editing `src/` or `strategies/`.** Node loads them
+  once, while the page fetches the new files. Until then the page's window and
+  the server's sweep run different code and disagree.
 - The page posts what it shows to `/api/chart/state`, and `chart_apply` pushes
   changes it applies.
-- The address bar carries the strategy, the window and every changed setting
-  (`#s=donchian_shipped&d=2026-03-09&x.slippageTicks=1`), so a view can be shared
-  or restored.
+- The address bar carries the strategy, the window, the eval, the indicators and
+  every changed setting
+  (`#s=donchian_shipped&d=2026-03-09&e=1250&st=emacross:10::with&x.slippageTicks=1`),
+  so a view can be shared or restored.
+- The eval tabs and the indicators persist in localStorage when there is no link.
 - Data: `node prepare.mjs` builds the binary cache in `data/` once.
+- Strategy table for the README: `node --max-old-space-size=8192
+  research/strategy_table.mjs`. The README's other figures come from
+  `research/readme_figures.mjs`.
+
+## Adding an indicator study
+
+- Add an entry to `STUDIES` in `src/studies.mjs`: name, group, pane, kind (`price`,
+  `trend`, `band`, `osc`, `level`), params, warm-up, gates, levels, and a causal
+  `compute(bars, params)`.
+- test.mjs section 14 then checks it for lookahead and live = sweep
+  automatically.
+- A new kind of computation (not built on `src/indicators.mjs`) also gets a naive
+  reference test there, as VWAP and the day levels have.
 
 ## Papers
 
