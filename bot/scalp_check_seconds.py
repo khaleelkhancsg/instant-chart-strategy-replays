@@ -15,23 +15,15 @@ Fills: the entry is the next second bar's open + 1 tick; the target fills only i
 trades through it by a tick (--touch: a touch fills); $0.75 a side per lot; the stop sits
 where the loss including costs is $600 (74 points at 4 lots, 29 at 10, 14 at 20, 6.5 at 40).
 
-RESULT (Oct 13-26 2026, 10 sessions; 1-minute MACD, 299 crosses): below break-even at every
-size and target.
-  lots  target  need   momentum  fade   $/trade (momentum)
-     4     +2   98.7%    97.3%   97.3%     -8
-     4     +8   91.5%    89.1%   89.4%    -16
-    20     +2   93.8%    90.0%   88.0%    -24
-    20     +4   83.3%    77.9%   80.3%    -39
-    40     +4   71.4%    56.9%   61.2%   -122
-    40     +8   51.7%    37.1%   45.8%   -169
-Touch fills move it by 0-3 points; momentum is no better than the fade or a random direction.
-The more lots, the nearer the $600 stop, and the further below break-even.
-By MACD timeframe (5 s to 5 min: 389 to 9 crosses a day) the same: 4 of 168 cells (7 timeframes
-x 4 sizes x 3 targets x momentum / fade) get above break-even, all on the 5-minute MACD, where
-~90 crosses leave a standard error of ~5 points -- momentum at 20 lots +8 (+1.6 points), the
-fade at 4 lots (+0.2 to +1.4). Best momentum cell per timeframe: 5 / 10 / 20 / 30 s -$14 to
--$17 a trade, 1 min -$8, 2 min -$8, 5 min +$14. The bracket and the costs set the odds; when
-the entry happens hardly changes them.
+RESULT (Oct 13-26 2026, 10 sessions; every cross counted, $ per trade after costs):
+  1-minute MACD (299 crosses): below break-even at every size and target -- 4 lots +2 -$9,
+  20 lots +4 -$39, 40 lots +8 -$169 -- and the fade no better. Touch fills move it little.
+  By signal and bar size (--signal macd,ema9/21,ema20/50, --tf 5 s to 5 min): on 5-20 s bars
+  (22-389 crosses a day) every cell loses for all three signals; at 30 s three are above zero
+  (+$1 to +$7); the rest of the cells above zero sit on 1- to 5-minute bars, where 10 sessions
+  hold 10-160 crosses. research/scalp_slow_signals.mjs ran those signals and bars on 5 years of
+  1-minute bars: 190 of 192 cells lose even at best -- noise. The more lots, the nearer the
+  $600 stop and the bigger the loss; when and how the entry is timed hardly changes the odds.
 
     python bot/scalp_check_seconds.py [--tf 5,10,20,30,60,120,300] [--sessions 10] [--touch]
 """
@@ -55,10 +47,15 @@ def ema(xs, n):
     return out
 
 
-def crosses_of(ts, closes, tf_ms, keep):
-    """(signal close time, cross direction) for every MACD histogram cross whose bar keep() accepts."""
-    line = [f - s for f, s in zip(ema(closes, 12), ema(closes, 26))]
-    hist = [x - y for x, y in zip(line, ema(line, 9))]
+def crosses_of(ts, closes, tf_ms, keep, signal="macd"):
+    """(signal close time, cross direction) for every cross whose bar keep() accepts: the MACD
+    histogram through zero ("macd"), or a fast EMA through a slow one ("ema9/21")."""
+    if signal == "macd":
+        line = [f - s for f, s in zip(ema(closes, 12), ema(closes, 26))]
+        hist = [x - y for x, y in zip(line, ema(line, 9))]
+    else:
+        fast, slow = (int(x) for x in signal[3:].split("/"))
+        hist = [f - s for f, s in zip(ema(closes, fast), ema(closes, slow))]
     return [(ts[i] + tf_ms, 1 if hist[i] > 0 else -1) for i in range(1, len(ts))
             if keep(ts[i]) and ((hist[i] > 0 >= hist[i - 1]) or (hist[i] < 0 <= hist[i - 1]))]
 
@@ -77,7 +74,8 @@ def buckets(ts, closes, tf_ms):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--tf", default="5,10,20,30,60,120,300", help="MACD bar sizes in seconds (default 5,10,20,30,60,120,300)")
+    ap.add_argument("--tf", default="5,10,20,30,60,120,300", help="signal bar sizes in seconds (default 5,10,20,30,60,120,300)")
+    ap.add_argument("--signal", default="macd", help="comma separated: macd (histogram through zero) and/or emaF/S, e.g. ema9/21")
     ap.add_argument("--sessions", type=int, default=10, help="the latest N sessions with 1-second bars (default 10)")
     ap.add_argument("--touch", action="store_true", help="a touch of the target fills (default: price must trade through it)")
     a = ap.parse_args()
@@ -121,8 +119,13 @@ def main():
     print(f"{cid}: {len(sec)} sessions with 1-second bars, {day(min(sec)):%Y-%m-%d} .. {day(max(sec)):%Y-%m-%d};"
           f" target fills on {'a touch' if a.touch else 'a trade through it'}")
 
-    def first_passage(sigs, sign, t, X):
-        ok = tot = 0
+    def first_passage(sigs, sign, stops):
+        """For each cell (lots, target): the share of entries whose target came before the stop,
+        and the $ per trade -- a target is +win, a stop -$600, an entry still open at the end of the
+        data (15:05) is closed there at market. One walk per entry settles every cell; a stop and
+        a target in the same second is a stop."""
+        cells = [(c, stops[c], c[1] + (0 if a.touch else TICK)) for c in CELLS]
+        ok, tot, pnl = {c: 0 for c in CELLS}, {c: 0 for c in CELLS}, {c: 0.0 for c in CELLS}
         for at, dr, d in sigs:
             ts, bars = sec[d]
             lo, hi = 0, len(ts)
@@ -136,43 +139,57 @@ def main():
                 continue
             s = sign * dr
             fill = bars[lo][0] + s * TICK
-            tp, sl = fill + s * (t + (0 if a.touch else TICK)), fill - s * X
+            open_ = list(cells)
             for k in range(lo, len(ts)):
                 o, h, l, c = bars[k]
-                if (l <= sl) if s == 1 else (h >= sl):
-                    tot += 1
+                adverse, favour = ((fill - l), (h - fill)) if s == 1 else ((h - fill), (fill - l))
+                still = []
+                for cell, X, T in open_:
+                    if adverse >= X:
+                        tot[cell] += 1
+                        pnl[cell] -= 600
+                    elif favour >= T:
+                        tot[cell] += 1
+                        ok[cell] += 1
+                        pnl[cell] += need[cell][1]
+                    else:
+                        still.append((cell, X, T))
+                open_ = still
+                if not open_:
                     break
-                if (h >= tp) if s == 1 else (l <= tp):
-                    tot += 1
-                    ok += 1
-                    break
-        return 100 * ok / max(1, tot)
+            for cell, X, T in open_:                    # still open at the end of the data: closed at market
+                p = (bars[-1][3] - s * TICK - fill) * s * 2 * cell[0] - 2 * FEE * cell[0]
+                tot[cell] += 1
+                ok[cell] += p > 0
+                pnl[cell] += p
+        return {c: (100 * ok[c] / max(1, tot[c]), pnl[c] / max(1, tot[c])) for c in CELLS}
 
     need = {}
     for L, t in CELLS:
         win = L * (2 * t - 2 * FEE) - 2 * TICK * L       # the target is a limit: entry slippage only
         need[(L, t)] = (100 * 600 / (600 + win), win, (600 - 2 * FEE * L) / (2 * L) - TICK)
-    print("\n   ACTUAL WIN RATE MINUS THE WIN RATE NEEDED TO BREAK EVEN, in points (positive = profitable), momentum | fade")
-    print("   lots (stop pts) / target:  " + "".join(f"{f'{L} ({need[(L, t)][2]:.0f}) +{t}':>14}" for L, t in CELLS))
-    print("   needed:                    " + "".join(f"{need[c][0]:13.1f}%" for c in CELLS))
-    for tf in tfs:
-        tf_ms = tf * 1000
-        sigs = []
-        if tf < 60:
-            for d, (ts, bars) in sec.items():
-                bt, bc = buckets(ts, [b[3] for b in bars], tf_ms)
-                sigs += [(at, dr, d) for at, dr in crosses_of(bt, bc, tf_ms, rth)]
-        else:
-            bt, bc = buckets(ts1, [one[x] for x in ts1], tf_ms)
-            sigs = [(at, dr, core.trading_day(at - tf_ms)) for at, dr in crosses_of(bt, bc, tf_ms, rth)]
-            sigs = [s for s in sigs if s[2] in sec]
-        res = {c: (first_passage(sigs, 1, c[1], need[c][2]), first_passage(sigs, -1, c[1], need[c][2])) for c in CELLS}
-        label = f"{tf} s" if tf < 60 else f"{tf // 60} min"
-        print(f"   {label:>6} ({len(sigs) / len(sec):5.0f} a day)    " + "".join(f"{res[c][0] - need[c][0]:+6.1f} |{res[c][1] - need[c][0]:+5.1f} " for c in CELLS))
-        best = max(CELLS, key=lambda c: res[c][0] - need[c][0])
-        p = res[best][0] / 100
-        print(f"   {'':22}best for momentum: {best[0]} lots +{best[1]}: {res[best][0]:.1f}% against {need[best][0]:.1f}% needed,"
-              f" {p * need[best][1] - (1 - p) * 600:+.0f} $ a trade")
+    stops = {c: need[c][2] for c in CELLS}
+    for signal in a.signal.split(","):
+        print(f"\n   {signal.upper()} -- $ PER TRADE AFTER COSTS (every cross counted), momentum | fade")
+        print("   lots (stop pts) / target:  " + "".join(f"{f'{L} ({need[(L, t)][2]:.0f}) +{t}':>14}" for L, t in CELLS))
+        print("   a win pays:                " + "".join(f"{f'+${need[c][1]:.0f}':>14}" for c in CELLS))
+        for tf in tfs:
+            tf_ms = tf * 1000
+            sigs = []
+            if tf < 60:
+                for d, (ts, bars) in sec.items():
+                    bt, bc = buckets(ts, [b[3] for b in bars], tf_ms)
+                    sigs += [(at, dr, d) for at, dr in crosses_of(bt, bc, tf_ms, rth, signal)]
+            else:
+                bt, bc = buckets(ts1, [one[x] for x in ts1], tf_ms)
+                sigs = [(at, dr, core.trading_day(at - tf_ms)) for at, dr in crosses_of(bt, bc, tf_ms, rth, signal)]
+                sigs = [s for s in sigs if s[2] in sec]
+            mo, fa = first_passage(sigs, 1, stops), first_passage(sigs, -1, stops)
+            label = f"{tf} s" if tf < 60 else f"{tf // 60} min"
+            print(f"   {label:>6} ({len(sigs) / len(sec):5.0f} a day)    " + "".join(f"{mo[c][1]:+6.0f} |{fa[c][1]:+5.0f} " for c in CELLS))
+            best = max(CELLS, key=lambda c: mo[c][1])
+            print(f"   {'':22}best for momentum: {best[0]} lots +{best[1]}: wins {mo[best][0]:.1f}% against {need[best][0]:.1f}% needed,"
+                  f" {mo[best][1]:+.0f} $ a trade")
 
 
 if __name__ == "__main__":
