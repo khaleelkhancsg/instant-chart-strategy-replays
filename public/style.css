@@ -147,6 +147,34 @@ select:focus, input:focus { border-color: var(--accent); }
 
 .sweep-foot { margin-top: 10px; font-family: var(--mono); font-size: 9.5px; color: var(--dim); }
 .sweep-foot .warn { color: var(--warn); }
+.stat-v .ci, .ci { color: var(--dim); font-size: 10px; }
+.stale { opacity: .45; }
+
+/* trade list */
+.ttable { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 10.5px; }
+.ttable th { text-align: left; font-weight: 500; color: var(--dim); font-size: 9.5px; text-transform: uppercase; letter-spacing: .4px; padding: 0 3px 4px; }
+.ttable td { padding: 3px; border-top: 1px solid var(--line); white-space: nowrap; }
+.ttable .num { text-align: right; }
+.ttable tbody tr { cursor: pointer; }
+.ttable tbody tr:hover td { background: var(--panel-2); }
+.ttable tr.pos td.num { color: var(--bull); }
+.ttable tr.neg td.num { color: var(--bear); }
+.ttable tr.skip td { color: var(--dim); }
+.tt-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 7px; font-family: var(--mono); font-size: 9.5px; color: var(--dim); }
+button.mini { padding: 2px 8px; font-size: 10.5px; font-family: var(--mono); flex: 0 0 auto; }
+
+/* P&L by hour / weekday: diverging bars around a centre line */
+.bk { display: grid; grid-template-columns: 30px 1fr 44px 1fr 44px; align-items: center; gap: 5px; font-family: var(--mono); font-size: 10px; margin-bottom: 2px; }
+.bk.head { color: var(--dim); font-size: 9px; text-transform: uppercase; letter-spacing: .4px; }
+.bk.head .bk-h { grid-column: span 2; text-align: center; }
+.bk-k { color: var(--muted); }
+.bk-bar { position: relative; height: 7px; background: var(--line); border-radius: 2px; }
+.bk-bar::after { content: ""; position: absolute; left: 50%; top: -1px; bottom: -1px; width: 1px; background: var(--line-2); }
+.bk-bar i { position: absolute; top: 0; bottom: 0; }
+.bk-bar i.pos { left: 50%; background: var(--bull); border-radius: 0 2px 2px 0; }
+.bk-bar i.neg { right: 50%; background: var(--bear); border-radius: 2px 0 0 2px; }
+.bk-v { text-align: right; }
+.bk-v.pos { color: var(--bull); } .bk-v.neg { color: var(--bear); }
 
 .sidebar-actions { padding: 12px 14px 20px; display: flex; gap: 8px; margin-top: auto; }
 button {

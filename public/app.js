@@ -92,6 +92,50 @@ const EXEC_PARAMS = [
   { key: "tickSize", label: "Tick size (points)", type: "float", min: 0.25, max: 1, step: 0.25, default: 0.25 },
 ];
 
+// How a signal becomes a position, and what a 1-minute bar cannot say -- the
+// engine's order model and intrabar options (src/engine.mjs DEFAULT_EXEC). The
+// "(old)" choices reproduce the engine before these were made explicit.
+const ORDER_PARAMS = [
+  { key: "entryType", label: "Entry order", type: "select", default: "market",
+    options: [["market", "Market, at the next open"], ["stop", "Stop beyond the next open (the bot's)"], ["limit", "Limit back into the move"]],
+    hint: "Stop: rests 'trigger' x ATR beyond the open of the bar after the signal, working from the bar after that, so only breakouts that follow through fill. donchian_shipped runs the bot's stop." },
+  { key: "entryTriggerAtr", label: "Stop entry: trigger (× ATR)", type: "float", min: 0, max: 3, step: 0.05, default: 0.15 },
+  { key: "entryLimitAtr", label: "Limit entry: offset (× ATR)", type: "float", min: 0, max: 5, step: 0.05, default: 0.25 },
+  { key: "entryWindowBars", label: "Entry order works for (bars)", type: "int", min: 1, max: 200, step: 1, default: 10 },
+  { key: "entryRefused", label: "A stop the open already passed", type: "select", default: "limit",
+    options: [["limit", "Rests as a limit at the same price (the bot)"], ["optimistic", "Fills anyway (not achievable)"]],
+    hint: "A platform refuses a stop on the wrong side of the market -- 40.8% of the Donchian bot's arms." },
+  { key: "cancelOpposite", label: "Opposite signal cancels the order", type: "select", bool: true, default: "on", options: onOff() },
+  { key: "tpFromFill", label: "Stop/limit entry: target from", type: "select", bool: true, default: "off",
+    options: [["off", "The order's reference open"], ["on", "The fill price"]] },
+  { key: "exitFirst", label: "Exits decided at a close fill", type: "select", bool: true, default: "on",
+    options: [["on", "At the next open, first"], ["off", "After that bar's stop / target (old)"]],
+    hint: "A flip, exit signal or time stop is decided on the closed bar and fills at the next open -- before that bar can touch the stop or target." },
+  { key: "entryBarExits", label: "Entry bar can stop / target it", type: "select", bool: true, default: "on",
+    options: [["on", "Yes -- the whole bar follows an open fill"], ["off", "No (old)"]] },
+  { key: "sameBarTie", label: "Stop and target in one bar", type: "select", default: "stop",
+    options: [["stop", "Stop first (pessimistic)"], ["target", "Target first"]] },
+  { key: "tpGapFill", label: "Open gaps through the target", type: "select", default: "open",
+    options: [["open", "Fills at the open"], ["level", "Fills at the target (old)"]] },
+  { key: "entryGapFill", label: "Open gaps through an entry order", type: "select", default: "open",
+    options: [["open", "Fills at the open"], ["level", "Fills at its price (old)"]] },
+  { key: "fillBarStop", label: "Resting fill bar: stop counts if", type: "select", default: "touch",
+    options: [["touch", "Touched (pessimistic)"], ["close", "Closed beyond"]] },
+  { key: "limitFillTp", label: "Limit fill bar: target counts if", type: "select", default: "high",
+    options: [["high", "Touched"], ["close", "Closed beyond"]] },
+  { key: "sessionEndFlat", label: "A session that closes early", type: "select", default: "close",
+    options: [["close", "Flattens at its last bar"], ["none", "Carries over (old)"]] },
+  { key: "capEndsDay", label: "A fired platform cap ends the day", type: "select", bool: true, default: "on", options: onOff("Yes", "No (old)") },
+  { key: "dayBreakerUsd", label: "Engine day breaker $ (0 = off)", type: "int", min: 0, max: 5000, step: 50, default: 0,
+    hint: "No new orders, and working ones cancelled, once the day's realised P&L is this far down -- where the bot applies it. The rules' 'Your daily breaker' is the post-hoc version." },
+  { key: "dayProfitBlockUsd", label: "Engine profit block $ (0 = off)", type: "int", min: 0, max: 10000, step: 50, default: 0 },
+  { key: "scaleOutFrac", label: "Scale-out: share banked (0 = off)", type: "float", min: 0, max: 0.9, step: 0.05, default: 0,
+    hint: "Banks this share once price is the distance below in favour; the rest runs to the target with the stop unchanged." },
+  { key: "scaleOutAtr", label: "Scale-out at (× ATR in favour)", type: "float", min: 0.1, max: 20, step: 0.1, default: 1 },
+  { key: "flipOnAnySignal", label: "A same-way signal re-enters", type: "select", bool: true, default: "off", options: onOff(),
+    hint: "Closes and re-enters on every new signal, for books whose trade is one signal-to-signal segment." },
+];
+
 // Funded stage. No consistency requirement here — a payout is unlocked by
 // accumulating winning days worth more than a threshold.
 const FUNDED_PARAMS = [
@@ -292,13 +336,18 @@ function buildParamControl(d, value, onChange) {
   return wrap;
 }
 
+// Which groups are folded is a preference, kept across strategies and visits.
+const FOLDED = (() => { try { return JSON.parse(localStorage.getItem("mnq.folded") || "{}"); } catch { return {}; } })();
 function buildGroup(title, collapsed = false) {
   const g = document.createElement("div");
-  g.className = "group" + (collapsed ? " collapsed" : "");
+  g.className = "group" + ((title in FOLDED ? FOLDED[title] : collapsed) ? " collapsed" : "");
   const head = document.createElement("div");
   head.className = "group-head";
   head.innerHTML = `<span class="group-title">${title}</span><span class="group-caret">▼</span>`;
-  head.addEventListener("click", () => g.classList.toggle("collapsed"));
+  head.addEventListener("click", () => {
+    FOLDED[title] = g.classList.toggle("collapsed");
+    try { localStorage.setItem("mnq.folded", JSON.stringify(FOLDED)); } catch { /* private mode */ }
+  });
   const body = document.createElement("div");
   body.className = "group-body";
   g.appendChild(head); g.appendChild(body);
@@ -315,11 +364,21 @@ function renderSidebar() {
   gStats.body.innerHTML = `<div class="statgrid" id="statGrid"></div>`;
   host.appendChild(gStats);
 
+  // Every signal in the window, taken or blocked by a rule: click one to zoom to it.
+  const gTrades = buildGroup("Trades in this window", true);
+  gTrades.querySelector(".group-title").insertAdjacentHTML("beforeend", `<span id="tradeCount"></span>`);
+  gTrades.body.innerHTML = `<div id="tradeTable"></div>`;
+  host.appendChild(gTrades);
+
   // …and the same view across every window in the dataset. One window is an
   // anecdote; this panel is the distribution the anecdote was drawn from.
   const gSweep = buildGroup("All windows");
   gSweep.body.innerHTML = `<div id="sweepPanel"></div>`;
   host.appendChild(gSweep);
+
+  const gBreak = buildGroup("P&L by hour and weekday", true);
+  gBreak.body.innerHTML = `<div id="breakPanel"></div>`;
+  host.appendChild(gBreak);
 
   // Passing the evaluation is a gate, not the goal — this is what the same book
   // would actually pay out once funded.
@@ -356,6 +415,7 @@ function renderSidebar() {
     host.appendChild(group);
   };
   bind(buildGroup("Execution & costs"), EXEC_PARAMS, S.exec);
+  bind(buildGroup("Order model & intrabar"), ORDER_PARAMS, S.exec, () => onParamsChanged(warmupGrew()));
   // An active filter, or a longer filter period, can need more warm-up.
   bind(buildGroup("Signal filters", true), FILTER_PARAMS, S.filter, () => onParamsChanged(warmupGrew()));
   // Allowing overnight holds needs a longer warm-up (src/window.mjs).
@@ -366,6 +426,109 @@ function renderSidebar() {
 
   paintSweepStats();
   paintFundedStats();
+  paintBreakdown();
+  if (lastResult) paintTrades(lastResult.replay);
+}
+
+// ───────────────────── trades in this window ─────────────────────
+const WEEKDAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const SKIP_WHY = { profitStop: "daily profit stop", breaker: "your daily breaker", dailyLoss: "firm daily limit", outside: "outside window" };
+const ctClock = (m) => (m == null ? "" : `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`);
+// The trading day a time falls in (its session opens at 17:00 CT the evening before).
+const tradingDayOf = (ms) => S.blob.tday[Math.min(S.blob.count - 1, indexAtOrAfter(S.blob.ts, ms))];
+
+function paintTrades(replay) {
+  const host = $("tradeTable");
+  if (!host || !S.blob) return;
+  const ev = replay.events;
+  $("tradeCount").textContent = ev.length ? ` · ${ev.length}` : "";
+  if (!ev.length) { host.innerHTML = `<div class="sweep-empty">No signals in this window.</div>`; return; }
+  const rows = ev.map((e, k) => {
+    const t = e.t, d = new Date(tradingDayOf(t.entryTime) * DAY);
+    const tip = `${t.dir === 1 ? "Long" : "Short"} ${t.contracts} @ ${t.entryPrice.toFixed(2)} → ${t.exitPrice.toFixed(2)}` +
+                (e.taken ? ` · equity after ${fmtUsd(e.cum)}` : ` · blocked by ${SKIP_WHY[e.skip] || e.skip}`);
+    return `<tr data-k="${k}" class="${!e.taken ? "skip" : t.pnl > 0 ? "pos" : "neg"}" title="${tip}">` +
+      `<td>${WEEKDAY[d.getUTCDay()]} ${d.toISOString().slice(5, 10)} ${ctClock(t.entryCt)}</td>` +
+      `<td>${t.dir === 1 ? "L" : "S"}${t.contracts}</td><td>${t.reason}</td>` +
+      `<td class="num">${e.taken ? fmtUsd(t.pnl) : "skipped"}</td></tr>`;
+  });
+  host.innerHTML =
+    `<table class="ttable"><thead><tr><th>Entry (CT)</th><th>Side</th><th>Exit</th><th class="num">P&amp;L</th></tr></thead>` +
+    `<tbody>${rows.join("")}</tbody></table>` +
+    `<div class="tt-foot"><span>Click a trade to zoom to it</span><button class="mini" id="tradesCsv" title="Download this window's trades">CSV</button></div>`;
+  host.querySelector("tbody").onclick = (me) => {
+    const tr = me.target.closest("tr");
+    if (!tr) return;
+    const t = ev[+tr.dataset.k].t, pad = Math.max(45, (t.exitSrc - t.entrySrc) * 0.75);
+    S.chart.zoomTo(t.entrySrc - pad, t.exitSrc + pad);
+  };
+  $("tradesCsv").onclick = () => downloadCsv(`${S.strategyDesc.id}_${$("startDate").value}_trades.csv`, [
+    ["entry_utc", "trading_day", "entry_ct", "side", "contracts", "entry_price", "exit_utc", "exit_price", "reason", "pnl", "fees",
+     "taken", "skipped_by", "equity_after", "floor", "mae", "mfe", "bars"],
+    ...ev.map((e) => {
+      const t = e.t;
+      return [isoMin(t.entryTime), new Date(tradingDayOf(t.entryTime) * DAY).toISOString().slice(0, 10), ctClock(t.entryCt),
+              t.dir === 1 ? "long" : "short", t.contracts, t.entryPrice.toFixed(2), isoMin(t.exitTime), t.exitPrice.toFixed(2), t.reason,
+              t.pnl.toFixed(2), (t.fees || 0).toFixed(2), e.taken, e.skip || "", e.taken ? e.cum.toFixed(2) : "", e.floor == null ? "" : e.floor.toFixed(2),
+              t.mae == null ? "" : t.mae.toFixed(2), t.mfe == null ? "" : t.mfe.toFixed(2), t.bars];
+    }),
+  ]);
+}
+
+function downloadCsv(name, rows) {
+  const cell = (v) => { const s = v == null ? "" : String(v); return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([rows.map((r) => r.map(cell).join(",")).join("\r\n") + "\r\n"], { type: "text/csv" }));
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+// An approximate 95% interval for a pass rate (Wilson), in percent. Neighbouring
+// windows share all but a day of their days, so the honest sample is about one
+// window per windowDays -- which is why these are wide, and should be.
+function wilson(p, nEff) {
+  if (!(nEff > 0)) return null;
+  const z2 = 1.96 * 1.96, d = 1 + z2 / nEff;
+  const c = (p + z2 / (2 * nEff)) / d, h = (1.96 * Math.sqrt((p * (1 - p)) / nEff + z2 / (4 * nEff * nEff))) / d;
+  return [Math.max(0, c - h) * 100, Math.min(1, c + h) * 100];
+}
+const ciText = (ci) => (ci ? `${ci[0].toFixed(0)}–${ci[1].toFixed(0)}%` : "—");
+
+// ───────────────────── P&L by hour and weekday ─────────────────────
+const fmtK = (v) => { const a = Math.abs(v), s = v < 0 ? "-" : ""; return a >= 1000 ? `${s}$${(a / 1000).toFixed(a >= 1e5 ? 0 : 1)}k` : `${s}$${Math.round(a)}`; };
+function paintBreakdown() {
+  const host = $("breakPanel");
+  if (!host) return;
+  const sw = S.sweep;
+  if (!sw || !sw.byHourCt) {
+    host.innerHTML = `<div class="sweep-empty">${S.sweeping ? "Sweeping…" : "Run the sweep to see where the P&L comes from."}</div>`;
+    return;
+  }
+  // Diverging bars: profit to the right of the centre line, loss to the left,
+  // each column scaled to its own largest bucket.
+  const table = (b, label, name, order) => {
+    const keys = [...new Set([...b.all, ...b.y2026].map((r) => r.key))].sort((p, q) => order(p) - order(q));
+    const get = (rows, k) => rows.find((r) => r.key === k);
+    const top = (rows) => Math.max(1, ...rows.map((r) => Math.abs(r.net)));
+    const mA = top(b.all), m26 = top(b.y2026);
+    const cell = (r, m) => {
+      if (!r) return `<span class="bk-bar"></span><span class="bk-v">—</span>`;
+      const w = (Math.abs(r.net) / m) * 50;
+      return `<span class="bk-bar" title="${r.trades} trades · ${((r.wins / r.trades) * 100).toFixed(0)}% won · ${fmtUsd(r.net)}">` +
+             `<i class="${r.net >= 0 ? "pos" : "neg"}" style="width:${w.toFixed(1)}%"></i></span><span class="bk-v ${r.net >= 0 ? "pos" : "neg"}">${fmtK(r.net)}</span>`;
+    };
+    return `<div class="bk head"><span class="bk-k">${label}</span><span class="bk-h">All history</span><span class="bk-h">2026</span></div>` +
+      keys.map((k) => `<div class="bk"><span class="bk-k">${name(k)}</span>${cell(get(b.all, k), mA)}${cell(get(b.y2026, k), m26)}</div>`).join("");
+  };
+  host.innerHTML = `<div class="${S.sweepStale ? "stale" : ""}">` +
+    `<div class="sweep-label" style="margin-top:2px">Net P&amp;L by entry hour (CT)</div>` +
+    table(sw.byHourCt, "Hour", (h) => String(h).padStart(2, "0"), (h) => (h + 7) % 24) +
+    `<div class="sweep-label">Net P&amp;L by weekday</div>` +
+    table(sw.byWeekday, "Day", (d) => WEEKDAY[d], (d) => (d + 6) % 7) +
+    `<div class="sweep-foot">Hover a bar for its trades and win rate. The hour is the fill's; the weekday is the trading day the trade closed in. Thin buckets are noise.</div></div>`;
 }
 
 // ───────────────────── funded-stage payout panel ─────────────────────
@@ -478,11 +641,29 @@ function paintSweepStats() {
     </div>`;
   }).join("") + `<div class="yr-note">* partial year — fewer windows behind the number</div>`;
 
+  // The house check: results are judged on 2026, and 2026 is split in two so a
+  // result has to hold in both halves.
+  const W = S.rules.windowDays;
+  const part = (lo, hi) => {
+    const ws = windows.filter((w) => w.startMs >= lo && w.startMs < hi);
+    const p = ws.filter((w) => w.outcome === "PASS").length / (ws.length || 1);
+    return ws.length ? { n: ws.length, rate: p * 100, ci: wilson(p, ws.length / W) } : null;
+  };
+  const y26 = Date.UTC(2026, 0, 1), apr26 = Date.UTC(2026, 3, 1);
+  const h26 = part(y26, Infinity), q1 = part(y26, apr26), q2 = part(apr26, Infinity);
+  const house = h26 ? `
+    <div class="sweep-label">2026 — judged here, checked in halves</div>
+    <div class="statgrid">
+      ${statCell("2026 pass rate", `${h26.rate.toFixed(1)}% <span class="ci">${ciText(h26.ci)}</span>`)}
+      ${statCell("Jan–Mar · Apr–Jul", q1 && q2 ? `${q1.rate.toFixed(1)}% · ${q2.rate.toFixed(1)}%` : "—")}
+    </div>
+    <div class="yr-note">${h26.n} windows, but only ≈${(h26.n / W).toFixed(1)} independent ${W}-day periods — hence the wide interval</div>` : "";
+
   host.innerHTML = `
     <div class="sweep-head ${stale ? "stale" : ""}">
       <div class="sweep-rate">${s.passRate.toFixed(1)}<span>%</span></div>
       <div class="sweep-sub">
-        pass rate<br>
+        pass rate · <span title="Approximate 95% interval, counting one independent sample per ${W} days of start dates (neighbouring windows share most of their days)">95% CI ${ciText(wilson(s.passRate / 100, s.n / W))}</span><br>
         <span class="k">${s.n.toLocaleString()} windows · every start date</span>
       </div>
     </div>
@@ -508,6 +689,8 @@ function paintSweepStats() {
       ${statCell("Median breach margin", fmtUsd(median(failed.map((w) => w.minCushion).filter((v) => v != null)) ?? 0), "neg")}
     </div>
 
+    ${house}
+
     <div class="sweep-label">Pass rate by year</div>
     <div class="yrs">${yearRows}</div>
 
@@ -521,11 +704,18 @@ function paintSweepStats() {
       ${statCell("Avg win / loss", `${fmtUsd(g.avgWin)} / ${fmtUsd(g.avgLoss)}`)}
     </div>
 
-    <div class="sweep-foot">${
+    <div class="sweep-foot tt-foot">${
       stale ? `<span class="warn">Parameters changed — re-sweeping…</span>`
-            : `${S.sweep.backtestMs}ms backtest + ${S.sweep.sweepMs}ms sweep · ${passed.length} pass / ${failed.length} breach`
-    }</div>
+            : `<span>${S.sweep.backtestMs}ms backtest + ${S.sweep.sweepMs}ms sweep · ${passed.length} pass / ${failed.length} breach</span>`
+    }<button class="mini" id="sweepCsv" title="Download every window's result">CSV</button></div>
   `;
+  $("sweepCsv").onclick = () => {
+    const cols = Object.keys(windows[0] || {});
+    downloadCsv(`${S.strategyDesc.id}_sweep.csv`, [
+      cols.map((c) => (c === "startMs" ? "start_utc" : c)),
+      ...windows.map((w) => cols.map((c) => (c === "startMs" ? isoMin(w[c]) : w[c]))),
+    ]);
+  };
 }
 
 // ───────────────────────────── recompute ─────────────────────────────
@@ -556,8 +746,7 @@ function recompute() {
   const lastT = res.trades[res.trades.length - 1];
   if (lastT && lastT.reason === "EOD" && S.blob.ts[S.blob.ts.length - 1] < S.meta.endMs) {
     S.tailMin *= 10;
-    loadWindow(S.windowStart, { keepTail: true });
-    return;
+    return loadWindow(S.windowStart, { keepTail: true });
   }
   const replay = replayWindow(res.trades, S.windowStart, S.rules);
   const ms = performance.now() - t0;
@@ -565,10 +754,13 @@ function recompute() {
   lastResult = { res, replay };
   paintChart(res, replay);
   paintStats(res, replay);
+  paintTrades(replay);
+  queueHash();
 
   $("perf").innerHTML =
     `<b>${ms.toFixed(1)} ms</b> local re-run<br>${res.tf.close.length.toLocaleString()} × ${S.params.timeframeMin}m bars` +
     (res.signalsGated ? `<br><span style="color:var(--warn)">${res.signalsGated} signals gated</span>` : "");
+  queuePostState();
 }
 
 function paintChart(res, replay) {
@@ -720,8 +912,9 @@ async function loadWindow(startMs, { keepTail = false } = {}) {
   $("winRange").textContent = `→ ${end.toISOString().slice(0, 10)} · ${(S.winEndLocal - S.winStartLocal).toLocaleString()} 1-min bars`;
   if (S.nav) { S.nav.cursorMs = startMs; S.nav.draw(); }
 
-  recompute();
+  const settled = recompute();   // a promise while a longer tail is still loading
   scheduleSweep();
+  return settled;
 }
 
 // The current settings need more history before the window than is loaded.
@@ -778,6 +971,7 @@ async function runSweep() {
     S.nav.set(r.windows, [S.meta.startMs, S.meta.endMs], S.windowStart);
     paintSweepStats();
     paintFundedStats();
+    paintBreakdown();
     const s = r.summary;
     $("navSummary").innerHTML =
       `<span class="k">${s.n.toLocaleString()} × ${S.rules.windowDays}-day windows</span> · ` +
@@ -793,7 +987,139 @@ async function runSweep() {
   } finally {
     S.sweeping = false;
     $("runSweep").disabled = false;
+    queuePostState();
   }
+}
+
+// ─────────────────────────────── the chart link ───────────────────────────────
+// The page tells the server what it shows -- strategy, every setting, the window
+// on screen, the visible range, the trade under the cursor, the window's result
+// and the sweep's -- whenever that changes, and applies changes the server pushes
+// to it. The MCP server's chart_state / chart_apply tools are the other end, so a
+// prompt beside the chart can read it and drive it.
+const isoMin = (ms) => (Number.isFinite(ms) ? new Date(ms).toISOString().slice(0, 16).replace("T", " ") : null);
+function chartSnapshot(appliedId, applyError) {
+  const rp = lastResult && lastResult.replay, st = rp && rp.stats;
+  const c = S.chart, cb = c && c.data && c.data.bars;
+  const tr = (t) => ({ entry: isoMin(t.entryTime), exit: isoMin(t.exitTime), dir: t.dir === 1 ? "long" : "short", contracts: t.contracts,
+                       entryPrice: +t.entryPrice.toFixed(2), exitPrice: +t.exitPrice.toFixed(2), reason: t.reason, pnl: +t.pnl.toFixed(2) });
+  return {
+    appliedId, applyError,
+    strategy: S.strategyDesc && S.strategyDesc.id, strategyName: S.strategyDesc && S.strategyDesc.name,
+    params: S.params, exec: S.exec, rules: S.rules, filter: S.filter, funded: S.funded,
+    window: { start: isoMin(S.windowStart), tradingDay: $("startDate").value, end: isoMin(S.windowStart + S.rules.windowDays * DAY) },
+    view: cb && cb.count ? { from: isoMin(cb.ts[Math.max(0, Math.floor(c.i0))]), to: isoMin(cb.ts[Math.min(cb.count - 1, Math.ceil(c.i1) - 1)]), candleMin: c.tfMin } : null,
+    result: rp ? { outcome: rp.outcome, net: Math.round(st.netPnl), trades: st.trades, skipped: st.skipped, winRate: +st.winRate.toFixed(1),
+                   bestDay: Math.round(st.bestDay), profitNeeded: Math.round(st.profitNeeded),
+                   closestToBreach: st.minCushion == null ? null : Math.round(st.minCushion), resolvedAt: isoMin(rp.passMs ?? rp.failMs) } : null,
+    trades: rp ? rp.events.slice(0, 300).map((e) => ({ ...tr(e.t), taken: e.taken, ...(e.skip ? { skipped: e.skip } : {}) })) : [],
+    hoveredTrade: window._hoverTrade ? { ...tr(window._hoverTrade), taken: window._hoverTrade.taken } : null,
+    sweep: S.sweep ? { ...S.sweep.summary, stale: !!S.sweepStale, funded: S.sweep.funded || null } : null,
+  };
+}
+function postState(appliedId, applyError) {
+  fetch("/api/chart/state", { method: "POST", headers: { "content-type": "application/json" },
+                              body: JSON.stringify(chartSnapshot(appliedId, applyError)) }).catch(() => {});
+}
+let postTimer = 0;
+function queuePostState() { clearTimeout(postTimer); postTimer = setTimeout(() => postState(), 250); }
+
+// Settings from outside -- the chart link, or a URL -- applied through the same
+// paths the sidebar uses. Values read from a URL are strings, and take the type
+// of the setting they replace.
+async function applySettings(m) {
+  if (m.strategy && !S.strategyList.some((s) => s.id === m.strategy)) throw new Error(`unknown strategy "${m.strategy}"`);
+  const startMs = m.date ? Date.parse(m.date + "T00:00:00Z") : S.windowStart;
+  if (!Number.isFinite(startMs)) throw new Error(`"${m.date}" is not a date (use YYYY-MM-DD)`);
+  const keysOf = (o) => new Set(Object.keys(o));
+  const check = (what, obj, valid) => {
+    const bad = Object.keys(obj || {}).filter((k) => !valid.has(k));
+    if (bad.length) throw new Error(`unknown ${what} key${bad.length > 1 ? "s" : ""}: ${bad.join(", ")}`);
+  };
+  if (m.strategy && m.strategy !== S.strategyDesc.id) await selectStrategy(m.strategy);
+  if (m.reset) Object.assign(S, baseConfig());
+  check("params", m.params, new Set([...(S.strategyMod.params || []).map((d) => d.key), "timeframeMin"]));
+  check("exec", m.exec, keysOf(S.meta.defaults.exec));
+  check("rules", m.rules, keysOf(S.meta.defaults.rules));
+  check("filter", m.filter, new Set([...Object.keys(NO_FILTER), ...FILTER_PARAMS.map((d) => d.key)]));
+  check("funded", m.funded, keysOf(S.meta.defaults.funded));
+  for (const name of ["params", "exec", "rules", "filter", "funded"]) {
+    const o = { ...(m[name] || {}) };
+    if (m.fromUrl) for (const k of Object.keys(o)) o[k] = coerceLike(S[name][k], o[k]);
+    Object.assign(S[name], o);
+  }
+  renderSidebar();
+  await loadWindow(startMs);
+  if (m.sweep) {
+    // an automatic sweep may already be running, for settings just replaced
+    while (S.sweeping) await new Promise((r) => setTimeout(r, 100));
+    S.lastSweepKey = "";
+    await runSweep();
+  }
+}
+// A change pushed by the chart link, confirmed with the state that results.
+async function applyChange(m) {
+  try {
+    await applySettings(m);
+    clearTimeout(postTimer);
+    postState(m.id);
+  } catch (e) {
+    postState(m.id, e.message);
+  }
+}
+function connectChartLink() {
+  const es = new EventSource("/api/chart/events");
+  es.addEventListener("apply", (ev) => { try { applyChange(JSON.parse(ev.data)); } catch { /* malformed: ignore */ } });
+}
+
+// ─────────────────────────────── the address bar ───────────────────────────────
+// The URL carries the strategy, the window and every setting that differs from
+// the strategy's own defaults (#s=<id>&d=<trading day>&x.slippageTicks=1 ...), so
+// a view can be bookmarked, shared or reloaded and come back exactly.
+const URL_GROUPS = { p: "params", x: "exec", r: "rules", f: "filter", u: "funded" };
+function baseConfig() {
+  return {
+    params: resolveParams(S.strategyMod, {}),
+    exec: { ...S.meta.defaults.exec, ...(S.strategyDesc.execDefaults || {}) },
+    rules: { ...S.meta.defaults.rules, ...(S.strategyDesc.rulesDefaults || {}) },
+    filter: { ...NO_FILTER, ...(S.strategyDesc.filterDefaults || {}) },
+    funded: { ...S.meta.defaults.funded },
+  };
+}
+function coerceLike(current, raw) {
+  if (raw === "null") return null;
+  if (typeof current === "boolean") return raw === "true";
+  if (typeof current === "number" || current == null) {
+    const n = Number(raw);
+    if (raw.trim() !== "" && !Number.isNaN(n)) return n;
+    return current == null ? (raw === "true" ? true : raw === "false" ? false : raw) : current;
+  }
+  return raw;
+}
+function urlHash() {
+  const q = new URLSearchParams(), base = baseConfig();
+  q.set("s", S.strategyDesc.id);
+  q.set("d", $("startDate").value);
+  for (const [g, name] of Object.entries(URL_GROUPS))
+    for (const [k, v] of Object.entries(S[name]))
+      if (typeof v !== "function" && !Object.is(v, base[name][k]) && JSON.stringify(v) !== JSON.stringify(base[name][k])) q.set(`${g}.${k}`, String(v));
+  return "#" + q.toString();
+}
+let hashTimer = 0;
+function queueHash() {
+  clearTimeout(hashTimer);
+  hashTimer = setTimeout(() => { const h = urlHash(); if (h !== location.hash) history.replaceState(null, "", h); }, 300);
+}
+function readHash() {
+  const q = new URLSearchParams(location.hash.slice(1));
+  if (!q.get("s")) return null;
+  const m = { strategy: q.get("s"), date: q.get("d") || null, reset: true, fromUrl: true };
+  for (const name of Object.values(URL_GROUPS)) m[name] = {};
+  for (const [k, v] of q) {
+    const i = k.indexOf("."), name = i > 0 ? URL_GROUPS[k.slice(0, i)] : null;
+    if (name) m[name][k.slice(i + 1)] = v;
+  }
+  return m;
 }
 
 // ─────────────────────────────── misc UI ───────────────────────────────
@@ -831,6 +1157,7 @@ function tradeTooltip(t, ev) {
 // ─────────────────────────────── boot ───────────────────────────────
 async function selectStrategy(id) {
   S.strategyDesc = S.strategyList.find((s) => s.id === id) || S.strategyList[0];
+  $("strategy").value = S.strategyDesc.id;   // also when the switch came from the chart link or a URL
   $("strategyDesc").textContent = S.strategyDesc.description || "";
   const mod = await import(`/strategies/${S.strategyDesc.file}?t=${Date.now()}`);
   S.strategyMod = mod.default;
@@ -873,7 +1200,7 @@ async function boot() {
   sel.addEventListener("change", () => selectStrategy(sel.value));
 
   S.chart = new ChartView($("chartWrap"));
-  S.chart.onHoverTrade = (t) => { window._hoverTrade = t; };
+  S.chart.onHoverTrade = (t) => { window._hoverTrade = t; queuePostState(); };
 
   // Candle size is a VIEW setting, so it is deliberately not part of the
   // strategy config and never triggers a re-run — the trades on screen are the
@@ -896,9 +1223,20 @@ async function boot() {
     loadWindow(Math.max(S.meta.startMs, Math.min(hi, ms)));
   });
 
-  // Start 30 days in so the warm-up prefix has real history behind it.
+  // Start 30 days in so the warm-up prefix has real history behind it -- or
+  // where the URL says, with the settings it carries.
   S.windowStart = S.meta.startMs + 30 * DAY;
-  await selectStrategy(S.strategyList[0].id);
+  const fromUrl = readHash();
+  const urlStart = fromUrl && fromUrl.date ? Date.parse(fromUrl.date + "T00:00:00Z") : NaN;
+  if (Number.isFinite(urlStart)) S.windowStart = urlStart;
+  await selectStrategy(fromUrl && S.strategyList.some((s) => s.id === fromUrl.strategy) ? fromUrl.strategy : S.strategyList[0].id);
+  if (fromUrl) await applySettings(fromUrl).catch((e) => toast(`The link's settings: ${e.message}`, true));
+  connectChartLink();
+  // A link pasted into this tab, or the back button through edited links.
+  window.addEventListener("hashchange", () => {
+    const m = readHash();
+    if (m && location.hash !== urlHash()) applySettings(m).catch((e) => toast(`The link's settings: ${e.message}`, true));
+  });
 
   $("prevWin").onclick = () => stepWindow(-1);
   $("nextWin").onclick = () => stepWindow(1);
@@ -922,11 +1260,7 @@ async function boot() {
   // overlays, as selectStrategy() sets them -- not the generic defaults, which
   // would quietly swap its stop, target and size for 2 / 12 ATR at 8 lots.
   $("resetParams").onclick = () => {
-    S.params = resolveParams(S.strategyMod, {});
-    S.exec = { ...S.meta.defaults.exec, ...(S.strategyDesc.execDefaults || {}) };
-    S.rules = { ...S.meta.defaults.rules, ...(S.strategyDesc.rulesDefaults || {}) };
-    S.funded = { ...S.meta.defaults.funded };
-    S.filter = { ...NO_FILTER, ...(S.strategyDesc.filterDefaults || {}) };
+    Object.assign(S, baseConfig());
     renderSidebar();
     loadWindow(S.windowStart);
   };

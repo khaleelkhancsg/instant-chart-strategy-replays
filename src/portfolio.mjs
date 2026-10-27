@@ -152,3 +152,61 @@ export function sweepPortfolio(books, starts, rules = {}, opts = {}) {
   const n = starts.length || 1;
   return { pass: (pass / n) * 100, fail: (fail / n) * 100 };
 }
+
+// ── ONE ACCOUNT, DAY BY DAY ─────────────────────────────────────────────────
+// Several books in ONE account, settled to a net P&L per trading day for the
+// day-sequence evaluator (dayeval.mjs). Moved from research/lib_combo.mjs, which
+// re-exports it; the live "Donchian + MACD side by side" numbers come from here.
+//
+// Each book is run alone with no day rules, and every candidate trade carries
+// its worst-point P&L bar by bar (`path`, with times `ts`). The trades are then
+// replayed in time order through one account: the breaker, profit block and
+// daily limit apply to the COMBINED realised P&L, and an open trade is cut where
+// its path first reaches the account's remaining daily budget -- the platform's
+// day-loss liquidation, which books exactly that budget.
+//
+//   model 'A'  books trade independently (positions can overlap; P&L adds)
+//   model 'B'  one position at a time, first come first served
+// per[id] adds a book's OWN limits inside the account: brk / pb (its own breaker
+// / profit block on its own P&L that day), maxLoss (a per-trade stop in
+// dollars), from / until (entry window, CT minutes), own (its daily-limit stop
+// counts only its own P&L, as its indicator does beside another one -- the
+// account's limit still applies, as the firm enforces it).
+//
+// trades: [{ id, pri, tday, t0, t1, ct0, pnl, path, ts }]; pri breaks entry-time ties.
+export function accountDays(trades, { cap, brk = 0, pb = 0, model = "A", per = null, log = false }) {
+  const byDay = new Map();
+  for (const t of trades) { const a = byDay.get(t.tday) || []; a.push(t); byDay.set(t.tday, a); }
+  const day = new Map(), logs = log ? new Map() : null;
+  let nTaken = 0;
+  for (const [d, list] of byDay) {
+    list.sort((a, b) => a.t0 - b.t0 || a.pri - b.pri);
+    let real = 0, capHit = false;
+    const realS = {}, open = [], lg = log ? [] : null;
+    const settle = (t) => {
+      open.sort((a, b) => a.t1 - b.t1);
+      while (open.length && open[0].t1 <= t) { const x = open.shift(); real += x.pnl; realS[x.id] = (realS[x.id] || 0) + x.pnl; if (real <= -cap) capHit = true; }
+    };
+    for (const tr of list) {
+      settle(tr.t0);
+      const why = capHit ? "daily limit" : brk > 0 && real <= -brk ? "breaker" : pb > 0 && real >= pb ? "profit block" : null;
+      if (why) { if (lg) lg.push({ id: tr.id, skip: why }); continue; }
+      const P = per && per[tr.id];
+      if (P) {
+        const rs = realS[tr.id] || 0;
+        if ((P.brk > 0 && rs <= -P.brk) || (P.pb > 0 && rs >= P.pb) || (P.own && rs <= -cap)) { if (lg) lg.push({ id: tr.id, skip: "own limit" }); continue; }
+        if ((P.from != null && tr.ct0 < P.from) || (P.until != null && tr.ct0 >= P.until)) { if (lg) lg.push({ id: tr.id, skip: "window" }); continue; }
+      }
+      if (model === "B" && open.length) { if (lg) lg.push({ id: tr.id, skip: "busy" }); continue; }
+      const budget = Math.min(cap + real, P && P.maxLoss > 0 ? P.maxLoss : Infinity, P && P.own ? cap + (realS[tr.id] || 0) : Infinity);
+      let pnl = tr.pnl, t1x = tr.t1;
+      for (let q = 0; q < tr.path.length; q++) if (tr.path[q] <= -budget) { pnl = -budget; t1x = tr.ts[q]; break; }
+      open.push({ id: tr.id, t1: t1x, pnl }); nTaken++;
+      if (lg) lg.push({ id: tr.id, pnl, t0: tr.t0, t1: t1x, dir: tr.dir, ct0: tr.ct0, lots: tr.lots });
+    }
+    settle(Infinity);
+    day.set(d, Math.max(real, -cap));
+    if (logs) logs.set(d, lg);
+  }
+  return { day, nTaken, logs };
+}

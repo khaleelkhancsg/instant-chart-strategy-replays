@@ -56,7 +56,10 @@ function lookbackBars(strategy, params) {
 // for months (fuzz-found: a 121-day hold beat a 60-day warm-up), so only the whole
 // history before the window reproduces it. The server clamps this to the data.
 const ALL_HISTORY_MIN = 50 * 365 * DAY_MIN;
-const holdsOvernight = (x) => !!x && (x.intradayOnly === false || (x.flattenCt != null && x.flattenCt === x.reopenCt));
+// An empty flat window holds overnight only if the session's end does not
+// flatten either (the engine's sessionEndFlat).
+const holdsOvernight = (x) => !!x && (x.intradayOnly === false ||
+  (x.flattenCt != null && x.flattenCt === x.reopenCt && x.sessionEndFlat === "none"));
 
 export function windowSpan(strategy, params = {}, { tailMin = DEFAULT_TAIL_MIN, filter = null, exec = null } = {}) {
   const tf = params.timeframeMin || strategy.timeframeMin || 1;

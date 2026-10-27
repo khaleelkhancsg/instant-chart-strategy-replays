@@ -1,16 +1,20 @@
 {
   "name": "mnq-chart-lab",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
-  "description": "Visual 30-day combine backtester for MNQ 1-minute data — canvas charts, live parameter tuning, prop-firm rule replay.",
+  "description": "Visual 30-day combine backtester for MNQ 1-minute data — canvas charts, live parameter tuning, prop-firm rule replay, and an MCP server for research.",
   "scripts": {
     "prepare-data": "node prepare.mjs",
     "start": "node server.mjs",
-    "test": "node test.mjs",
+    "mcp": "node --max-old-space-size=8192 mcp/server.mjs",
+    "test": "node --max-old-space-size=8192 test.mjs",
+    "parity": "node --max-old-space-size=8192 test/legacy_parity.mjs",
+    "test:mcp": "node test/mcp.test.mjs",
+    "test:link": "node test/chart_link.test.mjs",
     "audit": "node audit.mjs",
     "verify-rolls": "node verify_rolls.mjs",
-    "check": "node test.mjs && node audit.mjs"
+    "check": "npm test && npm run audit && npm run parity && npm run test:mcp && npm run test:link"
   },
   "engines": { "node": ">=18" }
 }

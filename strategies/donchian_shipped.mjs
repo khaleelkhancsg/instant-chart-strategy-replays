@@ -34,14 +34,12 @@
 // logic and the Tradovate indicator are held to one another by
 // bot/test_donchian_parity.py and tradovate/verify.mjs.
 //
-// THIS ENGINE CANNOT CREDIT IT, and the reason is the same one that separates
-// its pass rate from the bot's below. The rescued breakouts are the weaker
-// ones; the bot's 0.15xATR stop-entry only fills those that follow through,
-// and this engine fills every signal at its close. So here the rescue shows as
-// a LOSS -- 30.6% -> 28.5% pass -- while on the bot's real entry model it is a
-// gain, 34.5% -> 37.9% (research/lib_shipped.mjs). The bot applies it only in
-// stop-entry mode for exactly this reason. Set "Rescue floor" to 0 to see the
-// book without it.
+// It only pays on the bot's entry model. The rescued breakouts are the weaker
+// ones, and the 0.15xATR stop-entry fills only those that follow through. With
+// that order (this file's execDefaults) the rescue is worth 33.1% -> 35.5% pass
+// and +$34k net over the full history; taken at market instead, the same rescue
+// COSTS 33.5% -> 30.8%. The bot applies it only in stop-entry mode for exactly
+// this reason. Set "Rescue floor" to 0 to see the book without it.
 //
 // ── THE DAY-LOSS STOP IS THE ONE THAT CHANGES THE PICTURE ────────────────
 // The research book never sets `dayLossStopUsd`, so it defaults to 0 and the
@@ -73,33 +71,24 @@
 // unrealised P&L, closed AT the threshold, no queueing behind a gap — rather
 // than as a resting stop order that a gap can blow through.
 //
-// ── WHAT THIS FILE STILL CANNOT REPRODUCE ────────────────────────────────
+// ── THE BOT'S ORDER, NOT A MARKET FILL ───────────────────────────────────
 // The live bot does not enter at the signal bar's close. It arms a STOP 0.15xATR
-// beyond it, waits up to 10 bars, and falls back to a LIMIT at the same price
-// when the platform refuses the stop (which it does whenever price is already
-// through the trigger — 40.8% of arms). `src/engine.mjs` has no deferred-entry
-// model, so this strategy takes the fill at the signal bar's close plus one tick.
+// beyond the next bar's open, works it for 10 bars, and falls back to a LIMIT at
+// the same price when the platform refuses the stop (whenever price is already
+// through the trigger — 40.8% of arms). Since the engine consolidation (one
+// engine, src/engine.mjs) this file runs exactly that order, with the breaker and
+// profit block applied inside the engine where the bot applies them, so the
+// chart and its sweep ARE the bot's model. Full history, calendar windows:
 //
-// That gap is large and it is measured: `research/lib_shipped.mjs` scores the
-// same book at 49.8% pass assuming every arm fills at its trigger, and 34.5%
-// once refusals are modelled honestly.
+//                                   pass   breached   still open   median days
+//   this file (stop entries)       35.5%      55.8%         8.7%           13
+//   the same book at market        30.8%      60.9%         8.4%           11
 //
-// So the sweep this file produces is NOT the bot's pass rate:
-//
-//                        pass   breached   still open   median days to pass
-//   donchian_eff_rth    42.6%      54.9%         2.5%                     8
-//   donchian_shipped    30.6%      60.4%         9.0%                    12
-//
-// 30.6% is this book alone, entered at the signal bar's close, before the
-// slow-trend rescue (28.5% with it, which this engine cannot credit -- above).
-// The bot's own figure is 37.9% with the real entry model and the rescue, and
-// 51.7% once the ORB book runs alongside it -- and the chart simulates neither. The rise in unresolved windows
-// from 2.5% to 9.0% is the day-loss cap doing its job: it ends days early, which
-// is what stops the breaches, and slows the target down in exchange.
-//
-// Read the chart for WHERE the bot trades, what the brackets look like, and how
-// the day rules bind. The pass rate lives in research/, where the entry model
-// is real.
+// 2026: 32.1% (Jan-Mar 31.1%, Apr-Jul 33.3%). research/lib_shipped.mjs, the same
+// engine with its older fill conventions and judged by the day-sequence
+// bootstrap, quotes 37.9%; this book scored that way is 36.6%. The rise in
+// unresolved windows is the day-loss cap doing its job: it ends days early,
+// which is what stops the breaches, and slows the target down in exchange.
 
 import base from "./donchian_eff_rth.mjs";
 import { ema, efficiencyRatio } from "../src/indicators.mjs";
@@ -111,7 +100,7 @@ const TREND_MIN_BARS = 1500;
 export default {
   id: "donchian_shipped",
   name: "MNQ Donchian — SHIPPED live config (8 lots, $1k day stop)",
-  description: "The exact configuration bot/mnq_donchian_bot.py runs: 8 contracts, 5xATR stop / 1.75xATR target, one tick of slippage, $500 breaker, $750 soft profit block, and the platform's $1,000 unrealised daily loss liquidation modelled in 'exact' mode. Same signal as donchian_eff_rth; entry model is NOT the bot's deferred stop entry.",
+  description: "The exact configuration bot/mnq_donchian_bot.py runs: 8 contracts, 5xATR stop / 1.75xATR target, one tick of slippage, $500 breaker, $750 soft profit block, and the platform's $1,000 unrealised daily loss liquidation modelled in 'exact' mode. Same signal as donchian_eff_rth, and the bot's own order: a stop 0.15xATR beyond the next open, worked for 10 bars, re-placed as a limit when refused.",
 
   timeframeMin: base.timeframeMin,
   // More than the research book's 900: the trend EMA needs the rescue's history
@@ -139,12 +128,28 @@ export default {
     // continuously tracked unrealised number, not with a resting order.
     dayLossStopUsd: 1000,
     dayLossStopMode: "exact",
+    // The bot's order (scale_in_first 0, "STOP-ENTRY MODE"): nothing at market.
+    // The signal arms a stop 0.15 x ATR beyond the open of the bar after it,
+    // working from the bar after that for 10 bars; when that bar already opens
+    // through the trigger the platform refuses the stop and the same price rests
+    // as a limit. A new signal cancels the working order and parks its own.
+    entryType: "stop", entryTriggerAtr: 0.15, entryWindowBars: 10,   // scale_in_trigger_atr / _window_bars
+    entryRefused: "limit", cancelOpposite: true,
+    // On a limit fill the target counts only if the bar also closed past it:
+    // the bar's high may have printed before price came back to the entry.
+    limitFillTp: "close",
+    // circuit_breaker / daily_profit_block, where the bot applies them: no new
+    // orders, and any working one cancelled, once the day's realised P&L is at
+    // -$500 or +$750.
+    dayBreakerUsd: 500,
+    dayProfitBlockUsd: 750,
   },
   // signal_start_ct / signal_end_ct. eff_min is applied inside compute() with
   // the rescue -- setting effMin here as well would strip every rescued signal.
   filterDefaults: { startCt: 8 * 60 + 30, endCt: 15 * 60 },
-  // circuit_breaker / daily_profit_block
-  rulesDefaults: { circuitBreaker: 500, dailyProfitStop: 750 },
+  // The breaker and profit block live in the engine (above), so the rules
+  // layer's post-hoc copies are off rather than applied twice.
+  rulesDefaults: { circuitBreaker: 0, dailyProfitStop: 0 },
 
   // Signal code is SHARED, not copied, so the two books cannot drift apart.
   // period 30, adx_min 25, adx_period 14, atr_period 14, cooldown_bars 1 —

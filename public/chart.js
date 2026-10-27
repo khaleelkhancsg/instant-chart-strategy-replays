@@ -235,6 +235,15 @@ export class ChartView {
     this.requestDraw();
   }
 
+  // Show bars a..b (local 1-minute indexes), e.g. one trade from the trade list.
+  zoomTo(a, b) {
+    if (!this.data) return;
+    const n = this.data.bars.count;
+    this.i0 = Math.max(0, Math.min(n - 20, Math.floor(a)));
+    this.i1 = Math.min(n, Math.max(this.i0 + 20, Math.ceil(b)));
+    this.requestDraw();
+  }
+
   requestDraw() {
     if (this._raf) return;
     this._raf = requestAnimationFrame(() => { this._raf = 0; this.draw(); });

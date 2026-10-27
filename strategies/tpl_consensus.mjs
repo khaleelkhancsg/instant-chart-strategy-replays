@@ -31,7 +31,17 @@ export default {
   description: "Generalises the one genuinely good idea in MACD-Angle v4: run an indicator at several speeds, require them to agree, and stand aside when they don't. Works over MACD, z-score, ROC, EMA-slope or RSI.",
 
   timeframeMin: 2,
-  warmupBars: 900,
+  // The slowest member sets it: basePeriod x growth^(nSpeeds-1), ten periods of
+  // an EMA (the MACD's slow line plus its signal), or the z-score's whole window
+  // (fuzz-found: 4 speeds growing x2.9 reach 488, a z-score window of 2,440 bars).
+  warmupBars: (p) => {
+    const top = Math.max(2, Math.round((p.basePeriod || 4) * Math.pow(p.growth || 1.5, Math.max(0, (Math.trunc(p.nSpeeds) || 1) - 1))));
+    const macd = Math.max(top + 1, Math.round(top * (p.macdSlowMult > 1 ? p.macdSlowMult : 2.2))) +
+                 Math.max(2, Math.round(top * (p.macdSigMult > 0 ? p.macdSigMult : 0.75)));
+    const z = Math.round(top * (p.zLenMult > 0 ? p.zLenMult : 5)) + (Math.trunc(p.slopeBars) || 1);
+    return Math.max(900, 10 * (p.family === "macd" ? macd : top), p.family === "zscore" ? z : 0,
+                    10 * (Math.trunc(p.atrPeriod) || 14), 10 * (Math.trunc(p.adxPeriod) || 14));
+  },
   execDefaults: { contracts: 4, sizingMode: "fixed", slAtrMult: 1.5, tpMode: "rr", tpRR: 1.2, flipOnOpposite: false },
 
   params: [

@@ -1,5 +1,7 @@
 // Several strategies in ONE account. Shared by combos_2026.mjs and
-// don_mac_together_2026.mjs.
+// don_mac_together_2026.mjs. The account replay is src/portfolio.mjs
+// (accountDays) and the pass rates src/dayeval.mjs; this file builds their
+// inputs from the research books.
 //
 // Each strategy is run alone with no day rules (breaker, profit block and the
 // daily-limit stop all off), recording every trade's entry and exit time and
@@ -25,6 +27,8 @@ import { loadBars } from "../src/data.mjs";
 import * as S from "./lib_shipped.mjs";
 import * as M from "./lib_donchian_mgmt.mjs";
 import * as ORB from "./lib_orb.mjs";
+import { accountDays } from "../src/portfolio.mjs";
+import { blockSampler, consecutiveSampler, passRate, passRatePolicy } from "../src/dayeval.mjs";
 
 export const PV = 2;
 export const in26 = (td) => S.yearOf.get(td) === 2026;
@@ -147,43 +151,8 @@ export function orbTrades(cap, risk, levels) {
   return out;
 }
 
-// ---- one account ------------------------------------------------------------------------------
-export function account(trades, { cap, brk = 0, pb = 0, model = "A", per = null, log = false }) {
-  const byDay = new Map();
-  for (const t of trades) { const a = byDay.get(t.tday) || []; a.push(t); byDay.set(t.tday, a); }
-  const day = new Map(), logs = log ? new Map() : null;
-  let nTaken = 0;
-  for (const [d, list] of byDay) {
-    list.sort((a, b) => a.t0 - b.t0 || a.pri - b.pri);
-    let real = 0, capHit = false;
-    const realS = {}, open = [], lg = log ? [] : null;
-    const settle = (t) => {
-      open.sort((a, b) => a.t1 - b.t1);
-      while (open.length && open[0].t1 <= t) { const x = open.shift(); real += x.pnl; realS[x.id] = (realS[x.id] || 0) + x.pnl; if (real <= -cap) capHit = true; }
-    };
-    for (const tr of list) {
-      settle(tr.t0);
-      const why = capHit ? "daily limit" : brk > 0 && real <= -brk ? "breaker" : pb > 0 && real >= pb ? "profit block" : null;
-      if (why) { if (lg) lg.push({ id: tr.id, skip: why }); continue; }
-      const P = per && per[tr.id];
-      if (P) {
-        const rs = realS[tr.id] || 0;
-        if ((P.brk > 0 && rs <= -P.brk) || (P.pb > 0 && rs >= P.pb) || (P.own && rs <= -cap)) { if (lg) lg.push({ id: tr.id, skip: "own limit" }); continue; }
-        if ((P.from != null && tr.ct0 < P.from) || (P.until != null && tr.ct0 >= P.until)) { if (lg) lg.push({ id: tr.id, skip: "window" }); continue; }
-      }
-      if (model === "B" && open.length) { if (lg) lg.push({ id: tr.id, skip: "busy" }); continue; }
-      const budget = Math.min(cap + real, P && P.maxLoss > 0 ? P.maxLoss : Infinity, P && P.own ? cap + (realS[tr.id] || 0) : Infinity);
-      let pnl = tr.pnl, t1x = tr.t1;
-      for (let q = 0; q < tr.path.length; q++) if (tr.path[q] <= -budget) { pnl = -budget; t1x = tr.ts[q]; break; }
-      open.push({ id: tr.id, t1: t1x, pnl }); nTaken++;
-      if (lg) lg.push({ id: tr.id, pnl, t0: tr.t0, t1: t1x, dir: tr.dir, ct0: tr.ct0, lots: tr.lots });
-    }
-    settle(Infinity);
-    day.set(d, Math.max(real, -cap));
-    if (logs) logs.set(d, lg);
-  }
-  return { day, nTaken, logs };
-}
+// ---- one account (src/portfolio.mjs) ----------------------------------------------------------
+export const account = accountDays;
 export function score(acct, rules) {
   const arr = S.days.map((d) => acct.day.get(d) || 0);
   const p = (ix) => S.passArr(ix.map((k) => arr[k]), rules);
@@ -193,58 +162,16 @@ export function score(acct, rules) {
   const tot = d26.reduce((s, v) => s + v, 0);
   return { y: p(M.Y26), a: p(M.Y26a), b: p(M.Y26b), real: (100 * cp) / cn, n: acct.nTaken, perDay: acct.nTaken / M.Y26.length, exp: tot / Math.max(1, acct.nTaken), arr };
 }
-// ---- pass rates on 2026 day vectors, fast -----------------------------------------------------
+// ---- pass rates on 2026 day vectors, fast (src/dayeval.mjs) ---------------------------------
 // sampler() draws exactly as S.passArr does (blocks of 5 consecutive days, seed 4242), but on
 // any subset of 2026 and with any eval length / block length; pass() then scores many day
 // vectors on the same draws. passPolicy() lets each day choose between two day vectors from
 // the account's state (P&L so far, its high, room above the trailing floor).
-export function sampler(len, { draws = 12000, seed = 4242, window = 21, block = 5 } = {}) {
-  const rnd = S.mul(seed), idx = new Int32Array(draws * window);
-  let p = 0;
-  for (let d = 0; d < draws; d++) {
-    let mm = 0;
-    while (mm < window) { const st = Math.floor(rnd() * Math.max(1, len - block)); for (let j = 0; j < block && mm < window; j++) { idx[p++] = (st + j) % len; mm++; } }
-  }
-  return { idx, window, draws };
-}
+export const sampler = blockSampler;
 // every run of `window` consecutive days (a real calendar start on each day)
-export function realSampler(len, window = 21) {
-  const out = [];
-  for (let q = 0; q + window <= len; q++) for (let k = 0; k < window; k++) out.push(q + k);
-  return { idx: Int32Array.from(out), window, draws: out.length / window };
-}
-export function pass(vec, sub, smp, { target, dd, consistency: cons }) {
-  const { idx, window, draws } = smp;
-  let w = 0;
-  for (let d = 0, p = 0; d < draws; d++, p += window) {
-    let c = 0, pk = 0, lk = false, md = -1e18;
-    for (let k = 0; k < window; k++) {
-      const v = vec[sub[idx[p + k]]];
-      c += v; if (v > md) md = v;
-      if (c <= (lk ? 0 : pk - dd)) break;
-      if (c > pk) pk = c;
-      if (!lk && pk >= dd) lk = true;
-      if (c >= target && (cons <= 0 || md <= cons * c)) { w++; break; }
-    }
-  }
-  return (100 * w) / draws;
-}
-export function passPolicy(dV, pV, sub, smp, { target, dd, consistency: cons }, useP) {
-  const { idx, window, draws } = smp;
-  let w = 0;
-  for (let d = 0, p = 0; d < draws; d++, p += window) {
-    let c = 0, pk = 0, lk = false, md = -1e18;
-    for (let k = 0; k < window; k++) {
-      const q = sub[idx[p + k]], v = useP(c, pk, c - (lk ? 0 : pk - dd)) ? pV[q] : dV[q];
-      c += v; if (v > md) md = v;
-      if (c <= (lk ? 0 : pk - dd)) break;
-      if (c > pk) pk = c;
-      if (!lk && pk >= dd) lk = true;
-      if (c >= target && (cons <= 0 || md <= cons * c)) { w++; break; }
-    }
-  }
-  return (100 * w) / draws;
-}
+export const realSampler = consecutiveSampler;
+export const pass = passRate;
+export const passPolicy = passRatePolicy;
 // an account's 2026 day results, in M.Y26 order
 export const vecOf = (acct) => Float64Array.from(M.Y26, (k) => acct.day.get(S.days[k]) || 0);
 export { ML, volRel };

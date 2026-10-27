@@ -59,6 +59,62 @@ function fullRun(strategyId, params, exec, filter) {
   return res;
 }
 
+// ─────────────────────────── the chart link ───────────────────────────
+// The page posts what it shows (strategy, settings, window, result) whenever that
+// changes, and listens on an event stream for changes pushed to it. The MCP
+// server's chart_state / chart_apply tools are the other end, so a prompt beside
+// the chart can read what the person is looking at and change it.
+const NO_PAGE = `no chart page is open: open http://localhost:${PORT}`;
+const pages = new Set();          // open event streams, one per page
+let chartState = null;            // the latest state a page posted
+const waiting = new Map();        // apply id -> deliver the page's confirmation
+let applySeq = 0;
+
+// The link changes what the person sees, so posts to it are taken only from this
+// server's own pages, or from tools on this machine (which send no Origin). A
+// web page elsewhere could otherwise post a plain-text body here unprompted.
+function fromOwnPage(req) {
+  const o = req.headers.origin;
+  if (!o) return true;
+  try {
+    const u = new URL(o);
+    return ["localhost", "127.0.0.1", "[::1]"].includes(u.hostname) && Number(u.port || 80) === PORT;
+  } catch { return false; }
+}
+
+function chartEvents(req, res) {
+  res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-store", connection: "keep-alive" });
+  res.write(": connected\n\n");
+  pages.add(res);
+  const ping = setInterval(() => res.write(": ping\n\n"), 25000);
+  req.on("close", () => { clearInterval(ping); pages.delete(res); });
+}
+
+function receiveState(s) {
+  chartState = { ...s, receivedAt: new Date().toISOString() };
+  const deliver = s && s.appliedId && waiting.get(s.appliedId);
+  if (deliver) { waiting.delete(s.appliedId); deliver(chartState); }
+}
+
+// Push a change to every open page and answer with the state the first one
+// reports after applying it -- the numbers the person now sees.
+function applyToChart(res, body) {
+  if (!pages.size) return sendJson(res, 409, { error: NO_PAGE });
+  const id = `apply-${++applySeq}`;
+  const timeoutMs = body.sweep ? 240000 : 30000;
+  const timer = setTimeout(() => {
+    waiting.delete(id);
+    sendJson(res, 504, { error: `the chart did not confirm the change within ${timeoutMs / 1000}s` });
+  }, timeoutMs);
+  waiting.set(id, (state) => {
+    clearTimeout(timer);
+    if (state.applyError) sendJson(res, 400, { error: state.applyError });
+    else sendJson(res, 200, state);
+  });
+  const msg = `event: apply\ndata: ${JSON.stringify({ ...body, id })}\n\n`;
+  for (const p of pages) p.write(msg);
+}
+
 // ─────────────────────────────── http ───────────────────────────────
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -197,15 +253,52 @@ const server = http.createServer(async (req, res) => {
         run.trades, bars.ts[0], bars.ts[bars.count - 1],
         rules, resolveFunded(body.funded), 7
       );
+      // Where the P&L comes from by time of day and day of the week, over all of
+      // history and over 2026 alone -- the period results are judged on.
+      const y2026 = Date.UTC(2026, 0, 1);
+      const breakdown = (keyOf) => {
+        const out = { all: new Map(), y2026: new Map() };
+        for (const t of run.trades) {
+          const k = keyOf(t);
+          if (k == null) continue;
+          for (const [name, m] of Object.entries(out)) {
+            if (name === "y2026" && t.entryTime < y2026) continue;
+            let g = m.get(k);
+            if (!g) m.set(k, (g = { key: k, trades: 0, net: 0, wins: 0 }));
+            g.trades++; g.net += t.pnl; if (t.pnl > 0) g.wins++;
+          }
+        }
+        const rows = (m) => [...m.values()].map((g) => ({ ...g, net: Math.round(g.net) }));
+        return { all: rows(out.all), y2026: rows(out.y2026) };
+      };
       return sendJson(res, 200, {
         stats: run.stats,
         backtestMs: run.ms,
         sweepMs,
         fundedMs: Date.now() - tF,
         funded: funded.summary,
+        // entry hour in Chicago time; weekday of the trading day the trade closed in
+        byHourCt: breakdown((t) => (t.entryCt == null ? null : Math.floor(t.entryCt / 60))),
+        byWeekday: breakdown((t) => new Date(t.tday * 86400000).getUTCDay()),
         ...sweep,
       });
     }
+
+    // ── the chart link ──
+    if (p === "/api/chart/events") return chartEvents(req, res);
+    if (p.startsWith("/api/chart/") && req.method === "POST" && !fromOwnPage(req)) {
+      return sendJson(res, 403, { error: "the chart link only takes posts from its own page" });
+    }
+    if (p === "/api/chart/state" && req.method === "POST") {
+      receiveState(await readBody(req));
+      res.writeHead(204);
+      return res.end();
+    }
+    if (p === "/api/chart/state") {
+      if (!pages.size || !chartState) return sendJson(res, 404, { error: NO_PAGE });
+      return sendJson(res, 200, chartState);
+    }
+    if (p === "/api/chart/apply" && req.method === "POST") return applyToChart(res, await readBody(req));
 
     return serveStatic(res, p);
   } catch (err) {

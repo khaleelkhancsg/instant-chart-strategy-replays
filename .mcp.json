@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "mnq-chart-lab": {
+      "command": "node",
+      "args": ["--max-old-space-size=8192", "mcp/server.mjs"],
+      "env": { "CHART_LAB_URL": "http://localhost:5178" }
+    }
+  }
+}

@@ -9,6 +9,9 @@ import { resample } from "../src/resample.mjs";
 import { buildFilterContext, applyFilters, NO_FILTER } from "../src/filters.mjs";
 import { ema, sma, adx, rsi, donchian, efficiencyRatio, macd, rollingMinMax, supertrend } from "../src/indicators.mjs";
 import * as S from "./lib_shipped.mjs";
+import { resolveParams } from "../src/run.mjs";
+import { filterPeriods } from "../src/filters.mjs";
+import shipped from "../strategies/donchian_shipped.mjs";
 
 const { bars } = loadBars();
 export const tf = resample(bars, 2);
@@ -17,18 +20,12 @@ const n2 = C.length;
 
 const { adx: ax, pdi, ndi } = adx(H, L, C, 14);
 const { high: dh, low: dl } = donchian(H, L, 30);
-const raw = new Int8Array(n2);
-for (let i = 30; i < n2; i++) {
-  if (ax[i] < 25) continue;
-  if (C[i] > dh[i]) raw[i] = 1; else if (C[i] < dl[i]) raw[i] = -1;
-}
-const fctx = buildFilterContext(tf);
-const gated = (x) => applyFilters(raw, fctx, { ...NO_FILTER, startCt: 510, endCt: 900, effMin: x });
-const G05 = gated(0.5), G045 = gated(0.45);
-const t125 = ema(C, 125), t500 = ema(C, 500);
-export const RESC = Int8Array.from(G05);
-for (let k = 0; k < n2; k++)
-  if (G045[k] && !G05[k] && Math.sign(t125[k] - t500[k]) === raw[k]) RESC[k] = G045[k];
+// The live signal, from the strategy file itself: donchian_shipped's breakout,
+// ADX floor, efficiency gate and slow-trend rescue inside the RTH window. The
+// rescue's history rule is off (trendMinBars 0), as these searches were measured.
+const shippedFilter = { ...NO_FILTER, ...shipped.filterDefaults };
+export const RESC = Int8Array.from(applyFilters(shipped.compute(tf, resolveParams(shipped, { trendMinBars: 0 })).sig,
+                                                buildFilterContext(tf, filterPeriods(shippedFilter)), shippedFilter));
 
 const E = {}; for (const p of [9, 20, 21, 50]) E[p] = ema(C, p);
 const DC = {}; for (const n of [5, 10, 15, 20]) DC[n] = donchian(H, L, n);

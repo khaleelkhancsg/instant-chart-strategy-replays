@@ -142,6 +142,10 @@ shipped book rather than approximating it.
 
 ### All 14 at default parameters, under the real rules
 
+*Measured in August 2026, before the engine was consolidated and its fills made
+physically consistent (October 2026). For current figures, ask the MCP tools
+(`list_strategies`, `pass_rate`) or run the chart's sweep.*
+
 No overnight holds, flat 3:05 PM CT, consistency gating the evaluation:
 
 | strategy | trades | PF | exp $/trade | eval pass | reach payout |
@@ -343,11 +347,17 @@ happened and one that doesn't.
 ## Verification
 
 ```bash
-npm run check          # test.mjs + audit.mjs
+npm run check          # test.mjs, audit.mjs, legacy parity, the MCP server, the chart link
 npm run verify-rolls   # seam coherence against the incoming contract
+FUZZ_SEED=7 FUZZ_SCALE=3 node test.mjs   # the randomised invariants, harder
 ```
 
-**`test.mjs` — 67 tests, all passing.** The approach is to test optimised code
+**`test/legacy_parity.mjs`** holds the research libraries' adapters to frozen
+oracles of their pre-consolidation results. **`test/mcp.test.mjs`** drives the MCP
+server over stdio and checks each tool against `src/` directly.
+**`test/chart_link.test.mjs`** covers the page ↔ server link.
+
+**`test.mjs` — 246 tests, all passing.** The approach is to test optimised code
 against a naive reference that is obviously correct, and rule logic against
 numbers hand-traced on paper:
 
@@ -446,3 +456,32 @@ blocks *new* entries and a single trade can blow straight through it.
 
 The full sweep runs on demand (**Run full sweep**); after the first run it
 re-sweeps automatically ~700ms after you stop adjusting parameters.
+
+### Panels and links
+
+- **Trades in this window** lists every signal, including those a rule blocked.
+  Click one to zoom the chart to it; **CSV** downloads the list.
+- **All windows** shows the pass rate with a 95% interval. The interval counts one
+  independent sample per 30 days of start dates, because neighbouring windows
+  share most of their days. It also shows the 2026 check (all of 2026, then
+  Jan–Mar against Apr–Jul), and **CSV** downloads every window's result.
+- **P&L by hour and weekday** shows where the profit comes from, over all of
+  history and over 2026.
+- **The address bar** carries the strategy, the window and every setting changed
+  from the strategy's defaults, so a link brings the exact view back.
+
+---
+
+## Research through Claude (MCP)
+
+`mcp/server.mjs` exposes the engine as MCP tools, registered for this folder in
+`.mcp.json`. Claude Code offers to enable it when a session opens here:
+
+- **Research:** `backtest`, `pass_rate`, `compare`, `search`, `walk_forward`,
+  `sensitivity`, `window`.
+- **The chart:** `chart_state` reads what the open page shows; `chart_apply`
+  changes it.
+- **The papers library:** `papers`.
+
+Every tool runs `src/`, so its numbers are the chart's numbers. `CLAUDE.md` holds
+the house rules for reporting them.

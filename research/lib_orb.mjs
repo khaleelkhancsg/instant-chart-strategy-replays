@@ -1,8 +1,13 @@
 // Shared machinery for the opening-range "one 5-minute candle" tests.
 // Setup detection and trade resolution are separate steps on purpose: a control
 // can replay the exact same schedule with one thing changed and nothing else.
+// Resolution is the ONE engine (src/engine.mjs) and the pass rates are
+// src/dayeval.mjs; test/legacy_parity.mjs holds both to the code they replaced.
 
 import { loadBars } from "../src/data.mjs";
+import { sliceBars } from "../src/resample.mjs";
+import { runBrackets, stopFillPrice, EXIT } from "../src/engine.mjs";
+import { evalDays, mulberry32, dayVector, bootstrapPass } from "../src/dayeval.mjs";
 
 // Instrument is switchable so the same code can cross-check on MES:
 //   ORB_BIN=data/mes_1m.bin ORB_PV=5 node research/<script>.mjs
@@ -378,7 +383,7 @@ export function setups(cfg) {
           // already left -- an impossible fill, worth real money on open bars.
           const trig = lvl + dir * buf2 * TICK;
           const entryPx = cfg.naiveFill ? trig
-                        : (dir === 1 ? Math.max(trig, O[i]) : Math.min(trig, O[i]));
+                        : stopFillPrice(trig, O[i], dir);
           const risk = capRisk(riskFor(dir, entryPx, lvl, entryPx));
           if (risk < TICK) { diag.badStop++; break; }
           const tpPx = tpMode === "R" ? null : tpFor(dir, entryPx, risk);
@@ -410,7 +415,7 @@ export function setups(cfg) {
         if (i <= stateBar && !sameBar) continue;
         const trig = p1 + dir * buf2 * TICK;
         if (dir === 1 ? H[i] >= trig : L[i] <= trig) {
-          const entryPx = dir === 1 ? Math.max(trig, O[i]) : Math.min(trig, O[i]);  // gap through
+          const entryPx = stopFillPrice(trig, O[i], dir);  // gap through
           const risk = capRisk(riskFor(dir, entryPx, lvl, retExt));
           if (risk < TICK) { diag.badStop++; break; }
           const tpPx = tpMode === "R" ? null : tpFor(dir, entryPx, risk);
@@ -443,7 +448,16 @@ export function setups(cfg) {
 
 // Stop-before-target inside a bar, gap-through at the open, hard flat at close.
 // The stop is ALWAYS `risk` on the protective side, so an inverted bracket --
-// which books an instant fake profit -- is impossible by construction.
+// which books an instant fake profit -- is impossible by construction. The
+// setup already worked out its fill (a resting stop, gapped through at the open
+// if need be); the engine takes it from there to the end of the day.
+const NOSIG = new Int8Array(N), NOATR = new Float64Array(0);
+const ORB_EXEC = {
+  intradayOnly: true, flattenCt: FLAT_CT, reopenCt: 1020, sessionEndFlat: "none",
+  exitFirst: true, fillBarStop: "touch", fillBarOpen: false, tpGapFill: "open",
+  flipOnOpposite: false, pointValue: PV, tickSize: TICK, commissionModel: "per-contract",
+  dayLossStopUsd: 0, dayProfitStopUsd: 0, closeAtEnd: true, untilFlat: true,
+};
 export function resolve(s, opt = {}) {
   const { rMult = 2.0, maxHoldMin = 120, flipDir, riskDollars = 0, maxLots = 40,
           costMult = 1,
@@ -453,7 +467,6 @@ export function resolve(s, opt = {}) {
           // the truth, and the gap between them is exactly what sub-minute data
           // would resolve -- so it measures what 1-second polling is worth.
           barFirst = "stop" } = opt;
-  const slip = SLIP * costMult;
   const dir = flipDir ?? s.dir;
   const { bar: i, e0, entryPx, risk, day } = s;
   const lots = riskDollars
@@ -462,7 +475,6 @@ export function resolve(s, opt = {}) {
   // A stop set by DOLLARS rather than by structure. `risk` still decides size
   // and the target; only where the stop sits changes. Undefined = unchanged.
   const stopDist = opt.stopUsd ? opt.stopUsd / (PV * lots) : risk;
-  const sl = entryPx - dir * stopDist;
   // An absolute liquidity target overrides the R multiple. Under a direction
   // flip it is mirrored rather than reused, so the control keeps the same
   // target DISTANCE and only the side changes.
@@ -470,34 +482,20 @@ export function resolve(s, opt = {}) {
   // stop. 3R off a wide stop puts the target somewhere price cannot reach in
   // the hold; this takes the profit where the move actually goes instead.
   const tpDist = Math.min(risk * rMult, opt.tpCapPts ?? Infinity);
-  const tp = s.tpPx == null ? entryPx + dir * tpDist
-                            : entryPx + dir * (s.tpPx - entryPx) * s.dir;
-  let ambig = 0;
-  const fill = dir === 1 ? entryPx + slip : entryPx - slip;
-  const fees = PERSIDE * 2 * lots * costMult;
-  const out = (px, why, held) => {
-    const xp = dir === 1 ? px - slip : px + slip;
-    const gross = (xp - fill) * dir * PV * lots - fees;
-    return { tday: day, pnl: Math.max(-CAP, gross), raw: gross, why, risk, held, dir, lots,
-             riskUsd: risk * PV * lots, capped: gross < -CAP, ambig };
-  };
-  for (let j = i; j < e0; j++) {
-    if (CT[j] >= FLAT_CT) return out(O[j], "FLAT", j - i);
-    if ((j - i) >= maxHoldMin) return out(O[j], "TIME", j - i);
-    if (j > i) {                                    // gap through at the open
-      if (dir === 1 ? O[j] <= sl : O[j] >= sl) return out(O[j], "SL", j - i);
-      if (dir === 1 ? O[j] >= tp : O[j] <= tp) return out(O[j], "TP", j - i);
-    }
-    const hitS = dir === 1 ? L[j] <= sl : H[j] >= sl;
-    const hitT = dir === 1 ? H[j] >= tp : L[j] <= tp;
-    if (hitS && hitT) {
-      ambig = 1;                                    // both barriers, one bar
-      return barFirst === "target" ? out(tp, "TP", j - i) : out(sl, "SL", j - i);
-    }
-    if (hitS) return out(sl, "SL", j - i);
-    if (hitT) return out(tp, "TP", j - i);
-  }
-  return out(C[e0 - 1], "EOD", e0 - 1 - i);
+  const tpPts = s.tpPx == null ? tpDist : (s.tpPx - entryPx) * s.dir;
+  const s0 = Math.max(0, i - 1);
+  const { trades } = runBrackets(sliceBars(bars, s0, e0), NOSIG, NOATR, {
+    ...ORB_EXEC, maxBarsInTrade: maxHoldMin, sameBarTie: barFirst,
+    slippageTicks: costMult, commissionPerSide: PERSIDE * costMult,
+    entries: [{ bar: i - s0, dir, price: entryPx, slPts: stopDist, tpPts, lots }],
+  });
+  const t = trades[0];
+  // The time stop and a gap through the stop both fill at that bar's open; the
+  // time stop is the one that decided it.
+  const why = t.reason === EXIT.TIME || (t.reason === EXIT.SL && maxHoldMin > 0 && t.bars >= maxHoldMin) ? "TIME"
+            : t.reason === EXIT.FLAT ? "FLAT" : t.reason === EXIT.EOD ? "EOD" : t.reason === EXIT.TP ? "TP" : "SL";
+  return { tday: day, pnl: Math.max(-CAP, t.pnl), raw: t.pnl, why, risk, held: t.bars, dir, lots,
+           riskUsd: risk * PV * lots, capped: t.pnl < -CAP, ambig: t.ambiguous ? 1 : 0 };
 }
 
 export function run(cfg) {
@@ -508,38 +506,14 @@ export function run(cfg) {
   return { trades, diag };
 }
 
-// ---- combine evaluator (identical to the one used on the shipped bot) ------
-export function ev(d) {
-  let c = 0, pk = 0, lk = false, md = -1e18;
-  for (const v of d) {
-    c += v; if (v > md) md = v;
-    if (c <= (lk ? 0 : pk - 2000)) return 0;
-    if (c > pk) pk = c;
-    if (!lk && pk >= 2000) lk = true;
-    if (c >= 3000 && md <= 0.5 * c) return 1;
-  }
-  return 0;
-}
-export function mul(a) { return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a);
-  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
-
-export function dayArr(trades, keys) {
-  const m = new Map(); for (const d of keys) m.set(d, 0);
-  for (const t of trades) if (m.has(t.tday)) m.set(t.tday, Math.max(-CAP, m.get(t.tday) + t.pnl));
-  return keys.map(k => m.get(k));
-}
-export function passOfArr(arr, draws = 12000, s = 4242) {
-  const rnd = mul(s), idx = new Array(21), buf = new Array(21);
-  let w = 0;
-  for (let d = 0; d < draws; d++) {
-    let mm = 0;
-    while (mm < 21) { const st = Math.floor(rnd() * Math.max(1, arr.length - 5));
-      for (let j = 0; j < 5 && mm < 21; j++) idx[mm++] = (st + j) % arr.length; }
-    for (let k = 0; k < 21; k++) buf[k] = arr[idx[k]];
-    w += ev(buf);
-  }
-  return 100 * w / draws;
-}
+// ---- combine evaluator (src/dayeval.mjs, the one the shipped bot uses) ------
+// The shipped combine: $3,000 target, $2,000 trailing drawdown locking at
+// breakeven, 50% consistency, judged on 21-day runs drawn in 5-day blocks. The
+// day total is floored at -$1,000 after every trade, as the daily limit.
+export const ev = (d) => evalDays(d);
+export const mul = mulberry32;
+export const dayArr = (trades, keys) => dayVector(trades, keys, { clampLoss: CAP });
+export const passOfArr = (arr, draws = 12000, s = 4242) => bootstrapPass(arr, { draws, seed: s });
 export const passOf = (trades, keys, draws, s) => passOfArr(dayArr(trades, keys), draws, s);
 
 export function stat(t) {

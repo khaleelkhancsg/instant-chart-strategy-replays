@@ -30,3 +30,6 @@ research/donchian_joint_search_results.json
 # Golden fixtures for the bot parity tests are raw market data; regenerate with
 # node --max-old-space-size=8192 research/export_bot1250_fixture.mjs
 bot/fixtures/
+
+# Downloaded paper PDFs: copyrighted, kept local (see papers/README.md)
+papers/pdf/

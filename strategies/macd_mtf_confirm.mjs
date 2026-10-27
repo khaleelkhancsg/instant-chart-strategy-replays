@@ -91,7 +91,16 @@ export default {
   timeframeMin: 1,
   // The arm frame's MACD and its |hist| average, in 1-minute bars: 2000 at the
   // shipped 5-minute frame, more when the frame or the average is longer.
-  warmupBars: (p) => Math.max(2000, Math.ceil(1.5 * ((Math.trunc(p.scaleBars) || 200) + 60) * (Math.trunc(p.armTfMin) || MTF_DEFAULT))),
+  // The arm frame runs the whole MACD (and the ATR, when it is measured there)
+  // on armTfMin-minute bars, so every lookback there costs armTfMin one-minute
+  // bars: the scale window, and ten periods of the slowest MACD line to forget
+  // its seed (fuzz-found: a 75/48 MACD on 33-minute bars outran the scale term).
+  warmupBars: (p) => {
+    const mtf = Math.trunc(p.armTfMin) || MTF_DEFAULT;
+    const macdBars = Math.max(Math.trunc(p.fast) || 12, Math.trunc(p.slow) || 26) + (Math.trunc(p.signal) || 9);
+    return Math.max(2000, Math.ceil(1.5 * ((Math.trunc(p.scaleBars) || 200) + 60) * mtf),
+                    10 * macdBars * mtf, 10 * (Math.trunc(p.atrPeriod) || 14) * mtf);
+  },
   // The same ADR gate as macd_5m_quiet_anticipate: `adrDays` completed sessions
   // before the window, or the live chart disagrees with the sweep.
   warmupSessions: (p) => Math.max(2, Math.trunc(p.adrDays) || 14) + 1,

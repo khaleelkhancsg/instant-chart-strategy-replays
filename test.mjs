@@ -10,13 +10,15 @@ import { ema, sma, wma, atr, adx, rsi, donchian, rollingMeanStd, trueRange, effi
 import { buildFilterContext, applyFilters, countSurviving } from "./src/filters.mjs";
 import { replayPortfolio } from "./src/portfolio.mjs";
 import { resample, sliceBars, indexAtOrAfter, indexAtOrBefore } from "./src/resample.mjs";
-import { runBrackets, tradeStats, EXIT, resolveExec } from "./src/engine.mjs";
+import { runBrackets, tradeStats, EXIT, resolveExec, LEGACY_EXEC } from "./src/engine.mjs";
 import { replayWindow, sweepWindows, simulateFunded, sweepFunded, hasOverlappingTrades, OUTCOME, resolveRules } from "./src/challenge.mjs";
 import { loadBars, packBars } from "./src/data.mjs";
 import { loadStrategies } from "./src/registry.mjs";
 import { runStrategy, resolveParams } from "./src/run.mjs";
 import { windowSpan } from "./src/window.mjs";
 import { NO_FILTER } from "./src/filters.mjs";
+import { flatten, fastWindow } from "./src/search.mjs";
+import { evalDays } from "./src/dayeval.mjs";
 
 let pass = 0, fail = 0;
 const failures = [];
@@ -849,6 +851,157 @@ t("tradeStats profit factor and expectancy are self-consistent", () => {
   close(s.profitFactor, s.grossWin / s.grossLoss, 1e-9, "PF = gross win / gross loss:");
   const wins = trades.filter((x) => x.pnl > 0).length;
   close(s.winRate, (wins / s.n) * 100, 1e-9, "win rate:");
+});
+
+section("3b. Execution engine: order model, intrabar order, day blocks, hooks");
+// Each new behaviour against its hand-worked numbers, and against its old reading
+// (LEGACY_EXEC), so the difference the default makes is pinned down too.
+const W = { ...NOFEE, intradayOnly: false };
+
+t("a market fill at the open can be stopped out inside its own bar (old: only from the next bar)", () => {
+  const b = bars([[100, 101, 99, 100], [100, 101, 94, 100], [100, 101, 99, 100]]);
+  const sig = new Int8Array(3); sig[0] = 1;
+  const now = runBrackets(b, sig, flatAtr(3, 10), { ...W, slAtrMult: 0.5, tpAtrMult: 5 }).trades[0];
+  eq(now.reason, EXIT.SL); eq(now.exitIdx, 1, "stopped on the entry bar:"); close(now.exitPrice, 95, 1e-9);
+  const old = runBrackets(b, sig, flatAtr(3, 10), { ...W, ...LEGACY_EXEC, slAtrMult: 0.5, tpAtrMult: 5 }).trades[0];
+  eq(old.reason, EXIT.EOD, "old engine never tested the entry bar:");
+});
+
+t("an exit decided at the close fills at the next open, before that bar can reach the target", () => {
+  const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [102, 115, 101, 103], [103, 104, 102, 103]]);
+  const sig = new Int8Array(4); sig[0] = 1; sig[1] = -1;
+  const now = runBrackets(b, sig, flatAtr(4, 10), { ...W, slAtrMult: 2, tpAtrMult: 1 }).trades;
+  eq(now[0].reason, EXIT.FLIP); close(now[0].exitPrice, 102, 1e-9, "flip at the open:");
+  eq(now[1].dir, -1, "and the short taken at that open:"); close(now[1].entryPrice, 102, 1e-9);
+  const old = runBrackets(b, sig, flatAtr(4, 10), { ...W, ...LEGACY_EXEC, slAtrMult: 2, tpAtrMult: 1 }).trades;
+  eq(old[0].reason, EXIT.TP, "old engine credited the target hit after the flip:"); close(old[0].exitPrice, 110, 1e-9);
+});
+
+t("a bar opening through the target fills at that open, the better price (old: at the target)", () => {
+  const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [113, 114, 112, 113]]);
+  const sig = new Int8Array(3); sig[0] = 1;
+  close(runBrackets(b, sig, flatAtr(3, 10), { ...W, slAtrMult: 2, tpAtrMult: 1 }).trades[0].exitPrice, 113, 1e-9);
+  close(runBrackets(b, sig, flatAtr(3, 10), { ...W, ...LEGACY_EXEC, slAtrMult: 2, tpAtrMult: 1 }).trades[0].exitPrice, 110, 1e-9);
+});
+
+t("an early close flattens at the session's last bar, not in the next session", () => {
+  // 11:00-11:59 CT on an early-close day, then the 17:00 CT reopen of the next session
+  const b = bars(Array.from({ length: 80 }, () => [100, 101, 99, 100]));
+  b.ctMin = new Int16Array(80);
+  for (let i = 0; i < 80; i++) { b.ctMin[i] = i < 60 ? 660 + i : 1020 + (i - 60); b.tday[i] = i < 60 ? 100 : 101; }
+  const sig = new Int8Array(80); sig[0] = 1;
+  const now = runBrackets(b, sig, flatAtr(80, 50), { ...INTRA, slAtrMult: 10, tpAtrMult: 10 }).trades[0];
+  eq(now.reason, EXIT.FLAT); eq(now.exitIdx, 59, "out at the session's last bar:"); eq(b.tday[now.exitIdx], 100);
+  const old = runBrackets(b, sig, flatAtr(80, 50), { ...INTRA, ...LEGACY_EXEC, slAtrMult: 10, tpAtrMult: 10 }).trades[0];
+  eq(old.reason, EXIT.EOD, "old engine carried it into the next session:");
+});
+
+t("a new session does not act on the last signal of the one before (found on Memorial Day 2023)", () => {
+  // a signal on the early close's last bar (11:59 CT), then the 17:00 CT reopen
+  const b = bars(Array.from({ length: 80 }, (_, i) => (i < 60 ? [100, 101, 99, 100] : [100, 104, 99, 103])));
+  b.ctMin = new Int16Array(80);
+  for (let i = 0; i < 80; i++) { b.ctMin[i] = i < 60 ? 660 + i : 1020 + (i - 60); b.tday[i] = i < 60 ? 100 : 101; }
+  const sig = new Int8Array(80); sig[59] = 1;
+  for (const entryType of ["market", "stop"]) {
+    const o = { ...INTRA, entryType, entryTriggerAtr: 0.05, entryWindowBars: 10, slAtrMult: 10, tpAtrMult: 10 };
+    eq(runBrackets(b, sig, flatAtr(80, 50), o).trades.length, 0, `${entryType}: traded the old session's signal:`);
+    eq(runBrackets(b, sig, flatAtr(80, 50), { ...o, ...LEGACY_EXEC }).trades.length, 1, `${entryType}: the old engine took it at the reopen:`);
+  }
+  sig[59] = 0; sig[60] = 1;   // the new session's own first signal trades as usual
+  eq(runBrackets(b, sig, flatAtr(80, 50), { ...INTRA, slAtrMult: 10, tpAtrMult: 10 }).trades[0].entryIdx, 61);
+});
+
+// A stop entry: signal at bar 0, armed off bar 1's open (100) at 100 + 0.15 x 10 = 101.5,
+// working from bar 2. The bracket is measured from that open: stop 80, target 110.
+const STOP = { ...W, entryType: "stop", entryTriggerAtr: 0.15, entryWindowBars: 10, slAtrMult: 2, tpAtrMult: 1 };
+t("stop entry: priced off the arm bar's open, works from the bar after it, fills at the trigger", () => {
+  const b = bars([[100, 101, 99, 100], [100, 105, 99, 100], [100.5, 102, 100, 101.75], [101.75, 103, 101, 102]]);
+  const sig = new Int8Array(4); sig[0] = 1;
+  const tr = runBrackets(b, sig, flatAtr(4, 10), STOP).trades[0];
+  eq(tr.entryIdx, 2, "not on the arm bar, though it traded through the trigger:"); close(tr.entryPrice, 101.5, 1e-9);
+  eq(tr.entryType, "stop"); eq(tr.sigIdx, 0); close(tr.stop, 80, 1e-9, "stop from the arm bar's open:"); close(tr.target, 110, 1e-9);
+});
+t("stop entry: a later bar opening through the trigger fills at that open (old: at the trigger)", () => {
+  const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [100.5, 101, 100, 100.5], [103, 104, 102.5, 103]]);
+  const sig = new Int8Array(4); sig[0] = 1;
+  close(runBrackets(b, sig, flatAtr(4, 10), STOP).trades[0].entryPrice, 103, 1e-9);
+  close(runBrackets(b, sig, flatAtr(4, 10), { ...STOP, entryGapFill: "level" }).trades[0].entryPrice, 101.5, 1e-9);
+});
+t("stop entry: refused on a first bar that opens through it, it rests as a limit at the same price", () => {
+  const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [102, 103, 101.75, 102.5], [102.5, 103, 101, 101.5]]);
+  const sig = new Int8Array(4); sig[0] = 1;
+  const tr = runBrackets(b, sig, flatAtr(4, 10), STOP).trades[0];
+  eq(tr.entryIdx, 3, "fills on the retrace:"); close(tr.entryPrice, 101.5, 1e-9); eq(tr.limitFill, true);
+  // 'optimistic' assumes the platform took the stop: it triggers at once, at the open...
+  const opt = runBrackets(b, sig, flatAtr(4, 10), { ...STOP, entryRefused: "optimistic" }).trades[0];
+  eq(opt.entryIdx, 2); close(opt.entryPrice, 102, 1e-9);
+  // ...or, as old research had it, at the trigger -- a price the market had already left
+  close(runBrackets(b, sig, flatAtr(4, 10), { ...STOP, entryRefused: "optimistic", entryGapFill: "level" }).trades[0].entryPrice, 101.5, 1e-9);
+});
+t("stop entry: expires after its window; an opposite signal cancels it", () => {
+  const rows = [[100, 101, 99, 100], [100, 101, 99, 100], [100, 101, 99, 100], [100, 101, 99, 100], [100, 103, 99, 102]];
+  const sig = new Int8Array(5); sig[0] = 1;
+  eq(runBrackets(bars(rows), sig, flatAtr(5, 10), { ...STOP, entryWindowBars: 2 }).trades.length, 0, "expired before bar 4:");
+  eq(runBrackets(bars(rows), sig, flatAtr(5, 10), { ...STOP, entryWindowBars: 5 }).trades.length, 1, "still working at bar 4:");
+  const s2 = new Int8Array(5); s2[0] = 1; s2[2] = -1;
+  const tr = runBrackets(bars(rows), s2, flatAtr(5, 10), { ...STOP, entryWindowBars: 5 }).trades;
+  eq(tr.length, 0, "cancelled by the opposite signal, and the short's trigger (98.5) never traded:");
+});
+t("stop entry: a repeated signal re-prices the working order off the new bar's open", () => {
+  // armed at 101.5 off bar 1; bar 2 misses it and re-arms off its own open, 101 -> 102.5
+  const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [101, 101.4, 100.5, 101], [101, 103, 100.5, 102.5]]);
+  const sig = new Int8Array(4); sig[0] = 1; sig[1] = 1;
+  const tr = runBrackets(b, sig, flatAtr(4, 10), STOP).trades[0];
+  eq(tr.entryIdx, 3); close(tr.entryPrice, 102.5, 1e-9, "the re-priced trigger:"); eq(tr.sigIdx, 1);
+});
+t("limit entry: rests back inside the move and fills on the retrace", () => {
+  const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [100, 101, 98, 99], [99, 100, 97, 98]]);
+  const sig = new Int8Array(4); sig[0] = 1;
+  const tr = runBrackets(b, sig, flatAtr(4, 10), { ...STOP, entryType: "limit", entryLimitAtr: 0.25 }).trades[0];
+  eq(tr.entryIdx, 3); close(tr.entryPrice, 97.5, 1e-9); eq(tr.entryType, "limit");
+});
+t("day blocks: no new entries once the day's realised P&L crosses the breaker or the profit block", () => {
+  // three long signals on one day; the first trade loses $20 (stop at 90 x 1 lot x $2)
+  const rows = [[100, 101, 99, 100], [100, 101, 89, 90], [90, 91, 89, 90], [90, 91, 89, 90], [90, 91, 89, 90], [90, 91, 89, 90]];
+  const sig = new Int8Array(6); sig[0] = 1; sig[2] = 1; sig[3] = 1;
+  const go = (x) => runBrackets(bars(rows), sig, flatAtr(6, 10), { ...W, slAtrMult: 1, tpAtrMult: 5, ...x }).trades;
+  eq(go({}).length, 2, "without a block the next signal trades:");
+  eq(go({ dayBreakerUsd: 20 }).length, 1, "a $20 breaker stops the day:");
+  eq(go({ dayBreakerUsd: 21 }).length, 2, "a $21 breaker does not:");
+});
+t("scale-out: half banked at the first target, the rest run to the second", () => {
+  const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [100, 106, 99, 105], [105, 111, 104, 110]]);
+  const sig = new Int8Array(4); sig[0] = 1;
+  const tr = runBrackets(b, sig, flatAtr(4, 10), { ...W, contracts: 2, slAtrMult: 2, tpAtrMult: 1, scaleOutFrac: 0.5, scaleOutAtr: 0.5 }).trades[0];
+  // 1 lot banked at 105 (+5 x $2) and 1 lot out at 110 (+10 x $2)
+  eq(tr.reason, EXIT.TP); close(tr.gross, 30, 1e-9); eq(tr.contracts, 2);
+});
+t("research hooks: sizer, tpFn, exitFn, a stopFn that only tightens, onTrade and haltFn", () => {
+  const rows = Array.from({ length: 30 }, (_, i) => [100 + i, 101.5 + i, 99.5 + i, 101 + i]);   // a steady climb
+  const sig = new Int8Array(30); sig[0] = 1; sig[12] = 1;
+  const seen = [];
+  const tr = runBrackets(bars(rows), sig, flatAtr(30, 10), { ...W, slAtrMult: 1, tpAtrMult: 50, flipOnOpposite: false,
+    sizer: (a, ct, seq) => (seq === 0 ? 3 : 0),                     // 3 lots, then skip
+    tpFn: (a, q) => 4 * a,                                          // target 40 points
+    exitFn: (k, d, st) => k - st.entBar >= 8,                       // out 8 bars after the fill
+    stopFn: (k, st) => st.fill - 100,                               // a looser stop: never applies
+    onTrade: (x) => seen.push(x.reason) }).trades;
+  eq(tr.length, 1, "the second signal sized to 0 lots:"); eq(tr[0].contracts, 3); close(tr[0].target, 141, 1e-9);
+  eq(tr[0].reason, EXIT.SIGNAL); eq(tr[0].exitIdx, 10, "exit at the open after bar 9 (8 bars past the fill):");
+  eq(seen.join(), "SIGNAL", "onTrade saw it:");
+  const trail = runBrackets(bars(rows), sig, flatAtr(30, 10), { ...W, slAtrMult: 1, tpAtrMult: 50, flipOnOpposite: false,
+    stopFn: (k, st) => (st.dir === 1 ? st.mx - 0.5 : st.mn + 0.5) }).trades[0];
+  eq(trail.reason, EXIT.TRAIL, "a trailing stop half a point under the best price is hit:");
+  let calls = 0;
+  const halted = runBrackets(bars(rows), sig, flatAtr(30, 10), { ...W, slAtrMult: 1, tpAtrMult: 2, haltFn: () => ++calls > 5 }).trades;
+  eq(halted.length, 0, "halted before anything closed:");
+});
+t("exogenous entries: managed by the same exits; untilFlat stops after the last one", () => {
+  const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [100.5, 104, 100, 103], [103, 106, 102, 105], [105, 109, 104, 108]]);
+  const tr = runBrackets(b, new Int8Array(5), new Float64Array(0), { ...W, untilFlat: true,
+    entries: [{ bar: 2, dir: 1, price: 101, slPts: 2, tpPts: 4, lots: 2 }] }).trades;
+  eq(tr.length, 1); eq(tr[0].entryIdx, 2); close(tr[0].entryPrice, 101, 1e-9);
+  eq(tr[0].reason, EXIT.TP); eq(tr[0].exitIdx, 3); close(tr[0].exitPrice, 105, 1e-9); eq(tr[0].contracts, 2);
 });
 
 // ══════════════════════════════ 4. CHALLENGE RULES ══════════════════════════════
@@ -1702,6 +1855,13 @@ function randomExec() {
     dayProfitStopUsd: pick([0, 0, 300, 1500]), dayLossStopUsd: pick([0, 0, 300, 1000]), dayLossStopMode: pick(["price", "exact"]),
     scaleInFrac: pick([0, 0, 0, 0.5, 0.25]), scaleInTrigger: pick([0, 0.25, 1]), scaleInWindowBars: pick([1, 10, 30]),
     scaleInOrder: pick(["before", "after"]), scaleInSlipTicks: pick([0, 1]), pointValue: pick([2, 2, 20]),
+    entryType: pick(["market", "market", "stop", "limit"]), entryTriggerAtr: pick([0.05, 0.15, 0.5]), entryLimitAtr: pick([0.1, 0.25, 1]),
+    entryWindowBars: pick([1, 5, 10, 30]), entryRefused: pick(["limit", "limit", "optimistic"]), cancelOpposite: rnd() < 0.6,
+    tpFromFill: rnd() < 0.3, exitFirst: rnd() < 0.7, entryBarExits: rnd() < 0.7, fillBarStop: pick(["touch", "close"]),
+    limitFillTp: pick(["high", "close"]), fillBarOpen: rnd() < 0.2, sameBarTie: pick(["stop", "stop", "target"]),
+    tpGapFill: pick(["open", "level"]), entryGapFill: pick(["open", "level"]), sessionEndFlat: pick(["close", "close", "none"]),
+    dayBreakerUsd: pick([0, 0, 200, 600]), dayProfitBlockUsd: pick([0, 0, 300, 900]), scaleOutFrac: pick([0, 0, 0, 0.5]),
+    scaleOutAtr: pick([0.5, 1, 2]), flipOnAnySignal: rnd() < 0.1, capEndsDay: rnd() < 0.85,
   };
 }
 
@@ -1727,7 +1887,8 @@ if (bars_) {
       if (again.length !== trades.length || again.some((t2, k) => t2.pnl !== trades[k].pnl)) throw new Error(`not deterministic: ${where()}`);
       const cap = Math.max(1, Math.trunc(cfg.maxContracts));
       const slip = cfg.slippageTicks * cfg.tickSize;
-      const day = new Map();
+      const day = new Map(), blockDay = new Map(), capDays = new Set();
+      const atOpenOf = (k, px) => Math.abs(px - tf.open[k]) < 1e-6;
       let prev = null, lastStop = null;
       for (const tr of trades) {
         checked++;
@@ -1743,7 +1904,11 @@ if (bars_) {
         if (Math.abs(tr.fees - fees) > 1e-9) fail(`fees ${tr.fees} != ${fees}`);
         if (Math.abs(tr.pnl - (tr.gross - tr.fees)) > 1e-6) fail("pnl != gross - fees");
         if (!(tr.mae <= 1e-9 && tr.mfe >= -1e-9)) fail("MAE above zero or MFE below");
-        if (tr.reason === "TP" && !(cfg.scaleInFrac > 0) && Math.abs(tr.exitPrice - (tr.target - tr.dir * slip)) > 1e-6) fail("target exit not at the target");
+        // a target fills at the target -- or at an open that gapped through it, the better price
+        const atOpen = (px) => Math.abs(px - tf.open[tr.exitIdx]) < 1e-6;
+        const raw = tr.exitPrice + tr.dir * slip;
+        if (tr.reason === "TP" && !(cfg.scaleInFrac > 0) && Math.abs(raw - tr.target) > 1e-6 &&
+            !(cfg.tpGapFill === "open" && atOpen(raw) && tr.dir * (raw - tr.target) > 0)) fail("target exit not at the target");
         if (tr.reason === "SL" && (tr.dir === 1 ? tr.exitPrice > tr.stop - slip + 1e-6 : tr.exitPrice < tr.stop + slip - 1e-6)) fail("stop exit better than the stop");
         if (cfg.maxBarsInTrade > 0 && tr.bars > cfg.maxBarsInTrade) fail("held past the time stop");
         if (cfg.intradayOnly && tf.ctMin) {
@@ -1756,9 +1921,37 @@ if (bars_) {
         day.set(d, (day.get(d) || 0) + tr.pnl);
         if (cfg.dayProfitStopUsd > 0 && day.get(d) > cfg.dayProfitStopUsd + 1e-6 && tr.reason !== "FLAT" && tr.reason !== "EOD") {
           // the cap is a resting take-profit at the threshold; only an exit the cap does not police may pass it
-          if (tr.reason === "DAYCAP" || tr.reason === "TP") fail(`day ${d} realised ${day.get(d).toFixed(2)} above the ${cfg.dayProfitStopUsd} cap`);
+          // ...unless the bar opened beyond it: there was no price at the cap to sell at
+          if ((tr.reason === "DAYCAP" || tr.reason === "TP") && !(cfg.tpGapFill === "open" && atOpen(raw))) fail(`day ${d} realised ${day.get(d).toFixed(2)} above the ${cfg.dayProfitStopUsd} cap`);
         }
         if (cfg.dayLossStopUsd > 0 && cfg.dayLossStopMode === "exact" && day.get(d) < -cfg.dayLossStopUsd - 1e-6) fail(`day ${d} realised ${day.get(d).toFixed(2)} below the exact -${cfg.dayLossStopUsd} cap`);
+        // the order it came in on: off the arm bar's open, inside its window, at its trigger or a better-for-the-market open
+        if (cfg.entryType !== "market") {
+          if (tr.entryType !== cfg.entryType && !(tr.limitFill && cfg.entryType === "stop")) fail(`filled as ${tr.entryType}`);
+          const arm = tr.sigIdx + 1, ref = tf.open[arm], a0 = tr.atr, px = tr.entryPrice - tr.dir * slip;
+          if (!(tr.entryIdx > arm && tr.entryIdx <= arm + cfg.entryWindowBars)) fail(`filled ${tr.entryIdx - arm} bars after the arm bar`);
+          const trig = cfg.entryType === "limit" ? Math.round((ref - tr.dir * a0 * cfg.entryLimitAtr) / cfg.tickSize) * cfg.tickSize
+                                                 : ref + tr.dir * Math.max(a0 * cfg.entryTriggerAtr, cfg.tickSize);
+          const worse = tr.dir * (px - trig);    // > 0: paid more than the trigger
+          if (!(cfg.scaleInFrac > 0)) {
+            if (cfg.entryType === "stop" && !tr.limitFill && cfg.entryRefused === "limit" && worse < -1e-6) fail("a stop filled better than its trigger");
+            if ((cfg.entryType === "limit" || tr.limitFill) && worse > 1e-6) fail("a limit filled worse than its price");
+            if (Math.abs(worse) > 1e-6 && !(cfg.entryGapFill === "open" && atOpenOf(tr.entryIdx, px))) fail("filled away from its price without a gap");
+          }
+        }
+        // the day blocks: nothing enters once the day's realised P&L has crossed them
+        // (summed in the engine's own order, so the comparison is exact)
+        const realisedBefore = blockDay.get(tf.tday[tr.entryIdx]) || 0;
+        if (cfg.dayBreakerUsd > 0 && realisedBefore <= -cfg.dayBreakerUsd) fail(`entered with the day at ${realisedBefore.toFixed(2)}, past the breaker`);
+        if (cfg.dayProfitBlockUsd > 0 && realisedBefore >= cfg.dayProfitBlockUsd) fail(`entered with the day at ${realisedBefore.toFixed(2)}, past the profit block`);
+        // and a platform cap that fired ended the day
+        if (cfg.capEndsDay && capDays.has(tf.tday[tr.entryIdx])) fail("entered after a platform cap ended the day");
+        if (tr.reason === "DAYCAP" || tr.reason === "DAYLOSS") capDays.add(tf.tday[tr.exitIdx]);
+        blockDay.set(tf.tday[tr.exitIdx], (blockDay.get(tf.tday[tr.exitIdx]) || 0) + tr.pnl);
+        // intraday with session-end flattening: never across a session boundary
+        if (cfg.intradayOnly && tf.ctMin && cfg.sessionEndFlat === "close" && tf.tday[tr.entryIdx] !== tf.tday[tr.exitIdx]) fail("held across a session boundary");
+        // ...nor entered on the previous session's signal
+        if (cfg.intradayOnly && tf.ctMin && cfg.sessionEndFlat === "close" && tf.tday[tr.sigIdx] !== tf.tday[tr.entryIdx]) fail("entered on the previous session's signal");
         prev = tr;
       }
     }
@@ -1769,7 +1962,8 @@ if (bars_) {
       const s0 = iuni(0, B.count - 40000), tf = resample(sliceBars(B, s0, s0 + 30000), tfMin), n = tf.close.length;
       const a = atr(tf.high, tf.low, tf.close, 14), sig = new Int8Array(n);
       for (let i = 0; i < n; i++) if (rnd() < 0.03) sig[i] = rnd() < 0.5 ? 1 : -1;
-      const x = { ...randomExec(), sizingMode: "fixed", dayProfitStopUsd: 0, dayLossStopUsd: 0, scaleInFrac: 0, commissionModel: "per-contract", maxContracts: 20 };
+      const x = { ...randomExec(), sizingMode: "fixed", dayProfitStopUsd: 0, dayLossStopUsd: 0, dayBreakerUsd: 0, dayProfitBlockUsd: 0,
+                  scaleInFrac: 0, commissionModel: "per-contract", maxContracts: 20 };
       const one = runBrackets(tf, sig, a, { ...x, contracts: 1 }).trades;
       for (const q of [3, 13, 20]) {
         const many = runBrackets(tf, sig, a, { ...x, contracts: q }).trades;
@@ -1841,6 +2035,47 @@ t(`${(2000 * SCALE).toLocaleString()} random trade lists and rule sets: replayWi
     if (a.outcome === OUTCOME.PASS && R.consistencyGatesPass && R.consistencyPct > 0 && a.stats.bestDay > (R.consistencyPct / 100) * a.stats.netPnl + 1e-6) {
       throw new Error(`case ${c}: passed with the best day over the cap`);
     }
+  }
+});
+// The same random accounts through the two faster evaluators.
+const randomAccount = () => {
+  const trades = [], base0 = Date.UTC(2024, 0, 1, 14);
+  for (let d = 0; d < 70; d++) {
+    const k = iuni(0, 5);
+    for (let j = 0; j < k; j++) {
+      const pnl = Math.round((rnd() < 0.08 ? uni(-4000, 6000) : uni(-600, 700)) * 4) / 4;
+      const entryTime = base0 + d * DAY + j * 3600000;
+      trades.push({ entryTime, exitTime: entryTime + 1800000, tday: Math.floor((base0 + d * DAY) / DAY), pnl,
+                    mae: Math.min(0, pnl) - rnd() * 200, mfe: Math.max(0, pnl) + rnd() * 200, fees: 0, contracts: 1 });
+    }
+  }
+  return { trades, start: base0 + iuni(0, 20) * DAY - 3600000 };
+};
+t(`${(2000 * SCALE).toLocaleString()} random accounts: the fast search replay (src/search.mjs) agrees with replayWindow at any size`, () => {
+  for (let c = 0; c < 2000 * SCALE; c++) {
+    const R = resolveRules({
+      profitTarget: pick([500, 1250, 3000, 9000]), trailingDD: pick([250, 1000, 2000, 5000]), trailingMode: pick(["eod", "intraday"]),
+      lockAtBreakeven: rnd() < 0.8, dailyLossLimit: pick([0, 500, 1000]), dailyProfitStop: pick([0, 0, 750, 1500]), circuitBreaker: pick([0, 0, 150, 500]),
+      consistencyPct: pick([0, 30, 50, 50, 100]), consistencyGatesPass: rnd() < 0.8, minTradingDays: pick([0, 0, 3, 8]), windowDays: pick([5, 21, 30, 60]),
+    });
+    const { trades, start } = randomAccount(), mult = pick([1, 3, 7.5]);
+    const scaled = trades.map((x) => ({ ...x, pnl: x.pnl * mult, mae: x.mae * mult, mfe: x.mfe * mult }));
+    const real = replayWindow(scaled, start, R).outcome, fast = fastWindow(flatten(trades), start, R, mult);
+    if (fast !== (real === OUTCOME.PASS ? 1 : real === OUTCOME.FAIL ? -1 : 0)) throw new Error(`case ${c} x${mult}: fast ${fast}, replayWindow ${real}; ${JSON.stringify(R)}`);
+  }
+});
+t(`${(1000 * SCALE).toLocaleString()} random day runs: the day-sequence evaluator (src/dayeval.mjs) agrees with replayWindow where their rules coincide`, () => {
+  // one trade a day, end-of-day trailing, no daily rules: the two methods' common ground
+  for (let c = 0; c < 1000 * SCALE; c++) {
+    const len = iuni(3, 45), target = pick([1250, 3000]), dd = pick([1000, 2000]), cons = pick([0, 0.3, 0.5]);
+    const vals = Array.from({ length: len }, () => Math.round((rnd() < 0.1 ? uni(-2500, 4000) : uni(-700, 900)) * 4) / 4);
+    const base0 = Date.UTC(2024, 0, 1, 14);
+    const trades = vals.map((pnl, d) => ({ entryTime: base0 + d * DAY, exitTime: base0 + d * DAY + 60000, tday: d, pnl, mae: 0, mfe: 0, fees: 0 }));
+    const R = resolveRules({ profitTarget: target, trailingDD: dd, trailingMode: "eod", lockAtBreakeven: true, dailyLossLimit: 0, dailyProfitStop: 0,
+                             circuitBreaker: 0, consistencyPct: cons * 100, consistencyGatesPass: true, minTradingDays: 0, windowDays: len });
+    const viaReplay = replayWindow(trades, base0 - 60000, R).outcome === OUTCOME.PASS ? 1 : 0;
+    const viaDays = evalDays(vals, { target, dd, consistency: cons });
+    if (viaReplay !== viaDays) throw new Error(`case ${c}: replayWindow ${viaReplay}, evalDays ${viaDays}: ${JSON.stringify({ vals, target, dd, cons })}`);
   }
 });
 
@@ -1919,7 +2154,8 @@ section("12. Live window span");
 t("overnight holds load all the history before the window; intraday-only runs keep a bounded warm-up", () => {
   const years = (x) => windowSpan({ params: [], warmupBars: 300 }, {}, { exec: x }).warmupMin / (365 * 1440);
   if (!(years(resolveExec({ intradayOnly: false })) >= 20)) throw new Error("overnight holds: the warm-up stops short of the data");
-  if (!(years(resolveExec({ flattenCt: 600, reopenCt: 600 })) >= 20)) throw new Error("an empty flat window: the warm-up stops short of the data");
+  if (!(years(resolveExec({ flattenCt: 600, reopenCt: 600, sessionEndFlat: "none" })) >= 20)) throw new Error("an empty flat window that carries over: the warm-up stops short of the data");
+  if (!(years(resolveExec({ flattenCt: 600, reopenCt: 600 })) < 1)) throw new Error("an empty flat window still flattens at the session's end: the warm-up should stay bounded");
   if (!(years(resolveExec({})) < 1)) throw new Error("intraday-only: the warm-up should stay bounded");
 });
 if (bars_) {
