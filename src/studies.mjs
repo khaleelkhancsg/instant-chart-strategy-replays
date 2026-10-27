@@ -35,7 +35,7 @@
 //          direction of its +DI / -DI.
 
 import { ema, sma, atr, adx, rsi, macd, stochastic, cci, roc, zscore, efficiencyRatio, choppiness,
-         bollinger, keltner, donchian, supertrend } from "./indicators.mjs";
+         bollinger, keltner, donchian, supertrend, rthRangeUsed, rthAtrRatio } from "./indicators.mjs";
 import { resample } from "./resample.mjs";
 
 const RTH_OPEN = 510, RTH_CLOSE = 900;        // 08:30 and 15:00 CT
@@ -327,6 +327,22 @@ export const STUDIES = {
     levels: (p) => ({ lo: p.lo, hi: p.hi }), range: [0, 100],
     compute: (b, p) => valueOnly(`Chop ${p.length}`, choppiness(b.high, b.low, b.close, p.length)),
   },
+  adrused: {
+    name: "ADR used (day's range / its average)", group: "Regime & volatility", pane: "sub", kind: "level",
+    params: [int("days", "Average over (sessions)", 10, 2, 40), LO(0.5, 0, 5, 0.05), HI(0.9, 0, 5, 0.05)],
+    label: (p) => `ADR used ${p.days}`, warmup: () => 0, warmupSessions: (p) => p.days + 3, gates: LEVEL_GATES,
+    levels: (p) => ({ lo: p.lo, hi: p.hi }), auto: "minmax",
+    hint: "The day's 08:30-15:00 CT range so far against the average full RTH range of the previous sessions; blank outside RTH (so a gate on it refuses overnight entries). The $1,250 bot halves its size from 0.9.",
+    compute: (b, p) => valueOnly(`ADR used ${p.days}`, rthRangeUsed(b, p.days)),
+  },
+  volrel: {
+    name: "ATR vs its session average", group: "Regime & volatility", pane: "sub", kind: "level",
+    params: [int("period", "ATR period", 14, 2, 200), int("days", "Average over (sessions)", 10, 2, 40), LO(1, 0, 5, 0.05), HI(2, 0, 5, 0.05)],
+    label: (p) => `ATR ratio ${p.period}/${p.days}`, warmup: (p) => 10 * p.period, warmupSessions: (p) => p.days + 3, gates: LEVEL_GATES,
+    levels: (p) => ({ lo: p.lo, hi: p.hi }), auto: "minmax",
+    hint: "The ATR at each 08:30-15:00 CT bar against the average of the previous sessions' RTH ATR: is today busier than usual? Blank outside RTH. The $1,250 MACD fade trades only from 1.",
+    compute: (b, p) => valueOnly(`ATR ratio`, rthAtrRatio(b, atr(b.high, b.low, b.close, p.period), p.days)),
+  },
   relvol: {
     name: "Relative volume", group: "Regime & volatility", pane: "sub", kind: "level",
     params: [int("length", "Average over (bars)", 20, 2, 2000), LO(1.5, 0, 20, 0.1), HI(3, 0, 20, 0.1)],
@@ -461,6 +477,26 @@ export function closedIndexMap(sigBars, stBars) {
     out[k] = j;
   }
   return out;
+}
+
+// For strategies: the direction of a fast / slow EMA pair on a longer timeframe
+// built from their own bars, at each of those bars, read from the last longer
+// bar that had closed: +1, -1, or 0 (not known yet, or level). With the EMAs as
+// read, for drawing. The $1,250 Donchian's 10-minute 9 / 21 filter.
+export function htfEmaTrend(bars, htfMin, fast, slow) {
+  const tf = bars.tfMin || 1, htf = Math.max(tf, Math.trunc(htfMin) || tf);
+  const n = bars.close.length, dir = new Int8Array(n);
+  const f = new Float64Array(n).fill(NaN), s = new Float64Array(n).fill(NaN);
+  const T = htf === tf ? bars : resample(bars, htf);
+  const ef = ema(T.close, Math.max(1, Math.trunc(fast) || 9)), es = ema(T.close, Math.max(1, Math.trunc(slow) || 21));
+  const map = T === bars ? null : closedIndexMap(bars, T);
+  for (let k = 0; k < n; k++) {
+    const j = map ? map[k] : k;
+    if (j < 0) continue;
+    f[k] = ef[j]; s[k] = es[j];
+    dir[k] = Math.sign(ef[j] - es[j]) || 0;
+  }
+  return { dir, fast: f, slow: s, tf: htf };
 }
 
 // A study's reading at every signal bar -- what a decision at that bar's close

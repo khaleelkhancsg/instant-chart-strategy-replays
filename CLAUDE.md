@@ -86,6 +86,13 @@ rule logic into a script: that is a second engine, and it drifts.
 - **`staleBars` / `staleMfeAtr`** leave a trade at the next open once it has run
   that many bars without being that many ATRs in favour. It is the $1,250 bot's
   40-minute exit, and the research's `exitFn` trade for trade.
+- **A strategy's `sizeMult`** (from `compute()`, per bar, read at the signal)
+  multiplies the size, rounded and at least 1. `0` refuses the entry the way a gate
+  does, so the signal still flips. `donchian_1250` uses it for the 10-minute EMA
+  filter and its late half size, and `macd_fade_1250` for its weak-cross and
+  volatility gates, as the research's sizers did.
+- **`tpMaxUsd`** caps the target at that many dollars for the size traded, as the
+  MACD fade's `min(5.15 ATR, $600 / (2 x lots))`.
 - **Day caps and overnight holds.** `dayLossStopUsd` and `dayProfitStopUsd` measure
   an open position from its fill, so use them with intraday-only books.
 - **After any engine change:**
@@ -95,7 +102,7 @@ rule logic into a script: that is a second engine, and it drifts.
 
 ## Tests
 
-- `npm run check`: test.mjs (261), audit, legacy parity (15), MCP end to end (18),
+- `npm run check`: test.mjs (279), audit, legacy parity (15), MCP end to end (18),
   chart link (7).
 - `FUZZ_SEED=<n> FUZZ_SCALE=<k> node test.mjs`: the randomised invariants.
 - `PARITY_SEED`, `PARITY_SCALE`: the same for test/legacy_parity.mjs.
@@ -117,6 +124,29 @@ rule logic into a script: that is a second engine, and it drifts.
 - Strategy table for the README: `node --max-old-space-size=8192
   research/strategy_table.mjs`. The README's other figures come from
   `research/readme_figures.mjs`.
+
+## The $1,250 books, and testing a new one
+
+- **`donchian_1250` is the $1,250 bot whole and the book to beat.**
+  - 2026: calendar 72.1%, bootstrap 70.8%.
+  - Forward, Sep 10 - Oct 26 2026: +$2,532, every window passed.
+- **`macd_fade_1250` reproduces the research's 67.7% exactly, but lost forward.**
+- **`trend_pullback`, `orb_trend` and `macd_momentum` are the indicator
+  combinations.** Each was tuned on 2026, and none held forward. Their headers
+  carry the numbers.
+- **The protocol** (`research/lib_eval1250.mjs` scores it, through `mcp/lab.mjs`):
+  - score 2026 by both methods, and in both halves;
+  - pick on one half and read the other;
+  - choose by the worse half;
+  - check the neighbours;
+  - compare with the coin-flip twin (`nullCfg`);
+  - then run `research/forward_1250.mjs` on the TopstepX bars
+    (`data/topstepx_1m.bin`).
+  - Grids go in `research/combos_1250_new.mjs`; single-factor screens of the
+    shipped books in `research/combos_1250.mjs`.
+- **A book that wins in 2026 but not in the half-split or forward is selection,
+  not edge.** That is the record here: every large 2026 grid's best fell apart on
+  the other half.
 
 ## Adding an indicator study
 

@@ -6,7 +6,7 @@
 // proves nothing, so the references here are deliberately independent.
 
 import fs from "node:fs";
-import { ema, sma, wma, atr, adx, rsi, donchian, rollingMeanStd, trueRange, efficiencyRatio } from "./src/indicators.mjs";
+import { ema, sma, wma, atr, adx, rsi, donchian, rollingMeanStd, trueRange, efficiencyRatio, rthRangeUsed, rthAtrRatio } from "./src/indicators.mjs";
 import { buildFilterContext, applyFilters, countSurviving } from "./src/filters.mjs";
 import { replayPortfolio } from "./src/portfolio.mjs";
 import { resample, sliceBars, indexAtOrAfter, indexAtOrBefore } from "./src/resample.mjs";
@@ -1804,7 +1804,7 @@ if (bars_) {
         const tfP = resample(sliceBars(H, 0, Math.floor(N * frac)), p.timeframeMin);
         const oP = s.compute(tfP, p);
         const m = tfP.close.length - 1;             // its last bar may be a partial bucket
-        for (const k of ["sig", "atr", "exitSig"]) {
+        for (const k of ["sig", "atr", "exitSig", "sizeMult"]) {
           if (!oF[k] && !oP[k]) continue;
           for (let i = 0; i < m; i++) {
             if (!same(oF[k][i], oP[k][i])) throw new Error(`${k} at bar ${i} of ${m} changes when later bars exist (cut ${frac})`);
@@ -2119,7 +2119,7 @@ if (bars_) {
         // no lookahead
         const oF = s.compute(resample(H, p.timeframeMin), p);
         const tfP = resample(sliceBars(H, 0, Math.floor(N * 0.7)), p.timeframeMin), oP = s.compute(tfP, p);
-        for (const k of ["sig", "atr", "exitSig"]) {
+        for (const k of ["sig", "atr", "exitSig", "sizeMult"]) {
           if (!oF[k] && !oP[k]) continue;
           for (let i = 0; i < tfP.close.length - 1; i++) if (!same(oF[k][i], oP[k][i])) throw new Error(`${k} at bar ${i} reads ahead -- ${tag()}`);
         }
@@ -2191,15 +2191,21 @@ section("13. Evaluation presets");
 {
   const strategies = await loadStrategies();
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-  t("the $3,000 eval changes nothing: every strategy's base is its defaults as before", () => {
+  t("the $3,000 eval: a book built for it is exactly its defaults; one built for $1,250 gets the $1,000 cap and its own $3,000 settings", () => {
+    let native = 0;
     for (const [id, s] of strategies) {
-      const b = evalBase(s, "3000");
-      if (!same(b.params, resolveParams(s, {}))) throw new Error(`${id}: params`);
-      const x = resolveExec(s.execDefaults || {});
+      const b = evalBase(s, "3000"), x0 = s.execDefaults || {}, own = (s.evals && s.evals["3000"]) || {};
+      if (!same(b.params, resolveParams(s, own.params || {}))) throw new Error(`${id}: params`);
+      const x = resolveExec({ ...x0, ...(x0.dayLossStopUsd > 0 ? { dayLossStopUsd: 1000 } : {}), ...(own.exec || {}) });
       if (!same(resolveExec(b.exec), x)) throw new Error(`${id}: exec`);
-      if (!same(resolveRules(b.rules), resolveRules(s.rulesDefaults || {}))) throw new Error(`${id}: rules`);
-      if (!same(b.filter, { ...NO_FILTER, ...(s.filterDefaults || {}) })) throw new Error(`${id}: filter`);
+      if (!same(resolveRules(b.rules), resolveRules({ ...(s.rulesDefaults || {}), ...(own.rules || {}) }))) throw new Error(`${id}: rules`);
+      if (!same(b.filter, { ...NO_FILTER, ...(s.filterDefaults || {}), ...(own.filter || {}) })) throw new Error(`${id}: filter`);
+      if (!own.exec && !own.params && [undefined, 0, 1000].includes(x0.dayLossStopUsd)) {
+        native++;
+        if (!same(resolveExec(b.exec), resolveExec(x0))) throw new Error(`${id}: a $3,000 book's exec changed`);
+      }
     }
+    if (native < 25) throw new Error(`only ${native} books built for the $3,000 eval`);
     if (!same({ ...DEFAULT_RULES, ...EVALS["3000"].rules }, DEFAULT_RULES)) throw new Error("the $3,000 rules are not DEFAULT_RULES");
   });
   t("the $1,250 eval: the firm's numbers, the loss cap only where a book models one, a strategy's own settings and rules on top", () => {
@@ -2448,6 +2454,59 @@ if (bars_) {
       if (p.reason === "SIGNAL") { eq(q.reason, "STALE"); stale++; } else eq(q.reason, p.reason);
     }
     if (!(stale > 20)) throw new Error(`only ${stale} stale exits to compare`);
+  });
+}
+
+// ══════════════════════════════ 16. SESSION MEASURES, SIZE AND TARGET CAP ══════════════════════════════
+section("16. ADR used, the ATR ratio, size multipliers and the dollar target cap");
+if (bars_) {
+  const { bars: B } = bars_;
+  const b = resample(sliceBars(B, B.count - 40000, B.count), 2), n = b.close.length, CT = b.ctMin, TD = b.tday;
+  const rth = (i) => CT[i] >= 510 && CT[i] < 900;
+  t("ADR used and the ATR ratio match a literal per-bar recomputation", () => {
+    const used = rthRangeUsed(b, 10), a = atr(b.high, b.low, b.close, 14), vr = rthAtrRatio(b, a, 10);
+    const days = [...new Set(TD)];
+    const fullRange = (d) => { let h = -Infinity, l = Infinity; for (let i = 0; i < n; i++) if (TD[i] === d && rth(i)) { h = Math.max(h, b.high[i]); l = Math.min(l, b.low[i]); } return h > l ? h - l : 0; };
+    const rangeOf = new Map(days.map((d) => [d, fullRange(d)]));
+    const rthDays = days.filter((d) => { for (let i = 0; i < n; i++) if (TD[i] === d && rth(i)) return true; return false; });
+    const meanAtr = new Map(rthDays.map((d) => { let s = 0, c = 0; for (let i = 0; i < n; i++) if (TD[i] === d && rth(i)) { s += a[i]; c++; } return [d, s / c]; }));
+    for (let i = 0; i < n; i += 13) {
+      if (!rth(i)) { if (!Number.isNaN(used[i]) || !Number.isNaN(vr[i])) throw new Error(`a value outside RTH at ${i}`); continue; }
+      const j = days.indexOf(TD[i]), prev = days.slice(Math.max(0, j - 10), j).map((d) => rangeOf.get(d)).filter((x) => x > 0);
+      let h = -Infinity, l = Infinity;
+      for (let q = i; q >= 0 && TD[q] === TD[i]; q--) if (rth(q)) { h = Math.max(h, b.high[q]); l = Math.min(l, b.low[q]); }
+      close(used[i], prev.length ? (h - l) / (prev.reduce((s, x) => s + x, 0) / prev.length) : 0, 1e-9, `ADR used at ${i}:`);
+      const r = rthDays.indexOf(TD[i]);
+      if (r < 10) { if (!Number.isNaN(vr[i])) throw new Error(`an ATR ratio before 10 sessions at ${i}`); continue; }
+      const avg = rthDays.slice(r - 10, r).reduce((s, d) => s + meanAtr.get(d), 0) / 10;
+      close(vr[i], a[i] / avg, 1e-9, `ATR ratio at ${i}:`);
+    }
+  });
+}
+{
+  const rows = [];
+  for (let i = 0; i < 40; i++) rows.push([100, 100.5, 99.5, 100]);
+  const sig = new Int8Array(40); sig[5] = 1; sig[15] = -1;
+  const x = { ...NOFEE, intradayOnly: false, slAtrMult: 50, tpAtrMult: 50, contracts: 4 };
+  t("size multipliers: 0 refuses the entry but the signal still flips; 0.5 halves the size, rounded, at least 1", () => {
+    const m = new Float64Array(40).fill(1); m[15] = 0;
+    const a = runBrackets(bars(rows), sig, flatAtr(40, 1), { ...x, sizeMult: m }).trades;
+    eq(a.length, 1); eq(a[0].reason, EXIT.FLIP, "the refused short still closes the long:");
+    m[15] = 1; m[5] = 0.5;
+    const b2 = runBrackets(bars(rows), sig, flatAtr(40, 1), { ...x, sizeMult: m }).trades;
+    eq(b2[0].contracts, 2); eq(b2[1].contracts, 4);
+    m[5] = 0.1;
+    eq(runBrackets(bars(rows), sig, flatAtr(40, 1), { ...x, sizeMult: m }).trades[0].contracts, 1, "never below one lot:");
+  });
+  t("the dollar target cap: min(ATR target, cap / (point value x lots))", () => {
+    // ATR 20: the ATR target is 5.15 x 20 = 103 points, the $600 cap 75 at 4 lots
+    const tr = runBrackets(bars(rows), sig, flatAtr(40, 20), { ...x, tpAtrMult: 5.15, tpMaxUsd: 600 }).trades;
+    close(tr[0].target - tr[0].entryPrice, 600 / (2 * 4), 1e-9, "75 points at 4 lots:");
+    const wide = runBrackets(bars(rows), sig, flatAtr(40, 20), { ...x, tpAtrMult: 5.15, tpMaxUsd: 10000 }).trades;
+    close(wide[0].target - wide[0].entryPrice, 103, 1e-9, "a cap beyond the ATR target leaves it:");
+    const m = new Float64Array(40).fill(1); m[5] = 0.5;
+    const half = runBrackets(bars(rows), sig, flatAtr(40, 20), { ...x, tpAtrMult: 5.15, tpMaxUsd: 600, sizeMult: m }).trades;
+    close(half[0].target - half[0].entryPrice, 103, 1e-9, "the cap is for the size traded -- 150 points at 2 lots -- so the 103-point ATR target stands:");
   });
 }
 

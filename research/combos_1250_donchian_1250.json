@@ -1,0 +1,899 @@
+{
+ "id": "donchian_1250",
+ "dims": [
+  [
+   "adxMin",
+   [
+    "adxMin=25",
+    "adxMin=20"
+   ]
+  ],
+  [
+   "htf",
+   [
+    "10m 9/21",
+    "10m 20/50"
+   ]
+  ],
+  [
+   "lateRangeUsed",
+   [
+    "lateRangeUsed=0.9",
+    "lateRangeUsed=1.1"
+   ]
+  ],
+  [
+   "until",
+   [
+    "until 15:00",
+    "until 13:00"
+   ]
+  ],
+  [
+   "adrCap",
+   [
+    "no ADR cap",
+    "ADR used <= 1.5"
+   ]
+  ]
+ ],
+ "pick": {
+  "idx": [
+   1,
+   0,
+   0,
+   0,
+   1
+  ],
+  "label": "adxMin=20, 10m 9/21, lateRangeUsed=0.9, until 15:00, ADR used <= 1.5",
+  "o": {
+   "params": {
+    "adxMin": 20,
+    "htfFast": 9,
+    "htfSlow": 21,
+    "lateRangeUsed": 0.9
+   },
+   "exec": {},
+   "filter": {
+    "endCt": 900
+   },
+   "studies": [
+    {
+     "type": "adrused",
+     "tf": 0,
+     "params": {
+      "days": 10,
+      "hi": 1.5
+     },
+     "gate": "below"
+    }
+   ]
+  },
+  "cal": 73.3,
+  "calA": 73.3,
+  "calB": 73.3,
+  "ci": [
+   33.8,
+   93.7
+  ],
+  "boot": 73.3,
+  "bootA": 74.4,
+  "bootB": 75.8,
+  "trades": 124,
+  "net": 11009,
+  "winRate": 66.9,
+  "perTrade": 89,
+  "pf": 1.73
+ },
+ "null": {
+  "seeds": 20,
+  "cal": 35.7,
+  "calA": 38.5,
+  "calB": 32.3,
+  "boot": 34.2,
+  "atLeastReal": 0,
+  "best": 56.4
+ },
+ "rows": [
+  {
+   "idx": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "label": "adxMin=25, 10m 9/21, lateRangeUsed=0.9, until 15:00, no ADR cap",
+   "cal": 72.1,
+   "calA": 71.1,
+   "calB": 73.3,
+   "ci": [
+    32.9,
+    93.2
+   ],
+   "boot": 70.8,
+   "bootA": 71.1,
+   "bootB": 75.9,
+   "trades": 127,
+   "net": 9849,
+   "winRate": 66.1,
+   "perTrade": 78,
+   "pf": 1.62
+  },
+  {
+   "idx": [
+    0,
+    0,
+    0,
+    0,
+    1
+   ],
+   "label": "adxMin=25, 10m 9/21, lateRangeUsed=0.9, until 15:00, ADR used <= 1.5",
+   "cal": 72.1,
+   "calA": 71.1,
+   "calB": 73.3,
+   "ci": [
+    32.9,
+    93.2
+   ],
+   "boot": 71.8,
+   "bootA": 71.1,
+   "bootB": 77.1,
+   "trades": 125,
+   "net": 9957,
+   "winRate": 66.4,
+   "perTrade": 80,
+   "pf": 1.65
+  },
+  {
+   "idx": [
+    0,
+    0,
+    0,
+    1,
+    0
+   ],
+   "label": "adxMin=25, 10m 9/21, lateRangeUsed=0.9, until 13:00, no ADR cap",
+   "cal": 75.8,
+   "calA": 77.8,
+   "calB": 73.3,
+   "ci": [
+    35.7,
+    94.6
+   ],
+   "boot": 69.1,
+   "bootA": 70.3,
+   "bootB": 73,
+   "trades": 104,
+   "net": 9786,
+   "winRate": 66.3,
+   "perTrade": 94,
+   "pf": 1.72
+  },
+  {
+   "idx": [
+    0,
+    0,
+    0,
+    1,
+    1
+   ],
+   "label": "adxMin=25, 10m 9/21, lateRangeUsed=0.9, until 13:00, ADR used <= 1.5",
+   "cal": 75.8,
+   "calA": 77.8,
+   "calB": 73.3,
+   "ci": [
+    35.7,
+    94.6
+   ],
+   "boot": 69.8,
+   "bootA": 70.3,
+   "bootB": 73.5,
+   "trades": 102,
+   "net": 9894,
+   "winRate": 66.7,
+   "perTrade": 97,
+   "pf": 1.76
+  },
+  {
+   "idx": [
+    0,
+    0,
+    1,
+    0,
+    0
+   ],
+   "label": "adxMin=25, 10m 9/21, lateRangeUsed=1.1, until 15:00, no ADR cap",
+   "cal": 74.5,
+   "calA": 68.9,
+   "calB": 81.3,
+   "ci": [
+    34.7,
+    94.2
+   ],
+   "boot": 68.2,
+   "bootA": 67.5,
+   "bootB": 73.4,
+   "trades": 124,
+   "net": 9845,
+   "winRate": 66.1,
+   "perTrade": 79,
+   "pf": 1.57
+  },
+  {
+   "idx": [
+    0,
+    0,
+    1,
+    0,
+    1
+   ],
+   "label": "adxMin=25, 10m 9/21, lateRangeUsed=1.1, until 15:00, ADR used <= 1.5",
+   "cal": 74.5,
+   "calA": 68.9,
+   "calB": 81.3,
+   "ci": [
+    34.7,
+    94.2
+   ],
+   "boot": 68.5,
+   "bootA": 67.5,
+   "bootB": 73.4,
+   "trades": 122,
+   "net": 9952,
+   "winRate": 66.4,
+   "perTrade": 82,
+   "pf": 1.6
+  },
+  {
+   "idx": [
+    0,
+    0,
+    1,
+    1,
+    0
+   ],
+   "label": "adxMin=25, 10m 9/21, lateRangeUsed=1.1, until 13:00, no ADR cap",
+   "cal": 75.8,
+   "calA": 77.8,
+   "calB": 73.3,
+   "ci": [
+    35.7,
+    94.6
+   ],
+   "boot": 65,
+   "bootA": 67.1,
+   "bootB": 68,
+   "trades": 103,
+   "net": 9176,
+   "winRate": 66,
+   "perTrade": 89,
+   "pf": 1.62
+  },
+  {
+   "idx": [
+    0,
+    0,
+    1,
+    1,
+    1
+   ],
+   "label": "adxMin=25, 10m 9/21, lateRangeUsed=1.1, until 13:00, ADR used <= 1.5",
+   "cal": 75.2,
+   "calA": 77.8,
+   "calB": 72,
+   "ci": [
+    35.2,
+    94.4
+   ],
+   "boot": 65.3,
+   "bootA": 67.1,
+   "bootB": 67.9,
+   "trades": 101,
+   "net": 9283,
+   "winRate": 66.3,
+   "perTrade": 92,
+   "pf": 1.65
+  },
+  {
+   "idx": [
+    0,
+    1,
+    0,
+    0,
+    0
+   ],
+   "label": "adxMin=25, 10m 20/50, lateRangeUsed=0.9, until 15:00, no ADR cap",
+   "cal": 72.1,
+   "calA": 78.9,
+   "calB": 64,
+   "ci": [
+    32.9,
+    93.2
+   ],
+   "boot": 76.1,
+   "bootA": 89.2,
+   "bootB": 70.5,
+   "trades": 118,
+   "net": 11482,
+   "winRate": 69.5,
+   "perTrade": 97,
+   "pf": 1.92
+  },
+  {
+   "idx": [
+    0,
+    1,
+    0,
+    0,
+    1
+   ],
+   "label": "adxMin=25, 10m 20/50, lateRangeUsed=0.9, until 15:00, ADR used <= 1.5",
+   "cal": 70.3,
+   "calA": 78.9,
+   "calB": 60,
+   "ci": [
+    31.5,
+    92.4
+   ],
+   "boot": 77.2,
+   "bootA": 89.2,
+   "bootB": 72.5,
+   "trades": 115,
+   "net": 11678,
+   "winRate": 70.4,
+   "perTrade": 102,
+   "pf": 2
+  },
+  {
+   "idx": [
+    0,
+    1,
+    0,
+    1,
+    0
+   ],
+   "label": "adxMin=25, 10m 20/50, lateRangeUsed=0.9, until 13:00, no ADR cap",
+   "cal": 77,
+   "calA": 80,
+   "calB": 73.3,
+   "ci": [
+    36.7,
+    95.1
+   ],
+   "boot": 79.1,
+   "bootA": 90.7,
+   "bootB": 72.8,
+   "trades": 95,
+   "net": 12259,
+   "winRate": 71.6,
+   "perTrade": 129,
+   "pf": 2.26
+  },
+  {
+   "idx": [
+    0,
+    1,
+    0,
+    1,
+    1
+   ],
+   "label": "adxMin=25, 10m 20/50, lateRangeUsed=0.9, until 13:00, ADR used <= 1.5",
+   "cal": 77,
+   "calA": 80,
+   "calB": 73.3,
+   "ci": [
+    36.7,
+    95.1
+   ],
+   "boot": 79.9,
+   "bootA": 90.7,
+   "bootB": 73.6,
+   "trades": 93,
+   "net": 12366,
+   "winRate": 72,
+   "perTrade": 133,
+   "pf": 2.36
+  },
+  {
+   "idx": [
+    0,
+    1,
+    1,
+    0,
+    0
+   ],
+   "label": "adxMin=25, 10m 20/50, lateRangeUsed=1.1, until 15:00, no ADR cap",
+   "cal": 73.9,
+   "calA": 82.2,
+   "calB": 64,
+   "ci": [
+    34.3,
+    93.9
+   ],
+   "boot": 78.4,
+   "bootA": 88.8,
+   "bootB": 71.7,
+   "trades": 116,
+   "net": 12438,
+   "winRate": 69.8,
+   "perTrade": 107,
+   "pf": 1.99
+  },
+  {
+   "idx": [
+    0,
+    1,
+    1,
+    0,
+    1
+   ],
+   "label": "adxMin=25, 10m 20/50, lateRangeUsed=1.1, until 15:00, ADR used <= 1.5",
+   "cal": 72.1,
+   "calA": 82.2,
+   "calB": 60,
+   "ci": [
+    32.9,
+    93.2
+   ],
+   "boot": 78.9,
+   "bootA": 88.8,
+   "bootB": 73,
+   "trades": 113,
+   "net": 12634,
+   "winRate": 70.8,
+   "perTrade": 112,
+   "pf": 2.07
+  },
+  {
+   "idx": [
+    0,
+    1,
+    1,
+    1,
+    0
+   ],
+   "label": "adxMin=25, 10m 20/50, lateRangeUsed=1.1, until 13:00, no ADR cap",
+   "cal": 77.6,
+   "calA": 81.1,
+   "calB": 73.3,
+   "ci": [
+    37.2,
+    95.3
+   ],
+   "boot": 78.8,
+   "bootA": 88.5,
+   "bootB": 72.6,
+   "trades": 95,
+   "net": 12380,
+   "winRate": 71.6,
+   "perTrade": 130,
+   "pf": 2.21
+  },
+  {
+   "idx": [
+    0,
+    1,
+    1,
+    1,
+    1
+   ],
+   "label": "adxMin=25, 10m 20/50, lateRangeUsed=1.1, until 13:00, ADR used <= 1.5",
+   "cal": 77.6,
+   "calA": 81.1,
+   "calB": 73.3,
+   "ci": [
+    37.2,
+    95.3
+   ],
+   "boot": 79.1,
+   "bootA": 88.5,
+   "bootB": 72.8,
+   "trades": 93,
+   "net": 12487,
+   "winRate": 72,
+   "perTrade": 134,
+   "pf": 2.29
+  },
+  {
+   "idx": [
+    1,
+    0,
+    0,
+    0,
+    0
+   ],
+   "label": "adxMin=20, 10m 9/21, lateRangeUsed=0.9, until 15:00, no ADR cap",
+   "cal": 73.3,
+   "calA": 73.3,
+   "calB": 73.3,
+   "ci": [
+    33.8,
+    93.7
+   ],
+   "boot": 71.9,
+   "bootA": 74.4,
+   "bootB": 73.3,
+   "trades": 126,
+   "net": 10902,
+   "winRate": 66.7,
+   "perTrade": 87,
+   "pf": 1.69
+  },
+  {
+   "idx": [
+    1,
+    0,
+    0,
+    0,
+    1
+   ],
+   "label": "adxMin=20, 10m 9/21, lateRangeUsed=0.9, until 15:00, ADR used <= 1.5",
+   "cal": 73.3,
+   "calA": 73.3,
+   "calB": 73.3,
+   "ci": [
+    33.8,
+    93.7
+   ],
+   "boot": 73.3,
+   "bootA": 74.4,
+   "bootB": 75.8,
+   "trades": 124,
+   "net": 11009,
+   "winRate": 66.9,
+   "perTrade": 89,
+   "pf": 1.73
+  },
+  {
+   "idx": [
+    1,
+    0,
+    0,
+    1,
+    0
+   ],
+   "label": "adxMin=20, 10m 9/21, lateRangeUsed=0.9, until 13:00, no ADR cap",
+   "cal": 77,
+   "calA": 80,
+   "calB": 73.3,
+   "ci": [
+    36.7,
+    95.1
+   ],
+   "boot": 69.8,
+   "bootA": 72.8,
+   "bootB": 72,
+   "trades": 107,
+   "net": 10457,
+   "winRate": 67.3,
+   "perTrade": 98,
+   "pf": 1.75
+  },
+  {
+   "idx": [
+    1,
+    0,
+    0,
+    1,
+    1
+   ],
+   "label": "adxMin=20, 10m 9/21, lateRangeUsed=0.9, until 13:00, ADR used <= 1.5",
+   "cal": 77,
+   "calA": 80,
+   "calB": 73.3,
+   "ci": [
+    36.7,
+    95.1
+   ],
+   "boot": 70.9,
+   "bootA": 72.8,
+   "bootB": 73.4,
+   "trades": 105,
+   "net": 10564,
+   "winRate": 67.6,
+   "perTrade": 101,
+   "pf": 1.79
+  },
+  {
+   "idx": [
+    1,
+    0,
+    1,
+    0,
+    0
+   ],
+   "label": "adxMin=20, 10m 9/21, lateRangeUsed=1.1, until 15:00, no ADR cap",
+   "cal": 73.3,
+   "calA": 73.3,
+   "calB": 73.3,
+   "ci": [
+    33.8,
+    93.7
+   ],
+   "boot": 69,
+   "bootA": 70.8,
+   "bootB": 70.1,
+   "trades": 124,
+   "net": 10744,
+   "winRate": 66.9,
+   "perTrade": 87,
+   "pf": 1.63
+  },
+  {
+   "idx": [
+    1,
+    0,
+    1,
+    0,
+    1
+   ],
+   "label": "adxMin=20, 10m 9/21, lateRangeUsed=1.1, until 15:00, ADR used <= 1.5",
+   "cal": 73.3,
+   "calA": 73.3,
+   "calB": 73.3,
+   "ci": [
+    33.8,
+    93.7
+   ],
+   "boot": 70.1,
+   "bootA": 70.8,
+   "bootB": 71.9,
+   "trades": 122,
+   "net": 10851,
+   "winRate": 67.2,
+   "perTrade": 89,
+   "pf": 1.66
+  },
+  {
+   "idx": [
+    1,
+    0,
+    1,
+    1,
+    0
+   ],
+   "label": "adxMin=20, 10m 9/21, lateRangeUsed=1.1, until 13:00, no ADR cap",
+   "cal": 75.8,
+   "calA": 77.8,
+   "calB": 73.3,
+   "ci": [
+    35.7,
+    94.6
+   ],
+   "boot": 65.4,
+   "bootA": 69.7,
+   "bootB": 66.1,
+   "trades": 106,
+   "net": 9774,
+   "winRate": 67,
+   "perTrade": 92,
+   "pf": 1.64
+  },
+  {
+   "idx": [
+    1,
+    0,
+    1,
+    1,
+    1
+   ],
+   "label": "adxMin=20, 10m 9/21, lateRangeUsed=1.1, until 13:00, ADR used <= 1.5",
+   "cal": 75.2,
+   "calA": 77.8,
+   "calB": 72,
+   "ci": [
+    35.2,
+    94.4
+   ],
+   "boot": 66.2,
+   "bootA": 69.7,
+   "bootB": 67.3,
+   "trades": 104,
+   "net": 9882,
+   "winRate": 67.3,
+   "perTrade": 95,
+   "pf": 1.67
+  },
+  {
+   "idx": [
+    1,
+    1,
+    0,
+    0,
+    0
+   ],
+   "label": "adxMin=20, 10m 20/50, lateRangeUsed=0.9, until 15:00, no ADR cap",
+   "cal": 73.3,
+   "calA": 81.1,
+   "calB": 64,
+   "ci": [
+    33.8,
+    93.7
+   ],
+   "boot": 77.2,
+   "bootA": 91,
+   "bootB": 67.7,
+   "trades": 118,
+   "net": 11935,
+   "winRate": 69.5,
+   "perTrade": 101,
+   "pf": 1.93
+  },
+  {
+   "idx": [
+    1,
+    1,
+    0,
+    0,
+    1
+   ],
+   "label": "adxMin=20, 10m 20/50, lateRangeUsed=0.9, until 15:00, ADR used <= 1.5",
+   "cal": 71.5,
+   "calA": 81.1,
+   "calB": 60,
+   "ci": [
+    32.4,
+    92.9
+   ],
+   "boot": 78.9,
+   "bootA": 91,
+   "bootB": 70.6,
+   "trades": 115,
+   "net": 12131,
+   "winRate": 70.4,
+   "perTrade": 105,
+   "pf": 2
+  },
+  {
+   "idx": [
+    1,
+    1,
+    0,
+    1,
+    0
+   ],
+   "label": "adxMin=20, 10m 20/50, lateRangeUsed=0.9, until 13:00, no ADR cap",
+   "cal": 79.4,
+   "calA": 84.4,
+   "calB": 73.3,
+   "ci": [
+    38.7,
+    95.9
+   ],
+   "boot": 80.6,
+   "bootA": 91.5,
+   "bootB": 71.8,
+   "trades": 98,
+   "net": 12929,
+   "winRate": 72.4,
+   "perTrade": 132,
+   "pf": 2.28
+  },
+  {
+   "idx": [
+    1,
+    1,
+    0,
+    1,
+    1
+   ],
+   "label": "adxMin=20, 10m 20/50, lateRangeUsed=0.9, until 13:00, ADR used <= 1.5",
+   "cal": 79.4,
+   "calA": 84.4,
+   "calB": 73.3,
+   "ci": [
+    38.7,
+    95.9
+   ],
+   "boot": 81.8,
+   "bootA": 91.5,
+   "bootB": 73.5,
+   "trades": 96,
+   "net": 13036,
+   "winRate": 72.9,
+   "perTrade": 136,
+   "pf": 2.38
+  },
+  {
+   "idx": [
+    1,
+    1,
+    1,
+    0,
+    0
+   ],
+   "label": "adxMin=20, 10m 20/50, lateRangeUsed=1.1, until 15:00, no ADR cap",
+   "cal": 77,
+   "calA": 87.8,
+   "calB": 64,
+   "ci": [
+    36.7,
+    95.1
+   ],
+   "boot": 79.2,
+   "bootA": 90.5,
+   "bootB": 68.5,
+   "trades": 117,
+   "net": 12737,
+   "winRate": 70.1,
+   "perTrade": 109,
+   "pf": 1.99
+  },
+  {
+   "idx": [
+    1,
+    1,
+    1,
+    0,
+    1
+   ],
+   "label": "adxMin=20, 10m 20/50, lateRangeUsed=1.1, until 15:00, ADR used <= 1.5",
+   "cal": 75.2,
+   "calA": 87.8,
+   "calB": 60,
+   "ci": [
+    35.2,
+    94.4
+   ],
+   "boot": 80.3,
+   "bootA": 90.5,
+   "bootB": 70.8,
+   "trades": 114,
+   "net": 12933,
+   "winRate": 71.1,
+   "perTrade": 113,
+   "pf": 2.06
+  },
+  {
+   "idx": [
+    1,
+    1,
+    1,
+    1,
+    0
+   ],
+   "label": "adxMin=20, 10m 20/50, lateRangeUsed=1.1, until 13:00, no ADR cap",
+   "cal": 78.8,
+   "calA": 83.3,
+   "calB": 73.3,
+   "ci": [
+    38.2,
+    95.7
+   ],
+   "boot": 79.9,
+   "bootA": 89.5,
+   "bootB": 71.6,
+   "trades": 98,
+   "net": 12979,
+   "winRate": 72.4,
+   "perTrade": 132,
+   "pf": 2.22
+  },
+  {
+   "idx": [
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "label": "adxMin=20, 10m 20/50, lateRangeUsed=1.1, until 13:00, ADR used <= 1.5",
+   "cal": 78.8,
+   "calA": 83.3,
+   "calB": 73.3,
+   "ci": [
+    38.2,
+    95.7
+   ],
+   "boot": 80.8,
+   "bootA": 89.5,
+   "bootB": 72.7,
+   "trades": 96,
+   "net": 13086,
+   "winRate": 72.9,
+   "perTrade": 136,
+   "pf": 2.31
+  }
+ ]
+}

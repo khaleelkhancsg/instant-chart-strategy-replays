@@ -93,7 +93,7 @@ re-sweeps automatically ~700ms after you stop changing parameters.
 
 ### Indicators beside the strategy
 
-**Indicators** in the sidebar adds any of 21 studies to the chart, each on a
+**Indicators** in the sidebar adds any of 23 studies to the chart, each on a
 timeframe of your choice. They are drawn on the price pane or in a pane of their
 own, with their values under the crosshair:
 
@@ -102,7 +102,7 @@ own, with their values under the crosshair:
 | Price | EMA, SMA, EMA cross (fast / slow), VWAP (session or RTH, with σ bands), Supertrend |
 | Bands & levels | Bollinger, Keltner, Donchian, prior day & overnight levels, opening range |
 | Oscillators | RSI, Stochastic, MACD, CCI, rate of change, z-score |
-| Regime & volatility | ADX / DMI, ATR, efficiency ratio, choppiness, relative volume |
+| Regime & volatility | ADX / DMI, ATR, efficiency ratio, choppiness, relative volume, ADR used, ATR vs its session average |
 
 Each study does two jobs:
 - **It reports.** The **Indicator edge** panel splits every trade of the full run
@@ -129,8 +129,9 @@ Adding the live $1,250 bot's filter, an **EMA cross 9/21 on 10m** with the gate
 "with", lifts that to **59.4%** (Jan–Mar 47.8, Apr–Jul 73.3). Adding its
 40-minute exit too, as **Stale exit after 20 bars, 1 ATR** in Execution & costs,
 gives **70.3%**. All history falls from 42.1% to 35.6% on the way, though, so this
-is a 2026 edge: check both before trusting one. (The live bot also halves its
-size late in the day, which the lab does not model.)
+is a 2026 edge: check both before trusting one. The live bot also halves its size
+once the day has used 0.9 of its average range; `donchian_1250` is that bot whole,
+at 72.1%.
 
 ---
 
@@ -159,7 +160,7 @@ never repaint 30,000 candles.
 
 ## The strategy library
 
-30 strategies ship in `strategies/`. **Four are templates** built to be tuned
+35 strategies ship in `strategies/`. **Four are templates** built to be tuned
 rather than traded as-is — each collapses a whole family of ideas onto sliders:
 
 | Template | What its parameters span |
@@ -171,7 +172,12 @@ rather than traded as-is — each collapses a whole family of ideas onto sliders
 
 The rest:
 - **The live books:** `donchian_shipped` (the $3,000 bot's exact configuration) and
-  its research ancestor `donchian_eff_rth`.
+  its research ancestor `donchian_eff_rth`; `donchian_1250` (the $1,250 bot whole)
+  and `macd_fade_1250` (the $1,250 MACD fade indicator).
+- **Indicator combinations for the $1,250 eval:** `trend_pullback` (EMA trend,
+  ADX, an RSI or MACD dip, ADR room), `orb_trend` (the opening range with EMA,
+  ADR and ADX filters), `macd_momentum` (the 3-bar MACD research with an EMA
+  trend). See "The $1,250 books" below before trusting any of them.
 - **The MACD family:** flips, fades and anticipations on 1- and 5-minute bars,
   `macd_mtf_confirm`, `macd_angle_v4`, `ema_cross_macd_fade`.
 - **Session structure:** `orb`, `prior_day_break`, `gap_fade`,
@@ -210,13 +216,21 @@ How to read the tables:
 
 #### $3,000 eval — $3,000 target · $2,000 trailing drawdown · $1,000 daily loss limit
 
+The five books built for the $1,250 eval (below) run here with this eval's $1,000 cap;
+`donchian_1250` also takes its own $3,000 settings (7 lots, late 4, −$500 / +$400).
+
 | strategy | bars | trades | PF | $/trade | pass, all | pass, 2026 | Jan–Mar · Apr–Jul | 2026 at 1 tick | reach payout |
 |---|---|---|---|---|---|---|---|---|---|
+| `donchian_1250` | 2m | 2,354 | 1.175 | +$28.63 | 22.4% | 60.0% | 48.9 · 73.3 | 60.0% | 71.7% |
+| `trend_pullback` | 1m | 3,445 | 0.915 | −$8.93 | 5.5% | 44.8% | 54.4 · 33.3 | 44.8% | 55.7% |
+| `macd_fade_1250` | 1m | 4,101 | 0.956 | −$4.19 | 9.3% | 44.2% | 43.3 · 45.3 | 44.2% | 62.3% |
 | `macd_cross` | 5m | 38,348 | 0.971 | −$5.80 | 13.1% | 42.4% | 56.7 · 25.3 | 43.0% | 15.4% |
 | `trend_neutev` | 5m | 11,036 | 1.006 | +$2.09 | 14.9% | 43.6% | 46.7 · 40.0 | 41.8% | 28.6% |
+| `orb_trend` | 1m | 1,263 | 0.906 | −$16.90 | 4.5% | 40.0% | 33.3 · 48.0 | 40.0% | 61.4% |
 | `tpl_channel` | 5m | 12,894 | 1.003 | +$1.07 | 18.3% | 40.6% | 46.7 · 33.3 | 38.8% | 31.1% |
-| **`donchian_shipped`** | 2m | 2,945 | **1.176** | **+$40.01** | 35.5% | 32.1% | 31.1 · 33.3 | 32.1% | **55.1%** |
-| **`donchian_eff_rth`** | 2m | 5,590 | 1.079 | +$28.01 | **42.0%** | 31.5% | 33.3 · 29.3 | 29.7% | 51.7% |
+| `macd_momentum` | 5m | 1,508 | 1.043 | +$8.77 | 9.2% | 35.8% | 41.1 · 29.3 | 35.8% | 72.6% |
+| `donchian_shipped` | 2m | 2,945 | 1.176 | +$40.01 | 35.5% | 32.1% | 31.1 · 33.3 | 32.1% | 55.1% |
+| `donchian_eff_rth` | 2m | 5,590 | 1.079 | +$28.01 | 42.0% | 31.5% | 33.3 · 29.3 | 29.7% | 51.7% |
 | `momentum_roc` | 5m | 12,401 | 1.018 | +$7.76 | 21.3% | 26.7% | 6.7 · 50.7 | 26.7% | 27.1% |
 | `macd_5m_quiet_anticipate`† | 5m | 7,589 | 1.047 | +$8.65 | 26.3% | 26.1% | 23.3 · 29.3 | 23.6% | 38.6% |
 | `triple_ema` | 5m | 16,045 | 0.994 | −$1.79 | 14.8% | 24.8% | 7.8 · 45.3 | 23.6% | 26.0% |
@@ -245,13 +259,18 @@ How to read the tables:
 
 #### $1,250 eval — $1,250 target · $1,000 trailing drawdown · $600 daily loss limit
 
-Trades, PF and $/trade are the same as above for every book except
-`donchian_shipped`, the only one with its own $1,250 settings (4 lots, a −$300
-breaker, a +$250 profit block). Every other book trades its $3,000 size.
+Trades, PF and $/trade differ from the table above only for the books with their
+own $1,250 settings: `donchian_shipped` (4 lots, a −$300 breaker, a +$250 profit
+block) and the five built for this eval. Every other book trades its $3,000 size.
 
 | strategy | pass, all | pass, 2026 | Jan–Mar · Apr–Jul | 2026 at 1 tick | reach payout |
 |---|---|---|---|---|---|
-| **`donchian_shipped`** (4 lots) | **42.1%** | **44.2%** | 45.6 · 42.7 | **44.2%** | **56.3%** |
+| `donchian_1250` (4 lots) | 34.4% | 72.1% | 71.1 · 73.3 | 72.1% | 60.0% |
+| `trend_pullback` | 22.3% | 72.1% | 82.2 · 60.0 | 72.1% | 32.9% |
+| `orb_trend` | 20.6% | 63.6% | 62.2 · 65.3 | 63.6% | 43.7% |
+| `macd_fade_1250` | 33.4% | 55.8% | 60.0 · 50.7 | 55.8% | 48.0% |
+| `macd_momentum` | 35.1% | 54.5% | 57.8 · 50.7 | 54.5% | 49.4% |
+| `donchian_shipped` (4 lots) | 42.1% | 44.2% | 45.6 · 42.7 | 44.2% | 56.3% |
 | `trend_neutev` | 15.4% | 30.3% | 36.7 · 22.7 | 30.9% | 20.9% |
 | `donchian_eff_rth` | 36.8% | 31.5% | 33.3 · 29.3 | 29.7% | 35.1% |
 | `momentum_roc` | 20.9% | 24.8% | 14.4 · 37.3 | 24.2% | 25.7% |
@@ -283,36 +302,94 @@ breaker, a +$250 profit block). Every other book trades its $3,000 size.
 | `macd_1m_fade`† | 0.4% | 0.0% | 0.0 · 0.0 | 0.0% | 0.0% |
 
 What the tables say:
-- **The two Donchian books hold up everywhere.**
-  - On all history they pass 42.0% (`donchian_eff_rth`) and 35.5%
-    (`donchian_shipped`) of $3,000 combines. The next best is 26.3%.
-  - They carry the strongest per-trade edges (PF 1.08 and 1.18), and two of the
-    three best payout rates (51.7% and 55.1%; `gap_fade` reaches 54.6%).
-  - At its own $1,250 settings, `donchian_shipped` is the best book on that eval:
-    42.1% over all history, 44.2% in 2026.
-- **A high 2026 rate is not an edge.** `macd_cross` passes 42.4% of 2026 windows
-  but 13.1% over all history, with a profit factor under 1. `trend_neutev` and
-  `tpl_channel` show the same pattern: 40–44% in 2026, 15–18% over all history,
-  PF about 1.0.
-- **Neither eval is easier across the board.**
-  - The $1,250 target is less than half the $3,000 one, so on all history 19 of
-    the 30 books pass it more often.
-  - But its drawdown and daily limit shrink with the target, while every book but
-    `donchian_shipped` keeps its 8–10 lot size. So in 2026, at a tick of slippage,
-    17 of 30 pass it less often.
-  - 26 of 30 reach a funded payout less often after it: the funded account keeps
-    the $1,000 drawdown.
+- **The Donchian books lead.**
+  - On the $1,250 eval, `donchian_1250` (the $1,250 bot whole) passes 72.1% of
+    2026 windows, above 70% in both halves. It is the only book that also held up
+    forward (below).
+  - Over all history, `donchian_eff_rth` (42.0%) and `donchian_shipped` (35.5%)
+    lead the $3,000 eval; the next best is 26.3%. `donchian_shipped` at 4 lots
+    leads the $1,250 eval (42.1%).
+  - They carry the strongest per-trade edges (PF 1.08–1.18).
+- **A high 2026 rate is not an edge.**
+  - `macd_cross` passes 42.4% of 2026 windows but 13.1% over all history, with a
+    profit factor under 1. `trend_neutev` and `tpl_channel` show the same
+    pattern: 40–44% in 2026, 15–18% over all history, PF about 1.0.
+  - So does `trend_pullback`: 72.1% of 2026's $1,250 windows, 22.3% over all
+    history, and it lost forward.
+- **Neither eval is easier across the board.** Among the 29 books that keep their
+  $3,000 size:
+  - the $1,250 target is less than half the $3,000 one, so on all history 18 of
+    them pass it more often;
+  - but its drawdown and daily limit shrink with the target, while they keep
+    their 8–10 lots. So in 2026, at a tick of slippage, 17 of 29 pass it less
+    often;
+  - 26 of 29 reach a funded payout less often after it, because the funded
+    account keeps the $1,000 drawdown.
   - Set the size in the $1,250 tab before comparing books there.
 - **The 1-minute MACD flips and fades need overnight holds.** Flat by 15:05 CT,
   they pass 0.3–1.7% of windows over all history.
 
 Two caveats before reading too much into these tables:
-- **The parameters are untuned defaults.** The point of the templates is that you
-  tune them, and several books will look very different after a pass through the
-  sliders.
+- **Most parameters are untuned defaults.** The point of the templates is that
+  you tune them, and several books will look very different after a pass through
+  the sliders. The $1,250 books were tuned on 2026, which is why their 2026 rates
+  top the tables, and why the forward check below matters.
 - **A pass rate at defaults is not validation.** Use the MCP tools' `search`
   (in-sample only, with an out-of-sample check and PBO) and `walk_forward` before
   trusting a tuned number.
+
+### The $1,250 books, and what EMA, MACD, RSI, ADR and ADX added
+
+Five books are built for the $1,250 eval. Each was judged on 2026 only:
+- by both pass-rate methods, and in both halves;
+- against a **coin-flip twin**: the same book with each signal's direction decided
+  by a coin, timing, gates, size and exits unchanged (`research/lib_eval1250.mjs`).
+
+Each was then run **forward** on TopstepX bars from Sep 10 to Oct 26 2026 — 32
+trading days none of them was chosen on (`research/forward_1250.mjs`).
+
+| book | 2026 calendar (Jan–Mar · Apr–Jul) | 2026 bootstrap | coin-flip twin, calendar | forward: trades, net, windows passed |
+|---|---|---|---|---|
+| **`donchian_1250`** | **72.1%** (71.1 · 73.3) | 70.8% | 33.3% | 23, **+$2,532**, **100%** |
+| `trend_pullback` | 72.1% (82.2 · 60.0) | 72.4% | 31.2% | 51, −$2,162, 5.9% |
+| `orb_trend` | 63.6% (62.2 · 65.3) | 48.5% | 39.4% | 20, −$234, 58.8% |
+| `macd_fade_1250` | 55.8% (60.0 · 50.7) | 67.7% | 37.6% | 56, −$2,160, 17.6% |
+| `macd_momentum` | 54.5% (57.8 · 50.7) | 48.6% | 28.6% | 26, +$154, 52.9% |
+
+What it shows:
+- **The two shipped books came over exactly.**
+  - `macd_fade_1250` reproduces the research's 67.7% (bootstrap) to the decimal,
+    with the same 172 trades.
+  - `donchian_1250` gives 70.8% against the research's 71.1%, with 127 trades
+    against 128. The small gap is the lab's physically consistent fills.
+- **Adding an indicator improved neither** (`research/combos_1250.mjs`).
+  - 31 variations of the Donchian and 30 of the MACD fade were tried one at a
+    time. None beat its book in both halves by both methods.
+  - Every combination of the near misses then failed the half-split test. The
+    Donchian combination best on Jan–Mar scored 89.2 there and 66.3 on Apr–Jul,
+    below the shipped book.
+  - Some additions clearly hurt. An RSI no-chase gate takes the Donchian's
+    Jan–Mar from 71% to 7%: its profit is in the breakouts that chase.
+- **The three combinations looked good in 2026 and did not survive**
+  (`research/combos_1250_new.mjs`).
+  - Each came from a grid on 2026 (2,304, 1,152 and 576 configurations) as the
+    configuration with the best worse half, and each beat its coin-flip twin
+    there.
+  - But each grid's best on one half of 2026 fell apart on the other:
+    `trend_pullback` 81 → 24, `orb_trend` 79 → 10, `macd_momentum` 60 → 24.
+  - Forward, none made money worth the name. `trend_pullback`'s 72% in early
+    2026 was the same opening-pullback pattern as the MACD fade, and it lost
+    with it.
+- **Only the Donchian held forward.**
+  - Over the 32 forward days it passed every window and netted 2.6× its
+    coin-flip twin.
+  - For the $1,250 eval it remains the book to trade, as it ships.
+  - The forward sample is small: a dozen overlapping windows. Re-run
+    `node research/forward_1250.mjs` as TopstepX bars accrue
+    (`bot/export_topstepx_bin.py`).
+- **The pieces are in the chart.** "ADR used" and "ATR vs its session average" are
+  indicator studies now, and each new book's parameters span its whole search. A
+  variation can be looked at, gated and swept from the sidebar or the MCP tools.
 
 ## Adding a strategy
 
@@ -504,7 +581,7 @@ oracles of their pre-consolidation results. **`test/mcp.test.mjs`** drives the M
 server over stdio and checks each tool against `src/` directly.
 **`test/chart_link.test.mjs`** covers the page ↔ server link.
 
-**`test.mjs` — 261 tests, all passing.** The approach is to test optimised code
+**`test.mjs` — 279 tests, all passing.** The approach is to test optimised code
 against a naive reference that is obviously correct, and rule logic against
 numbers hand-traced on paper:
 
@@ -515,9 +592,13 @@ numbers hand-traced on paper:
   - VWAP, the day levels and the opening range match a naive recomputation;
   - a gate refuses entries only;
   - the live window matches the sweep with random gates on random timeframes.
-- Evaluations: the $3,000 eval leaves every strategy's defaults exactly as they
-  were, and the $1,250 eval layers the firm's numbers, the platform cap and a
-  strategy's own settings in order.
+- Evaluations: the $3,000 eval leaves every book built for it exactly as it was,
+  and the $1,250 eval layers the firm's numbers, the platform cap and a strategy's
+  own settings in order.
+- Session measures and sizing: "ADR used" and the ATR ratio match a literal
+  per-bar recomputation; a size multiplier of 0 refuses an entry but still flips;
+  the dollar target cap binds only when nearer than the ATR target, for the size
+  actually traded.
 
 - Indicators cross-checked against independent implementations — the O(n)
   Donchian deque against O(n·p) brute force at 5 periods × 400 bars, ADX against

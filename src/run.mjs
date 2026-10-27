@@ -46,6 +46,9 @@ export function runStrategy(bars1m, strategy, params, exec, opts = {}) {
   // It rides on the exec config rather than the signature so nothing that calls
   // runBrackets directly has to change.
   if (out.exitSig) x.exitSig = out.exitSig;
+  // ...and a size multiplier per signal bar: a fraction late in the day, or 0
+  // to refuse an entry while the signal still flips an opposite position.
+  if (out.sizeMult) x.sizeMult = out.sizeMult;
   // Indicator gates refuse entries only, so they are a hook rather than a mask
   // on the signal: a refused signal still flips an opposite position.
   let studyGated = 0;

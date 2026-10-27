@@ -1,0 +1,897 @@
+{
+ "id": "macd_fade_1250",
+ "dims": [
+  [
+   "adrCap",
+   [
+    "no ADR cap",
+    "ADR used <= 0.9"
+   ]
+  ],
+  [
+   "endCt",
+   [
+    "endCt=900",
+    "endCt=600"
+   ]
+  ],
+  [
+   "adx5",
+   [
+    "no ADX",
+    "ADX 5m >= 20"
+   ]
+  ],
+  [
+   "slAtrMult",
+   [
+    "slAtrMult=5",
+    "slAtrMult=3"
+   ]
+  ],
+  [
+   "minVolRatio",
+   [
+    "minVolRatio=1",
+    "minVolRatio=0.8"
+   ]
+  ]
+ ],
+ "pick": {
+  "idx": [
+   1,
+   1,
+   0,
+   1,
+   0
+  ],
+  "label": "ADR used <= 0.9, endCt=600, no ADX, slAtrMult=3, minVolRatio=1",
+  "o": {
+   "params": {
+    "endCt": 600,
+    "minVolRatio": 1
+   },
+   "exec": {
+    "slAtrMult": 3
+   },
+   "filter": {},
+   "studies": [
+    {
+     "type": "adrused",
+     "tf": 0,
+     "params": {
+      "days": 10,
+      "hi": 0.9
+     },
+     "gate": "below"
+    }
+   ]
+  },
+  "cal": 57,
+  "calA": 61.1,
+  "calB": 52,
+  "ci": [
+   22.2,
+   86
+  ],
+  "boot": 69.8,
+  "bootA": 65.4,
+  "bootB": 75.6,
+  "trades": 161,
+  "net": 15818,
+  "winRate": 70.8,
+  "perTrade": 98,
+  "pf": 1.73
+ },
+ "null": {
+  "seeds": 20,
+  "cal": 36.6,
+  "calA": 40.3,
+  "calB": 32.2,
+  "boot": 35.9,
+  "atLeastReal": 1,
+  "best": 65.5
+ },
+ "rows": [
+  {
+   "idx": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "label": "no ADR cap, endCt=900, no ADX, slAtrMult=5, minVolRatio=1",
+   "cal": 55.8,
+   "calA": 60,
+   "calB": 50.7,
+   "ci": [
+    21.5,
+    85.3
+   ],
+   "boot": 67.7,
+   "bootA": 62.8,
+   "bootB": 74.3,
+   "trades": 172,
+   "net": 16132,
+   "winRate": 69.2,
+   "perTrade": 94,
+   "pf": 1.67
+  },
+  {
+   "idx": [
+    0,
+    0,
+    0,
+    0,
+    1
+   ],
+   "label": "no ADR cap, endCt=900, no ADX, slAtrMult=5, minVolRatio=0.8",
+   "cal": 57.6,
+   "calA": 63.3,
+   "calB": 50.7,
+   "ci": [
+    22.6,
+    86.3
+   ],
+   "boot": 65.7,
+   "bootA": 62.9,
+   "bootB": 69.9,
+   "trades": 181,
+   "net": 15075,
+   "winRate": 67.4,
+   "perTrade": 83,
+   "pf": 1.6
+  },
+  {
+   "idx": [
+    0,
+    0,
+    0,
+    1,
+    0
+   ],
+   "label": "no ADR cap, endCt=900, no ADX, slAtrMult=3, minVolRatio=1",
+   "cal": 56.4,
+   "calA": 60,
+   "calB": 52,
+   "ci": [
+    21.8,
+    85.7
+   ],
+   "boot": 68.1,
+   "bootA": 62.5,
+   "bootB": 75.2,
+   "trades": 172,
+   "net": 16148,
+   "winRate": 69.2,
+   "perTrade": 94,
+   "pf": 1.67
+  },
+  {
+   "idx": [
+    0,
+    0,
+    0,
+    1,
+    1
+   ],
+   "label": "no ADR cap, endCt=900, no ADX, slAtrMult=3, minVolRatio=0.8",
+   "cal": 58.2,
+   "calA": 63.3,
+   "calB": 52,
+   "ci": [
+    23,
+    86.6
+   ],
+   "boot": 66.2,
+   "bootA": 63,
+   "bootB": 70.8,
+   "trades": 178,
+   "net": 15461,
+   "winRate": 68,
+   "perTrade": 87,
+   "pf": 1.63
+  },
+  {
+   "idx": [
+    0,
+    0,
+    1,
+    0,
+    0
+   ],
+   "label": "no ADR cap, endCt=900, ADX 5m >= 20, slAtrMult=5, minVolRatio=1",
+   "cal": 56.4,
+   "calA": 61.1,
+   "calB": 50.7,
+   "ci": [
+    21.8,
+    85.7
+   ],
+   "boot": 68.1,
+   "bootA": 63.7,
+   "bootB": 74.3,
+   "trades": 171,
+   "net": 16421,
+   "winRate": 69.6,
+   "perTrade": 96,
+   "pf": 1.69
+  },
+  {
+   "idx": [
+    0,
+    0,
+    1,
+    0,
+    1
+   ],
+   "label": "no ADR cap, endCt=900, ADX 5m >= 20, slAtrMult=5, minVolRatio=0.8",
+   "cal": 58.2,
+   "calA": 64.4,
+   "calB": 50.7,
+   "ci": [
+    23,
+    86.6
+   ],
+   "boot": 66.3,
+   "bootA": 63.7,
+   "bootB": 70.2,
+   "trades": 182,
+   "net": 15504,
+   "winRate": 67.6,
+   "perTrade": 85,
+   "pf": 1.62
+  },
+  {
+   "idx": [
+    0,
+    0,
+    1,
+    1,
+    0
+   ],
+   "label": "no ADR cap, endCt=900, ADX 5m >= 20, slAtrMult=3, minVolRatio=1",
+   "cal": 57,
+   "calA": 61.1,
+   "calB": 52,
+   "ci": [
+    22.2,
+    86
+   ],
+   "boot": 68.4,
+   "bootA": 63,
+   "bootB": 75.2,
+   "trades": 170,
+   "net": 16423,
+   "winRate": 70,
+   "perTrade": 97,
+   "pf": 1.69
+  },
+  {
+   "idx": [
+    0,
+    0,
+    1,
+    1,
+    1
+   ],
+   "label": "no ADR cap, endCt=900, ADX 5m >= 20, slAtrMult=3, minVolRatio=0.8",
+   "cal": 58.2,
+   "calA": 63.3,
+   "calB": 52,
+   "ci": [
+    23,
+    86.6
+   ],
+   "boot": 66.5,
+   "bootA": 63,
+   "bootB": 71.1,
+   "trades": 177,
+   "net": 15613,
+   "winRate": 68.4,
+   "perTrade": 88,
+   "pf": 1.63
+  },
+  {
+   "idx": [
+    0,
+    1,
+    0,
+    0,
+    0
+   ],
+   "label": "no ADR cap, endCt=600, no ADX, slAtrMult=5, minVolRatio=1",
+   "cal": 56.4,
+   "calA": 61.1,
+   "calB": 50.7,
+   "ci": [
+    21.8,
+    85.7
+   ],
+   "boot": 68.3,
+   "bootA": 64.1,
+   "bootB": 74.3,
+   "trades": 168,
+   "net": 17059,
+   "winRate": 70.8,
+   "perTrade": 102,
+   "pf": 1.74
+  },
+  {
+   "idx": [
+    0,
+    1,
+    0,
+    0,
+    1
+   ],
+   "label": "no ADR cap, endCt=600, no ADX, slAtrMult=5, minVolRatio=0.8",
+   "cal": 56.4,
+   "calA": 64.4,
+   "calB": 46.7,
+   "ci": [
+    21.8,
+    85.7
+   ],
+   "boot": 64.2,
+   "bootA": 64.5,
+   "bootB": 65.5,
+   "trades": 174,
+   "net": 15576,
+   "winRate": 69,
+   "perTrade": 90,
+   "pf": 1.64
+  },
+  {
+   "idx": [
+    0,
+    1,
+    0,
+    1,
+    0
+   ],
+   "label": "no ADR cap, endCt=600, no ADX, slAtrMult=3, minVolRatio=1",
+   "cal": 57,
+   "calA": 61.1,
+   "calB": 52,
+   "ci": [
+    22.2,
+    86
+   ],
+   "boot": 68.8,
+   "bootA": 64.1,
+   "bootB": 75.2,
+   "trades": 168,
+   "net": 17398,
+   "winRate": 70.8,
+   "perTrade": 104,
+   "pf": 1.76
+  },
+  {
+   "idx": [
+    0,
+    1,
+    0,
+    1,
+    1
+   ],
+   "label": "no ADR cap, endCt=600, no ADX, slAtrMult=3, minVolRatio=0.8",
+   "cal": 58.2,
+   "calA": 64.4,
+   "calB": 50.7,
+   "ci": [
+    23,
+    86.6
+   ],
+   "boot": 66.6,
+   "bootA": 64.6,
+   "bootB": 70.2,
+   "trades": 173,
+   "net": 16424,
+   "winRate": 69.4,
+   "perTrade": 95,
+   "pf": 1.69
+  },
+  {
+   "idx": [
+    0,
+    1,
+    1,
+    0,
+    0
+   ],
+   "label": "no ADR cap, endCt=600, ADX 5m >= 20, slAtrMult=5, minVolRatio=1",
+   "cal": 56.4,
+   "calA": 61.1,
+   "calB": 50.7,
+   "ci": [
+    21.8,
+    85.7
+   ],
+   "boot": 68.2,
+   "bootA": 64,
+   "bootB": 74.3,
+   "trades": 165,
+   "net": 16994,
+   "winRate": 70.9,
+   "perTrade": 103,
+   "pf": 1.74
+  },
+  {
+   "idx": [
+    0,
+    1,
+    1,
+    0,
+    1
+   ],
+   "label": "no ADR cap, endCt=600, ADX 5m >= 20, slAtrMult=5, minVolRatio=0.8",
+   "cal": 56.4,
+   "calA": 64.4,
+   "calB": 46.7,
+   "ci": [
+    21.8,
+    85.7
+   ],
+   "boot": 64.3,
+   "bootA": 64.5,
+   "bootB": 65.6,
+   "trades": 173,
+   "net": 15722,
+   "winRate": 69.4,
+   "perTrade": 91,
+   "pf": 1.64
+  },
+  {
+   "idx": [
+    0,
+    1,
+    1,
+    1,
+    0
+   ],
+   "label": "no ADR cap, endCt=600, ADX 5m >= 20, slAtrMult=3, minVolRatio=1",
+   "cal": 57,
+   "calA": 61.1,
+   "calB": 52,
+   "ci": [
+    22.2,
+    86
+   ],
+   "boot": 68.8,
+   "bootA": 64,
+   "bootB": 75.2,
+   "trades": 165,
+   "net": 17333,
+   "winRate": 70.9,
+   "perTrade": 105,
+   "pf": 1.76
+  },
+  {
+   "idx": [
+    0,
+    1,
+    1,
+    1,
+    1
+   ],
+   "label": "no ADR cap, endCt=600, ADX 5m >= 20, slAtrMult=3, minVolRatio=0.8",
+   "cal": 58.2,
+   "calA": 64.4,
+   "calB": 50.7,
+   "ci": [
+    23,
+    86.6
+   ],
+   "boot": 66.8,
+   "bootA": 64.6,
+   "bootB": 70.4,
+   "trades": 172,
+   "net": 16570,
+   "winRate": 69.8,
+   "perTrade": 96,
+   "pf": 1.7
+  },
+  {
+   "idx": [
+    1,
+    0,
+    0,
+    0,
+    0
+   ],
+   "label": "ADR used <= 0.9, endCt=900, no ADX, slAtrMult=5, minVolRatio=1",
+   "cal": 56.4,
+   "calA": 61.1,
+   "calB": 50.7,
+   "ci": [
+    21.8,
+    85.7
+   ],
+   "boot": 68.8,
+   "bootA": 64.5,
+   "bootB": 74.7,
+   "trades": 163,
+   "net": 14999,
+   "winRate": 69.9,
+   "perTrade": 92,
+   "pf": 1.67
+  },
+  {
+   "idx": [
+    1,
+    0,
+    0,
+    0,
+    1
+   ],
+   "label": "ADR used <= 0.9, endCt=900, no ADX, slAtrMult=5, minVolRatio=0.8",
+   "cal": 58.2,
+   "calA": 64.4,
+   "calB": 50.7,
+   "ci": [
+    23,
+    86.6
+   ],
+   "boot": 66.6,
+   "bootA": 64.9,
+   "bootB": 70.3,
+   "trades": 172,
+   "net": 13942,
+   "winRate": 68,
+   "perTrade": 81,
+   "pf": 1.59
+  },
+  {
+   "idx": [
+    1,
+    0,
+    0,
+    1,
+    0
+   ],
+   "label": "ADR used <= 0.9, endCt=900, no ADX, slAtrMult=3, minVolRatio=1",
+   "cal": 57,
+   "calA": 61.1,
+   "calB": 52,
+   "ci": [
+    22.2,
+    86
+   ],
+   "boot": 69.6,
+   "bootA": 64.8,
+   "bootB": 75.6,
+   "trades": 162,
+   "net": 15543,
+   "winRate": 70.4,
+   "perTrade": 96,
+   "pf": 1.71
+  },
+  {
+   "idx": [
+    1,
+    0,
+    0,
+    1,
+    1
+   ],
+   "label": "ADR used <= 0.9, endCt=900, no ADX, slAtrMult=3, minVolRatio=0.8",
+   "cal": 58.8,
+   "calA": 64.4,
+   "calB": 52,
+   "ci": [
+    23.4,
+    86.9
+   ],
+   "boot": 67.2,
+   "bootA": 65.1,
+   "bootB": 71.2,
+   "trades": 169,
+   "net": 14602,
+   "winRate": 68.6,
+   "perTrade": 86,
+   "pf": 1.64
+  },
+  {
+   "idx": [
+    1,
+    0,
+    1,
+    0,
+    0
+   ],
+   "label": "ADR used <= 0.9, endCt=900, ADX 5m >= 20, slAtrMult=5, minVolRatio=1",
+   "cal": 56.4,
+   "calA": 61.1,
+   "calB": 50.7,
+   "ci": [
+    21.8,
+    85.7
+   ],
+   "boot": 69.2,
+   "bootA": 65.3,
+   "bootB": 74.6,
+   "trades": 160,
+   "net": 15384,
+   "winRate": 70.6,
+   "perTrade": 96,
+   "pf": 1.7
+  },
+  {
+   "idx": [
+    1,
+    0,
+    1,
+    0,
+    1
+   ],
+   "label": "ADR used <= 0.9, endCt=900, ADX 5m >= 20, slAtrMult=5, minVolRatio=0.8",
+   "cal": 58.2,
+   "calA": 64.4,
+   "calB": 50.7,
+   "ci": [
+    23,
+    86.6
+   ],
+   "boot": 67.4,
+   "bootA": 65.9,
+   "bootB": 70.5,
+   "trades": 170,
+   "net": 14589,
+   "winRate": 68.8,
+   "perTrade": 86,
+   "pf": 1.64
+  },
+  {
+   "idx": [
+    1,
+    0,
+    1,
+    1,
+    0
+   ],
+   "label": "ADR used <= 0.9, endCt=900, ADX 5m >= 20, slAtrMult=3, minVolRatio=1",
+   "cal": 57,
+   "calA": 61.1,
+   "calB": 52,
+   "ci": [
+    22.2,
+    86
+   ],
+   "boot": 69.7,
+   "bootA": 65.3,
+   "bootB": 75.5,
+   "trades": 159,
+   "net": 15760,
+   "winRate": 71.1,
+   "perTrade": 99,
+   "pf": 1.73
+  },
+  {
+   "idx": [
+    1,
+    0,
+    1,
+    1,
+    1
+   ],
+   "label": "ADR used <= 0.9, endCt=900, ADX 5m >= 20, slAtrMult=3, minVolRatio=0.8",
+   "cal": 58.8,
+   "calA": 64.4,
+   "calB": 52,
+   "ci": [
+    23.4,
+    86.9
+   ],
+   "boot": 67.9,
+   "bootA": 65.9,
+   "bootB": 71.5,
+   "trades": 166,
+   "net": 15234,
+   "winRate": 69.9,
+   "perTrade": 92,
+   "pf": 1.69
+  },
+  {
+   "idx": [
+    1,
+    1,
+    0,
+    0,
+    0
+   ],
+   "label": "ADR used <= 0.9, endCt=600, no ADX, slAtrMult=5, minVolRatio=1",
+   "cal": 56.4,
+   "calA": 61.1,
+   "calB": 50.7,
+   "ci": [
+    21.8,
+    85.7
+   ],
+   "boot": 69.3,
+   "bootA": 65.4,
+   "bootB": 74.7,
+   "trades": 161,
+   "net": 15479,
+   "winRate": 70.8,
+   "perTrade": 96,
+   "pf": 1.71
+  },
+  {
+   "idx": [
+    1,
+    1,
+    0,
+    0,
+    1
+   ],
+   "label": "ADR used <= 0.9, endCt=600, no ADX, slAtrMult=5, minVolRatio=0.8",
+   "cal": 56.4,
+   "calA": 64.4,
+   "calB": 46.7,
+   "ci": [
+    21.8,
+    85.7
+   ],
+   "boot": 64.9,
+   "bootA": 65.9,
+   "bootB": 65.9,
+   "trades": 167,
+   "net": 13996,
+   "winRate": 68.9,
+   "perTrade": 84,
+   "pf": 1.6
+  },
+  {
+   "idx": [
+    1,
+    1,
+    0,
+    1,
+    0
+   ],
+   "label": "ADR used <= 0.9, endCt=600, no ADX, slAtrMult=3, minVolRatio=1",
+   "cal": 57,
+   "calA": 61.1,
+   "calB": 52,
+   "ci": [
+    22.2,
+    86
+   ],
+   "boot": 69.8,
+   "bootA": 65.4,
+   "bootB": 75.6,
+   "trades": 161,
+   "net": 15818,
+   "winRate": 70.8,
+   "perTrade": 98,
+   "pf": 1.73
+  },
+  {
+   "idx": [
+    1,
+    1,
+    0,
+    1,
+    1
+   ],
+   "label": "ADR used <= 0.9, endCt=600, no ADX, slAtrMult=3, minVolRatio=0.8",
+   "cal": 58.2,
+   "calA": 64.4,
+   "calB": 50.7,
+   "ci": [
+    23,
+    86.6
+   ],
+   "boot": 67.3,
+   "bootA": 65.9,
+   "bootB": 70.6,
+   "trades": 166,
+   "net": 14844,
+   "winRate": 69.3,
+   "perTrade": 89,
+   "pf": 1.66
+  },
+  {
+   "idx": [
+    1,
+    1,
+    1,
+    0,
+    0
+   ],
+   "label": "ADR used <= 0.9, endCt=600, ADX 5m >= 20, slAtrMult=5, minVolRatio=1",
+   "cal": 56.4,
+   "calA": 61.1,
+   "calB": 50.7,
+   "ci": [
+    21.8,
+    85.7
+   ],
+   "boot": 69.2,
+   "bootA": 65.3,
+   "bootB": 74.7,
+   "trades": 158,
+   "net": 15415,
+   "winRate": 70.9,
+   "perTrade": 98,
+   "pf": 1.7
+  },
+  {
+   "idx": [
+    1,
+    1,
+    1,
+    0,
+    1
+   ],
+   "label": "ADR used <= 0.9, endCt=600, ADX 5m >= 20, slAtrMult=5, minVolRatio=0.8",
+   "cal": 56.4,
+   "calA": 64.4,
+   "calB": 46.7,
+   "ci": [
+    21.8,
+    85.7
+   ],
+   "boot": 65,
+   "bootA": 65.9,
+   "bootB": 66,
+   "trades": 166,
+   "net": 14142,
+   "winRate": 69.3,
+   "perTrade": 85,
+   "pf": 1.61
+  },
+  {
+   "idx": [
+    1,
+    1,
+    1,
+    1,
+    0
+   ],
+   "label": "ADR used <= 0.9, endCt=600, ADX 5m >= 20, slAtrMult=3, minVolRatio=1",
+   "cal": 57,
+   "calA": 61.1,
+   "calB": 52,
+   "ci": [
+    22.2,
+    86
+   ],
+   "boot": 69.7,
+   "bootA": 65.3,
+   "bootB": 75.5,
+   "trades": 158,
+   "net": 15754,
+   "winRate": 70.9,
+   "perTrade": 100,
+   "pf": 1.73
+  },
+  {
+   "idx": [
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "label": "ADR used <= 0.9, endCt=600, ADX 5m >= 20, slAtrMult=3, minVolRatio=0.8",
+   "cal": 58.2,
+   "calA": 64.4,
+   "calB": 50.7,
+   "ci": [
+    23,
+    86.6
+   ],
+   "boot": 67.5,
+   "bootA": 65.9,
+   "bootB": 70.8,
+   "trades": 165,
+   "net": 14990,
+   "winRate": 69.7,
+   "perTrade": 91,
+   "pf": 1.67
+  }
+ ]
+}

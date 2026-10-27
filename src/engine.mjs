@@ -78,6 +78,10 @@ export const DEFAULT_EXEC = {
   // moves. Books tuned on R:R geometry cannot be reproduced with 'atr'.
   tpMode: "atr",            // 'atr' | 'rr'
   tpRR: 1.2,
+  // The target never asks for more than this many dollars on the position, as
+  // the $1,250 MACD fade sets it: min(5.15 x ATR, $600 / (point value x lots)).
+  // 0 = off.
+  tpMaxUsd: 0,
   // Force-flip on an opposite signal. The default matches the original engine,
   // but a strategy whose signal is a PERSISTENT STATE rather than a cross event
   // will thrash if every disagreement closes the trade — those need this off.
@@ -302,6 +306,9 @@ const NO_DAY = -2147483648;
  *   entryGate(sigBar, dir) -> false refuses a signal's ENTRY only: the signal
  *             still closes an opposite position and cancels a working order
  *             (src/studies.mjs builds it from indicator studies)
+ *   sizeMult  Float64Array per bar, read at the signal bar (compute()'s
+ *             `sizeMult`): the size is multiplied by it and rounded, at least 1;
+ *             0 refuses the entry the way entryGate does
  *   sizer(atrAtSignal, ctMin, seq, bar) -> contracts; below 1 skips the signal
  *   tpFn(atrAtSignal, contracts)        -> target distance in points
  *   exitFn(closedBar, dir, state)       -> true closes at the next open
@@ -706,9 +713,17 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
     } else {
       full = q;
     }
-    const tpD = tpFn ? Math.max(tpFn(a, full), tick)
-              : x.tpMode === "rr" ? Math.max(slD * x.tpRR, tick)
-              : Math.max(a * x.tpAtrMult, tick);
+    // The strategy's own say on size at this signal: a fraction of it late in
+    // the day, or none.
+    if (x.sizeMult) {
+      const m = x.sizeMult[i - 1];
+      if (!(m > 0)) continue;
+      if (m !== 1) full = Math.max(1, Math.min(cap, Math.round(full * m)));
+    }
+    let tpD = tpFn ? Math.max(tpFn(a, full), tick)
+            : x.tpMode === "rr" ? Math.max(slD * x.tpRR, tick)
+            : Math.max(a * x.tpAtrMult, tick);
+    if (x.tpMaxUsd > 0) tpD = Math.max(tick, Math.min(tpD, x.tpMaxUsd / (pv * full)));
 
     if (x.entryType === "market") {
       open_(s, i, O[i], O[i], slD, tpD, full, i - 1, a, "market", false, true);

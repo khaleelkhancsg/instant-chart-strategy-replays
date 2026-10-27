@@ -1,0 +1,1650 @@
+{
+ "donchian": [
+  {
+   "name": "base",
+   "o": {},
+   "cal": 72.1,
+   "calA": 71.1,
+   "calB": 73.3,
+   "ci": [
+    32.9,
+    93.2
+   ],
+   "boot": 70.8,
+   "bootA": 71.1,
+   "bootB": 75.9,
+   "trades": 127,
+   "net": 9849,
+   "winRate": 66.1,
+   "perTrade": 78,
+   "pf": 1.62,
+   "survives": false
+  },
+  {
+   "name": "ADX >= 20",
+   "o": {
+    "params": {
+     "adxMin": 20
+    }
+   },
+   "cal": 73.3,
+   "calA": 73.3,
+   "calB": 73.3,
+   "ci": [
+    33.8,
+    93.7
+   ],
+   "boot": 71.9,
+   "bootA": 74.4,
+   "bootB": 73.3,
+   "trades": 126,
+   "net": 10902,
+   "winRate": 66.7,
+   "perTrade": 87,
+   "pf": 1.69,
+   "survives": false
+  },
+  {
+   "name": "ADX >= 30",
+   "o": {
+    "params": {
+     "adxMin": 30
+    }
+   },
+   "cal": 69.1,
+   "calA": 65.6,
+   "calB": 73.3,
+   "ci": [
+    30.6,
+    91.9
+   ],
+   "boot": 69.7,
+   "bootA": 69.3,
+   "bootB": 75,
+   "trades": 124,
+   "net": 9717,
+   "winRate": 65.3,
+   "perTrade": 78,
+   "pf": 1.63,
+   "survives": false
+  },
+  {
+   "name": "+DI/-DI agree (2m)",
+   "o": {
+    "studies": [
+     {
+      "type": "adx",
+      "tf": 0,
+      "params": {
+       "period": 14
+      },
+      "gate": "with"
+     }
+    ]
+   },
+   "cal": 70.9,
+   "calA": 68.9,
+   "calB": 73.3,
+   "ci": [
+    31.9,
+    92.7
+   ],
+   "boot": 70,
+   "bootA": 67.9,
+   "bootB": 75.9,
+   "trades": 126,
+   "net": 9569,
+   "winRate": 65.9,
+   "perTrade": 76,
+   "pf": 1.6,
+   "survives": false
+  },
+  {
+   "name": "RSI 14 no chase 80/20",
+   "o": {
+    "studies": [
+     {
+      "type": "rsi",
+      "tf": 0,
+      "params": {
+       "length": 14,
+       "lo": 20,
+       "hi": 80
+      },
+      "gate": "nochase"
+     }
+    ]
+   },
+   "cal": 36.4,
+   "calA": 6.7,
+   "calB": 72,
+   "ci": [
+    10.6,
+    73.3
+   ],
+   "boot": 44,
+   "bootA": 15.1,
+   "bootB": 71.8,
+   "trades": 123,
+   "net": 3554,
+   "winRate": 60.2,
+   "perTrade": 29,
+   "pf": 1.21,
+   "survives": false
+  },
+  {
+   "name": "RSI 14 no chase 85/15",
+   "o": {
+    "studies": [
+     {
+      "type": "rsi",
+      "tf": 0,
+      "params": {
+       "length": 14,
+       "lo": 15,
+       "hi": 85
+      },
+      "gate": "nochase"
+     }
+    ]
+   },
+   "cal": 60.6,
+   "calA": 50,
+   "calB": 73.3,
+   "ci": [
+    24.6,
+    87.9
+   ],
+   "boot": 60.1,
+   "bootA": 48.7,
+   "bootB": 73.7,
+   "trades": 125,
+   "net": 6719,
+   "winRate": 63.2,
+   "perTrade": 54,
+   "pf": 1.39,
+   "survives": false
+  },
+  {
+   "name": "RSI 14 with (>50 long)",
+   "o": {
+    "studies": [
+     {
+      "type": "rsi",
+      "tf": 0,
+      "params": {
+       "length": 14
+      },
+      "gate": "with"
+     }
+    ]
+   },
+   "cal": 72.1,
+   "calA": 71.1,
+   "calB": 73.3,
+   "ci": [
+    32.9,
+    93.2
+   ],
+   "boot": 70.8,
+   "bootA": 71.1,
+   "bootB": 75.9,
+   "trades": 127,
+   "net": 9849,
+   "winRate": 66.1,
+   "perTrade": 78,
+   "pf": 1.62,
+   "survives": false
+  },
+  {
+   "name": "MACD hist agrees (2m)",
+   "o": {
+    "studies": [
+     {
+      "type": "macd",
+      "tf": 0,
+      "params": {},
+      "gate": "with"
+     }
+    ]
+   },
+   "cal": 72.1,
+   "calA": 71.1,
+   "calB": 73.3,
+   "ci": [
+    32.9,
+    93.2
+   ],
+   "boot": 70,
+   "bootA": 70.1,
+   "bootB": 75.3,
+   "trades": 126,
+   "net": 9640,
+   "winRate": 65.9,
+   "perTrade": 77,
+   "pf": 1.6,
+   "survives": false
+  },
+  {
+   "name": "MACD hist agrees (5m)",
+   "o": {
+    "studies": [
+     {
+      "type": "macd",
+      "tf": 5,
+      "params": {},
+      "gate": "with"
+     }
+    ]
+   },
+   "cal": 72.1,
+   "calA": 71.1,
+   "calB": 73.3,
+   "ci": [
+    32.9,
+    93.2
+   ],
+   "boot": 70.8,
+   "bootA": 71.1,
+   "bootB": 75.9,
+   "trades": 127,
+   "net": 9849,
+   "winRate": 66.1,
+   "perTrade": 78,
+   "pf": 1.62,
+   "survives": false
+  },
+  {
+   "name": "EMA 9/21 30m agrees too",
+   "o": {
+    "studies": [
+     {
+      "type": "emacross",
+      "tf": 30,
+      "params": {
+       "fast": 9,
+       "slow": 21
+      },
+      "gate": "with"
+     }
+    ]
+   },
+   "cal": 67.9,
+   "calA": 71.1,
+   "calB": 64,
+   "ci": [
+    29.7,
+    91.4
+   ],
+   "boot": 54.6,
+   "bootA": 59.9,
+   "bootB": 55.5,
+   "trades": 110,
+   "net": 6290,
+   "winRate": 65.5,
+   "perTrade": 57,
+   "pf": 1.48,
+   "survives": false
+  },
+  {
+   "name": "EMA 20/50 10m (not 9/21)",
+   "o": {
+    "params": {
+     "htfFast": 20,
+     "htfSlow": 50
+    }
+   },
+   "cal": 72.1,
+   "calA": 78.9,
+   "calB": 64,
+   "ci": [
+    32.9,
+    93.2
+   ],
+   "boot": 76.1,
+   "bootA": 89.2,
+   "bootB": 70.5,
+   "trades": 118,
+   "net": 11482,
+   "winRate": 69.5,
+   "perTrade": 97,
+   "pf": 1.92,
+   "survives": false
+  },
+  {
+   "name": "EMA 9/21 on 5m",
+   "o": {
+    "params": {
+     "htfMin": 5
+    }
+   },
+   "cal": 62.4,
+   "calA": 67.8,
+   "calB": 56,
+   "ci": [
+    25.8,
+    88.8
+   ],
+   "boot": 60.6,
+   "bootA": 60.5,
+   "bootB": 61.8,
+   "trades": 143,
+   "net": 7990,
+   "winRate": 64.3,
+   "perTrade": 56,
+   "pf": 1.41,
+   "survives": false
+  },
+  {
+   "name": "EMA 9/21 on 15m",
+   "o": {
+    "params": {
+     "htfMin": 15
+    }
+   },
+   "cal": 72.1,
+   "calA": 71.1,
+   "calB": 73.3,
+   "ci": [
+    32.9,
+    93.2
+   ],
+   "boot": 66.7,
+   "bootA": 68.1,
+   "bootB": 68.1,
+   "trades": 123,
+   "net": 8515,
+   "winRate": 65,
+   "perTrade": 69,
+   "pf": 1.56,
+   "survives": false
+  },
+  {
+   "name": "late size from 0.7 ADR",
+   "o": {
+    "params": {
+     "lateRangeUsed": 0.7
+    }
+   },
+   "cal": 64.2,
+   "calA": 56.7,
+   "calB": 73.3,
+   "ci": [
+    27.1,
+    89.7
+   ],
+   "boot": 65.1,
+   "bootA": 56.9,
+   "bootB": 73.1,
+   "trades": 135,
+   "net": 8650,
+   "winRate": 65.9,
+   "perTrade": 64,
+   "pf": 1.57,
+   "survives": false
+  },
+  {
+   "name": "late size from 1.1 ADR",
+   "o": {
+    "params": {
+     "lateRangeUsed": 1.1
+    }
+   },
+   "cal": 74.5,
+   "calA": 68.9,
+   "calB": 81.3,
+   "ci": [
+    34.7,
+    94.2
+   ],
+   "boot": 68.2,
+   "bootA": 67.5,
+   "bootB": 73.4,
+   "trades": 124,
+   "net": 9845,
+   "winRate": 66.1,
+   "perTrade": 79,
+   "pf": 1.57,
+   "survives": false
+  },
+  {
+   "name": "skip late (0 lots)",
+   "o": {
+    "params": {
+     "lateFrac": 0
+    }
+   },
+   "cal": 68.5,
+   "calA": 72.2,
+   "calB": 64,
+   "ci": [
+    30.1,
+    91.6
+   ],
+   "boot": 68.2,
+   "bootA": 73.6,
+   "bootB": 72,
+   "trades": 92,
+   "net": 8979,
+   "winRate": 67.4,
+   "perTrade": 98,
+   "pf": 1.71,
+   "survives": false
+  },
+  {
+   "name": "ADR used <= 1.5 only",
+   "o": {
+    "studies": [
+     {
+      "type": "adrused",
+      "tf": 0,
+      "params": {
+       "days": 10,
+       "hi": 1.5
+      },
+      "gate": "below"
+     }
+    ]
+   },
+   "cal": 72.1,
+   "calA": 71.1,
+   "calB": 73.3,
+   "ci": [
+    32.9,
+    93.2
+   ],
+   "boot": 71.8,
+   "bootA": 71.1,
+   "bootB": 77.1,
+   "trades": 125,
+   "net": 9957,
+   "winRate": 66.4,
+   "perTrade": 80,
+   "pf": 1.65,
+   "survives": false
+  },
+  {
+   "name": "busy days only (ATR ratio >= 0.8)",
+   "o": {
+    "studies": [
+     {
+      "type": "volrel",
+      "tf": 0,
+      "params": {
+       "lo": 0.8
+      },
+      "gate": "above"
+     }
+    ]
+   },
+   "cal": 59.4,
+   "calA": 47.8,
+   "calB": 73.3,
+   "ci": [
+    23.8,
+    87.3
+   ],
+   "boot": 64.6,
+   "bootA": 53.9,
+   "bootB": 76.8,
+   "trades": 90,
+   "net": 8399,
+   "winRate": 66.7,
+   "perTrade": 93,
+   "pf": 1.63,
+   "survives": false
+  },
+  {
+   "name": "busy days only (ATR ratio >= 1)",
+   "o": {
+    "studies": [
+     {
+      "type": "volrel",
+      "tf": 0,
+      "params": {
+       "lo": 1
+      },
+      "gate": "above"
+     }
+    ]
+   },
+   "cal": 49.1,
+   "calA": 36.7,
+   "calB": 64,
+   "ci": [
+    17.4,
+    81.5
+   ],
+   "boot": 52.4,
+   "bootA": 37.5,
+   "bootB": 62.2,
+   "trades": 70,
+   "net": 4633,
+   "winRate": 61.4,
+   "perTrade": 66,
+   "pf": 1.37,
+   "survives": false
+  },
+  {
+   "name": "stale exit 15 bars",
+   "o": {
+    "exec": {
+     "staleBars": 15
+    }
+   },
+   "cal": 71.5,
+   "calA": 70,
+   "calB": 73.3,
+   "ci": [
+    32.4,
+    92.9
+   ],
+   "boot": 70.5,
+   "bootA": 74.3,
+   "bootB": 74.7,
+   "trades": 129,
+   "net": 9704,
+   "winRate": 65.9,
+   "perTrade": 75,
+   "pf": 1.6,
+   "survives": false
+  },
+  {
+   "name": "stale exit 30 bars",
+   "o": {
+    "exec": {
+     "staleBars": 30
+    }
+   },
+   "cal": 65.5,
+   "calA": 58.9,
+   "calB": 73.3,
+   "ci": [
+    28,
+    90.2
+   ],
+   "boot": 63,
+   "bootA": 53.1,
+   "bootB": 74.2,
+   "trades": 125,
+   "net": 8246,
+   "winRate": 68,
+   "perTrade": 66,
+   "pf": 1.46,
+   "survives": false
+  },
+  {
+   "name": "stale exit needs 0.5 ATR",
+   "o": {
+    "exec": {
+     "staleMfeAtr": 0.5
+    }
+   },
+   "cal": 69.1,
+   "calA": 64.4,
+   "calB": 74.7,
+   "ci": [
+    30.6,
+    91.9
+   ],
+   "boot": 63.1,
+   "bootA": 57.6,
+   "bootB": 71.7,
+   "trades": 124,
+   "net": 8284,
+   "winRate": 68.5,
+   "perTrade": 67,
+   "pf": 1.45,
+   "survives": false
+  },
+  {
+   "name": "stale exit needs 1.5 ATR",
+   "o": {
+    "exec": {
+     "staleMfeAtr": 1.5
+    }
+   },
+   "cal": 63.6,
+   "calA": 55.6,
+   "calB": 73.3,
+   "ci": [
+    26.7,
+    89.4
+   ],
+   "boot": 69.9,
+   "bootA": 62.6,
+   "bootB": 75.9,
+   "trades": 132,
+   "net": 10156,
+   "winRate": 67.4,
+   "perTrade": 77,
+   "pf": 1.67,
+   "survives": false
+  },
+  {
+   "name": "target 1.5 ATR",
+   "o": {
+    "exec": {
+     "tpAtrMult": 1.5
+    }
+   },
+   "cal": 50.3,
+   "calA": 34.4,
+   "calB": 69.3,
+   "ci": [
+    18.1,
+    82.2
+   ],
+   "boot": 55.6,
+   "bootA": 41.1,
+   "bootB": 71.1,
+   "trades": 140,
+   "net": 5462,
+   "winRate": 65,
+   "perTrade": 39,
+   "pf": 1.31,
+   "survives": false
+  },
+  {
+   "name": "target 2 ATR",
+   "o": {
+    "exec": {
+     "tpAtrMult": 2
+    }
+   },
+   "cal": 60.6,
+   "calA": 51.1,
+   "calB": 72,
+   "ci": [
+    24.6,
+    87.9
+   ],
+   "boot": 63.2,
+   "bootA": 54.4,
+   "bootB": 73.4,
+   "trades": 118,
+   "net": 8880,
+   "winRate": 61.9,
+   "perTrade": 75,
+   "pf": 1.51,
+   "survives": false
+  },
+  {
+   "name": "entries until 13:00",
+   "o": {
+    "filter": {
+     "endCt": 780
+    }
+   },
+   "cal": 75.8,
+   "calA": 77.8,
+   "calB": 73.3,
+   "ci": [
+    35.7,
+    94.6
+   ],
+   "boot": 69.1,
+   "bootA": 70.3,
+   "bootB": 73,
+   "trades": 104,
+   "net": 9786,
+   "winRate": 66.3,
+   "perTrade": 94,
+   "pf": 1.72,
+   "survives": false
+  },
+  {
+   "name": "entries from 09:00",
+   "o": {
+    "filter": {
+     "startCt": 540
+    }
+   },
+   "cal": 60.6,
+   "calA": 72.2,
+   "calB": 46.7,
+   "ci": [
+    24.6,
+    87.9
+   ],
+   "boot": 49.9,
+   "bootA": 58.7,
+   "bootB": 44.9,
+   "trades": 128,
+   "net": 5022,
+   "winRate": 63.3,
+   "perTrade": 39,
+   "pf": 1.32,
+   "survives": false
+  },
+  {
+   "name": "5 lots",
+   "o": {
+    "exec": {
+     "contracts": 5
+    }
+   },
+   "cal": 52.7,
+   "calA": 35.6,
+   "calB": 73.3,
+   "ci": [
+    19.6,
+    83.6
+   ],
+   "boot": 57.6,
+   "bootA": 38.7,
+   "bootB": 73.3,
+   "trades": 112,
+   "net": 8138,
+   "winRate": 61.6,
+   "perTrade": 73,
+   "pf": 1.4,
+   "survives": false
+  },
+  {
+   "name": "3 lots",
+   "o": {
+    "exec": {
+     "contracts": 3
+    }
+   },
+   "cal": 58.8,
+   "calA": 46.7,
+   "calB": 73.3,
+   "ci": [
+    23.4,
+    86.9
+   ],
+   "boot": 54.2,
+   "bootA": 43,
+   "bootB": 66.4,
+   "trades": 140,
+   "net": 5495,
+   "winRate": 64.3,
+   "perTrade": 39,
+   "pf": 1.33,
+   "survives": false
+  },
+  {
+   "name": "breaker -$200",
+   "o": {
+    "exec": {
+     "dayBreakerUsd": 200
+    }
+   },
+   "cal": 72.1,
+   "calA": 71.1,
+   "calB": 73.3,
+   "ci": [
+    32.9,
+    93.2
+   ],
+   "boot": 70.7,
+   "bootA": 71.1,
+   "bootB": 75.8,
+   "trades": 125,
+   "net": 9780,
+   "winRate": 66.4,
+   "perTrade": 78,
+   "pf": 1.61,
+   "survives": false
+  },
+  {
+   "name": "profit block +$350",
+   "o": {
+    "exec": {
+     "dayProfitBlockUsd": 350
+    }
+   },
+   "cal": 63.6,
+   "calA": 55.6,
+   "calB": 73.3,
+   "ci": [
+    26.7,
+    89.4
+   ],
+   "boot": 60.4,
+   "bootA": 56,
+   "bootB": 69.5,
+   "trades": 146,
+   "net": 8026,
+   "winRate": 63,
+   "perTrade": 55,
+   "pf": 1.39,
+   "survives": false
+  }
+ ],
+ "macd": [
+  {
+   "name": "base",
+   "o": {},
+   "cal": 55.8,
+   "calA": 60,
+   "calB": 50.7,
+   "ci": [
+    21.5,
+    85.3
+   ],
+   "boot": 67.7,
+   "bootA": 62.8,
+   "bootB": 74.3,
+   "trades": 172,
+   "net": 16132,
+   "winRate": 69.2,
+   "perTrade": 94,
+   "pf": 1.67,
+   "survives": false
+  },
+  {
+   "name": "RSI 14 against (long < 50)",
+   "o": {
+    "studies": [
+     {
+      "type": "rsi",
+      "tf": 0,
+      "params": {
+       "length": 14
+      },
+      "gate": "against"
+     }
+    ]
+   },
+   "cal": 40.6,
+   "calA": 36.7,
+   "calB": 45.3,
+   "ci": [
+    12.7,
+    76.2
+   ],
+   "boot": 49.2,
+   "bootA": 43.9,
+   "bootB": 52.9,
+   "trades": 150,
+   "net": 9100,
+   "winRate": 67.3,
+   "perTrade": 61,
+   "pf": 1.42,
+   "survives": false
+  },
+  {
+   "name": "RSI 14 with (long > 50)",
+   "o": {
+    "studies": [
+     {
+      "type": "rsi",
+      "tf": 0,
+      "params": {
+       "length": 14
+      },
+      "gate": "with"
+     }
+    ]
+   },
+   "cal": 20,
+   "calA": 20,
+   "calB": 20,
+   "ci": [
+    3.9,
+    60.8
+   ],
+   "boot": 36.4,
+   "bootA": 30.5,
+   "bootB": 39.7,
+   "trades": 170,
+   "net": -2679,
+   "winRate": 58.8,
+   "perTrade": -16,
+   "pf": 0.91,
+   "survives": false
+  },
+  {
+   "name": "RSI 7 fade 35/65",
+   "o": {
+    "studies": [
+     {
+      "type": "rsi",
+      "tf": 0,
+      "params": {
+       "length": 7,
+       "lo": 35,
+       "hi": 65
+      },
+      "gate": "fade"
+     }
+    ]
+   },
+   "cal": 50.9,
+   "calA": 51.1,
+   "calB": 50.7,
+   "ci": [
+    18.5,
+    82.6
+   ],
+   "boot": 49.6,
+   "bootA": 55.3,
+   "bootB": 50.2,
+   "trades": 79,
+   "net": 7391,
+   "winRate": 69.6,
+   "perTrade": 94,
+   "pf": 1.81,
+   "survives": false
+  },
+  {
+   "name": "RSI 14 no chase 70/30",
+   "o": {
+    "studies": [
+     {
+      "type": "rsi",
+      "tf": 0,
+      "params": {
+       "length": 14,
+       "lo": 30,
+       "hi": 70
+      },
+      "gate": "nochase"
+     }
+    ]
+   },
+   "cal": 49.7,
+   "calA": 52.2,
+   "calB": 46.7,
+   "ci": [
+    17.8,
+    81.9
+   ],
+   "boot": 64.7,
+   "bootA": 57.4,
+   "bootB": 73.1,
+   "trades": 173,
+   "net": 14065,
+   "winRate": 68.2,
+   "perTrade": 81,
+   "pf": 1.57,
+   "survives": false
+  },
+  {
+   "name": "ADX 1m >= 20",
+   "o": {
+    "studies": [
+     {
+      "type": "adx",
+      "tf": 0,
+      "params": {
+       "period": 14,
+       "lo": 20
+      },
+      "gate": "above"
+     }
+    ]
+   },
+   "cal": 55.2,
+   "calA": 52.2,
+   "calB": 58.7,
+   "ci": [
+    21.1,
+    85
+   ],
+   "boot": 66.9,
+   "bootA": 57.1,
+   "bootB": 76.2,
+   "trades": 172,
+   "net": 14663,
+   "winRate": 68,
+   "perTrade": 85,
+   "pf": 1.61,
+   "survives": false
+  },
+  {
+   "name": "ADX 1m <= 30",
+   "o": {
+    "studies": [
+     {
+      "type": "adx",
+      "tf": 0,
+      "params": {
+       "period": 14,
+       "hi": 30
+      },
+      "gate": "below"
+     }
+    ]
+   },
+   "cal": 33.9,
+   "calA": 30,
+   "calB": 38.7,
+   "ci": [
+    9.5,
+    71.6
+   ],
+   "boot": 35.3,
+   "bootA": 28.7,
+   "bootB": 41.8,
+   "trades": 173,
+   "net": 1131,
+   "winRate": 63.6,
+   "perTrade": 7,
+   "pf": 1.04,
+   "survives": false
+  },
+  {
+   "name": "ADX 5m >= 20",
+   "o": {
+    "studies": [
+     {
+      "type": "adx",
+      "tf": 5,
+      "params": {
+       "period": 14,
+       "lo": 20
+      },
+      "gate": "above"
+     }
+    ]
+   },
+   "cal": 56.4,
+   "calA": 61.1,
+   "calB": 50.7,
+   "ci": [
+    21.8,
+    85.7
+   ],
+   "boot": 68.1,
+   "bootA": 63.7,
+   "bootB": 74.3,
+   "trades": 171,
+   "net": 16421,
+   "winRate": 69.6,
+   "perTrade": 96,
+   "pf": 1.69,
+   "survives": false
+  },
+  {
+   "name": "+DI/-DI agree (5m)",
+   "o": {
+    "studies": [
+     {
+      "type": "adx",
+      "tf": 5,
+      "params": {
+       "period": 14
+      },
+      "gate": "with"
+     }
+    ]
+   },
+   "cal": 50.9,
+   "calA": 53.3,
+   "calB": 48,
+   "ci": [
+    18.5,
+    82.6
+   ],
+   "boot": 67.5,
+   "bootA": 60.6,
+   "bootB": 71.7,
+   "trades": 173,
+   "net": 16375,
+   "winRate": 68.8,
+   "perTrade": 95,
+   "pf": 1.7,
+   "survives": false
+  },
+  {
+   "name": "EMA 9/21 10m agrees",
+   "o": {
+    "studies": [
+     {
+      "type": "emacross",
+      "tf": 10,
+      "params": {
+       "fast": 9,
+       "slow": 21
+      },
+      "gate": "with"
+     }
+    ]
+   },
+   "cal": 42.4,
+   "calA": 32.2,
+   "calB": 54.7,
+   "ci": [
+    13.7,
+    77.4
+   ],
+   "boot": 53.3,
+   "bootA": 43.8,
+   "bootB": 67.2,
+   "trades": 170,
+   "net": 8435,
+   "winRate": 65.9,
+   "perTrade": 50,
+   "pf": 1.33,
+   "survives": false
+  },
+  {
+   "name": "EMA 9/21 10m against",
+   "o": {
+    "studies": [
+     {
+      "type": "emacross",
+      "tf": 10,
+      "params": {
+       "fast": 9,
+       "slow": 21
+      },
+      "gate": "against"
+     }
+    ]
+   },
+   "cal": 41.8,
+   "calA": 32.2,
+   "calB": 53.3,
+   "ci": [
+    13.4,
+    77
+   ],
+   "boot": 47.4,
+   "bootA": 46.2,
+   "bootB": 44.6,
+   "trades": 153,
+   "net": 5764,
+   "winRate": 64.1,
+   "perTrade": 38,
+   "pf": 1.26,
+   "survives": false
+  },
+  {
+   "name": "EMA 9/21 5m agrees",
+   "o": {
+    "studies": [
+     {
+      "type": "emacross",
+      "tf": 5,
+      "params": {
+       "fast": 9,
+       "slow": 21
+      },
+      "gate": "with"
+     }
+    ]
+   },
+   "cal": 48.5,
+   "calA": 50,
+   "calB": 46.7,
+   "ci": [
+    17.1,
+    81.2
+   ],
+   "boot": 50.3,
+   "bootA": 52.1,
+   "bootB": 50.3,
+   "trades": 171,
+   "net": 7062,
+   "winRate": 63.7,
+   "perTrade": 41,
+   "pf": 1.25,
+   "survives": false
+  },
+  {
+   "name": "EMA 50 1m agrees",
+   "o": {
+    "studies": [
+     {
+      "type": "ema",
+      "tf": 0,
+      "params": {
+       "length": 50
+      },
+      "gate": "with"
+     }
+    ]
+   },
+   "cal": 29.1,
+   "calA": 35.6,
+   "calB": 21.3,
+   "ci": [
+    7.3,
+    68.1
+   ],
+   "boot": 35.9,
+   "bootA": 34.4,
+   "bootB": 34.9,
+   "trades": 167,
+   "net": -2823,
+   "winRate": 58.7,
+   "perTrade": -17,
+   "pf": 0.91,
+   "survives": false
+  },
+  {
+   "name": "ADR used <= 0.5",
+   "o": {
+    "studies": [
+     {
+      "type": "adrused",
+      "tf": 0,
+      "params": {
+       "days": 10,
+       "hi": 0.5
+      },
+      "gate": "below"
+     }
+    ]
+   },
+   "cal": 50.3,
+   "calA": 58.9,
+   "calB": 40,
+   "ci": [
+    18.1,
+    82.2
+   ],
+   "boot": 56.7,
+   "bootA": 48.7,
+   "bootB": 64.2,
+   "trades": 119,
+   "net": 8425,
+   "winRate": 68.9,
+   "perTrade": 71,
+   "pf": 1.47,
+   "survives": false
+  },
+  {
+   "name": "ADR used <= 0.9",
+   "o": {
+    "studies": [
+     {
+      "type": "adrused",
+      "tf": 0,
+      "params": {
+       "days": 10,
+       "hi": 0.9
+      },
+      "gate": "below"
+     }
+    ]
+   },
+   "cal": 56.4,
+   "calA": 61.1,
+   "calB": 50.7,
+   "ci": [
+    21.8,
+    85.7
+   ],
+   "boot": 68.8,
+   "bootA": 64.5,
+   "bootB": 74.7,
+   "trades": 163,
+   "net": 14999,
+   "winRate": 69.9,
+   "perTrade": 92,
+   "pf": 1.67,
+   "survives": false
+  },
+  {
+   "name": "signals until 10:00",
+   "o": {
+    "params": {
+     "endCt": 600
+    }
+   },
+   "cal": 56.4,
+   "calA": 61.1,
+   "calB": 50.7,
+   "ci": [
+    21.8,
+    85.7
+   ],
+   "boot": 68.3,
+   "bootA": 64.1,
+   "bootB": 74.3,
+   "trades": 168,
+   "net": 17059,
+   "winRate": 70.8,
+   "perTrade": 102,
+   "pf": 1.74,
+   "survives": false
+  },
+  {
+   "name": "signals until 09:30",
+   "o": {
+    "params": {
+     "endCt": 570
+    }
+   },
+   "cal": 55.8,
+   "calA": 61.1,
+   "calB": 49.3,
+   "ci": [
+    21.5,
+    85.3
+   ],
+   "boot": 63.4,
+   "bootA": 61.5,
+   "bootB": 64.9,
+   "trades": 158,
+   "net": 14771,
+   "winRate": 70.3,
+   "perTrade": 93,
+   "pf": 1.62,
+   "survives": false
+  },
+  {
+   "name": "ATR ratio >= 0.8",
+   "o": {
+    "params": {
+     "minVolRatio": 0.8
+    }
+   },
+   "cal": 57.6,
+   "calA": 63.3,
+   "calB": 50.7,
+   "ci": [
+    22.6,
+    86.3
+   ],
+   "boot": 65.7,
+   "bootA": 62.9,
+   "bootB": 69.9,
+   "trades": 181,
+   "net": 15075,
+   "winRate": 67.4,
+   "perTrade": 83,
+   "pf": 1.6,
+   "survives": false
+  },
+  {
+   "name": "ATR ratio >= 1.2",
+   "o": {
+    "params": {
+     "minVolRatio": 1.2
+    }
+   },
+   "cal": 55.2,
+   "calA": 56.7,
+   "calB": 53.3,
+   "ci": [
+    21.1,
+    85
+   ],
+   "boot": 64.4,
+   "bootA": 62.3,
+   "bootB": 68.2,
+   "trades": 165,
+   "net": 14752,
+   "winRate": 69.1,
+   "perTrade": 89,
+   "pf": 1.62,
+   "survives": false
+  },
+  {
+   "name": "MACD 8/21/5",
+   "o": {
+    "params": {
+     "fast": 8,
+     "slow": 21,
+     "signal": 5
+    }
+   },
+   "cal": 46.1,
+   "calA": 66.7,
+   "calB": 21.3,
+   "ci": [
+    15.7,
+    79.7
+   ],
+   "boot": 50.6,
+   "bootA": 53.4,
+   "bootB": 44.8,
+   "trades": 218,
+   "net": 5976,
+   "winRate": 63.8,
+   "perTrade": 27,
+   "pf": 1.2,
+   "survives": false
+  },
+  {
+   "name": "MACD 5/35/5",
+   "o": {
+    "params": {
+     "fast": 5,
+     "slow": 35,
+     "signal": 5
+    }
+   },
+   "cal": 37.6,
+   "calA": 60,
+   "calB": 10.7,
+   "ci": [
+    11.2,
+    74.2
+   ],
+   "boot": 43.6,
+   "bootA": 56.8,
+   "bootB": 27.8,
+   "trades": 268,
+   "net": 6060,
+   "winRate": 65.7,
+   "perTrade": 23,
+   "pf": 1.2,
+   "survives": false
+  },
+  {
+   "name": "market entry",
+   "o": {
+    "exec": {
+     "entryType": "market"
+    }
+   },
+   "cal": 47.3,
+   "calA": 45.6,
+   "calB": 49.3,
+   "ci": [
+    16.4,
+    80.4
+   ],
+   "boot": 55.4,
+   "bootA": 52.5,
+   "bootB": 60.4,
+   "trades": 166,
+   "net": 11630,
+   "winRate": 66.9,
+   "perTrade": 70,
+   "pf": 1.4,
+   "survives": false
+  },
+  {
+   "name": "stale exit 20 bars / 1 ATR",
+   "o": {
+    "exec": {
+     "staleBars": 20,
+     "staleMfeAtr": 1
+    }
+   },
+   "cal": 55.8,
+   "calA": 60,
+   "calB": 50.7,
+   "ci": [
+    21.5,
+    85.3
+   ],
+   "boot": 68.1,
+   "bootA": 63.5,
+   "bootB": 73.9,
+   "trades": 170,
+   "net": 16647,
+   "winRate": 69.4,
+   "perTrade": 98,
+   "pf": 1.71,
+   "survives": false
+  },
+  {
+   "name": "target 3 ATR",
+   "o": {
+    "exec": {
+     "tpAtrMult": 3
+    }
+   },
+   "cal": 56.4,
+   "calA": 60,
+   "calB": 52,
+   "ci": [
+    21.8,
+    85.7
+   ],
+   "boot": 67.8,
+   "bootA": 62.7,
+   "bootB": 74.4,
+   "trades": 172,
+   "net": 15963,
+   "winRate": 69.2,
+   "perTrade": 93,
+   "pf": 1.66,
+   "survives": false
+  },
+  {
+   "name": "target cap $400",
+   "o": {
+    "exec": {
+     "tpMaxUsd": 400
+    }
+   },
+   "cal": 57,
+   "calA": 65.6,
+   "calB": 46.7,
+   "ci": [
+    22.2,
+    86
+   ],
+   "boot": 64.3,
+   "bootA": 62.1,
+   "bootB": 68.8,
+   "trades": 171,
+   "net": 12681,
+   "winRate": 71.3,
+   "perTrade": 74,
+   "pf": 1.57,
+   "survives": false
+  },
+  {
+   "name": "stop 3 ATR",
+   "o": {
+    "exec": {
+     "slAtrMult": 3
+    }
+   },
+   "cal": 56.4,
+   "calA": 60,
+   "calB": 52,
+   "ci": [
+    21.8,
+    85.7
+   ],
+   "boot": 68.1,
+   "bootA": 62.5,
+   "bootB": 75.2,
+   "trades": 172,
+   "net": 16148,
+   "winRate": 69.2,
+   "perTrade": 94,
+   "pf": 1.67,
+   "survives": false
+  },
+  {
+   "name": "5 lots",
+   "o": {
+    "exec": {
+     "contracts": 5
+    }
+   },
+   "cal": 49.7,
+   "calA": 47.8,
+   "calB": 52,
+   "ci": [
+    17.8,
+    81.9
+   ],
+   "boot": 56.2,
+   "bootA": 55.4,
+   "bootB": 61.5,
+   "trades": 153,
+   "net": 11943,
+   "winRate": 64.1,
+   "perTrade": 78,
+   "pf": 1.41,
+   "survives": false
+  },
+  {
+   "name": "3 lots",
+   "o": {
+    "exec": {
+     "contracts": 3
+    }
+   },
+   "cal": 55.8,
+   "calA": 47.8,
+   "calB": 65.3,
+   "ci": [
+    21.5,
+    85.3
+   ],
+   "boot": 57,
+   "bootA": 52.8,
+   "bootB": 65.4,
+   "trades": 222,
+   "net": 9364,
+   "winRate": 67.6,
+   "perTrade": 42,
+   "pf": 1.37,
+   "survives": false
+  },
+  {
+   "name": "breaker -$300",
+   "o": {
+    "exec": {
+     "dayBreakerUsd": 300
+    }
+   },
+   "cal": 55.2,
+   "calA": 58.9,
+   "calB": 50.7,
+   "ci": [
+    21.1,
+    85
+   ],
+   "boot": 68.6,
+   "bootA": 62,
+   "bootB": 76.9,
+   "trades": 176,
+   "net": 15910,
+   "winRate": 68.8,
+   "perTrade": 90,
+   "pf": 1.65,
+   "survives": false
+  },
+  {
+   "name": "profit block +$350",
+   "o": {
+    "exec": {
+     "dayProfitBlockUsd": 350
+    }
+   },
+   "cal": 46.7,
+   "calA": 40,
+   "calB": 54.7,
+   "ci": [
+    16,
+    80.1
+   ],
+   "boot": 57.4,
+   "bootA": 57.9,
+   "bootB": 61.7,
+   "trades": 216,
+   "net": 13681,
+   "winRate": 68.1,
+   "perTrade": 63,
+   "pf": 1.43,
+   "survives": false
+  }
+ ]
+}

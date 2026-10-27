@@ -56,6 +56,8 @@ const EXEC_PARAMS = [
   { key: "tpAtrMult", label: "Target (× ATR)", type: "float", min: 0.25, max: 1000, step: 0.25, default: 12,
     hint: "1000 = no target, so the strategy's own exit decides." },
   { key: "tpRR", label: "Target (× stop, R:R mode)", type: "float", min: 0.1, max: 30, step: 0.1, default: 1.2 },
+  { key: "tpMaxUsd", label: "Target at most $ on the position (0 = off)", type: "int", min: 0, max: 10000, step: 25, default: 0,
+    hint: "Caps the target's distance at this many dollars for the size traded. The $1,250 MACD fade uses $600: 75 points at 4 lots." },
   { key: "maxBarsInTrade", label: "Time stop (bars)", type: "int", min: 0, max: 2000, step: 1, default: 0, hint: "0 = off" },
   { key: "staleBars", label: "Stale exit after (bars, 0 = off)", type: "int", min: 0, max: 500, step: 1, default: 0,
     hint: "Leave at the next open once a trade has run this many signal bars without ever being the distance below in its favour. The $1,250 bot's 40-minute exit is 20 two-minute bars at 1 ATR." },

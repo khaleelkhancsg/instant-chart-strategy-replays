@@ -384,3 +384,73 @@ export function bollinger(C, p = 20, mult = 2) {
   }
   return { mid: mean, upper, lower, std };
 }
+
+// ── Session-relative measures ────────────────────────────────────────────
+// For books that judge today against the sessions before it. RTH is 08:30-15:00
+// CT (bars.ctMin), sessions are bars.tday. Both look only at earlier, complete
+// sessions plus the current bar, so a value never changes when later bars
+// arrive; on a slice of the data they match the full run once `days` + 2
+// sessions of history precede the bar.
+const RTH_A = 510, RTH_B = 900;
+const inRth = (ct) => ct >= RTH_A && ct < RTH_B;
+
+// "ADR used": the day's RTH range so far, up to and including bar i, as a share
+// of the average full RTH range of the previous `days` sessions (those with RTH
+// bars). NaN outside RTH; 0 while there is no earlier session. The $1,250 bot
+// halves its size once this reaches 0.9 (research/lib_donchian_mgmt.mjs adrUsed).
+export function rthRangeUsed(bars, days = 10) {
+  const { high: H, low: L, ctMin: CT, tday: TD } = bars;
+  const n = H.length, out = new Float64Array(n).fill(NaN);
+  if (!CT) return out;
+  const range = new Map(), order = [];
+  let day = null, h = -Infinity, l = Infinity;
+  for (let i = 0; i < n; i++) {
+    if (TD[i] !== day) { if (day !== null && h > l) range.set(day, h - l); day = TD[i]; order.push(day); h = -Infinity; l = Infinity; }
+    if (inRth(CT[i])) { if (H[i] > h) h = H[i]; if (L[i] < l) l = L[i]; }
+  }
+  if (day !== null && h > l) range.set(day, h - l);
+  const adr = new Map();
+  for (let j = 1; j < order.length; j++) {
+    let s = 0, c = 0;
+    for (let q = Math.max(0, j - days); q < j; q++) { const r = range.get(order[q]); if (r > 0) { s += r; c++; } }
+    if (c) adr.set(order[j], s / c);
+  }
+  day = null;
+  for (let i = 0; i < n; i++) {
+    if (TD[i] !== day) { day = TD[i]; h = -Infinity; l = Infinity; }
+    if (!inRth(CT[i])) continue;
+    if (H[i] > h) h = H[i];
+    if (L[i] < l) l = L[i];
+    const a = adr.get(day);
+    out[i] = a ? (h - l) / a : 0;
+  }
+  return out;
+}
+
+// The ATR at each RTH bar against the average of the previous `days` RTH
+// sessions' mean ATR: is today busier than usual? NaN outside RTH and until
+// `days` RTH sessions exist. The $1,250 MACD fade trades only at 1 or more
+// (research/lib_combo.mjs volRel).
+export function rthAtrRatio(bars, atrArr, days = 10) {
+  const { ctMin: CT, tday: TD } = bars, n = atrArr.length;
+  const out = new Float64Array(n).fill(NaN);
+  if (!CT) return out;
+  const rthDays = [], first = new Map(), last = new Map(), mean = new Map();
+  for (let i = 0; i < n; i++) {
+    if (!inRth(CT[i])) continue;
+    if (!first.has(TD[i])) { first.set(TD[i], i); rthDays.push(TD[i]); }
+    last.set(TD[i], i);
+  }
+  for (const d of rthDays) {
+    let s = 0, c = 0;
+    for (let i = first.get(d); i <= last.get(d); i++) { s += atrArr[i]; c++; }
+    mean.set(d, s / c);
+  }
+  for (let q = days; q < rthDays.length; q++) {
+    let s = 0;
+    for (let r = q - days; r < q; r++) s += mean.get(rthDays[r]);
+    const avg = s / days, d = rthDays[q];
+    for (let i = first.get(d); i <= last.get(d); i++) out[i] = atrArr[i] / avg;
+  }
+  return out;
+}

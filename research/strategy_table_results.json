@@ -42,6 +42,44 @@
    }
   },
   {
+   "id": "donchian_1250",
+   "name": "MNQ Donchian — $1,250 bot (10m EMA filter, late half size, 40-min exit)",
+   "tf": 2,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 4,
+     "slippageTicks": 1,
+     "trades": 2452,
+     "profitFactor": 1.173,
+     "expectancy": 15.9,
+     "net": 38982,
+     "passAll": 34.4,
+     "pass2026": 72.1,
+     "passJanMar": 71.1,
+     "passAprJul": 73.3,
+     "pass2026OneTick": 72.1,
+     "passAllOneTick": 34.4,
+     "reachPayout": 60
+    },
+    "3000": {
+     "contracts": 7,
+     "slippageTicks": 1,
+     "trades": 2354,
+     "profitFactor": 1.175,
+     "expectancy": 28.63,
+     "net": 67391,
+     "passAll": 22.4,
+     "pass2026": 60,
+     "passJanMar": 48.9,
+     "passAprJul": 73.3,
+     "pass2026OneTick": 60,
+     "passAllOneTick": 22.4,
+     "reachPayout": 71.7
+    }
+   }
+  },
+  {
    "id": "donchian_eff_rth",
    "name": "MNQ Donchian + Efficiency Gate (best found, 41.9%)",
    "tf": 2,
@@ -574,6 +612,82 @@
    }
   },
   {
+   "id": "macd_fade_1250",
+   "name": "MACD fade — $1,250 book (1-min weak crosses, busy days)",
+   "tf": 1,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 4,
+     "slippageTicks": 1,
+     "trades": 4076,
+     "profitFactor": 0.985,
+     "expectancy": -1.36,
+     "net": -5554,
+     "passAll": 33.4,
+     "pass2026": 55.8,
+     "passJanMar": 60,
+     "passAprJul": 50.7,
+     "pass2026OneTick": 55.8,
+     "passAllOneTick": 33.4,
+     "reachPayout": 48
+    },
+    "3000": {
+     "contracts": 4,
+     "slippageTicks": 1,
+     "trades": 4101,
+     "profitFactor": 0.956,
+     "expectancy": -4.19,
+     "net": -17174,
+     "passAll": 9.3,
+     "pass2026": 44.2,
+     "passJanMar": 43.3,
+     "passAprJul": 45.3,
+     "pass2026OneTick": 44.2,
+     "passAllOneTick": 9.3,
+     "reachPayout": 62.3
+    }
+   }
+  },
+  {
+   "id": "macd_momentum",
+   "name": "MACD momentum — growing histogram bars with the EMA trend (the 3-bar research)",
+   "tf": 5,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 4,
+     "slippageTicks": 1,
+     "trades": 1508,
+     "profitFactor": 1.102,
+     "expectancy": 18.76,
+     "net": 28284,
+     "passAll": 35.1,
+     "pass2026": 54.5,
+     "passJanMar": 57.8,
+     "passAprJul": 50.7,
+     "pass2026OneTick": 54.5,
+     "passAllOneTick": 35.1,
+     "reachPayout": 49.4
+    },
+    "3000": {
+     "contracts": 4,
+     "slippageTicks": 1,
+     "trades": 1508,
+     "profitFactor": 1.043,
+     "expectancy": 8.77,
+     "net": 13230,
+     "passAll": 9.2,
+     "pass2026": 35.8,
+     "passJanMar": 41.1,
+     "passAprJul": 29.3,
+     "pass2026OneTick": 35.8,
+     "passAllOneTick": 9.2,
+     "reachPayout": 72.6
+    }
+   }
+  },
+  {
    "id": "macd_mtf_confirm",
    "name": "MACD multi-timeframe — 5-min arms, 1-min triggers, EMA confirms",
    "tf": 1,
@@ -684,6 +798,44 @@
      "pass2026OneTick": 10.9,
      "passAllOneTick": 16.2,
      "reachPayout": 39.7
+    }
+   }
+  },
+  {
+   "id": "orb_trend",
+   "name": "ORB with the trend — EMA, ADR and ADX filters",
+   "tf": 1,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 4,
+     "slippageTicks": 1,
+     "trades": 1263,
+     "profitFactor": 0.926,
+     "expectancy": -12.09,
+     "net": -15273,
+     "passAll": 20.6,
+     "pass2026": 63.6,
+     "passJanMar": 62.2,
+     "passAprJul": 65.3,
+     "pass2026OneTick": 63.6,
+     "passAllOneTick": 20.6,
+     "reachPayout": 43.7
+    },
+    "3000": {
+     "contracts": 4,
+     "slippageTicks": 1,
+     "trades": 1263,
+     "profitFactor": 0.906,
+     "expectancy": -16.9,
+     "net": -21344,
+     "passAll": 4.5,
+     "pass2026": 40,
+     "passJanMar": 33.3,
+     "passAprJul": 48,
+     "pass2026OneTick": 40,
+     "passAllOneTick": 4.5,
+     "reachPayout": 61.4
     }
    }
   },
@@ -988,6 +1140,44 @@
      "pass2026OneTick": 41.8,
      "passAllOneTick": 13.7,
      "reachPayout": 28.6
+    }
+   }
+  },
+  {
+   "id": "trend_pullback",
+   "name": "Trend pullback — EMA trend + ADX + RSI/MACD dip + ADR room",
+   "tf": 1,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 4,
+     "slippageTicks": 1,
+     "trades": 3407,
+     "profitFactor": 0.904,
+     "expectancy": -9.96,
+     "net": -33948,
+     "passAll": 22.3,
+     "pass2026": 72.1,
+     "passJanMar": 82.2,
+     "passAprJul": 60,
+     "pass2026OneTick": 72.1,
+     "passAllOneTick": 22.3,
+     "reachPayout": 32.9
+    },
+    "3000": {
+     "contracts": 4,
+     "slippageTicks": 1,
+     "trades": 3445,
+     "profitFactor": 0.915,
+     "expectancy": -8.93,
+     "net": -30748,
+     "passAll": 5.5,
+     "pass2026": 44.8,
+     "passJanMar": 54.4,
+     "passAprJul": 33.3,
+     "pass2026OneTick": 44.8,
+     "passAllOneTick": 5.5,
+     "reachPayout": 55.7
     }
    }
   },
