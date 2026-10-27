@@ -65,16 +65,21 @@ export function fastWindow(T, startMs, R, mult) {
   if (R.evaluateOn === "intraday") throw new Error("fastWindow supports evaluateOn:'realized' only");
 
   let cum = 0, peak = 0, eodPeak = 0, locked = false;
-  let curDay = -2147483648, dayPnl = 0, maxDayPnl = 0;
+  // bestClosed: the best COMPLETED day's net -- with today, the rule's best day
+  let curDay = -2147483648, dayPnl = 0, bestClosed = 0;
   let tradingDays = 0, dayHadTrade = false;
+  const gates = R.consistencyGatesPass && capPct > 0;
 
   for (let k = lowerBound(T.entry, T.n, startMs); k < T.n; k++) {
     if (T.entry[k] >= endMs) break;
     const d = T.tday[k];
     if (d !== curDay) {
-      if (curDay !== -2147483648 && eodTrail) {
-        if (cum > eodPeak) eodPeak = cum;
-        if (R.lockAtBreakeven && !locked && eodPeak >= R.trailingDD) locked = true;
+      if (curDay !== -2147483648) {
+        if (dayPnl > bestClosed) bestClosed = dayPnl;
+        if (eodTrail) {
+          if (cum > eodPeak) eodPeak = cum;
+          if (R.lockAtBreakeven && !locked && eodPeak >= R.trailingDD) locked = true;
+        }
       }
       curDay = d; dayPnl = 0; dayHadTrade = false;
     }
@@ -87,7 +92,6 @@ export function fastWindow(T, startMs, R, mult) {
 
     const p = T.pnl[k] * mult;
     cum += p; dayPnl += p;
-    if (dayPnl > maxDayPnl) maxDayPnl = dayPnl;
 
     if (!eodTrail) {
       if (cum > peak) peak = cum;
@@ -96,7 +100,7 @@ export function fastWindow(T, startMs, R, mult) {
     const floor = locked ? 0 : (eodTrail ? eodPeak : peak) - R.trailingDD;
     if (cum <= floor) return -1;
 
-    const consistencyOk = !R.consistencyGatesPass || maxDayPnl <= capPct * cum;
+    const consistencyOk = !gates || Math.max(bestClosed, dayPnl) <= capPct * cum;
     if (cum >= R.profitTarget && consistencyOk && tradingDays >= R.minTradingDays) return 1;
   }
   return 0;

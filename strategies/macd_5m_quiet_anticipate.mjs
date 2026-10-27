@@ -90,6 +90,11 @@ export default {
 
   timeframeMin: 5,
   warmupBars: 400,
+  // The ADR gate averages the last `adrDays` COMPLETED sessions and admits nothing
+  // until it has them, so a window needs that many sessions before it -- with the
+  // bar-count warm-up alone (~5 days) the live chart disagreed with the sweep on
+  // every window. Inherited by macd_1m_quiet_anticipate.
+  warmupSessions: (p) => Math.max(2, Math.trunc(p.adrDays) || 14) + 1,
 
   params: [
     ...base.params,

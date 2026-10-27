@@ -702,7 +702,10 @@ export class ChartView {
     const rules = R.rules;
 
     let lo = Math.min(0, -rules.trailingDD * 1.05), hi = Math.max(rules.profitTarget * 1.1, 100);
-    for (const p of pts) { if (p.cum < lo) lo = p.cum; if (p.cum > hi) hi = p.cum; if (p.floor < lo) lo = p.floor; }
+    for (const p of pts) {
+      if (p.cum < lo) lo = p.cum; if (p.cum > hi) hi = p.cum; if (p.floor < lo) lo = p.floor;
+      if (p.need > hi) hi = p.need;
+    }
     const pad = (hi - lo) * 0.08 || 100;
     lo -= pad; hi += pad;
     const V = this._yFor("equity", lo, hi, P);
@@ -755,6 +758,29 @@ export class ChartView {
     ctx.lineTo(this.plotR, y(pts[pts.length - 1].floor));
     ctx.stroke();
     ctx.setLineDash([]);
+
+    // What the window actually has to reach: the consistency rule raises the
+    // target to best day / cap once one day is too big a share of the profit.
+    // Drawn only where it sits above the target, so a window it never bites
+    // looks as before.
+    if (pts.some((p) => p.need > rules.profitTarget + 0.5)) {
+      ctx.strokeStyle = CSS.target;
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([2, 3]);
+      ctx.beginPath();
+      ctx.moveTo(this.x(pts[0].x), y(pts[0].need));
+      for (let i = 1; i < pts.length; i++) {
+        ctx.lineTo(this.x(pts[i].x), y(pts[i - 1].need));
+        ctx.lineTo(this.x(pts[i].x), y(pts[i].need));
+      }
+      ctx.lineTo(this.plotR, y(pts[pts.length - 1].need));
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const top = pts[pts.length - 1].need;
+      ctx.fillStyle = CSS.target;
+      ctx.font = "10px ui-monospace, monospace";
+      ctx.fillText(`consistency: needs ${fmtUsd(top)}`, this.plotL + 4, y(top) - 4);
+    }
 
     // Equity step line
     ctx.strokeStyle = CSS.equity;

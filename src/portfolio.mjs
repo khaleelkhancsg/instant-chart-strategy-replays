@@ -51,12 +51,17 @@ export function replayPortfolio(books, startMs, rules = {}, opts = {}) {
 
   const openTrades = [];       // { exitTime, pnl, size, tday }
   let cum = 0, peak = 0, eodPeak = 0, locked = false;
-  let curDay = null, dayPnl = 0, maxDayPnl = 0, tradingDays = 0, dayHadTrade = false;
+  // bestClosed: the best COMPLETED day's net, as in replayWindow; maxDayPnl the
+  // highest realised day P&L at any point (reported, gates nothing).
+  let curDay = null, dayPnl = 0, maxDayPnl = 0, bestClosed = 0, tradingDays = 0, dayHadTrade = false;
   let openContracts = 0;
   let taken = 0, skippedRules = 0, skippedCap = 0;
+  const gates = R.consistencyGatesPass && capPct > 0;
 
   const closeDay = () => {
-    if (curDay === null || !eodTrail) return;
+    if (curDay === null) return;
+    if (dayPnl > bestClosed) bestClosed = dayPnl;
+    if (!eodTrail) return;
     if (cum > eodPeak) eodPeak = cum;
     if (R.lockAtBreakeven && !locked && eodPeak >= R.trailingDD) locked = true;
   };
@@ -86,7 +91,7 @@ export function replayPortfolio(books, startMs, rules = {}, opts = {}) {
         if (R.lockAtBreakeven && !locked && peak >= R.trailingDD) locked = true;
       }
       if (cum <= floorNow()) return { code: -1, at };
-      if (cum >= R.profitTarget && (!R.consistencyGatesPass || maxDayPnl <= capPct * cum) && tradingDays >= R.minTradingDays) {
+      if (cum >= R.profitTarget && (!gates || Math.max(bestClosed, dayPnl) <= capPct * cum) && tradingDays >= R.minTradingDays) {
         return { code: 1, at };
       }
     }
@@ -133,7 +138,7 @@ export function replayPortfolio(books, startMs, rules = {}, opts = {}) {
     return {
       outcome: code === 1 ? OUTCOME.PASS : code === -1 ? OUTCOME.FAIL : OUTCOME.OPEN,
       resolvedMs: at, netPnl: cum, taken, skippedRules, skippedCap,
-      tradingDays, maxDayPnl,
+      tradingDays, maxDayPnl, bestDay: Math.max(bestClosed, dayPnl),
     };
   }
 }

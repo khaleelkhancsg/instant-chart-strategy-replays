@@ -14,6 +14,12 @@
 //                at the next 17:00 ET reset. They are NOT breaches.
 //   PASS       — cumulative profit >= target AND no single day contributed more
 //                than `consistencyPct` of it AND >= minTradingDays traded.
+//                A day's contribution is its NET P&L — what it closed at, or for
+//                the day in progress, what it stands at now — not the highest its
+//                realised P&L reached: a +$8,000 morning given back to +$3,000 is
+//                a $3,000 day. So the profit the window must reach is
+//                max(target, best day / cap): one oversized day RAISES it, which
+//                is why a window can pass at well above the target.
 //
 // Two deliberate deviations from lib_challenge_v2, both toward realism:
 //   1. Window membership is by ENTRY time. You start a combine flat, so a trade
@@ -41,7 +47,7 @@ export const DEFAULT_RULES = {
   // re-exposes the account to breach in the meantime — a real cost of the rule,
   // not an artefact. (There is no consistency requirement on payouts; the funded
   // stage gates withdrawals on winning days instead — see FUNDED below.)
-  consistencyGatesPass: true,
+  consistencyGatesPass: true,     // a consistencyPct of 0 also switches the rule off
   minTradingDays: 0,
   windowDays: 30,
   evaluateOn: "realized",   // 'realized' | 'intraday'
@@ -53,6 +59,14 @@ export function resolveRules(r = {}) {
 }
 
 export const OUTCOME = { PASS: "PASS", FAIL: "FAIL", OPEN: "IN_PROGRESS" };
+
+// The profit a window must reach before it can pass, given its best day so far:
+// the target, raised to best day / cap when the consistency rule gates the pass.
+export function profitNeeded(R, bestDay) {
+  const capPct = R.consistencyPct / 100;
+  if (!R.consistencyGatesPass || !(capPct > 0)) return R.profitTarget;
+  return Math.max(R.profitTarget, bestDay / capPct);
+}
 
 /**
  * IMPORTANT LIMITATION — this replay assumes trades are SEQUENTIAL.
@@ -106,7 +120,11 @@ export function replayWindow(trades, startMs, rules = {}) {
   let peak = 0;        // intraday-trailing high-water mark
   let eodPeak = 0;     // best daily CLOSE so far (eod-trailing mark)
   let locked = false;
-  let curDay = null, dayPnl = 0, maxDayPnl = 0;
+  // bestClosed: the best COMPLETED day's net P&L -- with the day in progress, the
+  // consistency rule's "best day". maxDayPnl is the highest realised day P&L at
+  // any point, peaks later given back included: reported, but it gates nothing.
+  let curDay = null, dayPnl = 0, maxDayPnl = 0, bestClosed = 0;
+  const gates = R.consistencyGatesPass && capPct > 0;
   let tradingDays = 0, dayHadTrade = false;
   let minCushion = Infinity;
 
@@ -123,6 +141,7 @@ export function replayWindow(trades, startMs, rules = {}) {
 
   const closeDay = () => {
     if (curDay === null) return;
+    if (dayPnl > bestClosed) bestClosed = dayPnl;
     if (eodTrail) {
       if (cum > eodPeak) eodPeak = cum;
       if (R.lockAtBreakeven && !locked && eodPeak >= R.trailingDD) { locked = true; lockMs = days.length ? days[days.length - 1].lastMs : startMs; }
@@ -163,7 +182,8 @@ export function replayWindow(trades, startMs, rules = {}) {
     if (skip) {
       if (!D.lockout) D.lockout = skip;
       D.skipped++;
-      events.push({ k, taken: false, skip, cumBefore: cum, cum, floor: floorNow(), day, dayPnl, t });
+      events.push({ k, taken: false, skip, cumBefore: cum, cum, floor: floorNow(), day, dayPnl,
+                    need: profitNeeded(R, Math.max(bestClosed, dayPnl)), t });
       continue;
     }
 
@@ -195,7 +215,10 @@ export function replayWindow(trades, startMs, rules = {}) {
     const floor = floorNow();
     if (!intraday) minCushion = Math.min(minCushion, cum - floor);
 
-    events.push({ k, taken: true, skip: null, cumBefore, cum, floor, day, dayPnl, t });
+    // The best day as the rule counts it: completed days at their close, today
+    // as it stands -- if the pass lands now, the trader stops here.
+    const bestDay = Math.max(bestClosed, dayPnl);
+    events.push({ k, taken: true, skip: null, cumBefore, cum, floor, day, dayPnl, need: profitNeeded(R, bestDay), t });
 
     if (targetHitMs === null && cum >= R.profitTarget) targetHitMs = t.exitTime;
 
@@ -207,13 +230,13 @@ export function replayWindow(trades, startMs, rules = {}) {
       ev.breachKind = breachedIntra ? "intraday" : "realized";
       break;
     }
-    const consistencyOk = !R.consistencyGatesPass || maxDayPnl <= capPct * cum;
+    const consistencyOk = !gates || bestDay <= capPct * cum;
     if (cum >= R.profitTarget && consistencyOk && tradingDays >= R.minTradingDays) {
       outcome = OUTCOME.PASS;
       passMs = t.exitTime;
       // Flag a pass that only stands because consistency is not gating it, so
       // the UI can warn rather than quietly present it as clean.
-      consistencyBreached = maxDayPnl > capPct * cum;
+      consistencyBreached = capPct > 0 && bestDay > capPct * cum;
       events[events.length - 1].pass = true;
       break;
     }
@@ -244,7 +267,10 @@ export function replayWindow(trades, startMs, rules = {}) {
       tradingDays,
       daysUsed,
       maxDayPnl,
-      consistencyRatio: cum > 0 ? (maxDayPnl / cum) * 100 : 0,
+      // closeDay() above folded the last day in, so this is the best day's net
+      bestDay: bestClosed,
+      profitNeeded: profitNeeded(R, bestClosed),
+      consistencyRatio: cum > 0 ? (bestClosed / cum) * 100 : 0,
       consistencyBreached,
       minCushion: minCushion === Infinity ? null : minCushion,
       finalFloor: floorNow(),

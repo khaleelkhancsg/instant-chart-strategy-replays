@@ -10,9 +10,13 @@ import { ema, sma, wma, atr, adx, rsi, donchian, rollingMeanStd, trueRange, effi
 import { buildFilterContext, applyFilters, countSurviving } from "./src/filters.mjs";
 import { replayPortfolio } from "./src/portfolio.mjs";
 import { resample, sliceBars, indexAtOrAfter, indexAtOrBefore } from "./src/resample.mjs";
-import { runBrackets, tradeStats, EXIT } from "./src/engine.mjs";
-import { replayWindow, sweepWindows, simulateFunded, sweepFunded, hasOverlappingTrades, OUTCOME } from "./src/challenge.mjs";
+import { runBrackets, tradeStats, EXIT, resolveExec } from "./src/engine.mjs";
+import { replayWindow, sweepWindows, simulateFunded, sweepFunded, hasOverlappingTrades, OUTCOME, resolveRules } from "./src/challenge.mjs";
 import { loadBars, packBars } from "./src/data.mjs";
+import { loadStrategies } from "./src/registry.mjs";
+import { runStrategy, resolveParams } from "./src/run.mjs";
+import { windowSpan } from "./src/window.mjs";
+import { NO_FILTER } from "./src/filters.mjs";
 
 let pass = 0, fail = 0;
 const failures = [];
@@ -936,7 +940,54 @@ t("consistency blocks the pass only when configured to gate it", () => {
 t("with gating on, the pass waits until the best day is diluted", () => {
   const r = replayWindow(tr([3200, 1000, 1000, 1000, 1000]), START, { ...BASE, consistencyPct: 50, consistencyGatesPass: true });
   eq(r.outcome, OUTCOME.PASS);
-  if (!(r.stats.maxDayPnl <= 0.5 * r.stats.netPnl + 1e-9)) throw new Error("passed while violating the cap");
+  if (!(r.stats.bestDay <= 0.5 * r.stats.netPnl + 1e-9)) throw new Error("passed while violating the cap");
+});
+
+// Several trades a session: [[day 1 pnls], [day 2 pnls], ...], in time order.
+function trDays(days) {
+  const base = Date.UTC(2024, 0, 1, 12), out = [];
+  days.forEach((list, d) => list.forEach((pnl, j) => {
+    const entryTime = base + d * DAY + j * 3600000;
+    out.push({ entryTime, exitTime: entryTime + 1800000, tday: Math.floor((base + d * DAY) / DAY),
+               pnl, mae: Math.min(0, pnl), mfe: Math.max(0, pnl), dir: 1, contracts: 1, fees: 0,
+               entryPrice: 1, exitPrice: 1, reason: "TP", entrySrc: out.length, exitSrc: out.length });
+  }));
+  return out;
+}
+const GATED = { ...BASE, consistencyPct: 50, consistencyGatesPass: true };
+
+t("hand-traced: consistency counts a day at its net, not at its intraday peak", () => {
+  // Day 1 runs to +1700, gives back 1200 and closes +500. Days 2 and 3 close
+  // +1250 each. At 3000 the best DAY is 1250, under half of 3000, so it passes
+  // there. Counting day 1 at its 1700 peak (the old bug) would have held it.
+  const r = replayWindow(trDays([[1700, -1200], [1250], [1250]]), START, GATED);
+  eq(r.outcome, OUTCOME.PASS, "passes at the target:");
+  close(r.stats.netPnl, 3000, 1e-9, "net at the pass:");
+  close(r.stats.bestDay, 1250, 1e-9, "best day:");
+  close(r.stats.maxDayPnl, 1700, 1e-9, "the intraday peak is still reported:");
+});
+
+t("hand-traced: one oversized day raises what the window needs to best day / cap", () => {
+  // +2500 on day 1 at a 50% cap: the window needs 5000 before it can pass. 3500
+  // after day 2 is over the target but not enough; 5100 after day 3 passes.
+  const r = replayWindow(trDays([[2500], [1000], [1600]]), START, GATED);
+  const need = r.events.filter((e) => e.taken).map((e) => e.need);
+  close(need[0], 5000, 1e-9, "after the +2500 day:");
+  close(need[1], 5000, 1e-9, "still, after day 2:");
+  eq(r.outcome, OUTCOME.PASS, "passes on day 3:");
+  close(r.stats.netPnl, 5100, 1e-9, "net at the pass:");
+  // and with no big day, the need is just the target
+  close(replayWindow(trDays([[1000], [1000]]), START, GATED).stats.profitNeeded, 3000, 1e-9, "no big day:");
+});
+
+t("a consistency cap of 0% switches the rule off instead of making the pass impossible", () => {
+  eq(replayWindow(trDays([[3200]]), START, { ...GATED, consistencyPct: 0 }).outcome, OUTCOME.PASS);
+});
+
+t("the portfolio replay counts the best day the same way", () => {
+  const r = replayPortfolio([{ trades: trDays([[1700, -1200], [1250], [1250]]), contracts: 1 }], START, GATED);
+  eq(r.outcome, OUTCOME.PASS);
+  close(r.bestDay, 1250, 1e-9, "best day:");
 });
 
 t("the window ends the moment the target is reached (default)", () => {
@@ -1549,6 +1600,72 @@ if (bars_) {
       close(loB, loA, 1e-4, `tf=${tf} low:`);
     }
   });
+}
+
+// ══════════════════════════════ 7. STRATEGIES ══════════════════════════════
+// Every strategy, on the last 300,000 real bars. Two properties the whole tool
+// rests on, checked generically so a new strategy file is covered the day it is
+// dropped in:
+//   no lookahead   -- signals, ATR and exit signals computed on data cut short
+//                     equal the full run's for every completed bar;
+//   live = sweep   -- the browser's path (the window plus the warm-up and tail
+//                     src/window.mjs sets, retried with a 30-day tail if its last
+//                     trade ran out of bars, as public/app.js does) gives the same
+//                     window result as the server's full-history run.
+section("7. Strategies: no lookahead, and the live window matches the sweep");
+if (bars_) {
+  const { bars: B } = bars_;
+  const N = 300000, H = sliceBars(B, B.count - N, B.count);
+  const strategies = await loadStrategies();
+  const same = (a, b) => a === b || (Number.isNaN(a) && Number.isNaN(b));
+
+  for (const [id, s] of strategies) {
+    t(`${id}: no lookahead`, () => {
+      const p = resolveParams(s, {});
+      const oF = s.compute(resample(H, p.timeframeMin), p);
+      for (const frac of [0.5, 0.85]) {
+        const tfP = resample(sliceBars(H, 0, Math.floor(N * frac)), p.timeframeMin);
+        const oP = s.compute(tfP, p);
+        const m = tfP.close.length - 1;             // its last bar may be a partial bucket
+        for (const k of ["sig", "atr", "exitSig"]) {
+          if (!oF[k] && !oP[k]) continue;
+          for (let i = 0; i < m; i++) {
+            if (!same(oF[k][i], oP[k][i])) throw new Error(`${k} at bar ${i} of ${m} changes when later bars exist (cut ${frac})`);
+          }
+        }
+      }
+    });
+  }
+
+  for (const [id, s] of strategies) {
+    t(`${id}: the live window gives the sweep's result, overnight holds off and on`, () => {
+      const p = resolveParams(s, {});
+      for (const overnight of [false, true]) {
+        const exec = resolveExec({ ...(s.execDefaults || {}), ...(overnight ? { intradayOnly: false } : {}) });
+        const rules = resolveRules({ ...(s.rulesDefaults || {}) });
+        const filter = { ...NO_FILTER, ...(s.filterDefaults || {}) };
+        const full = runStrategy(H, s, p, exec, { filter });
+        // the sweep's start time of day, and a date-picker start mid-session
+        for (const [k, offMin] of [[50, 0], [93, 6 * 60], [136, 0], [179, 13 * 60]]) {
+          const start = H.ts[0] + k * DAY + offMin * 60000, endMs = start + rules.windowDays * DAY;
+          const live = (tailMin) => {
+            const span = windowSpan(s, p, tailMin ? { tailMin } : {});
+            const si = indexAtOrAfter(H.ts, start - span.warmupMin * 60000);
+            const ei = indexAtOrAfter(H.ts, endMs + span.tailMin * 60000);
+            return runStrategy(sliceBars(H, si, Math.min(ei + 1, N)), s, p, exec, { fromMs: start, filter })
+              .trades.filter((x) => x.entryTime < endMs);
+          };
+          let lt = live(0);
+          if (lt.length && lt[lt.length - 1].reason === "EOD") lt = live(30 * 1440);
+          const a = replayWindow(full.trades, start, rules), b = replayWindow(lt, start, rules);
+          if (a.outcome !== b.outcome || Math.abs(a.stats.netPnl - b.stats.netPnl) > 0.01 || a.stats.trades !== b.stats.trades) {
+            throw new Error(`${overnight ? "overnight, " : ""}window ${new Date(start).toISOString().slice(0, 16)}: sweep ${a.outcome} ` +
+                            `${a.stats.netPnl.toFixed(2)} (${a.stats.trades} trades), live ${b.outcome} ${b.stats.netPnl.toFixed(2)} (${b.stats.trades})`);
+          }
+        }
+      }
+    });
+  }
 }
 
 // ══════════════════════════════ RESULT ══════════════════════════════

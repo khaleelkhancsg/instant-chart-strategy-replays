@@ -90,6 +90,9 @@ export default {
 
   timeframeMin: 1,
   warmupBars: 2000,
+  // The same ADR gate as macd_5m_quiet_anticipate: `adrDays` completed sessions
+  // before the window, or the live chart disagrees with the sweep.
+  warmupSessions: (p) => Math.max(2, Math.trunc(p.adrDays) || 14) + 1,
 
   execDefaults: {
     ...base.execDefaults,

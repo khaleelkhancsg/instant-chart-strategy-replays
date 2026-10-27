@@ -12,6 +12,7 @@ import { replayWindow, DEFAULT_RULES } from "/src/challenge.mjs";
 import { DEFAULT_EXEC } from "/src/engine.mjs";
 import { NO_FILTER } from "/src/filters.mjs";
 import { indexAtOrAfter } from "/src/resample.mjs";
+import { windowSpan, DEFAULT_TAIL_MIN } from "/src/window.mjs";
 
 // The 1-minute x-position a resampled bar should be drawn at: the middle of the
 // minutes it covers. srcLast+1 is the exclusive end, so the centre of bar k is
@@ -55,6 +56,14 @@ const EXEC_PARAMS = [
     options: [["fixed", "Fixed contracts"], ["risk", "Constant $ risk per trade"]],
     hint: "MNQ's ATR ran ~6 pts in 2019 and ~28 in 2026. Fixed size means one stop cost 11% of the drawdown then and 52% now." },
   { key: "riskDollars", label: "Risk per trade $ (risk mode)", type: "int", min: 50, max: 1500, step: 25, default: 400 },
+  // The engine's platform-side caps. Unlike the rules' daily stops, which only
+  // block NEW entries, these close the open trade on realised + open P&L.
+  { key: "dayProfitStopUsd", label: "Hard daily profit cap $ (0 = off)", type: "int", min: 0, max: 10000, step: 50, default: 0,
+    hint: "Closes the open trade the moment the day is up this much, as a platform profit stop does. At half the target ($1,500 on $3,000) no day can break the consistency cap, so a window passes at the target instead of having to dilute one big day." },
+  { key: "dayLossStopUsd", label: "Hard daily loss cap $ (0 = off)", type: "int", min: 0, max: 10000, step: 50, default: 0,
+    hint: "Closes the open trade the moment the day is down this much -- a daily loss limit enforced on live P&L, as platforms do. The rules' 'Firm daily loss limit' only stops new entries." },
+  { key: "dayLossStopMode", label: "Hard loss cap fills", type: "select", default: "price",
+    options: [["price", "At the stop price (a gap fills worse)"], ["exact", "Exactly at the cap (platform liquidation)"]] },
 ];
 
 // Funded stage. No consistency requirement here — a payout is unlocked by
@@ -111,14 +120,15 @@ const RULES_PARAMS = [
     hint: "Real firms breach on live equity. 'Open equity' checks each trade's worst excursion, pessimistically ordered." },
   { key: "dailyLossLimit", label: "Firm daily loss limit $", type: "int", min: 0, max: 5000, step: 50, default: 1000,
     hint: "Soft lockout — stop for the session, resume next day. Never fails the account." },
-  { key: "dailyProfitStop", label: "Daily profit stop $", type: "int", min: 0, max: 5000, step: 50, default: 1500 },
+  { key: "dailyProfitStop", label: "Daily profit stop $", type: "int", min: 0, max: 5000, step: 50, default: 1500,
+    hint: "Stops NEW entries once the day's realised P&L reaches this. A trade already running is not closed, so one trade can make far more -- and the consistency rule then raises what the window needs. To cap the day itself, use 'Hard daily profit cap' under Execution." },
   { key: "circuitBreaker", label: "Your daily breaker $", type: "int", min: 0, max: 2000, step: 25, default: 150,
     hint: "Your own tighter stop. The single biggest pass-rate lever in this project's testing. 0 = off." },
-  { key: "consistencyPct", label: "Consistency cap %", type: "int", min: 0, max: 100, step: 5, default: 50,
-    hint: "No single day may exceed this share of total profit." },
+  { key: "consistencyPct", label: "Consistency cap % (0 = off)", type: "int", min: 0, max: 100, step: 5, default: 50,
+    hint: "No single day may exceed this share of total profit. A day counts at its net P&L, so the window must reach max(target, best day / cap): a $12,000 day at 50% means $24,000 before it can pass." },
   { key: "consistencyGatesPass", label: "Consistency blocks the pass", type: "select", default: "on",
     options: [["on", "Yes — must dilute first"], ["off", "No — pass on target"]],
-    hint: "The evaluation enforces this: reaching the target on one oversized day does not pass. Measured here, 95% of passing windows hit the target first and then need ~10 more trades. Payouts have no consistency rule — they gate on winning days instead." },
+    hint: "The evaluation enforces this: reaching the target on one oversized day does not pass, the window must keep trading until the best day is under the cap. The equity panel draws what that raises the target to. Payouts have no consistency rule — they gate on winning days instead." },
   { key: "minTradingDays", label: "Min trading days", type: "int", min: 0, max: 30, step: 1, default: 0 },
   { key: "windowDays", label: "Window length (days)", type: "int", min: 5, max: 90, step: 1, default: 30 },
 ];
@@ -137,6 +147,8 @@ const S = {
   windowStart: null,
   blob: null,        // parsed window bars
   winStartLocal: 0,  // index of the window start inside the blob
+  winEndLocal: 0,    // index of the first bar at or after the window end
+  tailMin: DEFAULT_TAIL_MIN,   // bars loaded past the window end, so its last trade can finish
   chart: null,
   nav: null,
   sweep: null,       // last full-history sweep result
@@ -425,6 +437,9 @@ function paintSweepStats() {
 
   const nets = windows.map((w) => w.netPnl);
   const passed = windows.filter((w) => w.outcome === "PASS");
+  // What passing actually took. Above the target whenever the consistency rule
+  // made a window dilute one big day first.
+  const passNets = passed.map((w) => w.netPnl);
   const failed = windows.filter((w) => w.outcome === "FAIL");
   const sign = (v) => (v > 0 ? "pos" : v < 0 ? "neg" : "");
 
@@ -474,6 +489,7 @@ function paintSweepStats() {
 
     <div class="statgrid" style="margin-top:9px">
       ${statCell("Median days to pass", s.medianDaysToPass ?? "—")}
+      ${statCell("Profit at pass (median / max)", passNets.length ? `${fmtUsd(median(passNets))} / ${fmtUsd(Math.max(...passNets))}` : "—")}
       ${statCell("Median net / window", fmtUsd(median(nets) ?? 0), sign(median(nets) ?? 0))}
       ${statCell("Best window", fmtUsd(Math.max(...nets)), "pos")}
       ${statCell("Worst window", fmtUsd(Math.min(...nets)), "neg")}
@@ -516,7 +532,20 @@ function recompute() {
   if (!S.blob || !S.strategyMod) return;
   const t0 = performance.now();
 
-  const res = runStrategy(S.blob, S.strategyMod, S.params, S.exec, { fromMs: S.windowStart, filter: S.filter });
+  const run = runStrategy(S.blob, S.strategyMod, S.params, S.exec, { fromMs: S.windowStart, filter: S.filter });
+  // The blob runs past the window end so a trade opened inside it can finish;
+  // trades opened in that tail belong to the next window, not this one.
+  const endMs = S.windowStart + S.rules.windowDays * DAY;
+  const cut = run.trades.findIndex((t) => t.entryTime >= endMs);
+  const res = cut < 0 ? run : { ...run, trades: run.trades.slice(0, cut) };
+  // A window trade closed only because the loaded bars ran out would be cut short
+  // of the exit the sweep gives it. Load a longer tail once and run again.
+  const lastT = res.trades[res.trades.length - 1];
+  if (lastT && lastT.reason === "EOD" && S.tailMin < 30 * 1440) {
+    S.tailMin = 30 * 1440;
+    loadWindow(S.windowStart, { keepTail: true });
+    return;
+  }
   const replay = replayWindow(res.trades, S.windowStart, S.rules);
   const ms = performance.now() - t0;
 
@@ -558,7 +587,7 @@ function paintChart(res, replay) {
   });
 
   const equityPts = replay.events.filter((e) => e.taken).map((e) => ({
-    x: e.t.exitSrc, cum: e.cum, floor: e.floor, pnl: e.t.pnl,
+    x: e.t.exitSrc, cum: e.cum, floor: e.floor, pnl: e.t.pnl, need: e.need,
   }));
 
   const dayBars = replay.days.map((d) => ({
@@ -591,7 +620,7 @@ function paintChart(res, replay) {
     resolveX: (replay.passMs ?? replay.failMs) != null
       ? indexAtOrAfter(blob.ts, replay.passMs ?? replay.failMs) : null,
     title: `MNQ · ${S.strategyDesc.name}`,
-    initialView: [S.winStartLocal, blob.count],
+    initialView: [S.winStartLocal, Math.min(blob.count, S.winEndLocal + 1)],
   });
 }
 
@@ -607,12 +636,16 @@ function paintStats(res, replay) {
   badge.className = "badge " + (replay.outcome === "PASS" ? "pass" : replay.outcome === "FAIL" ? "fail" : "open");
   badge.textContent = replay.outcome === "IN_PROGRESS" ? "UNRESOLVED" : replay.outcome;
 
-  const pct = Math.max(0, Math.min(100, (st.netPnl / R.profitTarget) * 100));
+  // The consistency rule can raise what this window must reach above the target.
+  const needed = Math.max(R.profitTarget, st.profitNeeded || 0);
+  const raised = needed > R.profitTarget + 0.5;
+  const pct = Math.max(0, Math.min(100, (st.netPnl / needed) * 100));
   const sign = (v) => (v > 0 ? "pos" : v < 0 ? "neg" : "");
 
   $("statGrid").innerHTML =
     `<div class="stat wide">
-       <div class="stat-k">Net P&amp;L · target ${fmtUsd(R.profitTarget)}</div>
+       <div class="stat-k">Net P&amp;L · target ${fmtUsd(R.profitTarget)}${raised
+         ? ` <span class="warn">→ ${fmtUsd(needed)}: best day ${fmtUsd(st.bestDay)} is over ${R.consistencyPct}%</span>` : ""}</div>
        <div class="stat-v ${sign(st.netPnl)}">${fmtUsd(st.netPnl)}</div>
        <div class="progress"><div style="width:${pct}%"></div></div>
      </div>` +
@@ -622,7 +655,7 @@ function paintStats(res, replay) {
     statCell("Profit factor", Number.isFinite(st.profitFactor) ? st.profitFactor.toFixed(2) : "∞") +
     statCell("Expectancy", fmtUsd(st.expectancy, 2), sign(st.expectancy)) +
     statCell("Trading days", st.tradingDays) +
-    statCell("Best day", fmtUsd(st.maxDayPnl), sign(st.maxDayPnl)) +
+    statCell("Best day", fmtUsd(st.bestDay), sign(st.bestDay)) +
     statCell("Consistency", st.netPnl > 0 ? st.consistencyRatio.toFixed(0) + "%" + (st.consistencyBreached ? " ⚠" : "") : "—",
              st.netPnl > 0 && st.consistencyRatio > R.consistencyPct ? "neg" : "") +
     statCell("Closest to breach", st.minCushion == null ? "—" : fmtUsd(st.minCushion),
@@ -642,23 +675,25 @@ function paintStats(res, replay) {
 }
 
 // ─────────────────────────── window loading ───────────────────────────
-async function loadWindow(startMs) {
+async function loadWindow(startMs, { keepTail = false } = {}) {
   S.windowStart = startMs;
-  const tf = S.params.timeframeMin || 1;
-  const warmupBars = S.strategyDesc.warmupBars || 300;
-  // Warm-up is measured in signal bars but requested in wall-clock minutes, so
-  // pad generously for weekends and holidays where no bars exist at all.
-  const warmupMin = Math.ceil(warmupBars * tf * 1.5) + 3 * 1440;
+  if (!keepTail) S.tailMin = DEFAULT_TAIL_MIN;
+  // Warm-up and tail as src/window.mjs sets them: enough history before the
+  // window for the strategy's indicators to match the full-history run, and
+  // enough after it for the window's last trade to finish. test.mjs checks the
+  // result against the sweep for every strategy.
+  const { warmupMin, tailMin } = windowSpan(S.strategyMod, S.params, { tailMin: S.tailMin });
 
-  const url = `/api/window?start=${startMs}&days=${S.rules.windowDays}&warmupMin=${warmupMin}`;
+  const url = `/api/window?start=${startMs}&days=${S.rules.windowDays}&warmupMin=${warmupMin}&tailMin=${tailMin}`;
   const ab = await fetch(url).then((r) => r.arrayBuffer());
   S.blob = parseWindowBlob(ab);
   S.winStartLocal = indexAtOrAfter(S.blob.ts, startMs);
+  S.winEndLocal = indexAtOrAfter(S.blob.ts, startMs + S.rules.windowDays * DAY);
 
   const d = new Date(startMs);
   $("startDate").value = d.toISOString().slice(0, 10);
   const end = new Date(startMs + S.rules.windowDays * DAY);
-  $("winRange").textContent = `→ ${end.toISOString().slice(0, 10)} · ${S.blob.count.toLocaleString()} 1-min bars`;
+  $("winRange").textContent = `→ ${end.toISOString().slice(0, 10)} · ${(S.winEndLocal - S.winStartLocal).toLocaleString()} 1-min bars`;
   if (S.nav) { S.nav.cursorMs = startMs; S.nav.draw(); }
 
   recompute();
@@ -854,12 +889,15 @@ async function boot() {
     toast(`Loaded ${S.strategyList.length} strategies`);
     await selectStrategy(S.strategyList.some((s) => s.id === S.strategyDesc.id) ? S.strategyDesc.id : S.strategyList[0].id);
   };
+  // Back to the strategy as it ships -- its own risk envelope, gate and daily
+  // overlays, as selectStrategy() sets them -- not the generic defaults, which
+  // would quietly swap its stop, target and size for 2 / 12 ATR at 8 lots.
   $("resetParams").onclick = () => {
     S.params = resolveParams(S.strategyMod, {});
-    S.exec = { ...S.meta.defaults.exec };
-    S.rules = { ...S.meta.defaults.rules };
+    S.exec = { ...S.meta.defaults.exec, ...(S.strategyDesc.execDefaults || {}) };
+    S.rules = { ...S.meta.defaults.rules, ...(S.strategyDesc.rulesDefaults || {}) };
     S.funded = { ...S.meta.defaults.funded };
-  S.filter = { ...NO_FILTER };
+    S.filter = { ...NO_FILTER, ...(S.strategyDesc.filterDefaults || {}) };
     renderSidebar();
     loadWindow(S.windowStart);
   };

@@ -153,15 +153,17 @@ const server = http.createServer(async (req, res) => {
 
     // ── window bars, binary ──
     // Returns the window PLUS a warm-up prefix, so indicators at the left edge
-    // match a full-history run instead of restarting cold.
+    // match a full-history run instead of restarting cold, and a tail, so a trade
+    // opened inside the window can finish (see src/window.mjs).
     if (p === "/api/window") {
       const start = Number(url.searchParams.get("start"));
       const days = Number(url.searchParams.get("days") || 30);
       const warmupMin = Number(url.searchParams.get("warmupMin") || 5 * 24 * 60);
+      const tailMin = Number(url.searchParams.get("tailMin") || 0);
       if (!Number.isFinite(start)) return sendJson(res, 400, { error: "start (epoch ms) required" });
 
       const s = indexAtOrAfter(bars.ts, start - warmupMin * 60000);
-      const e = indexAtOrAfter(bars.ts, start + days * 86400000);
+      const e = indexAtOrAfter(bars.ts, start + days * 86400000 + tailMin * 60000);
       return sendBin(res, packBars(bars, s, Math.min(e + 1, bars.count)));
     }
 
