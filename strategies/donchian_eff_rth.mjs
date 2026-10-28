@@ -84,6 +84,7 @@
 //   reached 83%. The flatten rule, not the strategy, is the binding constraint.
 
 import { atr, adx, donchian } from "../src/indicators.mjs";
+import { donchianAdxExplain } from "../src/explain.mjs";
 
 export default {
   id: "donchian_eff_rth",
@@ -152,6 +153,8 @@ export default {
         { name: `Donchian ${p.period} low`, pane: "price", color: "#7a3d3d", data: dl, dash: [4, 3] },
         { name: "ADX", pane: "sub", color: "#c9a227", data: adxArr, threshold: p.adxMin, range: [0, 60] },
       ],
+      // Bar k as the loop above reads it: the break, the ADX floor, the cooldown.
+      explain: (k) => donchianAdxExplain(bars, k, { dh, dl, adxArr, sig, period: p.period, adxMin: p.adxMin, adxPeriod: p.adxPeriod, cooldownBars: p.cooldownBars }),
     };
   },
 };

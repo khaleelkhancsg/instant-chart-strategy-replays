@@ -15,6 +15,7 @@ import { indexAtOrAfter } from "/src/resample.mjs";
 import { windowSpan, DEFAULT_TAIL_MIN } from "/src/window.mjs";
 import { EVALS, EVAL_IDS, DEFAULT_EVAL, evalBase, evalKeys } from "/src/evals.mjs";
 import { STUDIES, STUDY_TFS, resolveStudy, studyLabel, isGating, gateLabel, computeStudy } from "/src/studies.mjs";
+import { describeEntry, describeExit, eventText, explainLines, num as fmtNum, px as fmtPx } from "/src/explain.mjs";
 
 // The 1-minute x-position a resampled bar should be drawn at: the middle of the
 // minutes it covers. srcLast+1 is the exclusive end, so the centre of bar k is
@@ -236,6 +237,9 @@ const S = {
   filter: { ...NO_FILTER },
   eval: DEFAULT_EVAL,  // which evaluation's rules (src/evals.mjs)
   studies: [],         // indicators added to the chart (src/studies.mjs), some gating entries
+  showSignals: false,  // mark every signal bar, entered or not (a view preference)
+  why: null,           // the entry explained: { ts: its signal bar's open time }
+  whyFolded: false,    // its card folded to the summary
   windowStart: null,
   blob: null,        // parsed window bars
   winStartLocal: 0,  // index of the window start inside the blob
@@ -674,12 +678,13 @@ function paintTrades(replay) {
   host.innerHTML =
     `<table class="ttable"><thead><tr><th>Entry (CT)</th><th>Side</th><th>Exit</th><th class="num">P&amp;L</th></tr></thead>` +
     `<tbody>${rows.join("")}</tbody></table>` +
-    `<div class="tt-foot"><span>Click a trade to zoom to it</span><button class="mini" id="tradesCsv" title="Download this window's trades">CSV</button></div>`;
+    `<div class="tt-foot"><span>Click a trade to see what triggered it</span><button class="mini" id="tradesCsv" title="Download this window's trades">CSV</button></div>`;
   host.querySelector("tbody").onclick = (me) => {
     const tr = me.target.closest("tr");
     if (!tr) return;
     const t = ev[+tr.dataset.k].t, pad = Math.max(45, (t.exitSrc - t.entrySrc) * 0.75);
-    S.chart.zoomTo(t.entrySrc - pad, t.exitSrc + pad);
+    S.chart.zoomTo(Math.min(t.entrySrc, signalSrc(t)) - pad, t.exitSrc + pad);
+    selectWhy(t);
   };
   $("tradesCsv").onclick = () => downloadCsv(`${S.strategyDesc.id}_${$("startDate").value}_trades.csv`, [
     ["entry_utc", "trading_day", "entry_ct", "side", "contracts", "entry_price", "exit_utc", "exit_price", "reason", "pnl", "fees",
@@ -692,6 +697,185 @@ function paintTrades(replay) {
               t.mae == null ? "" : t.mae.toFixed(2), t.mfe == null ? "" : t.mfe.toFixed(2), t.bars];
     }),
   ]);
+}
+
+// ───────────────────── why: what triggered an entry ─────────────────────
+// Click a trade (on the chart or in the list) or a signal marker: the chart
+// marks what the rule read -- the level broken, the bars it came from, the
+// order and its fill, the signal bar through the indicator panes -- and the
+// card lists every condition with its reading, a mini-chart of the indicator,
+// the order, the bracket and the exit. All of it is the strategy's own
+// explain() (src/explain.mjs), whose verdict test.mjs holds to the signal.
+// Kept by the signal bar's time, so it follows a re-run when a setting moves.
+const centreOf = (tf, k) => (tf.srcFirst[k] + tf.srcLast[k] + 1) / 2;
+const signalSrc = (t) => (lastResult && t.sigIdx >= 0 ? lastResult.res.tf.srcFirst[t.sigIdx] : t.entrySrc);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function selectWhy(t) {
+  const tf = lastResult && lastResult.res.tf;
+  const k = t && (t.sigIdx ?? t.k);
+  S.why = tf && k != null && k >= 0 && k < tf.ts.length ? { ts: tf.ts[k] } : null;
+  repaint();
+  if (S.why) revealWhy(tf, k, t.exitSrc);
+  queuePostState();
+}
+
+// Bring the signal bar and its trade into the part of the chart the card
+// leaves free, zooming out only as far as that needs. A view that already
+// shows them there is left alone.
+function revealWhy(tf, k, exitSrc) {
+  const c = S.chart, card = $("whyCard"), W = c.data && c.data.why;
+  let a = tf.srcFirst[k];
+  const b = Math.max(a + 1, exitSrc ?? tf.srcLast[Math.min(tf.ts.length - 1, k + 10)] + 1);
+  // and what the marks show -- the lookback, the opening range -- up to three hours back
+  if (W) for (const m of W.marks) { const x0 = m.x0 ?? m.x ?? (m.xs && m.xs[0]); if (Number.isFinite(x0) && x0 < a && a - x0 <= 180) a = x0; }
+  const freeR = card && !card.classList.contains("hidden") ? Math.min(c.plotR, card.offsetLeft - 12) : c.plotR;
+  const freeW = Math.max(120, freeR - c.plotL);
+  const shown = (i) => i >= c.i0 && c.x(i) <= c.plotL + freeW;
+  if (shown(a - 5) && shown(b)) return;
+  const pad = Math.max(20, (b - a) * 0.15), need = b - a + 2 * pad;
+  c.zoomTo(a - pad, a - pad + need * (c.plotW / freeW));
+}
+
+// A strategy mark (its bar indexes) on the 1-minute axis the chart draws in.
+function markToLocal(m, tf) {
+  const n = tf.ts.length, ok = (k) => k >= 0 && k < n;
+  switch (m.type) {
+    case "level": case "zone": return ok(m.k0) && ok(m.k1) ? { ...m, x0: tf.srcFirst[m.k0], x1: tf.srcLast[m.k1] + 1 } : null;
+    case "dot": case "sub": return ok(m.k) ? { ...m, x: centreOf(tf, m.k) } : null;
+    case "line": return ok(m.k0) && ok(m.k0 + m.v.length - 1) ? { ...m, xs: m.v.map((_, j) => centreOf(tf, m.k0 + j)) } : null;
+    case "move": return ok(m.k0) && ok(m.k1) ? { ...m, x0: centreOf(tf, m.k0), x1: centreOf(tf, m.k1) } : null;
+    case "span": return { ...m, x0: indexAtOrAfter(S.blob.ts, m.t0), x1: indexAtOrAfter(S.blob.ts, m.t1) };
+    default: return null;
+  }
+}
+
+// The selected signal's explanation, as the chart's `why` layer (and the card).
+function whyLayer(res, trades) {
+  const card = $("whyCard");
+  const hide = () => { if (card) card.classList.add("hidden"); return null; };
+  if (!S.why || !res.explain) return hide();
+  const tf = res.tf, k = indexAtOrAfter(tf.ts, S.why.ts);
+  if (k >= tf.ts.length || tf.ts[k] !== S.why.ts) { S.why = null; return hide(); }
+  const e = res.explain(k);
+  const t = trades.find((x) => x.sigIdx === k) || null;
+  const marks = e.marks.map((m) => markToLocal(m, tf)).filter(Boolean);
+  // the order, from the engine's account: placed at the next open, to its fill or end
+  let order = null;
+  const evs = e.events || [];
+  const armed = evs.find((v) => v.what === "armed"), entered = evs.find((v) => v.what === "entered");
+  if (armed) {
+    const end = evs.find((v) => ["filled", "replaced", "cancelled", "expired"].includes(v.what));
+    const last = Math.min(tf.ts.length - 1, end ? end.bar : armed.bar + armed.window);
+    order = { x0: tf.srcFirst[armed.bar], x1: end && end.what === "filled" ? centreOf(tf, last) : tf.srcFirst[last], price: armed.px,
+              label: `${armed.dir === 1 ? "buy" : "sell"} ${armed.limit ? "limit" : "stop"} ${fmtPx(armed.px)}` +
+                     (end ? (end.what === "filled" ? (end.limit && !armed.limit ? ", refused, filled as a limit" : ", filled") : `, ${end.what}`) : "") };
+  } else if (entered && entered.bar < tf.ts.length) {
+    marks.push({ type: "dot", x: tf.srcFirst[entered.bar] + 0.5, price: entered.px, label: `next open ${fmtPx(entered.px)}`, color: "#e8eef5", small: true });
+  }
+  paintWhyCard(e, t, res, trades);
+  return { entryTime: t ? t.entryTime : null, bar: [tf.srcFirst[k], tf.srcLast[k] + 1], marks, order };
+}
+
+// Every signal bar the engine saw, by what became of it, for the signals layer.
+function signalMarks(res) {
+  const tf = res.tf, sig = res.sig, out = [];
+  if (!sig || !res.signals) return out;
+  for (let k = 0; k < sig.length; k++) {
+    if (!sig[k]) continue;
+    const evs = res.signals.get(k) || [], has = (w) => evs.some((v) => v.what === w);
+    const cls = has("entered") || has("filled") ? "entry" : has("armed") ? "order" : has("refused") || has("dropped") ? "refused" : "held";
+    out.push({ k, x: centreOf(tf, k), price: sig[k] === 1 ? tf.low[k] : tf.high[k], dir: sig[k], cls });
+  }
+  return out;
+}
+
+// A condition's mini-chart: its series over the bars up to the signal (the
+// last point), with its threshold dashed.
+function sparkSvg(sp) {
+  if (!sp || !sp.lines || !sp.lines.length) return "";
+  const W = 92, H = 24, n = sp.k - sp.k0 + 1;
+  let lo = Infinity, hi = -Infinity;
+  for (const ln of sp.lines) for (const v of ln.v) if (v != null) { if (v < lo) lo = v; if (v > hi) hi = v; }
+  for (const r of sp.refs) { if (r < lo) lo = r; if (r > hi) hi = r; }
+  if (!Number.isFinite(lo)) return "";
+  if (sp.lines.some((ln) => ln.kind === "hist")) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+  if (!(hi > lo)) { hi += 1; lo -= 1; }
+  const X = (j) => 2 + (n <= 1 ? W - 4 : (j / (n - 1)) * (W - 6)), Y = (v) => H - 2 - ((v - lo) / (hi - lo)) * (H - 4);
+  let s = `<svg class="wc-spark" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true">`;
+  for (const r of sp.refs) s += `<line x1="0" x2="${W}" y1="${Y(r).toFixed(1)}" y2="${Y(r).toFixed(1)}" class="ref"/>`;
+  for (const ln of sp.lines) {
+    if (ln.kind === "hist") {
+      const z = Y(0);
+      ln.v.forEach((v, j) => { if (v != null) s += `<rect x="${(X(j) - 0.7).toFixed(1)}" y="${Math.min(z, Y(v)).toFixed(1)}" width="1.4" height="${Math.max(0.6, Math.abs(Y(v) - z)).toFixed(1)}" fill="${v >= 0 ? "#26a69a" : "#ef5350"}" opacity="0.7"/>`; });
+      continue;
+    }
+    let seg = [];
+    const flush = () => { if (seg.length > 1) s += `<polyline points="${seg.join(" ")}" fill="none" stroke="${ln.color}" stroke-width="1.2"/>`; seg = []; };
+    ln.v.forEach((v, j) => { if (v == null) flush(); else seg.push(`${X(j).toFixed(1)},${Y(v).toFixed(1)}`); });
+    flush();
+  }
+  for (const ln of sp.lines) { const v = ln.v[ln.v.length - 1]; if (v != null && ln.kind !== "hist") s += `<circle cx="${X(n - 1).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="2.2" fill="${ln.color}"/>`; }
+  s += `<line x1="${X(n - 1).toFixed(1)}" x2="${X(n - 1).toFixed(1)}" y1="0" y2="${H}" class="now"/>`;
+  return s + "</svg>";
+}
+
+// One condition. A size condition that did not pass only shrinks the entry
+// when the size left is above zero.
+function checkRow(c, size = 1) {
+  const shrunk = c.role === "size" && c.pass === false && size > 0;
+  const st = c.pass === true ? "pass" : c.pass === false ? (shrunk ? "size" : "fail") : "info";
+  const icon = c.pass === true ? "✓" : c.pass === false ? (shrunk ? "½" : "✗") : "·";
+  return `<div class="wc-row ${st}"><i>${icon}</i><div class="wc-body"><div class="wc-l">${esc(c.label)}</div>` +
+         `<div class="wc-v">${esc(c.text || "")}${c.note ? ` <span class="wc-n">— ${esc(c.note)}</span>` : ""}</div></div>${sparkSvg(c.spark)}</div>`;
+}
+
+function paintWhyCard(e, t, res, trades) {
+  const card = $("whyCard");
+  if (!card) return;
+  const tf = res.tf, x = S.exec;
+  const side = (d) => (d === 1 ? "long" : d === -1 ? "short" : "");
+  const signal = e.checks.filter((c) => c.role === "trigger" || c.role === "gate" || (c.role === "info" && c.group !== "study"));
+  const entry = e.checks.filter((c) => c.role === "size" || c.role === "entry" || (c.role === "info" && c.group === "study"));
+  const evs = e.events || [];
+  const head = t
+    ? `<span class="wc-side ${side(t.dir)}">${t.dir === 1 ? "LONG" : "SHORT"} ${t.contracts}</span> @ ${fmtPx(t.entryPrice)} · ${ctClock(t.entryCt)} CT` +
+      (t.taken ? ` · <b class="${t.pnl >= 0 ? "pos" : "neg"}">${fmtUsd(t.pnl)}</b>` : ` · <span class="dim">skipped: ${esc(SKIP_WHY[t.skip] || t.skip)}</span>`)
+    : `<span class="wc-side ${side(e.dir)}">${e.dir === 1 ? "LONG" : e.dir === -1 ? "SHORT" : "NO"} SIGNAL</span> · ${esc(e.bar)} CT · no trade`;
+  // the trades either side, for stepping through them
+  const list = trades.filter((q) => q.sigIdx >= 0).sort((a, b) => a.entryTime - b.entryTime);
+  let prev, next;
+  if (t) { const i = list.indexOf(t); prev = i - 1; next = i + 1; }
+  else { let j = list.findIndex((q) => q.sigIdx > e.k); if (j < 0) j = list.length; prev = j - 1; next = j; }
+  let html = `<div class="wc-head"><div class="wc-h">${head}</div>` +
+    `<button class="mini" data-go="${prev}" ${prev < 0 ? "disabled" : ""} title="Previous trade">◀</button>` +
+    `<button class="mini" data-go="${next}" ${next >= list.length ? "disabled" : ""} title="Next trade">▶</button>` +
+    `<button class="mini" data-fold title="${S.whyFolded ? "Show the details" : "Fold to the summary, to see the chart"}">${S.whyFolded ? "▾" : "▴"}</button>` +
+    `<button class="mini" data-close title="Close (Esc)">✕</button></div>`;
+  if (e.title) html += `<div class="wc-title">${esc(e.title)}</div>`;
+  html += `<div class="wc-sec">Signal · the ${e.tfMin === 1 ? "1-min" : `${e.tfMin}-min`} bar ${esc(e.bar)} CT, read at its close</div>` + signal.map((c) => checkRow(c)).join("");
+  if (entry.length) html += `<div class="wc-sec">${e.dir && !e.entryOk ? "Entry — refused" : "Entry"}${e.dir && e.size !== 1 && e.size > 0 ? ` · size × ${fmtNum(e.size)}` : ""}</div>` + entry.map((c) => checkRow(c, e.size)).join("");
+  if (t) {
+    html += `<div class="wc-sec">Order</div>` + evs.filter((v) => v.what === "flipped").map((v) => `<div class="wc-line">${esc(eventText(v, tf, x))}</div>`).join("") +
+            describeEntry(t, tf, x, evs).map((l) => `<div class="wc-line">${esc(l)}</div>`).join("");
+    html += `<div class="wc-sec">Exit</div><div class="wc-line">${esc(describeExit(t, tf, x, res.exitRule))}</div>`;
+  } else if (evs.length) {
+    html += `<div class="wc-sec">What the engine did</div>` + evs.map((v) => `<div class="wc-line">${esc(eventText(v, tf, x))}</div>`).join("");
+  } else if (e.dir) {
+    html += `<div class="wc-sec">What the engine did</div><div class="wc-line">Nothing recorded: the signal's bar is the last one loaded.</div>`;
+  }
+  for (const n of e.notes) html += `<div class="wc-note">${esc(n)}</div>`;
+  card.innerHTML = html;
+  card.classList.remove("hidden");
+  card.classList.toggle("folded", !!S.whyFolded);
+  card.onclick = (ev) => {
+    const b = ev.target.closest("button");
+    if (!b) return;
+    if (b.hasAttribute("data-close")) { selectWhy(null); return; }
+    if (b.hasAttribute("data-fold")) { S.whyFolded = !S.whyFolded; repaint(); return; }
+    const q = list[+b.dataset.go];
+    if (q) selectWhy(q);    // revealWhy brings it into view
+  };
 }
 
 function downloadCsv(name, rows) {
@@ -953,7 +1137,9 @@ function recompute() {
   if (!S.blob || !S.strategyMod) return;
   const t0 = performance.now();
 
-  const run = runStrategy(S.blob, S.strategyMod, S.params, S.exec, { fromMs: S.windowStart, filter: S.filter, studies: S.studies });
+  // explain + trace: why each signal fired, and what the engine did with it,
+  // for the entry card and the signals layer (worked out only when asked).
+  const run = runStrategy(S.blob, S.strategyMod, S.params, S.exec, { fromMs: S.windowStart, filter: S.filter, studies: S.studies, explain: true, trace: true });
   // The blob runs past the window end so a trade opened inside it can finish;
   // trades opened in that tail belong to the next window, not this one.
   const endMs = S.windowStart + S.rules.windowDays * DAY;
@@ -1024,6 +1210,7 @@ function paintChart(res, replay) {
 
   const priceOverlays = (res.overlays || []).filter((o) => o.pane !== "sub");
   const subOverlays = (res.overlays || []).filter((o) => o.pane === "sub");
+  const why = whyLayer(res, trades);
 
   S.chart.setData({
     token: `${S.windowStart}:${blob.count}`,
@@ -1035,6 +1222,8 @@ function paintChart(res, replay) {
     priceOverlays,
     subOverlays,
     studyOverlays: studyOverlays(res),
+    why,
+    signalMarks: S.showSignals ? signalMarks(res) : null,
     // Overlays are indexed in signal-timeframe space; stride lets the renderer
     // convert a 1-minute pixel budget into a sane sampling step.
     // Overlay points land at the CENTRE of the bar that produced them, for the
@@ -1227,6 +1416,21 @@ async function runSweep() {
 // to it. The MCP server's chart_state / chart_apply tools are the other end, so a
 // prompt beside the chart can read it and drive it.
 const isoMin = (ms) => (Number.isFinite(ms) ? new Date(ms).toISOString().slice(0, 16).replace("T", " ") : null);
+// The entry the card explains, in words: its conditions, what the engine did,
+// the order and the exit.
+function whySnapshot(tr) {
+  const res = lastResult && lastResult.res;
+  if (!S.why || !res || !res.explain) return null;
+  const tf = res.tf, k = indexAtOrAfter(tf.ts, S.why.ts);
+  if (k >= tf.ts.length || tf.ts[k] !== S.why.ts) return null;
+  const e = res.explain(k), t = res.trades.find((x) => x.sigIdx === k) || null;
+  return {
+    signalBar: isoMin(tf.ts[k]), barCt: e.bar, dir: e.dir === 1 ? "long" : e.dir === -1 ? "short" : "none", entryAllowed: e.entryOk,
+    why: explainLines(e), engine: (e.events || []).map((v) => eventText(v, tf, S.exec)),
+    ...(t ? { trade: tr(t), order: describeEntry(t, tf, S.exec, e.events || []), exit: describeExit(t, tf, S.exec, res.exitRule) } : {}),
+  };
+}
+
 function chartSnapshot(appliedId, applyError) {
   const rp = lastResult && lastResult.replay, st = rp && rp.stats;
   const c = S.chart, cb = c && c.data && c.data.bars;
@@ -1246,6 +1450,7 @@ function chartSnapshot(appliedId, applyError) {
                    closestToBreach: st.minCushion == null ? null : Math.round(st.minCushion), resolvedAt: isoMin(rp.passMs ?? rp.failMs) } : null,
     trades: rp ? rp.events.slice(0, 300).map((e) => ({ ...tr(e.t), taken: e.taken, ...(e.skip ? { skipped: e.skip } : {}) })) : [],
     hoveredTrade: window._hoverTrade ? { ...tr(window._hoverTrade), taken: window._hoverTrade.taken } : null,
+    explained: whySnapshot(tr),
     sweep: S.sweep ? { ...S.sweep.summary, eval: S.sweep.eval, stale: !!S.sweepStale, funded: S.sweep.funded || null,
                        ...(S.sweep.edge && S.sweep.edge.length ? { indicatorEdge: S.sweep.edge } : {}) } : null,
   };
@@ -1429,12 +1634,31 @@ function toast(msg, isErr = false) {
 
 function tradeTooltip(t, ev) {
   const el = $("tooltip");
-  if (!t) { el.classList.add("hidden"); return; }
+  const sg = !t && S.chart && S.chart.hoverSignal;
+  if (!t && !sg) { el.classList.add("hidden"); return; }
   const row = (k, v, cls = "") => `<div class="row"><span>${k}</span><span class="${cls}">${v}</span></div>`;
+  const res = lastResult && lastResult.res;
+  const e = res && res.explain ? res.explain(t ? t.sigIdx : sg.k) : null;
+  if (sg) {
+    // a signal marker: what fired, and what the engine did with it
+    const evs = (e && e.events) || [];
+    // what refused the entry, when the strategy or a study did
+    const no = e && e.dir && !e.entryOk ? e.checks.filter((c) => (c.role === "size" || c.role === "entry") && c.pass === false) : [];
+    el.innerHTML = `<div class="t-head" style="color:${sg.dir === 1 ? "var(--bull)" : "var(--bear)"}">${sg.dir === 1 ? "LONG" : "SHORT"} SIGNAL · ${esc(e ? e.bar : "")} CT</div>` +
+      (e && e.title ? `<div class="t-why">${esc(e.title)}</div>` : "") +
+      evs.map((v) => `<div class="t-ev">${esc(eventText(v, res.tf, S.exec))}</div>`).join("") +
+      no.map((c) => `<div class="t-ev" style="color:#ffb4b2">✗ ${esc(c.label)}${c.text ? `: ${esc(c.text)}` : ""}</div>`).join("") +
+      `<div class="t-hint">Click for what triggered it</div>`;
+    el.classList.remove("hidden");
+    el.style.left = Math.min(window.innerWidth - el.offsetWidth - 8, ev.clientX + 14) + "px";
+    el.style.top = Math.min(window.innerHeight - el.offsetHeight - 8, ev.clientY + 14) + "px";
+    return;
+  }
   const dir = t.dir === 1 ? "LONG" : "SHORT";
   const color = !t.taken ? "var(--dim)" : t.pnl > 0 ? "var(--bull)" : "var(--bear)";
   el.innerHTML =
     `<div class="t-head" style="color:${color}">${dir} ${t.contracts} @ ${t.entryPrice.toFixed(2)}${t.taken ? "" : " · SKIPPED"}</div>` +
+    (e && e.title ? `<div class="t-why">${esc(e.title)}</div>` : "") +
     (t.taken
       ? row("P&L", fmtUsd(t.pnl, 2), t.pnl > 0 ? "" : "") + row("Exit", `${t.exitPrice.toFixed(2)} (${t.reason})`)
       : row("Blocked by", { profitStop: "daily profit stop", breaker: "your daily breaker", dailyLoss: "firm daily limit", outside: "outside window" }[t.skip] || t.skip)) +
@@ -1442,7 +1666,8 @@ function tradeTooltip(t, ev) {
     row("MAE / MFE", `${fmtUsd(t.mae)} / ${fmtUsd(t.mfe)}`) +
     row("Bars held", t.bars) +
     row("Entered", new Date(t.entryTime).toISOString().slice(0, 16).replace("T", " ")) +
-    (t.taken && t.cum != null ? row("Equity after", fmtUsd(t.cum)) : "");
+    (t.taken && t.cum != null ? row("Equity after", fmtUsd(t.cum)) : "") +
+    `<div class="t-hint">Click for what triggered it</div>`;
   el.classList.remove("hidden");
   const pad = 14;
   el.style.left = Math.min(window.innerWidth - el.offsetWidth - 8, ev.clientX + pad) + "px";
@@ -1495,7 +1720,21 @@ async function boot() {
   sel.addEventListener("change", () => selectStrategy(sel.value));
 
   S.chart = new ChartView($("chartWrap"));
-  S.chart.onHoverTrade = (t) => { window._hoverTrade = t; queuePostState(); };
+  S.chart.onHoverTrade = (t) => { window._hoverTrade = t; if (!t) tradeTooltip(null); queuePostState(); };
+  S.chart.onHoverSignal = (sg) => { if (!sg && !window._hoverTrade) tradeTooltip(null); };
+  // A trade or a signal marker clicked: what triggered it (the card has its own close).
+  S.chart.onClick = (hit) => { if (hit) selectWhy(hit.trade || hit.signal); };
+  // Every signal bar on the chart, entered or not: a view preference, kept.
+  try { S.showSignals = localStorage.getItem("mnq.signals") === "1"; } catch { /* private mode */ }
+  const sigBtn = $("sigToggle");
+  const paintSigBtn = () => { sigBtn.classList.toggle("on", S.showSignals); sigBtn.setAttribute("aria-pressed", String(S.showSignals)); };
+  paintSigBtn();
+  sigBtn.onclick = () => {
+    S.showSignals = !S.showSignals;
+    try { localStorage.setItem("mnq.signals", S.showSignals ? "1" : "0"); } catch { /* private mode */ }
+    paintSigBtn();
+    repaint();
+  };
 
   // Candle size is a VIEW setting, so it is deliberately not part of the
   // strategy config and never triggers a re-run — the trades on screen are the
@@ -1510,7 +1749,10 @@ async function boot() {
     try { localStorage.setItem("mnq.chartTf", String(v)); } catch { /* private mode */ }
     S.chart.setTimeframe(v);
   });
-  $("chartWrap").addEventListener("mousemove", (e) => tradeTooltip(window._hoverTrade, e));
+  $("chartWrap").addEventListener("mousemove", (e) => {
+    if (e.target.closest("#whyCard")) { $("tooltip").classList.add("hidden"); return; }   // the card is not the chart
+    tradeTooltip(window._hoverTrade, e);
+  });
   $("chartWrap").addEventListener("mouseleave", () => tradeTooltip(null));
 
   S.nav = new Navigator($("nav"), (ms) => {
@@ -1572,6 +1814,7 @@ async function boot() {
 
   window.addEventListener("keydown", (e) => {
     if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+    if (e.key === "Escape" && S.why) { selectWhy(null); return; }
     if (e.key === "ArrowLeft") { stepWindow(e.shiftKey ? -7 : -1); e.preventDefault(); }
     else if (e.key === "ArrowRight") { stepWindow(e.shiftKey ? 7 : 1); e.preventDefault(); }
     else if (e.key === "r") S.chart.resetView();

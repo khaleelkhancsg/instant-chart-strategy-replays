@@ -92,6 +92,7 @@
 
 import base from "./donchian_eff_rth.mjs";
 import { ema, efficiencyRatio } from "../src/indicators.mjs";
+import { chk, verdict, spark, mark, num, px, COLOR } from "../src/explain.mjs";
 
 // trend_min_bars_2m: the bot refuses the rescue with less history than this,
 // and so does this file, bar by bar. The default; `trendMinBars` overrides it.
@@ -271,7 +272,38 @@ export default {
     let kept = out.overlays || [];
     if (sub === "macd") kept = kept.filter((o) => !(o.pane === "sub" && o.name === "ADX"));
 
-    const res = { ...out, sig };
+    // Bar k: the research book's breakout, then the live gate -- efficiency at
+    // its floor, or the slow-trend rescue -- read as the loop above reads it.
+    const effLen = Math.max(2, Math.trunc(p.effPeriod) || 20);
+    const explain = (k) => {
+      const e = out.explain(k), r = out.sig[k], checks = [...e.checks], marks = [...e.marks];
+      if (r) {
+        const v = eff[k], trend = Math.sign(tFast[k] - tSlow[k]) || 0;
+        const floorOk = !(p.effMin > 0) || (Number.isFinite(v) && v >= p.effMin);
+        const rescue = !floorOk && p.rescueMin > 0 && k + 1 >= minBars && Number.isFinite(v) && v >= p.rescueMin && trend === r;
+        const fast = Math.max(2, Math.trunc(p.trendFast) || 125), slow = Math.max(3, Math.trunc(p.trendSlow) || 500);
+        const why = !(p.effMin > 0) ? "the gate is off"
+          : floorOk ? "price is travelling, not chopping"
+          : rescue ? `below ${num(p.effMin)}, rescued: at least ${num(p.rescueMin)} with the ${bars.tfMin || 2}-min EMA ${fast} ${r === 1 ? "above" : "below"} EMA ${slow} (${px(tFast[k])} vs ${px(tSlow[k])})`
+          : p.rescueMin > 0 && Number.isFinite(v) && v >= p.rescueMin
+            ? (k + 1 < minBars ? `below ${num(p.effMin)}; the rescue needs ${minBars} bars of history` : `below ${num(p.effMin)}, and the slow trend points the other way`)
+            : `below ${num(p.effMin)}${p.rescueMin > 0 ? ` and the rescue's ${num(p.rescueMin)}` : ""}`;
+        checks.push(chk(`Efficiency ratio(${effLen}) at least ${num(p.effMin)}${p.rescueMin > 0 ? `, or ${num(p.rescueMin)} with the slow trend` : ""}`,
+                        floorOk || rescue, { text: num(v), note: why,
+                                             spark: spark(k, [[eff, COLOR.osc, "efficiency"]], { refs: [p.effMin, p.rescueMin > 0 ? p.rescueMin : NaN] }) }));
+        if (rescue || (!floorOk && p.rescueMin > 0)) {
+          marks.push(mark.line(tFast, k - 150, k, `EMA ${fast}`, { color: "#56b6c2" }), mark.line(tSlow, k - 150, k, `EMA ${slow}`, { color: "#bb9af7", dash: [5, 3] }));
+        }
+      }
+      const notes = [];
+      const shown = [p.vizShowEma !== "off" ? "the EMA lines" : "", sub !== "adx" ? "the MACD" : ""].filter(Boolean);
+      if (shown.length) {
+        notes.push(`Display only: ${shown.join(" and ")} on this chart ${shown.length > 1 ? "are" : "is"} not part of the rules (the "Visual only" settings). The entry reads the channel, ADX and the efficiency ratio above.`);
+      }
+      return { ...e, dir: verdict(e.dir, checks), checks, marks, notes };
+    };
+
+    const res = { ...out, sig, explain };
     return extra.length || kept !== out.overlays ? { ...res, overlays: [...kept, ...extra] } : res;
   },
 };

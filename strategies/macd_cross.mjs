@@ -15,6 +15,7 @@
 // idea from mnq_macd_angle.mjs in the other repo.
 
 import { atr, adx, macd } from "../src/indicators.mjs";
+import { chk, trig, verdict, num, adxAtLeast, histSpark, COLOR } from "../src/explain.mjs";
 
 export default {
   id: "macd_cross",
@@ -74,7 +75,30 @@ export default {
     ];
     if (adxArr) overlays.push({ name: "ADX", pane: "sub", color: "#c9a227", data: adxArr, threshold: p.adxMin, range: [0, 60] });
 
-    return { sig, atr: a, overlays };
+    // Bar k as the loop reads it: the ADX floor, the trigger of the mode, and
+    // the histogram still growing when asked.
+    const explain = (k) => {
+      let want = 0, label, text;
+      const h = m.hist, l = m.line;
+      if (p.mode === "hist") {
+        want = k >= 1 ? (h[k] > 0 ? 1 : h[k] < 0 ? -1 : 0) : 0;
+        label = want ? `Histogram ${want === 1 ? "above" : "below"} zero` : "Histogram off zero"; text = num(h[k]);
+      } else if (p.mode === "zero") {
+        want = k >= 1 ? (l[k] > 0 && l[k - 1] <= 0 ? 1 : l[k] < 0 && l[k - 1] >= 0 ? -1 : 0) : 0;
+        label = want ? `MACD crossed ${want === 1 ? "above" : "below"} zero` : "A MACD zero-line cross"; text = k ? `${num(l[k - 1])} → ${num(l[k])}` : "";
+      } else {
+        want = k >= 1 ? (h[k] > 0 && h[k - 1] <= 0 ? 1 : h[k] < 0 && h[k - 1] >= 0 ? -1 : 0) : 0;
+        label = want ? `MACD crossed ${want === 1 ? "above" : "below"} its signal line` : "A MACD / signal cross"; text = k ? `histogram ${num(h[k - 1])} → ${num(h[k])}` : "";
+      }
+      const checks = [trig(label, !!want, { text, spark: histSpark(k, h, [[l, COLOR.line, "MACD"], [m.signal, COLOR.sig, "signal"]]) })];
+      if (adxArr) checks.push(adxAtLeast(adxArr, k, p.adxMin, Math.max(2, Math.trunc(p.adxPeriod) || 14)));
+      if (wantSlope && want) {
+        const d = h[k] - h[k - 1];
+        checks.push(chk("Histogram expanding the trade's way", want === 1 ? !(d <= 0) : !(d >= 0), { text: `${d >= 0 ? "+" : ""}${num(d)} on the bar` }));
+      }
+      return { dir: verdict(want, checks), checks, marks: [], title: want ? label : "No MACD signal" };
+    };
+    return { sig, atr: a, overlays, explain };
   },
 };
 

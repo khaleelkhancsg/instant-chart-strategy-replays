@@ -54,6 +54,7 @@
 
 import { atr, adx, rsi, macd, rthRangeUsed, rthAtrRatio } from "../src/indicators.mjs";
 import { htfEmaTrend } from "../src/studies.mjs";
+import { chk, trig, verdict, inWindow, num, spark, mark, htfTrend, adxAtLeast, adrSpark, histSpark, COLOR } from "../src/explain.mjs";
 
 const TRIGGERS = [["macdDip", "MACD histogram crosses against the trend (pullback starts)"], ["macdTurn", "MACD histogram crosses back with the trend (pullback ends)"],
                   ["rsiDip", "RSI through its level against the trend"], ["rsiTurn", "RSI back through its level with the trend"]];
@@ -144,8 +145,43 @@ export default {
       if (exitSig) exitSig[i] = 0;
     }
     const isMacd = p.trigger === "macdDip" || p.trigger === "macdTurn" || exitSig;
+
+    // Bar k as the loop reads it: the window, the trend, the pullback trigger,
+    // then ADX, the room left in the day, the volatility and the daily count.
+    const subName = isMacd ? "MACD hist" : `RSI ${p.rsiLen}`;
+    const explain = (k) => {
+      const ct = CT ? CT[k] : 0, d = tr.dir[k];
+      const t = htfTrend(bars, k, tr, p.trendFast, p.trendSlow, d || 1, "sets the side");
+      const checks = [inWindow(ct, p.startCt, p.endCt), { ...t.check, pass: !!d, text: d ? t.check.text : "not formed, or level" }];
+      let fire = false, what = "", text = "";
+      if (k >= 1 && d) {
+        switch (p.trigger) {
+          case "macdTurn": fire = d === 1 ? h[k] > 0 && h[k - 1] <= 0 : h[k] < 0 && h[k - 1] >= 0; what = `MACD histogram crossed back ${d === 1 ? "above" : "below"} zero`; text = `${num(h[k - 1])} → ${num(h[k])}`; break;
+          case "rsiDip": fire = d === 1 ? r[k] < lo && r[k - 1] >= lo : r[k] > hi && r[k - 1] <= hi; what = `RSI ${p.rsiLen} dipped ${d === 1 ? `under ${lo}` : `over ${hi}`}`; text = `${num(r[k - 1])} → ${num(r[k])}`; break;
+          case "rsiTurn": fire = d === 1 ? r[k] >= lo && r[k - 1] < lo : r[k] <= hi && r[k - 1] > hi; what = `RSI ${p.rsiLen} back ${d === 1 ? `over ${lo}` : `under ${hi}`}`; text = `${num(r[k - 1])} → ${num(r[k])}`; break;
+          default: fire = d === 1 ? h[k] < 0 && h[k - 1] >= 0 : h[k] > 0 && h[k - 1] <= 0; what = `MACD histogram crossed ${d === 1 ? "below" : "above"} zero, against the trend`; text = `${num(h[k - 1])} → ${num(h[k])}`;
+        }
+      }
+      const rsiT = p.trigger === "rsiDip" || p.trigger === "rsiTurn";
+      checks.push(trig(what || "The pullback trigger", fire, { text,
+        spark: rsiT ? spark(k, [[r, COLOR.osc, `RSI ${p.rsiLen}`]], { refs: [d === -1 ? hi : lo] }) : histSpark(k, h) }));
+      if (ax) checks.push(adxAtLeast(ax, k, p.adxMin, Math.max(2, Math.trunc(p.adxPeriod) || 14), { strict: true }));
+      if (used) checks.push(chk(`Day's range used at most ${num(p.maxAdrUsed)} × ADR`, used[k] <= p.maxAdrUsed, { text: Number.isFinite(used[k]) ? `${num(used[k])} × ADR` : "outside RTH", spark: adrSpark(k, used, p.maxAdrUsed) }));
+      if (vr) checks.push(chk(`ATR at least ${num(p.minVolRatio)} × its RTH average`, !(vr[k] < p.minVolRatio), { text: Number.isFinite(vr[k]) ? `${num(vr[k])} ×` : "no average yet (passes)" }));
+      if (p.firstN > 0) {
+        let before = 0;
+        for (let j = k - 1; j >= 1 && TD[j] === TD[k]; j--) if (sig[j]) before++;
+        checks.push(chk(`At most ${p.firstN} signal${p.firstN === 1 ? "" : "s"} a day`, !(before >= p.firstN), { text: `${before} before this one` }));
+      }
+      const marks = [...t.marks];
+      if (fire) marks.push(mark.sub(subName, k, rsiT ? r[k] : h[k], rsiT ? "RSI trigger" : "MACD trigger"));
+      return { dir: verdict(k >= 1 ? d : 0, checks), checks, marks,
+               title: fire ? `Pullback in a ${d === 1 ? "rising" : "falling"} ${tr.tf}-min trend → ${d === 1 ? "long" : "short"}` : "No pullback signal" };
+    };
+
     return {
-      sig, atr: a, ...(exitSig ? { exitSig } : {}),
+      sig, atr: a, ...(exitSig ? { exitSig } : {}), explain,
+      exitRule: exitSig ? "the next MACD histogram cross" : null,
       overlays: [
         { name: `${tr.tf}m EMA ${p.trendFast}`, pane: "price", data: tr.fast, color: "#f0b429" },
         { name: `${tr.tf}m EMA ${p.trendSlow}`, pane: "price", data: tr.slow, color: "#c678dd", dash: [5, 3] },

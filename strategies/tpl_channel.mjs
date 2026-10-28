@@ -18,6 +18,7 @@
 //   keltner   — ATR bands around an EMA. Responds to true range, so gaps count.
 
 import { atr, adx, donchian, bollinger, keltner } from "../src/indicators.mjs";
+import { verdict, cooldown, channelBreak, adxAtLeast, adxAtMost } from "../src/explain.mjs";
 
 export default {
   id: "tpl_channel",
@@ -88,6 +89,20 @@ export default {
     if (mid) overlays.push({ name: "mid", pane: "price", color: "#5a6b7d", data: mid, dash: [2, 4] });
     if (adxArr) overlays.push({ name: "ADX", pane: "sub", color: "#c9a227", data: adxArr, threshold: p.adxMin || p.adxMax, range: [0, 60] });
 
-    return { sig, atr: a, overlays };
+    // Bar k as the loop reads it: the cooldown, the ADX band, the close beyond
+    // the channel -- with it, or against it when fading.
+    const adxP = Math.max(2, Math.trunc(p.adxPeriod) || 14);
+    const explain = (k) => {
+      const donch = p.channel !== "bollinger" && p.channel !== "keltner";
+      const br = channelBreak(bars, k, up, dn, { period: p.period, name: donch ? `${p.period}-bar` : p.channel === "bollinger" ? "Bollinger" : "Keltner", donchian: donch });
+      const checks = [...br.checks];
+      if (adxArr && p.adxMin > 0) checks.push(adxAtLeast(adxArr, k, p.adxMin, adxP));
+      if (adxArr && p.adxMax > 0) checks.push(adxAtMost(adxArr, k, p.adxMax, adxP));
+      checks.push(cooldown(sig, tday, k, p.cooldownBars));
+      const cand = k < 1 ? 0 : fade ? -br.side : br.side;
+      return { dir: verdict(cand, checks.filter(Boolean)), checks: checks.filter(Boolean), marks: br.marks,
+               title: br.side ? `${fade ? "Fade" : "Break"}: the close ${br.side === 1 ? "above the upper" : "below the lower"} line${fade ? ` → ${br.side === 1 ? "short" : "long"}` : ""}` : "No break" };
+    };
+    return { sig, atr: a, overlays, explain };
   },
 };

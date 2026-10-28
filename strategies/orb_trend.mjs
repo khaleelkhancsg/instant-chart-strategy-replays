@@ -36,6 +36,7 @@
 
 import { atr, adx, rthRangeUsed } from "../src/indicators.mjs";
 import { htfEmaTrend } from "../src/studies.mjs";
+import { chk, trig, verdict, mark, num, px, dayStart, clock, htfTrend, adxAtLeast, COLOR } from "../src/explain.mjs";
 
 const RTH_OPEN = 510;
 
@@ -114,6 +115,40 @@ export default {
       if (p.minOrAdr > 0 && !(orUsed >= p.minOrAdr)) continue;
       sig[i] = d;
     }
+    // Bar k, replaying the session up to it as the loop does: the range, then
+    // the first close beyond it each way -- a break takes its slot even when a
+    // filter then refuses it -- then the trend, ADX and range-size filters.
+    const explain = (k) => {
+      const s0 = dayStart(TD, k), perSide = p.once === "perSide";
+      let h = -Infinity, l = Infinity, oUsed = NaN, seen = false, o0 = -1, o1 = -1, upDone = false, dnDone = false;
+      for (let j = s0; j < k; j++) {
+        const cj = CT ? CT[j] : 0;
+        if (cj >= RTH_OPEN && cj < orEnd) { if (H[j] > h) h = H[j]; if (L[j] < l) l = L[j]; if (used) oUsed = used[j]; seen = true; if (o0 < 0) o0 = j; o1 = j; continue; }
+        if (!seen || cj < orEnd || cj >= 900 || cj >= p.entryEndCt || (upDone && dnDone)) continue;
+        const dj = C[j] > h ? 1 : C[j] < l ? -1 : 0;
+        if (!dj || (dj === 1 ? upDone : dnDone)) continue;
+        if (!perSide) upDone = dnDone = true; else if (dj === 1) upDone = true; else dnDone = true;
+      }
+      const ct = CT ? CT[k] : 0;
+      if (ct >= RTH_OPEN && ct < orEnd) return { dir: 0, checks: [trig("The opening range complete", false, { text: "still building it" })], marks: [] };
+      if (!seen) return { dir: 0, checks: [trig("An opening range today", false, { text: `none yet (from ${clock(RTH_OPEN)} CT)` })], marks: [] };
+      const checks = [chk(`Breaks from ${clock(orEnd)} until ${clock(Math.min(p.entryEndCt, 900))} CT`, !(ct < orEnd || ct >= 900 || ct >= p.entryEndCt), { text: `bar opens ${clock(ct)}` })];
+      const d = C[k] > h ? 1 : C[k] < l ? -1 : 0, spent = d && (d === 1 ? upDone : dnDone) || (upDone && dnDone);
+      checks.push(trig(d ? `Close ${d === 1 ? "above" : "below"} the ${p.orMinutes}-minute range` : `Close beyond the ${p.orMinutes}-minute range`, !!d,
+                       { text: d === 1 ? `${px(C[k])} > ${px(h)}` : d === -1 ? `${px(C[k])} < ${px(l)}` : `${px(C[k])} inside ${px(l)} – ${px(h)}` }));
+      if (d) checks.push(chk(perSide ? "The first break that way today" : "The first break of the day", !spent, { text: spent ? "a break already took that slot" : "yes" }));
+      const marks = [mark.zone(o0, o1, `${p.orMinutes}-min range`), mark.level(h, o0, k, `OR high ${px(h)}`, { color: COLOR.up }), mark.level(l, o0, k, `OR low ${px(l)}`, { color: COLOR.down })];
+      if (d) {
+        marks.push(mark.dot(k, C[k], `close ${px(C[k])}`, { color: COLOR.close }));
+        if (tr) { const t = htfTrend(bars, k, tr, p.trendFast, p.trendSlow, d, "must point the break's way"); checks.push(t.check); marks.push(...t.marks); }
+        if (ax) checks.push(adxAtLeast(ax, k, p.adxMin, Math.max(2, Math.trunc(p.adxPeriod) || 14), { strict: true }));
+        if (p.maxOrAdr > 0) checks.push(chk(`Range at most ${num(p.maxOrAdr)} × ADR`, oUsed <= p.maxOrAdr, { text: `${num(oUsed)} × ADR` }));
+        if (p.minOrAdr > 0) checks.push(chk(`Range at least ${num(p.minOrAdr)} × ADR`, oUsed >= p.minOrAdr, { text: `${num(oUsed)} × ADR` }));
+      }
+      return { dir: verdict(d, checks), checks, marks,
+               title: d ? `Opening-range break ${d === 1 ? "up" : "down"}` : "No opening-range break" };
+    };
+
     return {
       sig, atr: unit,
       overlays: [
@@ -122,6 +157,7 @@ export default {
         ...(tr ? [{ name: `${tr.tf}m EMA ${p.trendFast}`, pane: "price", data: tr.fast, color: "#f0b429" },
                   { name: `${tr.tf}m EMA ${p.trendSlow}`, pane: "price", data: tr.slow, color: "#c678dd", dash: [5, 3] }] : []),
       ],
+      explain,
     };
   },
 };

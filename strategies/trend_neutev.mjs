@@ -19,6 +19,7 @@
 // against the legacy numbers as a result.
 
 import { adx, atr, donchian } from "../src/indicators.mjs";
+import { donchianAdxExplain } from "../src/explain.mjs";
 
 export default {
   id: "trend_neutev",
@@ -65,6 +66,8 @@ export default {
         { name: `Donchian ${p.donchian} low`,  pane: "price", color: "#7a3d3d", data: dl, dash: [4, 3] },
         { name: "ADX", pane: "sub", color: "#c9a227", data: adxArr, threshold: p.adxMin, range: [0, 60] },
       ],
+      // Bar k as the loop above reads it: the break, the ADX floor, the cooldown.
+      explain: (k) => donchianAdxExplain(bars, k, { dh, dl, adxArr, sig, period: p.donchian, adxMin: p.adxMin, adxPeriod: p.adxPeriod, cooldownBars: p.cooldownBars }),
     };
   },
 };

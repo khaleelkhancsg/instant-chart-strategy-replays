@@ -15,6 +15,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { atr, ema } from "../src/indicators.mjs";
+import { trig, verdict, spark, mark, px } from "../src/explain.mjs";
 
 export default {
   id: "template",              // must be unique; the filename is a good default
@@ -50,6 +51,10 @@ export default {
    *   atr:      Float64Array — drives stop/target width. Usually just atr(...).
    *   overlays: optional lines to draw. pane 'price' overlays the candles;
    *             pane 'sub' gets its own strip under the chart.
+   *   explain:  optional (k) -> why bar k fired, for the chart's entry card
+   *             (src/explain.mjs): each condition with `pass` worked out by THE
+   *             SAME EXPRESSION as the loop, the verdict from verdict(), and
+   *             marks on the chart. test.mjs holds it to `sig` on every bar.
    * }
    */
   compute(bars, p) {
@@ -66,6 +71,16 @@ export default {
       else if (fast[i] < slow[i] && fast[i - 1] >= slow[i - 1]) sig[i] = -1;
     }
 
+    // Bar k as the loop reads it: the cross, with both EMAs' readings, a
+    // mini-chart of them, and a dot where they crossed.
+    const explain = (k) => {
+      const d = k < 1 ? 0 : fast[k] > slow[k] && fast[k - 1] <= slow[k - 1] ? 1 : fast[k] < slow[k] && fast[k - 1] >= slow[k - 1] ? -1 : 0;
+      const checks = [trig(d ? `EMA ${p.fast} crossed ${d === 1 ? "above" : "below"} EMA ${p.slow}` : "An EMA cross", !!d,
+                           { text: `${px(fast[k])} vs ${px(slow[k])}`, spark: spark(k, [[fast, "#4aa3ff", "fast"], [slow, "#ff9d4a", "slow"]]) })];
+      return { dir: verdict(d, checks), checks, title: d ? `EMA cross ${d === 1 ? "up" : "down"}` : "No cross",
+               marks: d ? [mark.dot(k, (fast[k] + slow[k]) / 2, "the cross")] : [] };
+    };
+
     return {
       sig,
       atr: a,
@@ -73,6 +88,7 @@ export default {
         { name: `EMA ${p.fast}`, pane: "price", color: "#4aa3ff", data: fast },
         { name: `EMA ${p.slow}`, pane: "price", color: "#ff9d4a", data: slow },
       ],
+      explain,
     };
   },
 };

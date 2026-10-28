@@ -7,6 +7,7 @@ import { resample } from "./resample.mjs";
 import { runBrackets, tradeStats, resolveExec } from "./engine.mjs";
 import { buildFilterContext, applyFilters, NO_FILTER, filterPeriods } from "./filters.mjs";
 import { buildEntryGate } from "./studies.mjs";
+import { explainSignal } from "./explain.mjs";
 
 // Only pay for the gate indicators when a gate is actually set.
 function filterIsActive(f) {
@@ -25,6 +26,10 @@ function filterIsActive(f) {
  * @param opts.fromMs  discard trades entering before this (warm-up trimming)
  * @param opts.studies indicator studies (src/studies.mjs); those with a gate
  *                     refuse entries their state does not allow
+ * @param opts.explain also return explain(k): why signal bar k fired, or did
+ *                     not (src/explain.mjs), and the signal the engine saw
+ * @param opts.trace   also return `signals`: signal bar -> what the engine did
+ *                     with it (the order, a fill, a refusal and its reason)
  */
 export function runStrategy(bars1m, strategy, params, exec, opts = {}) {
   const tfMin = params.timeframeMin ?? strategy.timeframeMin ?? 1;
@@ -34,9 +39,9 @@ export function runStrategy(bars1m, strategy, params, exec, opts = {}) {
   // Session and regime gates apply to any strategy's signal, so they live here
   // rather than being reimplemented inside each one.
   let sig = out.sig;
-  let gated = 0;
+  let gated = 0, ctx = null;
   if (filterIsActive(opts.filter)) {
-    const ctx = buildFilterContext(tf, filterPeriods(opts.filter));
+    ctx = buildFilterContext(tf, filterPeriods(opts.filter));
     sig = applyFilters(out.sig, ctx, opts.filter);
     for (let i = 0; i < out.sig.length; i++) if (out.sig[i] && !sig[i]) gated++;
   }
@@ -57,12 +62,21 @@ export function runStrategy(bars1m, strategy, params, exec, opts = {}) {
     x.entryGate = gate;
     for (let i = 0; i < sig.length; i++) if (sig[i] && !gate(i, sig[i])) studyGated++;
   }
+  // What became of each signal, as the engine reports it. Observes only.
+  const trace = opts.trace ? new Map() : null;
+  if (trace) {
+    x.onSignal = (k, dir, what, info) => {
+      const e = { what, dir, ...info }, l = trace.get(k);
+      if (l) l.push(e); else trace.set(k, [e]);
+    };
+  }
   const { trades } = runBrackets(tf, sig, out.atr, x);
 
   const kept = opts.fromMs != null
     ? trades.filter((t) => t.entryTime >= opts.fromMs)
     : trades;
 
+  const env = opts.explain ? { out, tf, sig, ctx, filter: opts.filter, studies: opts.studies, bars1m, trace } : null;
   return {
     trades: kept,
     tf,
@@ -70,6 +84,10 @@ export function runStrategy(bars1m, strategy, params, exec, opts = {}) {
     stats: tradeStats(kept),
     signalsGated: gated,
     studyGated,
+    // The signal the engine saw, and why each bar's fired or did not, worked
+    // out only for the bars asked about.
+    ...(env ? { sig, exitRule: out.exitRule || null, explain: (k) => explainSignal(env, k) } : {}),
+    ...(trace ? { signals: trace } : {}),
   };
 }
 

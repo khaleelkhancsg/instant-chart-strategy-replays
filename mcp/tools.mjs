@@ -13,6 +13,7 @@ import { STRATEGY_DIR } from "../src/registry.mjs";
 import { mulberry32 } from "../src/dayeval.mjs";
 import { EVAL_IDS, evalOf } from "../src/evals.mjs";
 import { STUDIES, STUDY_TFS, gateLabel, studyEdge, studyOnSignal, resolveStudies, gateKey } from "../src/studies.mjs";
+import { explainLines, eventText, describeEntry, describeExit } from "../src/explain.mjs";
 import * as L from "./lab.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -422,12 +423,24 @@ export const TOOLS = [
   },
   {
     name: "window",
-    description: "One 30-day combine window in detail -- what the chart's 'This window' panel shows: every trade (taken, or skipped by a daily rule) with times, prices, reason and the running P&L against the trailing floor, the day-by-day P&L, and how it resolved. The date snaps to the chart's window grid, as the chart's date box does.",
-    inputSchema: obj({ ...CFG, date: { type: "string", description: "The window's first trading day, YYYY-MM-DD." } }, ["strategy", "date"]),
+    description: "One 30-day combine window in detail -- what the chart's 'This window' panel shows: every trade (taken, or skipped by a daily rule) with times, prices, reason and the running P&L against the trailing floor, the day-by-day P&L, and how it resolved. The date snaps to the chart's window grid, as the chart's date box does. With explain, each trade also says WHY it entered -- the chart's entry card in words.",
+    inputSchema: obj({ ...CFG, date: { type: "string", description: "The window's first trading day, YYYY-MM-DD." },
+                       explain: { type: "boolean", description: "Add `why` to each trade: the strategy's conditions at its signal bar with their readings (✓ / ✗), what the engine did with the signal, the order and bracket, and the exit (src/explain.mjs). Default false." } }, ["strategy", "date"]),
     async run(a) {
       const cfg = await L.resolveConfig(a);
       const start = snapStart(L.parseDate(a.date, "date"), cfg.rules);
       const r = replayWindow(L.fullRun(cfg).trades, start, cfg.rules);
+      // the window's own run, explained: the same trades (the chart's live
+      // window equals the sweep), on the signal bars their explanations index
+      const ex = a.explain ? L.rangeRun(cfg, start, start + cfg.rules.windowDays * L.DAY, { explain: true, trace: true }) : null;
+      const byEntry = ex ? new Map(ex.trades.map((t) => [`${t.entryTime}:${t.dir}`, t])) : null;
+      const why = (t0) => {
+        const t = byEntry && byEntry.get(`${t0.entryTime}:${t0.dir}`);
+        if (!t) return {};
+        const e = ex.explain(t.sigIdx);
+        return { why: { signal: explainLines(e), engine: e.events.map((v) => eventText(v, ex.tf, cfg.exec)),
+                        order: describeEntry(t, ex.tf, cfg.exec, e.events), exit: describeExit(t, ex.tf, cfg.exec, ex.exitRule) } };
+      };
       const b = L.bars(), first = indexAtOrAfter(b.ts, start);
       return {
         strategy: cfg.s.id, changed: L.changed(cfg), costs: L.costLine(cfg.exec), warnings: cfg.warnings,
@@ -436,7 +449,7 @@ export const TOOLS = [
         stats: { net: Math.round(r.stats.netPnl), trades: r.stats.trades, skipped: r.stats.skipped, tradingDays: r.stats.tradingDays,
                  bestDay: Math.round(r.stats.bestDay), profitNeeded: Math.round(r.stats.profitNeeded), finalFloor: Math.round(r.stats.finalFloor),
                  closestToBreach: r.stats.minCushion == null ? null : Math.round(r.stats.minCushion) },
-        trades: r.events.map((e) => ({ ...compactTrade(e.t), taken: e.taken, ...(e.skip ? { skipped: e.skip } : {}), cum: Math.round(e.cum), floor: Math.round(e.floor) })),
+        trades: r.events.map((e) => ({ ...compactTrade(e.t), taken: e.taken, ...(e.skip ? { skipped: e.skip } : {}), cum: Math.round(e.cum), floor: Math.round(e.floor), ...why(e.t) })),
         days: r.days.map((d) => ({ day: L.isoDay(d.day * L.DAY), pnl: Math.round(d.pnl), trades: d.taken, ...(d.skipped ? { skipped: d.skipped } : {}) })),
       };
     },

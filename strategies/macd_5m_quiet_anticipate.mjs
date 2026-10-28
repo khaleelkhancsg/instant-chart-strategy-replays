@@ -79,7 +79,9 @@
 // real stop costs -- that is the open question this strategy exists to answer.
 
 import { atr } from "../src/indicators.mjs";
+import { chk, num, clock, spark, COLOR } from "../src/explain.mjs";
 import base from "./macd_1m_flip.mjs";
+import { anticipateExplain } from "./macd_5m_anticipate.mjs";
 
 export default {
   ...base,
@@ -252,10 +254,26 @@ export default {
       }
     }
 
+    // Bar k: the anticipation, with the quiet gate read between its two halves
+    // as the loop reads it.
+    const quietChecks = (k) => {
+      const ct = ctMin ? ctMin[k] : 0, night = ct < 510 || ct >= 900;
+      const res = [];
+      if (gate !== "any") res.push(chk(gate === "overnight" ? "Overnight (outside 08:30–15:00 CT)" : "RTH (08:30–15:00 CT)", gate === "overnight" ? night : !night, { text: `bar opens ${clock(ct)}` }));
+      if (adrMax < 2) {
+        res.push(chk(`Day's range under ${num(adrMax)} of its ${adrDays}-day average`, Number.isFinite(adrUsed[k]) && adrUsed[k] < adrMax,
+                     { text: Number.isFinite(adrUsed[k]) ? `${num(adrUsed[k])} × ADR` : "no average yet", spark: spark(k, [[adrUsed, COLOR.level, "ADR used"]], { refs: [adrMax] }) }));
+      }
+      return res;
+    };
+    const explain = (k) => anticipateExplain(hist, scale, k, { need, useEta, sb, prox: p.prox, etaBars: p.etaBars, gate: quietChecks });
+
     return {
       ...out,
       sig,
       exitSig,
+      explain,
+      exitRule: fadeN > 0 ? `${fadeN} shrinking histogram bar${fadeN === 1 ? "" : "s"} in a row on the trade's side` : null,
       atr: out.atr || atr(H, L, C, p.atrPeriod),
     };
   },

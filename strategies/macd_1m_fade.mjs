@@ -22,6 +22,7 @@
 // which is exactly the lighter shade of its own colour on the chart.
 
 import { atr } from "../src/indicators.mjs";
+import { trig, num, mark, histSpark, barClock } from "../src/explain.mjs";
 import base from "./macd_1m_flip.mjs";
 
 // The histogram is rebuilt here from the shared helper rather than recomputed,
@@ -107,6 +108,38 @@ export default {
       exitSig[i] = m;
     }
 
-    return { ...out, exitSig, atr: out.atr || atr(bars.high, bars.low, bars.close, p.atrPeriod) };
+    // Bar k: the crossover itself, or -- with a build -- the cross and the
+    // growing bars after it, replayed from the latest cross as the loop counts.
+    const crossExplain = out.explain;
+    const explain = build === 0 ? crossExplain : (k) => buildExplain(bars, hist, k, build);
+    return { ...out, exitSig, explain, exitRule: `${need} shrinking histogram bar${need === 1 ? "" : "s"} in a row on the trade's side`,
+             atr: out.atr || atr(bars.high, bars.low, bars.close, p.atrPeriod) };
   },
 };
+
+// The delayed entry: the side the histogram crossed to at its latest sign
+// change (zero counts as above, as the loop reads it), then `build` bars in a
+// row of it growing away from zero; one entry per cross, and a gap in the
+// histogram disarms it.
+export function buildExplain(bars, hist, k, build, overlay = "Histogram") {
+  let c = -1;
+  for (let j = k; j >= 1; j--) {
+    if (!Number.isFinite(hist[j]) || !Number.isFinite(hist[j - 1])) break;
+    if ((hist[j] >= 0) !== (hist[j - 1] >= 0)) { c = j; break; }
+  }
+  if (c < 0 || c === k) {
+    return { dir: 0, checks: [trig(`A cross, then ${build} growing bar${build === 1 ? "" : "s"}`, false, { text: c === k ? "the cross is this bar" : "no cross to build on", spark: histSpark(k, hist) })], marks: [] };
+  }
+  const side = hist[c] >= 0 ? 1 : -1;
+  let grow = 0, fired = -1;
+  for (let i = c + 1; i <= k; i++) {
+    grow = Math.abs(hist[i]) > Math.abs(hist[i - 1]) ? grow + 1 : 0;
+    if (grow === build) { fired = i; break; }
+  }
+  const at = fired === k;
+  const checks = [trig(`Crossed ${side === 1 ? "above" : "below"} zero at ${barClock(bars, c)}, then grew ${build} bar${build === 1 ? "" : "s"} in a row`, at,
+                       { text: fired >= 0 && fired < k ? `already entered at ${barClock(bars, fired)}` : `${grow} of ${build} (histogram ${num(hist[k - 1])} → ${num(hist[k])})`,
+                         spark: histSpark(k, hist) })];
+  return { dir: at ? side : 0, checks, marks: at ? [mark.sub(overlay, c, hist[c], "cross"), mark.sub(overlay, k, hist[k], `${build} growing`)] : [],
+           title: at ? `MACD built ${side === 1 ? "up" : "down"} after its cross` : "No MACD build" };
+}

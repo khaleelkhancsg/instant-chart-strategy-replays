@@ -10,6 +10,7 @@
 // already rolling over. That is the main lever if the base version enters late.
 
 import { ema, atr } from "../src/indicators.mjs";
+import { chk, trig, verdict, px, num, mark, spark, COLOR } from "../src/explain.mjs";
 
 export default {
   id: "triple_ema",
@@ -54,6 +55,24 @@ export default {
       sig[i] = st;
     }
 
+    // Bar k as the loop reads it: the three EMAs in order, newly so (in the
+    // "enter" mode), and widening when asked.
+    const mid = Math.max(p.mid, p.fast + 1), slow = Math.max(p.slow, p.mid + 1);
+    const explain = (k) => {
+      const st = stackAt(k), op = st === 1 ? ">" : st === -1 ? "<" : "vs";
+      const checks = [trig(st ? `EMA ${p.fast}, ${mid} and ${slow} stacked ${st === 1 ? "up" : "down"}` : "The three EMAs in order", k >= 1 && !!st,
+                           { text: `${px(e1[k])} ${op} ${px(e2[k])} ${op} ${px(e3[k])}`,
+                             spark: spark(k, [[e1, "#4aa3ff", `EMA ${p.fast}`], [e2, "#c9a227", `EMA ${mid}`], [e3, "#ff9d4a", `EMA ${slow}`]]) })];
+      if (p.mode === "enter" && k >= 1) checks.push(chk("The stack just formed", stackAt(k - 1) !== st, { text: stackAt(k - 1) === st ? "already stacked on the bar before" : "not stacked on the bar before" }));
+      if (p.requireStackWiden === "on" && k >= 1) {
+        const now = Math.abs(e1[k] - e3[k]), prev = Math.abs(e1[k - 1] - e3[k - 1]);
+        checks.push(chk("The stack widening", !(now <= prev), { text: `${num(now)} pts from ${num(prev)}` }));
+      }
+      const marks = st ? [mark.dot(k, e1[k], `EMA ${p.fast}`, { color: "#4aa3ff", small: true }), mark.dot(k, e2[k], `EMA ${mid}`, { color: "#c9a227", small: true }),
+                          mark.dot(k, e3[k], `EMA ${slow}`, { color: "#ff9d4a", small: true })] : [];
+      return { dir: verdict(k >= 1 ? st : 0, checks), checks, marks, title: st ? `EMAs stacked ${st === 1 ? "up" : "down"}` : "EMAs not in order" };
+    };
+
     return {
       sig,
       atr: a,
@@ -62,6 +81,7 @@ export default {
         { name: `EMA ${p.mid}`, pane: "price", color: "#c9a227", data: e2 },
         { name: `EMA ${p.slow}`, pane: "price", color: "#ff9d4a", data: e3 },
       ],
+      explain,
     };
   },
 };

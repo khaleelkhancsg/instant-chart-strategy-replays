@@ -35,6 +35,7 @@
 
 import { atr, adx, macd, rthRangeUsed } from "../src/indicators.mjs";
 import { htfEmaTrend } from "../src/studies.mjs";
+import { chk, trig, verdict, inWindow, num, mark, barClock, htfTrend, adxAtLeast, adrSpark, histSpark } from "../src/explain.mjs";
 
 export default {
   id: "macd_momentum",
@@ -111,8 +112,37 @@ export default {
       if (used && !(used[i] <= p.maxAdrUsed)) continue;
       sig[i] = side;
     }
+    // Bar k, replaying the arm from the latest cross as the loop counts it: the
+    // cross arms its side, `build` growing bars in a row fire it once -- the
+    // filters after that can refuse it, but the arm is spent either way.
+    const explain = (k) => {
+      let c = -1;
+      for (let j = k; j >= 1; j--) {
+        if (!Number.isFinite(hist[j]) || !Number.isFinite(hist[j - 1])) break;
+        if ((hist[j] >= 0) !== (hist[j - 1] >= 0)) { c = j; break; }
+      }
+      let grow = 0, at = -1;
+      if (c >= 0) for (let i = c + 1; i <= k; i++) { grow = Math.abs(hist[i]) > Math.abs(hist[i - 1]) ? grow + 1 : 0; if (grow >= build) { at = i; break; } }
+      const side = c >= 0 ? (hist[c] >= 0 ? 1 : -1) : 0, now = at === k;
+      const checks = [trig(c >= 0 ? `Crossed ${side === 1 ? "above" : "below"} zero at ${barClock(bars, c)}, then grew ${build} bar${build === 1 ? "" : "s"} in a row` : `A cross, then ${build} growing bars`, now,
+                           { text: c < 0 ? "no cross to build on" : c === k ? "the cross is this bar" : at >= 0 && at < k ? `that arm fired at ${barClock(bars, at)}` : `${grow} of ${build}`,
+                             spark: histSpark(k, hist) })];
+      if (now) {
+        const ct = CT ? CT[k] : 0;
+        checks.push(inWindow(ct, p.startCt, p.endCt));
+        const t = htfTrend(bars, k, tr, p.trendFast, p.trendSlow, side, "must point the histogram's way");
+        checks.push(t.check);
+        if (ax) checks.push(adxAtLeast(ax, k, p.adxMin, Math.max(2, Math.trunc(p.adxPeriod) || 14), { strict: true }));
+        if (used) checks.push(chk(`Day's range used at most ${num(p.maxAdrUsed)} × ADR`, used[k] <= p.maxAdrUsed, { text: Number.isFinite(used[k]) ? `${num(used[k])} × ADR` : "outside RTH", spark: adrSpark(k, used, p.maxAdrUsed) }));
+        return { dir: verdict(side, checks), checks, marks: [mark.sub("MACD hist", c, hist[c], "cross"), mark.sub("MACD hist", k, hist[k], `${build} growing`), ...t.marks],
+                 title: `MACD momentum ${side === 1 ? "up" : "down"}: ${build} growing bars after the cross` };
+      }
+      return { dir: 0, checks, marks: [], title: "No MACD momentum signal" };
+    };
+
     return {
-      sig, atr: a, ...(exitSig ? { exitSig } : {}),
+      sig, atr: a, ...(exitSig ? { exitSig } : {}), explain,
+      exitRule: exitSig ? `${fade} shrinking histogram bar${fade === 1 ? "" : "s"} in a row` : null,
       overlays: [
         { name: `${tr.tf}m EMA ${p.trendFast}`, pane: "price", data: tr.fast, color: "#f0b429" },
         { name: `${tr.tf}m EMA ${p.trendSlow}`, pane: "price", data: tr.slow, color: "#c678dd", dash: [5, 3] },

@@ -22,6 +22,7 @@ import { evalDays } from "./src/dayeval.mjs";
 import { EVALS, EVAL_IDS, evalBase, evalKeys, evalOf } from "./src/evals.mjs";
 import { STUDIES, STUDY_TFS, resolveStudy, studyOnSignal, closedIndexMap, gatePasses, studyEdge, studyWarmupMin } from "./src/studies.mjs";
 import { DEFAULT_RULES } from "./src/challenge.mjs";
+import { describeEntry, px as explainPx } from "./src/explain.mjs";
 
 let pass = 0, fail = 0;
 const failures = [];
@@ -2507,6 +2508,211 @@ if (bars_) {
     const m = new Float64Array(40).fill(1); m[5] = 0.5;
     const half = runBrackets(bars(rows), sig, flatAtr(40, 20), { ...x, tpAtrMult: 5.15, tpMaxUsd: 600, sizeMult: m }).trades;
     close(half[0].target - half[0].entryPrice, 103, 1e-9, "the cap is for the size traded -- 150 points at 2 lots -- so the 103-point ATR target stands:");
+  });
+}
+
+section("17. Entry explanations: the verdict is the signal, read causally; the engine's account of every signal");
+{
+  // A hand-built breakout: flat at 100 for ten bars, then a close at 103.
+  const rows = [];
+  for (let i = 0; i < 10; i++) rows.push([100, 100.5, 99.5, 100]);
+  rows.push([100, 103.5, 100, 103], [103, 104, 102.5, 103.5]);
+  const b = bars(rows);
+  const s = (await loadStrategies()).get("donchian_eff_rth");
+  const o = s.compute(b, { period: 5, adxMin: 0, adxPeriod: 14, cooldownBars: 1, atrPeriod: 14 });
+  t("a Donchian breakout explains itself: the close against the 5-bar high, the bars it came from, the bar that set it", () => {
+    eq(o.sig[10], 1, "the signal:");
+    const e = o.explain(10);
+    eq(e.dir, 1, "the verdict:");
+    eq(e.checks[0].role, "trigger"); eq(e.checks[0].pass, true);
+    eq(e.checks[0].text, "103.00 > 100.50", "the reading:");
+    const zone = e.marks.find((m) => m.type === "zone"), level = e.marks.find((m) => m.type === "level"), set = e.marks.find((m) => m.label === "set it");
+    eq(zone.k0, 5, "the lookback starts 5 bars back:"); eq(zone.k1, 9, "and ends the bar before:");
+    eq(level.price, 100.5, "the level is the 5-bar high:");
+    eq(set.k, 9, "the latest bar at that high set it:");
+    eq(o.explain(9).dir, 0, "a bar inside the channel:");
+    eq(o.explain(9).checks[0].pass, false);
+  });
+}
+{
+  // The engine's account of an order, case by case: ATR 1, a 0.5 x ATR stop entry.
+  const run = (rows, sig, x) => {
+    const ev = [];
+    const tr = runBrackets(bars(rows), sig, flatAtr(rows.length, 1),
+                           { ...NOFEE, intradayOnly: false, slAtrMult: 50, tpAtrMult: 50, entryType: "stop", entryTriggerAtr: 0.5, ...x,
+                             onSignal: (k, dir, what, info) => ev.push({ k, dir, what, ...info }) }).trades;
+    return { tr, ev, what: (k) => ev.filter((e) => e.k === k).map((e) => e.what).join(",") };
+  };
+  const flat = (n) => Array.from({ length: n }, () => [100, 100.2, 99.8, 100]);
+  t("onSignal: an order placed, then filled -- or refused as a stop and filled as a limit", () => {
+    const rows = flat(8); rows[3] = [100, 101, 99.9, 100.8];       // reaches the 100.5 trigger
+    const sig = new Int8Array(8); sig[1] = 1;
+    const a = run(rows, sig, {});
+    eq(a.what(1), "armed,filled"); eq(a.ev[0].px, 100.5, "the trigger:"); eq(a.ev[1].bar, 3, "filled on bar 3:"); eq(a.tr[0].sigIdx, 1);
+    const r2 = flat(8); r2[3] = [101, 101.2, 100.4, 101];          // opens through it: refused, a limit at 100.5
+    const b2 = run(r2, sig, {});
+    eq(b2.what(1), "armed,filled"); eq(b2.ev[1].limit, true, "as a limit:"); eq(b2.tr[0].limitFill, true);
+  });
+  t("onSignal: an order replaced by the next signal, cancelled by an opposite one, or expired", () => {
+    const sig = new Int8Array(10); sig[1] = 1; sig[2] = 1;
+    const a = run(flat(10), sig, { entryWindowBars: 3 });
+    eq(a.what(1), "armed,replaced"); eq(a.what(2), "armed,expired");
+    const s2 = new Int8Array(10); s2[1] = 1; s2[2] = -1;
+    const b2 = run(flat(10), s2, { cancelOpposite: true, entryWindowBars: 3 });
+    eq(b2.what(1), "armed,cancelled"); eq(b2.ev[1].why, "opposite");
+  });
+  t("onSignal: held while in the trade, flipped by the opposite signal, refused by the day breaker", () => {
+    const rows = flat(30);
+    const sig = new Int8Array(30); sig[1] = 1; sig[4] = 1; sig[8] = -1;
+    const a = run(rows, sig, { entryType: "market" });
+    eq(a.what(1), "entered"); eq(a.what(4), "held"); eq(a.what(8), "flipped,entered");
+    // a losing trade trips a $10 breaker: the next signal is refused, with the realised P&L
+    const r2 = flat(30); r2[3] = [100, 100.2, 90, 90];
+    const s2 = new Int8Array(30); s2[1] = 1; s2[10] = 1;
+    const b2 = run(r2, s2, { entryType: "market", slAtrMult: 5, dayBreakerUsd: 10, contracts: 2 });
+    eq(b2.tr.length, 1); eq(b2.what(10), "refused"); eq(b2.ev.find((e) => e.k === 10).why, "breaker");
+    if (!(b2.ev.find((e) => e.k === 10).realised < -10)) throw new Error("the realised P&L rides along");
+  });
+}
+if (bars_) {
+  const { bars: B } = bars_;
+  const N = 60000, H = sliceBars(B, B.count - N, B.count);
+  const strategies = await loadStrategies();
+  const ROLES = new Set(["trigger", "gate", "size", "info", "entry"]);
+  // The marks show what the decision could know: nothing past the signal bar.
+  const marksCausal = (e, k, tf) => {
+    const closeMs = tf.ts[k] + (tf.tfMin || 1) * 60000;
+    for (const m of e.marks) {
+      const last = m.type === "span" ? null : Math.max(m.k ?? -1, m.k1 ?? -1);
+      if (last != null && last > k) throw new Error(`a ${m.type} mark reaches bar ${last}, past the signal bar ${k}`);
+      if (m.type === "span" && m.t1 > closeMs) throw new Error(`a span mark ends after the signal bar's close`);
+    }
+  };
+  const verdictOk = (id, o, k, tf) => {
+    const e = o.explain(k), want = o.sig[k] || 0;
+    if (e.dir !== want) throw new Error(`bar ${k}: explain says ${e.dir}, the signal is ${want}: ${JSON.stringify(e.checks.map((c) => [c.label, c.pass]))}`);
+    if (want && o.sizeMult && (e.size ?? 1) !== o.sizeMult[k]) throw new Error(`bar ${k}: explain sizes it ${e.size}, the strategy ${o.sizeMult[k]}`);
+    if (want) for (const c of e.checks) {
+      if (!ROLES.has(c.role) || typeof c.label !== "string") throw new Error(`bar ${k}: a malformed check ${JSON.stringify(c)}`);
+      if ((c.role === "trigger" || c.role === "gate") && c.pass === false) throw new Error(`bar ${k}: it fired with "${c.label}" failing`);
+    }
+    marksCausal(e, k, tf);
+  };
+
+  for (const [id, s] of strategies) {
+    t(`${id}: explain(k) is its signal and size on every bar, with marks no later than the signal`, () => {
+      const p = resolveParams(s, {});
+      const tf = resample(H, p.timeframeMin), o = s.compute(tf, p);
+      if (typeof o.explain !== "function") throw new Error("compute() returns no explain()");
+      for (let k = 0; k < tf.close.length; k++) verdictOk(id, o, k, tf);
+    });
+  }
+
+  for (const [id, s] of strategies) {
+    t(`${id}: an explanation does not change when later bars exist`, () => {
+      const p = resolveParams(s, {});
+      const oF = s.compute(resample(H, p.timeframeMin), p);
+      const tfP = resample(sliceBars(H, 0, Math.floor(N * 0.7)), p.timeframeMin), oP = s.compute(tfP, p);
+      const m = tfP.close.length - 1;
+      const ks = [];
+      for (let k = Math.floor(m * 0.4); k < m; k++) if (oP.sig[k] || k % 97 === 0) ks.push(k);
+      for (const k of ks.slice(-400)) {
+        const a = JSON.stringify(oF.explain(k)), b = JSON.stringify(oP.explain(k));
+        if (a !== b) throw new Error(`bar ${k} of ${m}: ${a.slice(0, 300)} ... differs from ... ${b.slice(0, 300)}`);
+      }
+    });
+  }
+
+  const rnd17 = () => rnd();
+  for (const [id, s] of strategies) {
+    t(`${id}: ${3 * SCALE} random settings -- the explanation still gives the signal`, () => {
+      for (let c = 0; c < 3 * SCALE; c++) {
+        const p = resolveParams(s, {});
+        for (const d of s.params || []) {
+          if (rnd17() < 0.35) continue;
+          if (d.type === "select") p[d.key] = pick(d.options)[0];
+          else if (d.type === "int" || d.type === "time") p[d.key] = Math.round(uni(d.min, d.max) / (d.step || 1)) * (d.step || 1);
+          else if (d.type === "float") p[d.key] = Math.round(uni(d.min, d.max) / (d.step || 0.01)) * (d.step || 0.01);
+        }
+        if (rnd17() < 0.25) p.timeframeMin = pick([1, 2, 3, 5, 10, 15]);
+        const tf = resample(H, p.timeframeMin), o = s.compute(tf, p);
+        try {
+          for (let k = 0; k < tf.close.length; k++) if (o.sig[k] || rnd17() < 0.2) verdictOk(id, o, k, tf);
+        } catch (e) { throw new Error(`${e.message} -- settings ${JSON.stringify(p)}`); }
+      }
+    });
+  }
+
+  // The engine's account: it changes nothing, and every signal has one.
+  const traceExec = () => ({
+    entryType: pick(["market", "stop", "limit"]), entryWindowBars: pick([1, 5, 10]), cancelOpposite: rnd() < 0.6, entryRefused: pick(["limit", "optimistic"]),
+    flipOnOpposite: rnd() < 0.8, flipOnAnySignal: rnd() < 0.1, exitFirst: rnd() < 0.7, entryBarExits: rnd() < 0.7, fillBarOpen: rnd() < 0.2,
+    dayBreakerUsd: pick([0, 200]), dayProfitBlockUsd: pick([0, 300]), dayLossStopUsd: pick([0, 300, 600]), dayProfitStopUsd: pick([0, 500]),
+    noEntryMinsBeforeFlat: pick([0, 10]), cooldownAfterStopMins: pick([0, 30]), staleBars: pick([0, 10]), maxBarsInTrade: pick([0, 30]),
+    sessionEndFlat: pick(["close", "none"]), intradayOnly: rnd() < 0.8, scaleInFrac: pick([0, 0, 0.5]),
+  });
+  for (const [id, s] of strategies) {
+    t(`${id}: the engine's account of each signal changes no trade, and misses none`, () => {
+      for (let c = 0; c < 2 * SCALE; c++) {
+        const p = resolveParams(s, {});
+        const exec = resolveExec({ ...(s.execDefaults || {}), ...(c ? traceExec() : {}) });
+        const filter = { ...NO_FILTER, ...(s.filterDefaults || {}) };
+        const tag = () => (c ? ` -- exec ${JSON.stringify(exec)}` : "");
+        const a = runStrategy(H, s, p, exec, { filter }), b = runStrategy(H, s, p, exec, { filter, trace: true, explain: true });
+        if (JSON.stringify(a.trades) !== JSON.stringify(b.trades)) throw new Error(`the trades change with the account on${tag()}`);
+        let opens = 0;
+        for (const evs of b.signals.values()) {
+          if (evs.filter((e) => e.what === "armed").length > 1) throw new Error(`one signal armed twice${tag()}`);
+          if (evs.filter((e) => ["filled", "replaced", "cancelled", "expired"].includes(e.what)).length > 1) throw new Error(`an order resolved twice${tag()}`);
+          for (const e of evs) if (e.what === "entered" || e.what === "filled") opens++;
+        }
+        if (opens !== b.trades.length) throw new Error(`${opens} entries recorded for ${b.trades.length} trades${tag()}`);
+        for (const t of b.trades) {
+          const e = (b.signals.get(t.sigIdx) || []).find((x) => x.what === (t.entryType === "market" ? "entered" : "filled"));
+          if (!e || e.bar !== t.entryIdx) throw new Error(`the trade at bar ${t.entryIdx} has no entry in its signal's account${tag()}`);
+          if (!b.explain(t.sigIdx).entryOk) throw new Error(`the trade at bar ${t.entryIdx}: its explanation says the entry was refused${tag()}`);
+        }
+        for (let k = 0; k < b.sig.length - 1; k++) {
+          if (!b.sig[k]) continue;
+          const evs = b.signals.get(k);
+          if (!evs) throw new Error(`the signal at bar ${k} has no account${tag()}`);
+          const e = b.explain(k);
+          if (e.dir !== b.sig[k]) throw new Error(`bar ${k}: the explanation (filters included) says ${e.dir}, the engine saw ${b.sig[k]}${tag()}`);
+          const size0 = evs.find((x) => x.what === "refused" && x.why === "size");
+          if (size0 && e.size !== 0) throw new Error(`bar ${k}: the engine refused it at size 0, the explanation sizes it ${e.size}${tag()}`);
+        }
+      }
+    });
+  }
+
+  t("an indicator study's gate: the refusal is in the account, and the explanation names the study", () => {
+    const s = strategies.get("donchian_shipped"), p = resolveParams(s, {});
+    const exec = resolveExec(s.execDefaults), filter = { ...NO_FILTER, ...s.filterDefaults };
+    const studies = [resolveStudy({ type: "emacross", tf: 10, params: {}, gate: "against" })];
+    const r = runStrategy(H, s, p, exec, { filter, studies, trace: true, explain: true });
+    let refused = 0;
+    for (const [k, evs] of r.signals) {
+      if (!evs.some((e) => e.what === "refused" && e.why === "gate")) continue;
+      refused++;
+      const e = r.explain(k), st = e.checks.find((c) => c.role === "entry");
+      if (!st || st.pass !== false || e.entryOk) throw new Error(`bar ${k}: refused by the gate, but the explanation's study check is ${JSON.stringify(st)}`);
+    }
+    if (refused < 5) throw new Error(`only ${refused} gate refusals to check`);
+  });
+
+  t("the order, in words: the trigger, the stop and the target are the trade's own", () => {
+    const s = strategies.get("donchian_1250"), b = evalBase(s, "1250"), x = resolveExec(b.exec);
+    const r = runStrategy(H, s, b.params, x, { filter: b.filter, trace: true, explain: true });
+    let n = 0;
+    for (const t of r.trades.slice(0, 40)) {
+      const evs = r.signals.get(t.sigIdx), armed = evs.find((e) => e.what === "armed");
+      const lines = describeEntry(t, r.tf, x, evs).join("\n"), px2 = (v) => explainPx(v);
+      if (!lines.includes(px2(armed.px))) throw new Error(`the trigger ${armed.px} is not in: ${lines}`);
+      if (!lines.includes(`Stop ${px2(t.stop)}`) || !lines.includes(`Target ${px2(t.target)}`)) throw new Error(`the bracket is not the trade's: ${lines}`);
+      if (t.limitFill !== lines.includes("Refused as a stop")) throw new Error(`a refused stop is not said to be: ${lines}`);
+      n++;
+    }
+    if (n < 10) throw new Error(`only ${n} trades checked`);
   });
 }
 

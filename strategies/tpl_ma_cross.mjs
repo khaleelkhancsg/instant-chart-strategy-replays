@@ -19,6 +19,7 @@
 // have to carry the whole result.
 
 import { ema, sma, atr, adx } from "../src/indicators.mjs";
+import { chk, trig, verdict, spark, mark, px, adxAtLeast, COLOR } from "../src/explain.mjs";
 
 export default {
   id: "tpl_ma_cross",
@@ -81,6 +82,28 @@ export default {
     if (trend) overlays.push({ name: `Trend MA ${p.trendMa}`, pane: "price", color: "#9b7dd4", data: trend, dash: [5, 4] });
     if (adxArr) overlays.push({ name: "ADX", pane: "sub", color: "#c9a227", data: adxArr, threshold: p.adxMin, range: [0, 60] });
 
-    return { sig, atr: a, overlays };
+    // Bar k as the loop reads it: the two MAs (their cross, or which is above),
+    // the ADX floor, and the trend MA on the trade's side.
+    const T = p.maType.toUpperCase(), slow = Math.max(p.slow, p.fast + 1);
+    const explain = (k) => {
+      const ok = k >= 1 && Number.isFinite(f[k]) && Number.isFinite(s[k]);
+      let want = 0;
+      if (ok) {
+        if (p.mode === "state") want = f[k] > s[k] ? 1 : f[k] < s[k] ? -1 : 0;
+        else want = f[k] > s[k] && f[k - 1] <= s[k - 1] ? 1 : f[k] < s[k] && f[k - 1] >= s[k - 1] ? -1 : 0;
+      }
+      const word = p.mode === "state" ? (want === 1 ? "above" : "below") : (want === 1 ? "crossed above" : "crossed below");
+      const checks = [trig(want ? `${T} ${p.fast} ${word} ${T} ${slow}` : `${T} ${p.fast} ${p.mode === "state" ? "apart from" : "crossing"} ${T} ${slow}`, !!want,
+                           { text: ok ? `${px(f[k])} vs ${px(s[k])}` : "not formed yet",
+                             spark: spark(k, [[f, "#4aa3ff", `${T} ${p.fast}`], [s, "#ff9d4a", `${T} ${slow}`]]) })];
+      if (adxArr) checks.push(adxAtLeast(adxArr, k, p.adxMin, Math.max(2, Math.trunc(p.adxPeriod) || 14)));
+      if (trend && want && Number.isFinite(trend[k])) {
+        checks.push(chk(`Close on the trade's side of the trend MA ${p.trendMa}`, want === 1 ? !(C[k] < trend[k]) : !(C[k] > trend[k]),
+                        { text: `${px(C[k])} vs ${px(trend[k])}` }));
+      }
+      const marks = want ? [mark.dot(k, (f[k] + s[k]) / 2, p.mode === "state" ? `${T} ${p.fast} ${word}` : "the cross", { color: COLOR.level })] : [];
+      return { dir: verdict(want, checks), checks, marks, title: want ? `${T} ${p.fast} ${word} ${T} ${slow}` : "No MA signal" };
+    };
+    return { sig, atr: a, overlays, explain };
   },
 };

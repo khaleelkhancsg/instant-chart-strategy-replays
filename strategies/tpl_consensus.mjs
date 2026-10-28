@@ -24,6 +24,7 @@
 // UNVALIDATED. A design worth searching, not a result.
 
 import { ema, atr, adx, zscore, roc, rsi } from "../src/indicators.mjs";
+import { consensusExplain, adxAtLeast, adxAtMost } from "../src/explain.mjs";
 
 export default {
   id: "tpl_consensus",
@@ -161,13 +162,21 @@ export default {
       consensus[i] = dir * agreeing;
     }
 
+    const overlayName = `${p.family} consensus (${p.nSpeeds} speeds)`;
+    const adxP = Math.max(2, Math.trunc(p.adxPeriod) || 14);
     return {
       sig,
       atr: a,
       overlays: [
-        { name: `${p.family} consensus (${p.nSpeeds} speeds)`, pane: "sub", color: "#c9a227",
+        { name: overlayName, pane: "sub", color: "#c9a227",
           data: consensus, threshold: 0, range: [-p.nSpeeds - 0.5, p.nSpeeds + 0.5] },
       ],
+      // Bar k: every speed's vote as the loop reads it; any disagreement stands aside.
+      explain: (bar) => consensusExplain(bars, bar, {
+        members, names: periods.map((per) => `${p.family} ${per}`), atr: a, slopeBars: k, thr: p.angleThr, priceScaled,
+        start: p.startCt, end: p.endCt, minAgree: p.minAgree, fade, consensus, overlay: overlayName,
+        adxChecks: adxArr ? (j) => [p.adxMin > 0 ? adxAtLeast(adxArr, j, p.adxMin, adxP) : null, p.adxMax > 0 ? adxAtMost(adxArr, j, p.adxMax, adxP) : null].filter(Boolean) : null,
+      }),
     };
   },
 };

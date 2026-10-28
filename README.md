@@ -19,7 +19,7 @@ node server.mjs       # then: http://localhost:5178
 **Price pane** — candles, with every trade drawn as an entry marker → exit marker
 joined by a line, green for a winner and red for a loser. Hover a trade for its
 P&L, exit reason, stop/target levels, and worst excursion; hovering also draws the
-bracket that was live for it.
+bracket that was live for it. **Click it for what triggered it** (below).
 
 Trades the *rules* suppressed are drawn faded and dashed. This matters more than
 it sounds: with the shipped -$150 circuit breaker, roughly half the strategy's
@@ -53,6 +53,51 @@ on winning days instead.
 **Navigator** — every possible 30-day start across the 5 years, coloured by
 outcome. Click to jump. This is the difference between "this window passed" and
 "this passes 75% of the time".
+
+### What triggered an entry
+
+A number-driven rule rarely shows on candles. A Donchian breakout depends on a
+30-bar high, an ADX floor and an efficiency ratio that the chart does not draw,
+and `donchian_shipped` draws EMAs and a MACD that its rules never read. So **click
+any trade** — on the chart, or in **Trades in this window** — and the chart shows
+what the rule read:
+
+- **On the chart:**
+  - the signal bar, highlighted through the price and indicator panes;
+  - the level the close broke, over the bars it came from: the 30 two-minute bars
+    of the channel, the opening range, the prior day;
+  - the bar that set the level, and the close that broke it;
+  - a longer bar a filter read, such as the 10-minute EMA's;
+  - the cross on the MACD histogram, for the MACD books;
+  - the stop order, from the open it was placed at to its fill.
+- **In the card**, every condition of the rule as it stood at that bar's close:
+  - a ✓ or ✗, the reading against its threshold, and a mini-chart of the
+    indicator up to the signal bar, ADX and the efficiency ratio included;
+  - then what sized or refused the entry (the 10-minute trend, the late half
+    size, an indicator gate);
+  - the order, e.g. "Buy stop 25,636.06: the 09:54 open + 0.15 × ATR 27.09,
+    refused because the next bar opened through it, so it rested as a limit";
+  - the stop and target, and the $600 day line where it was nearer;
+  - the exit;
+  - a note when something on the chart is display only.
+
+  ◀ ▶ step through the window's trades, ▴ folds the card, Esc closes it.
+- **Signals** in the top bar marks every signal bar, entered or not:
+  - ◆ an entry;
+  - ◇ an order that never filled;
+  - × a refusal;
+  - · already in the position.
+
+  Hover one for what became of it, e.g. "Closed the open long. No entry: ✗ Weak
+  cross: the MACD line already on the sell side". Click it for the whole card.
+
+The explanation is each strategy's own `explain(k)`, read the way its signal loop
+reads, and the engine's own account of each signal (`onSignal`): placed, filled,
+replaced, cancelled, expired, refused and why. test.mjs holds the explanation's
+verdict to the signal on every bar of every strategy, at the defaults and at
+random settings, and checks that no explanation or mark reads past its bar. It
+also checks that the engine's account changes no trade and misses no signal. The
+MCP `window` tool gives the same explanations in words (`explain: true`).
 
 ### Funded stage — the part that actually pays
 
@@ -414,6 +459,7 @@ export default {
       sig,          // Int8Array: 1 long / -1 short / 0 flat
       atr,          // Float64Array driving stop/target width
       overlays: [], // optional lines; pane 'price' or 'sub'
+      explain,      // optional (k) -> why bar k fired: its conditions and marks
     };
   },
 };
@@ -421,6 +467,15 @@ export default {
 
 **The one hard rule:** import only from `../src/*.mjs`. A `node:fs` import here
 breaks the browser preview, because the browser loads this exact file.
+
+**`explain(k)`** builds the entry card from `src/explain.mjs`:
+- each condition, with `pass` worked out by the same expression as the signal loop;
+- the verdict, from `verdict(direction, checks)`;
+- the marks that draw it on the chart.
+
+The template shows one. test.mjs then checks it against `sig` on every bar
+without being told about it. A strategy without one gets a generic card listing
+its overlays' values.
 
 Stops, targets, sizing, and costs are *not* per-strategy — they live in the
 shared Execution panel so any strategy can be tested under any risk envelope.
@@ -581,10 +636,19 @@ oracles of their pre-consolidation results. **`test/mcp.test.mjs`** drives the M
 server over stdio and checks each tool against `src/` directly.
 **`test/chart_link.test.mjs`** covers the page ↔ server link.
 
-**`test.mjs` — 279 tests, all passing.** The approach is to test optimised code
+**`test.mjs` — 425 tests, all passing.** The approach is to test optimised code
 against a naive reference that is obviously correct, and rule logic against
 numbers hand-traced on paper:
 
+- Entry explanations, for every strategy:
+  - the verdict equals the signal, and the size the strategy's, on every bar,
+    at the defaults and at random settings;
+  - a strategy that fires has every condition it lists passing;
+  - no explanation changes when later bars exist, and no mark reaches past the
+    signal bar;
+  - the engine's account of each signal changes no trade under random order
+    models, and accounts for every signal and every entry;
+  - a hand-built breakout and each order outcome are traced by hand.
 - Indicator studies:
   - every study's reading on the signal bars is unchanged when later bars are
     cut away (no lookahead);
@@ -690,6 +754,7 @@ blocks *new* entries and a single trade can blow straight through it.
 | `←` / `→` | Step window ±1 day |
 | `Shift` + `←`/`→` | Step ±7 days |
 | `e` | Switch evaluation ($3,000 ↔ $1,250) |
+| `Esc` | Close the entry card |
 | `r` | Reset zoom |
 | Wheel / drag | Zoom / pan |
 | Double-click | Fit window |
@@ -700,7 +765,8 @@ re-sweeps automatically ~700ms after you stop adjusting parameters.
 ### Panels and links
 
 - **Trades in this window** lists every signal, including those a rule blocked.
-  Click one to zoom the chart to it; **CSV** downloads the list.
+  Click one to zoom the chart to it and open its entry card; **CSV** downloads
+  the list.
 - **All windows** shows the pass rate with a 95% interval. The interval counts one
   independent sample per 30 days of start dates, because neighbouring windows
   share most of their days. It also shows the 2026 check (all of 2026, then
@@ -730,8 +796,11 @@ re-sweeps automatically ~700ms after you stop adjusting parameters.
   can vary a study's settings, e.g. `studies.0.params.lo` or `studies.0.tf`, so an
   indicator combination gets the same in-sample / out-of-sample treatment as
   anything else.
-- **The chart:** `chart_state` reads what the open page shows; `chart_apply`
-  changes it, including the eval tab and the indicators.
+- **The chart:** `chart_state` reads what the open page shows, including the
+  entry card's explanation; `chart_apply` changes it, including the eval tab and
+  the indicators.
+- **Why a trade entered:** `window` with `explain: true` gives each trade's
+  conditions, what the engine did with its signal, the order and the exit.
 - **The papers library:** `papers`.
 
 Every tool runs `src/`, so its numbers are the chart's numbers. `CLAUDE.md` holds

@@ -37,6 +37,7 @@
 // rather than realistic; turn it up in the sidebar and watch what survives.
 
 import { atr, ema, sma, wma } from "../src/indicators.mjs";
+import { trig, num, mark, crossOf, histSpark, COLOR } from "../src/explain.mjs";
 
 // The MACD is built here rather than taken from src/indicators.mjs because that
 // helper is EMA-only and hard-wired to close. TradingView's MACD exposes the
@@ -166,9 +167,22 @@ export default {
         { name: "Signal", pane: "sub", color: "#e0894a", data: m.signal,
           autoRange: true, range: r },
       ],
+      // Bar k: the histogram's sign change, which is the MACD / signal cross.
+      explain: (k) => macdCrossExplain(m, k, "Histogram"),
     };
   },
 };
+
+// The bare cross: the histogram (MACD minus its signal line) changing sign at
+// k, as the loop above tests it. Shared by the books built on this one.
+export function macdCrossExplain(m, k, overlay) {
+  const d = crossOf(m.hist, k);
+  const checks = [trig(d ? `MACD crossed ${d === 1 ? "above" : "below"} its signal line` : "A MACD / signal cross", !!d,
+                       { text: k ? `histogram ${num(m.hist[k - 1])} → ${num(m.hist[k])}` : "the first bar",
+                         spark: histSpark(k, m.hist, [[m.line, COLOR.line, "MACD"], [m.signal, COLOR.sig, "signal"]]) })];
+  return { dir: d, checks, marks: d ? [mark.sub(overlay, k, m.hist[k], `cross ${d === 1 ? "up" : "down"}`)] : [],
+           title: d ? `MACD cross ${d === 1 ? "up" : "down"}` : "No MACD cross" };
+}
 
 // MACD is unbounded and scales with price, so the sub-pane range has to be
 // derived from the data rather than fixed.

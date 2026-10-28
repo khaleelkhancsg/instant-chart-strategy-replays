@@ -20,6 +20,7 @@
 // a result. Tune it against the year-by-year panel before believing anything.
 
 import { atr } from "../src/indicators.mjs";
+import { chk, trig, verdict, cooldown, mark, num, px, dayStart, clock, COLOR } from "../src/explain.mjs";
 
 export default {
   id: "session_range_fade",
@@ -83,6 +84,35 @@ export default {
       }
     }
 
+    // Bar k as the loop reads it: the session's range so far (bar k included;
+    // from bar 1 on, as the loop starts), the build and entry times, the
+    // cooldown, the range's size, then a probe beyond an edge that closed back.
+    const explain = (k) => {
+      const none = (label, text) => ({ dir: 0, checks: [trig(label, false, { text })], marks: [] });
+      if (k < 1) return none("A session range", "the first bar");
+      const s0 = Math.max(1, dayStart(tday, k));
+      let hi = -Infinity, lo = Infinity;
+      for (let j = s0; j <= k; j++) { if (H[j] > hi) hi = H[j]; if (L[j] < lo) lo = L[j]; }
+      const ct = ctMin ? ctMin[k] : 0;
+      const checks = [chk(`Range built (from ${clock(p.buildUntilCt)} CT)`, !(ct < p.buildUntilCt), { text: `bar opens ${clock(ct)}` }),
+                      chk(`No new entries from ${clock(p.noNewAfterCt)} CT`, !(ct >= p.noNewAfterCt), { text: clock(ct) }),
+                      cooldown(sig, tday, k, p.cooldownBars)].filter(Boolean);
+      const ok = Number.isFinite(a[k]) && a[k] > 0;
+      if (!ok) return { dir: 0, checks: [...checks, chk("ATR ready", false, { text: "not yet" })], marks: [] };
+      checks.push(chk(`Range at least ${num(p.minRangeAtr)} × ATR`, !(hi - lo < p.minRangeAtr * a[k]), { text: `${num((hi - lo) / a[k])} × ATR (${num(hi - lo)} pts)` }));
+      const poke = p.pokeAtrMult * a[k], strict = p.requireReject === "on";
+      const probeHi = H[k] >= hi - 1e-9 && H[k] - Math.max(C[k], C[k - 1]) >= poke, rejHi = !strict || C[k] < hi - poke;
+      const probeLo = L[k] <= lo + 1e-9 && Math.min(C[k], C[k - 1]) - L[k] >= poke, rejLo = !strict || C[k] > lo + poke;
+      const side = probeHi && rejHi ? -1 : probeLo && rejLo ? 1 : 0;
+      const at = side === -1 ? hi : lo;
+      checks.push(trig(side ? `Probed the session ${side === -1 ? "high" : "low"} by ${num(p.pokeAtrMult)} × ATR${strict ? " and closed back inside" : ""}` : "A rejected probe of an edge", !!side,
+                       { text: side ? `${side === -1 ? "high" : "low"} ${px(side === -1 ? H[k] : L[k])}, close ${px(C[k])}` : `high ${px(H[k])} / low ${px(L[k])} vs range ${px(lo)} – ${px(hi)}` }));
+      const marks = side ? [mark.level(hi, s0, k, `session high ${px(hi)}`, { color: COLOR.up }), mark.level(lo, s0, k, `session low ${px(lo)}`, { color: COLOR.down }),
+                            mark.dot(k, at, "the probe", { color: COLOR.level }), mark.dot(k, C[k], `close ${px(C[k])}`, { color: COLOR.close })] : [];
+      return { dir: verdict(side, checks), checks, marks,
+               title: side ? `Rejected at the session ${side === -1 ? "high: fade short" : "low: fade long"}` : "No rejection at an edge" };
+    };
+
     return {
       sig,
       atr: a,
@@ -90,6 +120,7 @@ export default {
         { name: "Session high", pane: "price", color: "#3d7a5a", data: hiLine, dash: [5, 3] },
         { name: "Session low", pane: "price", color: "#7a3d3d", data: loLine, dash: [5, 3] },
       ],
+      explain,
     };
   },
 };

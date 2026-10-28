@@ -12,6 +12,7 @@
 // lines actually change order — the moment the trend direction flips.
 
 import { atr, adx } from "../src/indicators.mjs";
+import { chk, trig, verdict, spark, num, adxAtLeast, adxAtMost, COLOR } from "../src/explain.mjs";
 
 export default {
   id: "adx_di_trend",
@@ -54,12 +55,33 @@ export default {
       }
     }
 
+    // Bar k as the loop reads it: the ADX band, the DI gap, then the DI cross
+    // (or which DI leads).
+    const explain = (k) => {
+      const diSpark = spark(k, [[pdi, COLOR.up, "+DI"], [ndi, COLOR.down, "−DI"]]);
+      let cand = 0, tg;
+      if (p.diCrossOnly === "cross") {
+        cand = k < 1 ? 0 : pdi[k] > ndi[k] && pdi[k - 1] <= ndi[k - 1] ? 1 : ndi[k] > pdi[k] && ndi[k - 1] <= pdi[k - 1] ? -1 : 0;
+        tg = trig(cand ? `${cand === 1 ? "+DI crossed above −DI" : "−DI crossed above +DI"}` : "A DI cross", !!cand,
+                  { text: `+DI ${num(pdi[k])}, −DI ${num(ndi[k])}${k ? ` (were ${num(pdi[k - 1])}, ${num(ndi[k - 1])})` : ""}`, spark: diSpark });
+      } else {
+        cand = k < 1 ? 0 : pdi[k] > ndi[k] ? 1 : ndi[k] > pdi[k] ? -1 : 0;
+        tg = trig(cand === 1 ? "+DI leads −DI" : cand === -1 ? "−DI leads +DI" : "One DI leading", !!cand,
+                  { text: `+DI ${num(pdi[k])}, −DI ${num(ndi[k])}`, spark: diSpark });
+      }
+      const checks = [tg, adxAtLeast(adxArr, k, p.adxMin, p.period)];
+      if (p.adxMax > 0) checks.push(adxAtMost(adxArr, k, p.adxMax, p.period));
+      if (p.diGap > 0) checks.push(chk(`DI lead at least ${num(p.diGap)}`, !(Math.abs(pdi[k] - ndi[k]) < p.diGap), { text: num(Math.abs(pdi[k] - ndi[k])) }));
+      return { dir: verdict(cand, checks), checks, marks: [], title: cand ? `${cand === 1 ? "Uptrend" : "Downtrend"}: ${tg.label}` : "No DI signal" };
+    };
+
     return {
       sig,
       atr: a,
       overlays: [
         { name: "ADX", pane: "sub", color: "#c9a227", data: adxArr, threshold: p.adxMin, range: [0, 60] },
       ],
+      explain,
     };
   },
 };

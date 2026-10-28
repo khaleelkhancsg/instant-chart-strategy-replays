@@ -12,6 +12,7 @@
 // exactly what the year-by-year panel is for.
 
 import { atr, adx, roc } from "../src/indicators.mjs";
+import { trig, verdict, cooldown, spark, mark, num, px, adxAtLeast, adxAtMost, COLOR } from "../src/explain.mjs";
 
 export default {
   id: "momentum_roc",
@@ -59,12 +60,31 @@ export default {
       last = i;
     }
 
+    // Bar k as the loop reads it: the cooldown, the ADX band, then the move over
+    // the lookback against the threshold.
+    const adxP = Math.max(2, Math.trunc(p.adxPeriod) || 14);
+    const explain = (k) => {
+      const v = r[k], big = Number.isFinite(v) && !(Math.abs(v) < p.threshold);
+      const checks = [trig(`Move over ${p.lookback} bars at least ${num(p.threshold)}%`, k >= 1 && big,
+                           { text: Number.isFinite(v) ? `${v >= 0 ? "+" : ""}${num(v)}%` : "not formed yet",
+                             spark: spark(k, [[r, COLOR.line, "ROC"]], { refs: [p.threshold, -p.threshold] }) })];
+      if (adxArr && p.adxMin > 0) checks.push(adxAtLeast(adxArr, k, p.adxMin, adxP));
+      if (adxArr && p.adxMax > 0) checks.push(adxAtMost(adxArr, k, p.adxMax, adxP));
+      checks.push(cooldown(sig, tday, k, p.cooldownBars));
+      const up = v > 0, cand = big ? (follow ? (up ? 1 : -1) : (up ? -1 : 1)) : 0, k0 = k - p.lookback;
+      const marks = big && k0 >= 0 ? [mark.zone(k0, k, `${p.lookback} bars`), mark.move(k0, C[k0], k, C[k], `${v >= 0 ? "+" : ""}${num(v)}%`, { color: up ? COLOR.up : COLOR.down }),
+                                      mark.dot(k, C[k], `close ${px(C[k])}`, { color: COLOR.close })] : [];
+      return { dir: verdict(cand, checks.filter(Boolean)), checks: checks.filter(Boolean), marks,
+               title: big ? `${follow ? "Follow" : "Fade"} a ${num(Math.abs(v))}% move ${up ? "up" : "down"}` : "No strong move" };
+    };
+
     return {
       sig,
       atr: a,
       overlays: [
         { name: `ROC ${p.lookback}`, pane: "sub", color: "#4aa3ff", data: r, threshold: p.threshold, range: [-1.5, 1.5] },
       ],
+      explain,
     };
   },
 };

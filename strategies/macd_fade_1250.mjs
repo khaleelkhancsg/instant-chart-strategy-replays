@@ -40,6 +40,7 @@
 // 30 EMA, RSI, ADR and ADX variations found nothing robustly better.
 
 import { macd, atr, rthAtrRatio } from "../src/indicators.mjs";
+import { trig, sized, verdict, inWindow, num, spark, mark, crossOf, histSpark, COLOR } from "../src/explain.mjs";
 
 export default {
   id: "macd_fade_1250",
@@ -98,8 +99,36 @@ export default {
       if (p.weakOnly !== "off" && Math.sign(line[i]) !== d) sizeMult[i] = 0;
       if (vr && vr[i] < p.minVolRatio) sizeMult[i] = 0;   // no history yet (NaN) trades, as the research did
     }
+    // Bar k as the loop reads it: the window and the cross (faded), then the two
+    // conditions that refuse the entry -- the signal still closes a trade.
+    const explain = (k) => {
+      const ct = CT ? CT[k] : 0, x = crossOf(hist, k), d = -x;
+      const checks = [inWindow(ct, p.startCt, p.endCt),
+                      trig(x ? `MACD histogram crossed ${x === 1 ? "above" : "below"} zero: fade it, ${d === 1 ? "buy" : "sell"}` : "A MACD histogram zero cross", !!x,
+                           { text: k ? `${num(hist[k - 1])} → ${num(hist[k])}` : "", spark: histSpark(k, hist, [[line, COLOR.line, "MACD"], [signal, COLOR.sig, "signal"]]) })];
+      let size = 1;
+      if (verdict(d, checks)) {
+        if (p.weakOnly !== "off") {
+          const weak = Math.sign(line[k]) === d;
+          checks.push(sized(`Weak cross: the MACD line already on the ${d === 1 ? "buy" : "sell"} side of zero`, weak,
+                            { text: `MACD ${num(line[k])}`, note: weak ? "a bounce against the short-term trend: faded" : "a strong cross, the trend resuming: not faded" }));
+          if (!weak) size = 0;
+        }
+        if (vr) {
+          const busy = !(vr[k] < p.minVolRatio);
+          checks.push(sized(`ATR at least ${num(p.minVolRatio)} × its ${Math.max(2, Math.trunc(p.volDays) || 10)}-session RTH average`, busy,
+                            { text: Number.isFinite(vr[k]) ? `${num(vr[k])} ×` : "no average yet",
+                              note: !Number.isFinite(vr[k]) ? "too little history: it trades, as the research did" : busy ? "a busy market" : "too quiet: fades lose here",
+                              spark: spark(k, [[vr, COLOR.level, "ATR ratio"]], { refs: [p.minVolRatio] }) }));
+          if (!busy) size = 0;
+        }
+      }
+      return { dir: verdict(d, checks), size, checks, marks: x ? [mark.sub("MACD hist", k, hist[k], `cross ${x === 1 ? "up" : "down"}: fade`)] : [],
+               title: x ? `Fade the MACD cross ${x === 1 ? "up" : "down"} → ${d === 1 ? "long" : "short"}` : "No MACD cross" };
+    };
+
     return {
-      sig, atr: a, sizeMult,
+      sig, atr: a, sizeMult, explain, exitRule: "the next MACD histogram cross",
       overlays: [
         { name: "MACD hist", pane: "sub", kind: "hist", data: hist, autoRange: true,
           colorUp: "#26a65b", colorUpFade: "#7fd4a0", colorDown: "#d1566e", colorDownFade: "#eda2b0" },

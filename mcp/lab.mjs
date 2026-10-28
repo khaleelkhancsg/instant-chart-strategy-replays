@@ -144,7 +144,7 @@ export function fullRun(cfg) {
 // A run on just the bars a date range needs -- the warm-up the chart's live
 // window uses before it, a tail after -- for searches, where each configuration
 // runs once and the full history would be wasted work.
-export function rangeRun(cfg, fromMs, toMs) {
+export function rangeRun(cfg, fromMs, toMs, opts = {}) {
   const b = bars();
   const span = windowSpan(cfg.s, cfg.params, { filter: cfg.filter, exec: cfg.exec, tailMin: 30 * 1440, studies: cfg.studies });
   const si = indexAtOrAfter(b.ts, fromMs - span.warmupMin * 60000);
@@ -152,7 +152,8 @@ export function rangeRun(cfg, fromMs, toMs) {
   // last window's trade is only exact with every bar after it.
   const x = cfg.exec, carries = x.intradayOnly === false || (x.flattenCt === x.reopenCt && x.sessionEndFlat === "none");
   const ei = carries ? b.count : Math.min(indexAtOrAfter(b.ts, toMs + span.tailMin * 60000) + 1, b.count);
-  return runStrategy(sliceBars(b, si, ei), cfg.s, cfg.params, cfg.exec, { filter: cfg.filter, fromMs, studies: cfg.studies }).trades;
+  const r = runStrategy(sliceBars(b, si, ei), cfg.s, cfg.params, cfg.exec, { filter: cfg.filter, fromMs, studies: cfg.studies, ...opts });
+  return opts.explain ? r : r.trades;
 }
 
 // ── periods, and the two pass-rate methods ───────────────────────────────

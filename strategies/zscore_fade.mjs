@@ -22,7 +22,8 @@
 // wide target assumes overnight holds are allowed; under a 3:05 PM CT flatten it
 // will rarely be reached.
 
-import { atr, adx, zscore, sma } from "../src/indicators.mjs";
+import { atr, adx, zscore, sma, rollingMeanStd } from "../src/indicators.mjs";
+import { chk, trig, verdict, cooldown, spark, mark, num, px, adxAtMost, COLOR } from "../src/explain.mjs";
 
 export default {
   id: "zscore_fade",
@@ -69,12 +70,36 @@ export default {
       else if (z[i] <= -p.zEntry) { sig[i] = 1; last = i; }   // stretched down -> fade long
     }
 
+    // Bar k as the loop reads it: the cooldown, the ADX ceiling, the volatility
+    // ceiling, then the stretch beyond the entry threshold, faded.
+    let ms = null;     // the z-score's mean and deviation, for the marks only
+    const explain = (k) => {
+      const v = z[k], hot = v >= p.zEntry ? 1 : v <= -p.zEntry ? -1 : 0;
+      const checks = [trig(`Close at least ${num(p.zEntry)}σ from its ${p.zLookback}-bar mean`, k >= 1 && Number.isFinite(v) && !!hot,
+                           { text: Number.isFinite(v) ? `z = ${num(v)}` : "not formed yet", spark: spark(k, [[z, COLOR.adx, "z"]], { refs: [p.zEntry, -p.zEntry] }) }),
+                      adxAtMost(adxArr, k, p.adxMax, Math.max(2, Math.trunc(p.adxPeriod) || 14))];
+      const hiVol = Number.isFinite(atrAvg[k]) && atrAvg[k] > 0 && a[k] > atrAvg[k] * p.volMaxAtrMult;
+      checks.push(chk(`ATR at most ${num(p.volMaxAtrMult)} × its ${p.volMaPeriod}-bar average`, !hiVol,
+                      { text: Number.isFinite(atrAvg[k]) && atrAvg[k] > 0 ? `${num(a[k] / atrAvg[k])} ×` : "no average yet" }));
+      checks.push(cooldown(sig, tday, k, p.cooldownBars));
+      const marks = [];
+      if (hot) {
+        if (!ms) ms = rollingMeanStd(C, p.zLookback);
+        const m = ms.mean[k], band = m + hot * p.zEntry * ms.std[k];
+        marks.push(mark.level(m, k - 20, k, `mean ${px(m)}`, { color: "#5a6b7d" }), mark.level(band, k - 20, k, `${hot === 1 ? "+" : "−"}${num(p.zEntry)}σ ${px(band)}`, { color: COLOR.level }),
+                   mark.dot(k, C[k], `close ${px(C[k])}`, { color: COLOR.close }));
+      }
+      return { dir: verdict(-hot, checks.filter(Boolean)), checks: checks.filter(Boolean), marks,
+               title: hot ? `Stretched ${hot === 1 ? "up" : "down"} ${num(Math.abs(v))}σ: fade ${hot === 1 ? "short" : "long"}` : "Not stretched" };
+    };
+
     return {
       sig,
       atr: a,
       overlays: [
         { name: `Z-score ${p.zLookback}`, pane: "sub", color: "#c9a227", data: z, threshold: p.zEntry, range: [-4, 4] },
       ],
+      explain,
     };
   },
 };

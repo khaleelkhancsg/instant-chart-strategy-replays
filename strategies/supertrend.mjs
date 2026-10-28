@@ -17,6 +17,7 @@
 // closer to how Supertrend is usually traded.
 
 import { atr, adx, supertrend } from "../src/indicators.mjs";
+import { trig, verdict, px, mark, adxAtLeast, COLOR } from "../src/explain.mjs";
 
 export default {
   id: "supertrend",
@@ -61,6 +62,20 @@ export default {
     const overlays = [{ name: `Supertrend ${p.period}/${p.mult}`, pane: "price", color: "#c9a227", data: line }];
     if (adxArr) overlays.push({ name: "ADX", pane: "sub", color: "#9b7dd4", data: adxArr, threshold: p.adxMin, range: [0, 60] });
 
-    return { sig, atr: a, overlays };
+    // Bar k as the loop reads it: the ADX floor, then the trend's flip (or its
+    // state). A flip up is a close above the band that capped the downtrend.
+    const explain = (k) => {
+      const t = st.trend[k], flipped = k >= 1 && t !== st.trend[k - 1];
+      const band = t === 1 ? st.upper[k] : st.lower[k];
+      const checks = [p.flipOnly === "flip"
+        ? trig(flipped ? `The trend flipped ${t === 1 ? "up" : "down"}` : "A trend flip", flipped,
+               { text: flipped ? `close ${px(C[k])} ${t === 1 ? "above" : "below"} the band ${px(band)}` : `still ${t === 1 ? "up" : "down"}` })
+        : trig(`The trend is ${t === 1 ? "up" : "down"}`, k >= 1, { text: `band ${px(line[k])}` })];
+      if (adxArr) checks.push(adxAtLeast(adxArr, k, p.adxMin, Math.max(2, Math.trunc(p.adxPeriod) || 14)));
+      const marks = flipped ? [mark.level(band, k - 6, k, `band ${px(band)}`, { color: COLOR.level }), mark.dot(k, C[k], `close ${px(C[k])}`, { color: COLOR.close })] : [];
+      return { dir: verdict(k >= 1 ? (p.flipOnly === "flip" ? (flipped ? t : 0) : t) : 0, checks), checks, marks,
+               title: flipped ? `Supertrend flipped ${t === 1 ? "up" : "down"}` : `Supertrend ${t === 1 ? "up" : "down"}` };
+    };
+    return { sig, atr: a, overlays, explain };
   },
 };

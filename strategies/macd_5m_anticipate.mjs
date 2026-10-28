@@ -26,6 +26,7 @@
 // in anticipation of the trend book's own signal.
 
 import { atr, ema, sma, wma } from "../src/indicators.mjs";
+import { trig, chk, num, mark, histSpark } from "../src/explain.mjs";
 import base from "./macd_1m_flip.mjs";
 
 const pick = (t) => (t === "sma" ? sma : t === "wma" ? wma : ema);
@@ -130,9 +131,43 @@ export default {
         { name: "MACD", pane: "sub", color: "#4aa3ff", data: line, autoRange: true, range: r },
         { name: "Signal", pane: "sub", color: "#e0894a", data: signal, autoRange: true, range: r },
       ],
+      explain: (k) => anticipateExplain(hist, scale, k, { need, useEta, sb, prox: p.prox, etaBars: p.etaBars }),
     };
   },
 };
+
+// The anticipation, as the loops here and in macd_5m_quiet_anticipate test it:
+// `need` bars in a row of the histogram shrinking toward zero (a gap resets
+// the count), then close enough to zero -- within `prox` of its trailing mean
+// size, or `etaBars` from it at the rate it is closing -- to call the cross
+// imminent. The trade goes the way the cross would land. `gate(k)` is the
+// quiet gate's check, read between the two as the loop does.
+export function anticipateExplain(hist, scale, k, { need, useEta, sb, prox, etaBars, gate = null }) {
+  let run = 0;
+  for (let j = k; j >= 1; j--) {
+    if (!Number.isFinite(hist[j]) || !Number.isFinite(hist[j - 1]) || !Number.isFinite(scale[j])) break;
+    if (!(Math.abs(hist[j]) < Math.abs(hist[j - 1]))) break;
+    run++;
+  }
+  const v = hist[k], toward = v >= 0 ? -1 : 1;
+  const checks = [trig(`Histogram shrinking toward zero ${need} bar${need === 1 ? "" : "s"} in a row`, run >= need,
+                       { text: `${run} bar${run === 1 ? "" : "s"} (now ${num(v)})`, spark: histSpark(k, hist) })];
+  if (gate) checks.push(...gate(k));
+  let imminent;
+  if (useEta) {
+    const rate = k >= sb ? (Math.abs(hist[k - sb]) - Math.abs(v)) / sb : NaN;
+    imminent = k >= sb && rate > 0 && Math.abs(v) / rate <= etaBars;
+    checks.push(chk(`Zero within ${num(etaBars)} bars at its closing rate`, imminent,
+                    { text: rate > 0 ? `${num(Math.abs(v) / rate)} bars (closing ${num(rate)} a bar over ${sb})` : "not closing" }));
+  } else {
+    imminent = Math.abs(v) < prox * scale[k];
+    checks.push(chk(`Within ${num(prox)} × its average size of zero`, imminent,
+                    { text: Number.isFinite(scale[k]) ? `|${num(v)}| vs ${num(prox * scale[k])}` : "no average yet" }));
+  }
+  const ok = run >= need && checks.every((c) => c.pass !== false);
+  return { dir: k >= 1 && ok ? toward : 0, checks, marks: ok ? [mark.sub("Histogram", k, v, `cross ${toward === 1 ? "up" : "down"} expected`)] : [],
+           title: ok ? `A MACD cross ${toward === 1 ? "up" : "down"} looks imminent: enter ${toward === 1 ? "long" : "short"} ahead of it` : "No cross in sight" };
+}
 
 function span(...series) {
   let m = 0;

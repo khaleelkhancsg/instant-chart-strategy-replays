@@ -20,6 +20,7 @@
 // is the usual fix for fading into a trend that keeps going.
 
 import { atr, adx, rsi, stochastic, zscore } from "../src/indicators.mjs";
+import { trig, verdict, cooldown, spark, num, adxAtMost, COLOR } from "../src/explain.mjs";
 
 export default {
   id: "tpl_oscillator",
@@ -94,12 +95,33 @@ export default {
       last = i;
     }
 
+    const name = p.osc === "zscore" ? `Z-score ${p.period}` : p.osc === "stoch" ? `Stoch %${p.stochLine === "d" ? "D" : "K"} ${p.period}` : `RSI ${p.period}`;
     const overlays = [
       { name: p.osc === "zscore" ? `Z-score ${p.period}` : p.osc === "stoch" ? `Stoch %K ${p.period}` : `RSI ${p.period}`,
         pane: "sub", color: "#c9a227", data: o, threshold: p.upper, range },
     ];
     if (adxArr) overlays.push({ name: "ADX", pane: "sub", color: "#9b7dd4", data: adxArr, threshold: p.adxMax, range: [0, 60] });
 
-    return { sig, atr: a, overlays };
+    // Bar k as the loop reads it: the cooldown, the ADX ceiling, then the
+    // oscillator beyond a level (or back through it), faded or followed.
+    const explain = (k) => {
+      const ok = k >= 1 && Number.isFinite(o[k]) && Number.isFinite(o[k - 1]);
+      let hot = 0;
+      if (ok) {
+        if (p.trigger === "crossback") hot = o[k - 1] >= p.upper && o[k] < p.upper ? 1 : o[k - 1] <= p.lower && o[k] > p.lower ? -1 : 0;
+        else hot = o[k] >= p.upper ? 1 : o[k] <= p.lower ? -1 : 0;
+      }
+      const lvl = hot === 1 ? p.upper : p.lower;
+      const what = p.trigger === "crossback" ? `${name} back ${hot === 1 ? "under" : "over"} ${num(lvl)}` : `${name} ${hot === 1 ? "at or over" : "at or under"} ${num(lvl)}`;
+      const checks = [trig(hot ? what : `${name} beyond ${num(p.lower)} / ${num(p.upper)}`, !!hot,
+                           { text: ok ? `${num(o[k])}${p.trigger === "crossback" ? ` (was ${num(o[k - 1])})` : ""}` : "not formed yet",
+                             spark: spark(k, [[o, COLOR.adx, name]], { refs: [p.upper, p.lower] }) })];
+      if (adxArr) checks.push(adxAtMost(adxArr, k, p.adxMax, Math.max(2, Math.trunc(p.adxPeriod) || 14)));
+      checks.push(cooldown(sig, tday, k, p.cooldownBars));
+      const cand = fade ? -hot : hot;
+      return { dir: verdict(cand, checks.filter(Boolean)), checks: checks.filter(Boolean), marks: [],
+               title: hot ? `${hot === 1 ? "Overbought" : "Oversold"}: ${fade ? "fade" : "follow"} → ${cand === 1 ? "long" : "short"}` : "No extreme" };
+    };
+    return { sig, atr: a, overlays, explain };
   },
 };

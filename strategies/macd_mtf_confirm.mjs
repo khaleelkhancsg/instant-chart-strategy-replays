@@ -77,6 +77,7 @@
 
 import { atr, ema } from "../src/indicators.mjs";
 import { resample } from "../src/resample.mjs";
+import { chk, trig, verdict, num, clock, spark, mark, histSpark, COLOR } from "../src/explain.mjs";
 import base from "./macd_1m_flip.mjs";
 
 const MTF_DEFAULT = 5;
@@ -308,6 +309,39 @@ export default {
       a = up;
     }
 
-    return { ...out, sig, exitSig, atr: a };
+    // Bar k: the arm in force (the latest 5-minute anticipation whose window
+    // covers k, as the projection above leaves it), the 1-minute cross its way,
+    // the quiet gate, and the EMA when it must agree at entry.
+    const armAt = (k) => {
+      let lo = 0, hi = n5 - 1, top = -1;
+      while (lo <= hi) { const m = (lo + hi) >> 1; if ((last5 ? last5[m] : m * MTF) + 1 <= k) { top = m; lo = m + 1; } else hi = m - 1; }
+      for (let q = top; q >= 0; q--) {
+        const from = (last5 ? last5[q] : q * MTF) + 1;
+        if (Math.min(n - 1, from + armBars - 1) < k) break;
+        if (arm5[q]) return q;
+      }
+      return -1;
+    };
+    const explain = (k) => {
+      const q = armAt(k), d = q >= 0 ? arm5[q] : 0, ct = ctMin ? ctMin[k] : 0;
+      const checks = [trig(d ? `Armed ${d === 1 ? "long" : "short"} by the ${MTF}-min anticipation` : `Armed by the ${MTF}-min anticipation`, !!d,
+                           { text: d ? `its ${MTF}-min histogram ${num(hist5[q])} was closing on zero (bar to ${clock(((tf5.ctMin ? tf5.ctMin[q] : 0) + MTF) % 1440)}), live ${armBars} bars` : `no arm in the last ${armBars} bars`,
+                             spark: q >= 0 ? histSpark(q, hist5) : undefined })];
+      checks.push(trig(`1-min MACD crossed ${d === -1 ? "below" : "above"} its signal`, !!d && cross1[k] === d,
+                       { text: k ? `histogram ${num(hist1[k - 1])} → ${num(hist1[k])}` : "", spark: histSpark(k, hist1) }));
+      const night = ct < 510 || ct >= 900;
+      if (gate !== "any") checks.push(chk(gate === "overnight" ? "Overnight (outside 08:30–15:00 CT)" : "RTH (08:30–15:00 CT)", gate === "overnight" ? night : !night, { text: `bar opens ${clock(ct)}` }));
+      if (adrMax < 2) checks.push(chk(`Day's range under ${num(adrMax)} of its ${adrDays}-day average`, Number.isFinite(adrUsed[k]) && adrUsed[k] < adrMax,
+                                      { text: Number.isFinite(adrUsed[k]) ? `${num(adrUsed[k])} × ADR` : "no average yet", spark: spark(k, [[adrUsed, COLOR.level, "ADR used"]], { refs: [adrMax] }) }));
+      if (mode === "entry") checks.push(chk("1-min EMA agrees", emaDir[k] === d, { text: `EMA ${num(ef[k])} vs ${num(es[k])}` }));
+      const marks = [];
+      if (q >= 0) marks.push(mark.span(tf5.ts[q], tf5.ts[q] + MTF * 60000, `${MTF}-min arm`));
+      if (d && cross1[k] === d) marks.push(mark.sub("Histogram", k, hist1[k], "1-min cross"));
+      return { dir: verdict(k >= 1 ? d : 0, checks), checks, marks,
+               title: d ? `${MTF}-min arm ${d === 1 ? "long" : "short"}, triggered by the 1-min cross` : "Not armed" };
+    };
+    const exitRule = mode === "hold" ? "the 1-min EMA turned against the trade" : mode === "invert" ? "the 1-min EMA came round to the trade" : null;
+
+    return { ...out, sig, exitSig, atr: a, explain, exitRule };
   },
 };

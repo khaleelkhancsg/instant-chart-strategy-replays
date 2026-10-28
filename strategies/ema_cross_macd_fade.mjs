@@ -24,6 +24,7 @@
 
 import { ema, macd, atr } from "../src/indicators.mjs";
 import { resample } from "../src/resample.mjs";
+import { chk, trig, verdict, num, px, spark, mark } from "../src/explain.mjs";
 
 // A frame of `min` minutes on base bars of `baseMin`: a whole multiple of the
 // base, never finer than it.
@@ -178,11 +179,37 @@ export default {
     let mx = 0;
     for (const v of hist) if (Number.isFinite(v) && Math.abs(v) > mx) mx = Math.abs(v);
     const r = [-mx * 1.05 || -1, mx * 1.05 || 1];
+
+    // Bar k: the EMA cross of the frame bar that closes on it (the loop's
+    // lastOf), the direction allowed, and the MACD condition at entry.
+    const efH = hold(E, ef), esH = hold(E, es);
+    const frameAt = (k) => {
+      if (!E.last) return k;
+      let lo = 0, hi = ne - 1;
+      while (lo <= hi) { const m = (lo + hi) >> 1; if (E.last[m] === k) return m; if (E.last[m] < k) lo = m + 1; else hi = m - 1; }
+      return -1;
+    };
+    const explain = (k) => {
+      const q = frameAt(k);
+      const ok = q >= 1 && Number.isFinite(ef[q]) && Number.isFinite(es[q]) && Number.isFinite(ef[q - 1]) && Number.isFinite(es[q - 1]);
+      const d = ok ? (ef[q] > es[q] && ef[q - 1] <= es[q - 1] ? 1 : ef[q] < es[q] && ef[q - 1] >= es[q - 1] ? -1 : 0) : 0;
+      const checks = [trig(d ? `${eTf}-min EMA ${fast} crossed ${d === 1 ? "above" : "below"} EMA ${slow}` : `A ${eTf}-min EMA ${fast} / ${slow} cross`, !!d,
+                           { text: q < 0 ? `no ${eTf}-min bar closes on this bar` : ok ? `${px(ef[q])} vs ${px(es[q])} (were ${px(ef[q - 1])} vs ${px(es[q - 1])})` : "not formed yet",
+                             spark: spark(k, [[efH, "#4aa3ff", `EMA ${fast}`], [esH, "#e0894a", `EMA ${slow}`]], { n: 40 * Math.max(1, eTf / base) }) })];
+      if (d && dir !== "both") checks.push(chk(`${dir === "long" ? "Long" : "Short"} only`, dir === "long" ? d === 1 : d === -1, { text: d === 1 ? "a long cross" : "a short cross" }));
+      const h = histNow[k], hp = histPrev[k];
+      if (d && filt === "macdSide") checks.push(chk(`${xTf}-min MACD histogram on the trade's side`, Number.isFinite(h) && h * d > 0, { text: num(h) }));
+      if (d && filt === "macdRising") checks.push(chk(`${xTf}-min MACD histogram moving the trade's way`, Number.isFinite(h) && Number.isFinite(hp) && (h - hp) * d > 0, { text: `${num(hp)} → ${num(h)}` }));
+      const marks = d ? [mark.dot(k, (efH[k] + esH[k]) / 2, "EMA cross", { color: "#f0b429" })] : [];
+      return { dir: verdict(d, checks), checks, marks, title: d ? `EMA ${fast} / ${slow} cross ${d === 1 ? "up" : "down"}` : "No EMA cross" };
+    };
+    const exitRule = `the ${xTf}-min MACD histogram ${need} bar${need === 1 ? "" : "s"} back toward zero${onCross ? ", or crossing against the trade" : ""}${backExits ? ", or the EMAs crossing back" : ""}`;
+
     return {
-      sig, exitSig, atr: a,
+      sig, exitSig, atr: a, explain, exitRule,
       overlays: [
-        { name: `EMA ${fast} (${eTf}m)`, pane: "price", color: "#4aa3ff", data: hold(E, ef) },
-        { name: `EMA ${slow} (${eTf}m)`, pane: "price", color: "#e0894a", data: hold(E, es) },
+        { name: `EMA ${fast} (${eTf}m)`, pane: "price", color: "#4aa3ff", data: efH },
+        { name: `EMA ${slow} (${eTf}m)`, pane: "price", color: "#e0894a", data: esH },
         { name: `Histogram (${xTf}m)`, pane: "sub", kind: "hist", data: histNow,
           colorUp: "#26a65b", colorUpFade: "#7fd4a0", colorDown: "#d1566e", colorDownFade: "#eda2b0",
           threshold: 0, autoRange: true, range: r },

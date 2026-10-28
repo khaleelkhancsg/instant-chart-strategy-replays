@@ -14,6 +14,7 @@
 // Untested. A structurally-motivated starting point, not a result.
 
 import { atr } from "../src/indicators.mjs";
+import { chk, trig, verdict, inWindow, mark, num, px, dayStart, COLOR } from "../src/explain.mjs";
 
 export default {
   id: "prior_day_break",
@@ -77,6 +78,39 @@ export default {
       }
     }
 
+    // Bar k as the loop reads it: the completed session's high and low (its bars
+    // from bar 1 on, as the loop starts), the window, the confirmation buffer,
+    // and -- one per side -- whether that side has already traded today.
+    const explain = (k) => {
+      const none = (text) => ({ dir: 0, checks: [trig("A completed prior session", false, { text })], marks: [] });
+      if (k < 1) return none("the first bar");
+      // the loop's first session is bar 1's, and has no completed one before it
+      if (tday[k] === tday[1]) return none("this is the first session");
+      const s0 = dayStart(tday, k);
+      const p0 = Math.max(1, dayStart(tday, s0 - 1));
+      let hi = -Infinity, lo = Infinity;
+      for (let j = p0; j < s0; j++) { if (H[j] > hi) hi = H[j]; if (L[j] < lo) lo = L[j]; }
+      if (!(Number.isFinite(a[k]) && a[k] > 0)) return none("ATR not ready");
+      const ct = ctMin ? ctMin[k] : 0, buf = p.bufferAtrMult * a[k], once = p.onePerSide === "one";
+      // a side is spent once it has fired today (the loop's tookLong / tookShort)
+      const highSide = (j) => (brk ? sig[j] === 1 : sig[j] === -1);
+      let tookHigh = false, tookLow = false;
+      for (let j = Math.max(1, s0); j < k; j++) if (sig[j]) { if (highSide(j)) tookHigh = true; else tookLow = true; }
+      const upB = C[k] > hi + buf, dnB = C[k] < lo - buf;
+      const side = upB && (!once || !tookHigh) ? 1 : dnB && (!once || !tookLow) ? -1 : 0;
+      const checks = [inWindow(ct, p.startCt, p.endCt, "Entries"),
+                      trig(side ? `Close ${side === 1 ? "above the prior high" : "below the prior low"} by ${num(p.bufferAtrMult)} × ATR` : "Close beyond the prior day's range", !!side,
+                           { text: side === 1 ? `${px(C[k])} > ${px(hi)} + ${num(buf)}` : side === -1 ? `${px(C[k])} < ${px(lo)} − ${num(buf)}` : `${px(C[k])} within ${px(lo - buf)} – ${px(hi + buf)}` })];
+      if (once && (upB || dnB) && !side) checks.push(chk("First touch that way today", false, { text: "that side already traded" }));
+      const lvl = side === 1 ? hi : lo;
+      const marks = side ? [mark.level(lvl, s0, k, `prior ${side === 1 ? "high" : "low"} ${px(lvl)}`, { color: side === 1 ? COLOR.up : COLOR.down }),
+                            mark.level(lvl + side * buf, k - 8, k, `+ buffer`, { color: COLOR.level, dash: [3, 3] }),
+                            mark.dot(k, C[k], `close ${px(C[k])}`, { color: COLOR.close })] : [];
+      const cand = side ? (brk ? side : -side) : 0;
+      return { dir: verdict(cand, checks), checks, marks,
+               title: side ? `${brk ? "Break" : "Rejection"} of the prior day's ${side === 1 ? "high" : "low"} → ${cand === 1 ? "long" : "short"}` : "No prior-day level crossed" };
+    };
+
     return {
       sig,
       atr: a,
@@ -84,6 +118,7 @@ export default {
         { name: "Prior day high", pane: "price", color: "#3d7a5a", data: hiLine, dash: [7, 3] },
         { name: "Prior day low", pane: "price", color: "#7a3d3d", data: loLine, dash: [7, 3] },
       ],
+      explain,
     };
   },
 };

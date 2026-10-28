@@ -171,6 +171,19 @@ await t("window: one window's trades and result, on the chart's grid", async () 
   const real = replayWindow(direct("donchian_shipped"), start, R);
   eq(r.outcome, real.outcome); eq(r.stats.net, Math.round(real.stats.netPnl));
 });
+await t("window with explain: every trade says why it entered, in the strategy's own conditions", async () => {
+  const r = await call("window", { strategy: "donchian_1250", eval: "1250", date: "2026-03-09", explain: true });
+  if (!r.trades.length) throw new Error("no trades to explain");
+  for (const x of r.trades) {
+    if (!x.why) throw new Error(`the trade at ${x.entry} has no explanation`);
+    if (!x.why.signal.some((l) => l.startsWith("✓ Close above") || l.startsWith("✓ Close below"))) throw new Error(`no breakout in: ${x.why.signal.join(" | ")}`);
+    if (x.why.signal.some((l) => l.startsWith("✗") && !l.includes("range used"))) throw new Error(`a failing condition on an entry: ${x.why.signal.join(" | ")}`);
+    if (!x.why.order.some((l) => l.startsWith("Buy stop") || l.startsWith("Sell stop"))) throw new Error(`no order in: ${x.why.order.join(" | ")}`);
+    if (!x.why.exit.startsWith("Out ")) throw new Error(`no exit in: ${x.why.exit}`);
+  }
+  const plain = await call("window", { strategy: "donchian_1250", eval: "1250", date: "2026-03-09" });
+  eq(JSON.stringify(plain.trades), JSON.stringify(r.trades.map(({ why, ...x }) => x)), "the explanation changes no trade:");
+});
 await t("eval '1250': the $1,250 rules and the strategy's own settings, equal to src/ directly", async () => {
   const r = await call("pass_rate", { strategy: "donchian_shipped", eval: "1250" });
   eq(r.eval, "1250"); eq(r.rules.profitTarget, 1250); eq(r.rules.trailingDD, 1000); eq(r.rules.dailyLossLimit, 600);

@@ -41,6 +41,7 @@
 import shipped from "./donchian_shipped.mjs";
 import { rthRangeUsed } from "../src/indicators.mjs";
 import { htfEmaTrend } from "../src/studies.mjs";
+import { sized, htfTrend, adrSpark, num } from "../src/explain.mjs";
 
 export default {
   ...shipped,
@@ -78,17 +79,40 @@ export default {
     const out = shipped.compute(bars, p);
     const n = bars.close.length, sig = out.sig, sizeMult = new Float64Array(n).fill(1);
     const overlays = [...out.overlays];
+    let tr = null, used = null;
     if (p.htfGate !== "off") {
       // Built from these bars, read from the last higher bar that had closed.
-      const tr = htfEmaTrend(bars, p.htfMin, p.htfFast, p.htfSlow);
+      tr = htfEmaTrend(bars, p.htfMin, p.htfFast, p.htfSlow);
       for (let k = 0; k < n; k++) if (sig[k] && tr.dir[k] !== sig[k]) sizeMult[k] = 0;
       overlays.push({ name: `${tr.tf}m EMA ${p.htfFast}`, pane: "price", data: tr.fast, color: "#f0b429" },
                     { name: `${tr.tf}m EMA ${p.htfSlow}`, pane: "price", data: tr.slow, color: "#c678dd", dash: [5, 3] });
     }
     if (p.lateRangeUsed > 0) {
-      const used = rthRangeUsed(bars, Math.max(2, Math.trunc(p.adrDays) || 10));
+      used = rthRangeUsed(bars, Math.max(2, Math.trunc(p.adrDays) || 10));
       for (let k = 0; k < n; k++) if (sig[k] && sizeMult[k] > 0 && used[k] >= p.lateRangeUsed) sizeMult[k] = p.lateFrac;
     }
-    return { ...out, sizeMult, overlays };
+    // Bar k: donchian_shipped's signal, then what decides the entry -- the
+    // higher-timeframe trend, then the late size -- as the loops above apply them.
+    const explain = (k) => {
+      const e = out.explain(k), checks = [...e.checks], marks = [...e.marks];
+      let size = 1;
+      if (sig[k]) {
+        if (tr) {
+          const h = htfTrend(bars, k, tr, p.htfFast, p.htfSlow, sig[k], "must point the breakout's way");
+          checks.push({ ...h.check, role: "size" });
+          marks.push(...h.marks);
+          if (!h.check.pass) size = 0;
+        }
+        if (used && size > 0) {
+          const late = used[k] >= p.lateRangeUsed;
+          checks.push(sized(`Day's range used, of its ${Math.max(2, Math.trunc(p.adrDays) || 10)}-session average`, !late,
+                            { text: `${num(used[k])} × ADR`, note: late ? `${num(p.lateRangeUsed)} or more: × ${num(p.lateFrac)} size` : `under ${num(p.lateRangeUsed)}: full size`,
+                              spark: adrSpark(k, used, p.lateRangeUsed) }));
+          if (late) size = p.lateFrac;
+        }
+      }
+      return { ...e, checks, marks, size };
+    };
+    return { ...out, sizeMult, overlays, explain };
   },
 };

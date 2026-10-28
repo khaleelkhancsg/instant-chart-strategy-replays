@@ -60,6 +60,8 @@
         </select>
       </div>
 
+      <button id="sigToggle" class="sigtoggle" aria-pressed="false" title="Mark every signal bar the strategy produced: ◆ entered, ◇ an order that never filled, × refused (with the reason on hover), · already in a position. Click one, or any trade, for what triggered it.">Signals</button>
+
       <div class="verdict" id="verdict"><span class="badge open">—</span></div>
 
       <div class="topstats" id="topStats"></div>
@@ -75,7 +77,7 @@
       </div>
     </div>
 
-    <div id="chartWrap"></div>
+    <div id="chartWrap"><div id="whyCard" class="whycard hidden" role="dialog" aria-label="What triggered this entry"></div></div>
 
     <div id="tooltip" class="tooltip hidden"></div>
     <div id="toast" class="toast hidden"></div>

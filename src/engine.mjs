@@ -314,6 +314,11 @@ const NO_DAY = -2147483648;
  *   exitFn(closedBar, dir, state)       -> true closes at the next open
  *   stopFn(closedBar, state)            -> a stop price; it can only tighten
  *   onTrade(trade)                       called as each trade is booked
+ *   onSignal(sigBar, dir, what, info)    what became of each signal, for the
+ *             chart's explanations: "entered", "armed" then "filled" /
+ *             "replaced" / "cancelled" / "expired", "flipped" (it closed the
+ *             open trade), "held", "ignored", "dropped" (the trade left on
+ *             that bar), "refused" with info.why. Observes only.
  *   haltFn()                             -> true ends the run (an account died)
  *   entries   [{bar, dir, price?, slPts, tpPts, lots?, t1Pts?, t1Frac?}] sorted
  *             by bar: fills worked out elsewhere (a resting order at a level, a
@@ -342,7 +347,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
   // when the bar arrives -- it can only say "a long should leave here" and "a
   // short should leave here", and sometimes both are true.
   const exitSig = x.exitSig || null;
-  const { sizer, tpFn, exitFn, stopFn, onTrade, haltFn, entryGate } = x;
+  const { sizer, tpFn, exitFn, stopFn, onTrade, haltFn, entryGate, onSignal } = x;
   const entries = x.entries || null;
   const nEntries = entries ? entries.length : 0;
 
@@ -371,6 +376,8 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
 
   const blocked = () => dayCapHit || dayLossHit ||
     (breaker > 0 && dayRealised <= -breaker) || (profitBlock > 0 && dayRealised >= profitBlock);
+  // which of them, for onSignal
+  const blockWhy = () => (dayCapHit ? "dayCap" : dayLossHit ? "dayLoss" : breaker > 0 && dayRealised <= -breaker ? "breaker" : "profitBlock");
   const state = () => ({ dir: pos, fill: notional / qIn, ep, atr: atrSig, slD: slDist, tpD: tpDist,
                          entBar: ei, qty: qOpen, mx, mn, sigBar: sigIdx, tsl });
 
@@ -540,16 +547,25 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
   // Exits decided on the bar that just closed, filled at this bar's open.
   // Returns "end" (the bar is over), "flip" (an entry may follow) or null.
   function openExit(i) {
-    const xs = exitSig ? exitSig[i - 1] : 0;
-    if (xs && ((pos === 1 && (xs & 1)) || (pos === -1 && (xs & 2)))) { close_(O[i], EXIT.SIGNAL, i); return "end"; }
-    if (exitFn && exitFn(i - 1, pos, state())) { close_(O[i], EXIT.SIGNAL, i); return "end"; }
-    if (staleBars > 0 && i - 1 - ei >= staleBars && (pos === 1 ? mx - notional / qIn : notional / qIn - mn) < x.staleMfeAtr * atrSig) {
-      close_(O[i], EXIT.STALE, i); return "end";
-    }
-    if (maxBars > 0 && i - ei >= maxBars) { close_(O[i], EXIT.TIME, i); return "end"; }
     const s = sig[i - 1];
-    if (x.flipOnOpposite && s !== 0 && (s !== pos || x.flipOnAnySignal)) { close_(O[i], EXIT.FLIP, i); return "flip"; }
+    const xs = exitSig ? exitSig[i - 1] : 0;
+    if (xs && ((pos === 1 && (xs & 1)) || (pos === -1 && (xs & 2)))) return endAt(i, s, EXIT.SIGNAL);
+    if (exitFn && exitFn(i - 1, pos, state())) return endAt(i, s, EXIT.SIGNAL);
+    if (staleBars > 0 && i - 1 - ei >= staleBars && (pos === 1 ? mx - notional / qIn : notional / qIn - mn) < x.staleMfeAtr * atrSig) {
+      return endAt(i, s, EXIT.STALE);
+    }
+    if (maxBars > 0 && i - ei >= maxBars) return endAt(i, s, EXIT.TIME);
+    if (x.flipOnOpposite && s !== 0 && (s !== pos || x.flipOnAnySignal)) {
+      if (onSignal) onSignal(i - 1, s, "flipped", { bar: i, closed: pos });
+      close_(O[i], EXIT.FLIP, i); return "flip";
+    }
     return null;
+  }
+  // An exit at this open ends the bar, so a signal on the bar before opens nothing.
+  function endAt(i, s, reason) {
+    close_(O[i], reason, i);
+    if (onSignal && s) onSignal(i - 1, s, "dropped", { bar: i, reason });
+    return "end";
   }
 
   const intraday = !!x.intradayOnly && !!CT;
@@ -566,6 +582,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       // a bar in the flat window: flatten at its last price, drop any order.
       if (sessionFlat && curTday !== NO_DAY) {
         if (pos !== 0) close_(C[i - 1], EXIT.FLAT, i - 1);
+        if (onSignal && armDir !== 0) onSignal(armBar - 1, armDir, "cancelled", { bar: i, why: "session" });
         armDir = 0;
       }
       curTday = TD[i]; dayRealised = 0; dayCapHit = false; dayLossHit = false;
@@ -573,8 +590,13 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
 
     // A working entry order: cancelled, or filled somewhere inside this bar.
     if (pos === 0 && armDir !== 0) {
-      if (flatNow || i > armBy || blocked() || (x.cancelOpposite && s !== 0 && s !== armDir)) armDir = 0;
-      else if (i > armBar) {
+      if (flatNow || i > armBy || blocked() || (x.cancelOpposite && s !== 0 && s !== armDir)) {
+        if (onSignal) {
+          const why = flatNow ? "flat" : i > armBy ? "" : blocked() ? blockWhy() : "opposite";
+          onSignal(armBar - 1, armDir, why ? "cancelled" : "expired", { bar: i, why, px: armPx, limit: armLimit, window: armBy - armBar });
+        }
+        armDir = 0;
+      } else if (i > armBar) {
         const d = armDir;
         let px = NaN;
         if (!armLimit && i === armBar + 1 && x.entryRefused !== "optimistic" &&
@@ -591,6 +613,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
         }
         if (px === px) {
           open_(d, i, px, armEp, armSl, armTp, armQty, armBar - 1, armAtr, armLimit ? "limit" : "stop", armLimit, true);
+          if (onSignal) { levels(); onSignal(armBar - 1, d, "filled", { bar: i, px, limit: armLimit, lots: qIn, stop: lvSl, stopWhy: lvSlWhy, target: lvTp, targetWhy: lvTpWhy }); }
           // measured from where the target is measured from (tpFromFill)
           if (x.scaleOutFrac > 0) { t1Px = tpBase + d * Math.max(armAtr * x.scaleOutAtr, tick); t1Frac = x.scaleOutFrac; }
         }
@@ -608,7 +631,11 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       // The flatten deadline outranks the bracket: the position is closed at
       // this bar's open regardless of where stop and target sit. Checking it
       // first is what makes the run honest about overnight holds being banned.
-      if (flatNow) { close_(O[i], EXIT.FLAT, i); continue; }
+      if (flatNow) {
+        close_(O[i], EXIT.FLAT, i);
+        if (onSignal && s) onSignal(i - 1, s, "refused", { bar: i, why: "flat" });
+        continue;
+      }
 
       // The management hooks read the bar that just closed, from the fill on.
       const k = i - 1;
@@ -637,13 +664,17 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
         }
       }
       if (!flipped) {
+        const held = pos;
         if (bracket(i, fillBar)) {
           // `sameBarReentry` lets a new position open on the very bar the last one
           // exited. It is OFF by default because the re-entry fills at that bar's
           // OPEN — a price that occurred BEFORE the mid-bar stop-out — which is not
           // a sequence that could actually be traded. lib_faithful_eval in the other
           // repo does allow it, so the flag exists to reproduce those numbers.
-          if (!x.sameBarReentry) continue;
+          if (!x.sameBarReentry) {
+            if (onSignal && s) onSignal(i - 1, s, s === held ? "held" : "dropped", { bar: i, reason: trades[trades.length - 1].reason });
+            continue;
+          }
         } else {
           if (x.scaleInOrder === "after") tryAdd(i);
           // The old order: these come AFTER the bracket test, so a gap that
@@ -657,7 +688,10 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
           }
         }
       }
-      if (pos !== 0) continue;   // still holding: no entry logic this bar
+      if (pos !== 0) {           // still holding: no entry logic this bar
+        if (onSignal && s) onSignal(i - 1, s, s === pos ? "held" : "ignored", { bar: i, why: x.flipOnOpposite ? "fillBar" : "flipOff" });
+        continue;
+      }
     }
 
     // Fills worked out elsewhere, managed here. They replace signal entries and
@@ -676,25 +710,32 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       continue;
     }
 
-    if (s === 0 || flatNow || blocked()) continue;
+    if (s === 0) continue;
+    if (flatNow || blocked()) {
+      if (onSignal) onSignal(i - 1, s, "refused", flatNow ? { bar: i, why: "flat" } : { bar: i, why: blockWhy(), realised: dayRealised });
+      continue;
+    }
     // A session's signals end with it. The first bar of a new trading day must
     // not act on the last bar of the one before -- across an early close, the
     // daily halt or a weekend -- just as the flatten above drops its orders:
     // otherwise a stop armed before a holiday's noon close re-arms at the 17:00
     // reopen and an intraday book holds a position overnight.
-    if (sessionFlat && TD[i - 1] !== TD[i]) continue;
+    if (sessionFlat && TD[i - 1] !== TD[i]) { if (onSignal) onSignal(i - 1, s, "refused", { bar: i, why: "session" }); continue; }
     // Optionally stand aside in the run-up to the deadline too, since a trade
     // opened minutes before it can only be flattened for the cost of the fill.
     if (intraday && x.noEntryMinsBeforeFlat > 0 &&
-        inFlatWindow(CT[i], (((x.flattenCt - x.noEntryMinsBeforeFlat) % 1440) + 1440) % 1440, x.reopenCt)) continue;
+        inFlatWindow(CT[i], (((x.flattenCt - x.noEntryMinsBeforeFlat) % 1440) + 1440) % 1440, x.reopenCt)) {
+      if (onSignal) onSignal(i - 1, s, "refused", { bar: i, why: "lastMinutes" });
+      continue;
+    }
     // A stop-out in this direction may still be cooling off.
     if (x.cooldownAfterStopMins > 0 && s === lastStopDir &&
-        TS[i] - lastStopMs < x.cooldownAfterStopMins * 60000) continue;
+        TS[i] - lastStopMs < x.cooldownAfterStopMins * 60000) { if (onSignal) onSignal(i - 1, s, "refused", { bar: i, why: "cooldown" }); continue; }
     // An indicator gate may refuse the entry. By here the signal has already done
     // everything else -- closed an opposite position, cancelled an order.
-    if (entryGate && !entryGate(i - 1, s)) continue;
+    if (entryGate && !entryGate(i - 1, s)) { if (onSignal) onSignal(i - 1, s, "refused", { bar: i, why: "gate" }); continue; }
     const a = atrArr[i - 1];
-    if (!(Number.isFinite(a) && a > 0)) continue;
+    if (!(Number.isFinite(a) && a > 0)) { if (onSignal) onSignal(i - 1, s, "refused", { bar: i, why: "atr" }); continue; }
 
     const slD = Math.max(a * x.slAtrMult, tick);
     // Size from what is known at the signal — never from anything later. Risk
@@ -704,7 +745,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
     let full;
     if (sizer) {
       full = sizer(a, CT ? CT[i] : 0, seq++, i);
-      if (!(full >= 1)) continue;
+      if (!(full >= 1)) { if (onSignal) onSignal(i - 1, s, "refused", { bar: i, why: "sizer" }); continue; }
       if (full > cap) full = cap;
     } else if (x.sizingMode === "risk") {
       const riskPts = x.entryType === "stop" ? slD + Math.max(a * x.entryTriggerAtr, tick)
@@ -717,7 +758,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
     // the day, or none.
     if (x.sizeMult) {
       const m = x.sizeMult[i - 1];
-      if (!(m > 0)) continue;
+      if (!(m > 0)) { if (onSignal) onSignal(i - 1, s, "refused", { bar: i, why: "size" }); continue; }
       if (m !== 1) full = Math.max(1, Math.min(cap, Math.round(full * m)));
     }
     let tpD = tpFn ? Math.max(tpFn(a, full), tick)
@@ -727,6 +768,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
 
     if (x.entryType === "market") {
       open_(s, i, O[i], O[i], slD, tpD, full, i - 1, a, "market", false, true);
+      if (onSignal) { levels(); onSignal(i - 1, s, "entered", { bar: i, px: O[i], lots: qIn, stop: lvSl, stopWhy: lvSlWhy, target: lvTp, targetWhy: lvTpWhy }); }
       if (x.scaleOutFrac > 0) { t1Px = O[i] + s * Math.max(a * x.scaleOutAtr, tick); t1Frac = x.scaleOutFrac; }
       if (x.entryBarExits) {
         if (x.scaleInOrder !== "after") tryAdd(i);
@@ -735,11 +777,13 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       }
     } else {
       // Place (or re-price) the working order off this bar's open.
+      if (onSignal && armDir !== 0) onSignal(armBar - 1, armDir, "replaced", { bar: i, by: i - 1 });
       armDir = s; armBar = i; armBy = i + Math.trunc(x.entryWindowBars);
       armEp = O[i]; armQty = full; armAtr = a; armSl = slD; armTp = tpD;
       armLimit = x.entryType === "limit";
       armPx = armLimit ? Math.round((O[i] - s * a * x.entryLimitAtr) / tick) * tick
                        : O[i] + s * Math.max(a * x.entryTriggerAtr, tick);
+      if (onSignal) onSignal(i - 1, s, "armed", { bar: i, px: armPx, limit: armLimit, lots: full, window: armBy - armBar });
     }
   }
   // A halted run stops there: a position still open has no later price to close at.

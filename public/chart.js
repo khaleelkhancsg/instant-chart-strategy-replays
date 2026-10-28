@@ -89,6 +89,10 @@ export class ChartView {
     this.hover = null;
     this.hoverTrade = null;
     this.onHoverTrade = null;
+    this.hoverSignal = null;     // a signal marker under the pointer (its bar k)
+    this.onHoverSignal = null;
+    // A click on a trade, a signal marker, or nothing: ({trade} | {signal} | null)
+    this.onClick = null;
     this._raf = 0;
 
     this._bindEvents();
@@ -222,6 +226,13 @@ export class ChartView {
   setData(data) {
     const isNew = !this.data || this.data.token !== data.token;
     this.data = data;
+    // What was under the pointer belonged to the old data: forget it, so no
+    // tooltip outlives the trades it described.
+    if (this.hoverTrade || this.hoverSignal) {
+      this.hoverTrade = null; this.hoverSignal = null;
+      if (this.onHoverTrade) this.onHoverTrade(null);
+      if (this.onHoverSignal) this.onHoverSignal(null);
+    }
     if (isNew) {
       // Default to the combine window itself, leaving the warm-up prefix off to
       // the left for anyone who wants to pan into it.
@@ -301,6 +312,7 @@ export class ChartView {
     };
     const DRAW = { price: this._drawPricePane, sub: this._drawSubPane, equity: this._drawEquityPane, daily: this._drawDailyPane };
     for (const k of this.paneOrder) clipped(k, DRAW[k] || ((c) => this._drawStudyPane(c, k)));
+    this._drawWhyBand(ctx);
     this._drawDimAfterResolution(ctx);
     this._drawSessionBands(ctx);
     this._drawResolutionMarker(ctx);
@@ -510,8 +522,11 @@ export class ChartView {
       for (const ln of st.lines) this._drawOverlayLine(ctx, { ...ln, color: ln.color || st.color, width: 1.3 }, P, y, st.map);
     }
 
-    // Trades
+    // Every signal the engine saw, when asked for, then the trades over them
+    if (this.data.signalMarks) this._drawSignals(ctx, P, y);
     this._drawTrades(ctx, P, y);
+    // What triggered the selected entry: the level, the bars that set it, the order
+    this._drawWhy(ctx, P, y);
 
     const stride = (this.data.tfToLocal && this.data.tfToLocal.stride) || 1;
     this._paneLabel(ctx, P,
@@ -570,7 +585,8 @@ export class ChartView {
 
       const win = t.pnl > 0;
       const color = win ? CSS.bull : CSS.bear;
-      const isHover = this.hoverTrade === t;
+      // the selected trade keeps its bracket drawn, as a hovered one shows it
+      const isHover = this.hoverTrade === t || (!!this.data.why && this.data.why.entryTime === t.entryTime);
 
       ctx.globalAlpha = isHover ? 1 : 0.85;
       ctx.strokeStyle = color;
@@ -593,6 +609,166 @@ export class ChartView {
         ctx.beginPath(); ctx.moveTo(x0, tpY); ctx.lineTo(x1, tpY); ctx.stroke();
         ctx.setLineDash([]);
       }
+    }
+  }
+
+  // Every signal bar the engine saw, at its bar, by what became of it: an entry
+  // (solid), an order that never filled (hollow), a refusal (a cross), or a
+  // position already held (a dot). Below the bar for longs, above for shorts.
+  _drawSignals(ctx, P, y) {
+    const marks = this.data.signalMarks, span = this.i1 - this.i0;
+    const r = span > 20000 ? 2.2 : span > 6000 ? 3 : 4;
+    for (const m of marks) {
+      if (m.x < this.i0 - 2 || m.x > this.i1 + 2) continue;
+      if (m.cls === "held" && span > 20000) continue;
+      const px = this.x(m.x), py = y(m.price) + (m.dir === 1 ? 7 : -7);
+      const col = m.dir === 1 ? CSS.bull : CSS.bear;
+      ctx.lineWidth = 1.3;
+      if (m.cls === "held") { ctx.fillStyle = "#4a5666"; ctx.beginPath(); ctx.arc(px, py, 1.6, 0, Math.PI * 2); ctx.fill(); continue; }
+      if (m.cls === "refused") {
+        ctx.strokeStyle = "#e0894a";
+        ctx.beginPath(); ctx.moveTo(px - r, py - r); ctx.lineTo(px + r, py + r); ctx.moveTo(px + r, py - r); ctx.lineTo(px - r, py + r); ctx.stroke();
+        continue;
+      }
+      ctx.beginPath(); ctx.moveTo(px, py - r); ctx.lineTo(px + r, py); ctx.lineTo(px, py + r); ctx.lineTo(px - r, py); ctx.closePath();
+      if (m.cls === "entry") { ctx.fillStyle = col; ctx.fill(); } else { ctx.strokeStyle = col; ctx.stroke(); }
+    }
+  }
+
+  _hitSignal(mx, my) {
+    const P = this.panes && this.panes.price, marks = this.data && this.data.signalMarks;
+    if (!P || !marks || my < P.top || my > P.bottom || !this.priceY) return null;
+    let best = null, bestD = 8;
+    for (const m of marks) {
+      if (m.x < this.i0 || m.x > this.i1) continue;
+      const d = Math.hypot(mx - this.x(m.x), my - (this.priceY(m.price) + (m.dir === 1 ? 7 : -7)));
+      if (d < bestD) { bestD = d; best = m; }
+    }
+    return best;
+  }
+
+  // ── what triggered the selected entry ──
+  // `data.why` holds marks already placed on the 1-minute axis (x, x0/x1 in
+  // local bar indexes) by the page from the strategy's explain(): zones,
+  // levels, dots, lines, moves and spans on the price pane, the order and its
+  // fill, and the signal bar itself, highlighted through the indicator panes.
+  _drawWhy(ctx, P, y) {
+    const W = this.data.why;
+    if (!W) return;
+    const placed = [];
+    const label = (text, lx, ly, color, align = "left") => {
+      if (!text) return;
+      ctx.font = "10px ui-sans-serif, system-ui";
+      const w = ctx.measureText(text).width + 8, h = 14;
+      let x0 = align === "right" ? lx - w : lx, y0 = ly - h / 2;
+      x0 = Math.max(this.plotL + 2, Math.min(this.plotR - w - 2, x0));
+      for (let tries = 0; tries < 8 && placed.some((b) => x0 < b.x + b.w && x0 + w > b.x && y0 < b.y + b.h && y0 + h > b.y); tries++) y0 += h + 1;
+      placed.push({ x: x0, y: y0, w, h });
+      ctx.fillStyle = "rgba(8,12,18,0.86)";
+      ctx.fillRect(x0, y0, w, h);
+      ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.globalAlpha = 0.7;
+      ctx.strokeRect(x0 + 0.5, y0 + 0.5, w - 1, h - 1);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = color;
+      ctx.fillText(text, x0 + 4, y0 + 10.5);
+    };
+    const vis = (a, b) => b >= this.i0 - 1 && a <= this.i1 + 1;
+    // shaded spans first, under everything else
+    for (const m of W.marks) {
+      if ((m.type !== "zone" && m.type !== "span") || !vis(m.x0, m.x1)) continue;
+      const xa = Math.max(this.plotL, this.x(m.x0)), xb = Math.min(this.plotR, this.x(m.x1));
+      if (xb <= xa) continue;
+      ctx.fillStyle = m.type === "span" ? "rgba(198,120,221,0.10)" : "rgba(240,180,41,0.07)";
+      ctx.fillRect(xa, P.top, xb - xa, P.height);
+      ctx.strokeStyle = m.type === "span" ? "rgba(198,120,221,0.45)" : "rgba(240,180,41,0.35)";
+      ctx.setLineDash([2, 3]); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(xa + 0.5, P.top); ctx.lineTo(xa + 0.5, P.bottom); ctx.moveTo(xb - 0.5, P.top); ctx.lineTo(xb - 0.5, P.bottom); ctx.stroke();
+      ctx.setLineDash([]);
+      label(m.label, xa + 2, m.type === "span" ? P.bottom - 12 : P.top + 50, m.type === "span" ? "#c678dd" : "#f0b429");
+    }
+    for (const m of W.marks) {
+      const color = m.color || "#f0b429";
+      if (m.type === "level" && vis(m.x0, m.x1)) {
+        const py = y(m.price);
+        ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.setLineDash(m.dash || []);
+        ctx.beginPath(); ctx.moveTo(this.x(m.x0), py); ctx.lineTo(this.x(m.x1), py); ctx.stroke();
+        ctx.setLineDash([]);
+        label(m.label, this.x(m.x0) + 2, py - 9, color);
+      } else if (m.type === "line" && vis(m.xs[0], m.xs[m.xs.length - 1])) {
+        ctx.strokeStyle = color; ctx.lineWidth = 1.4; ctx.setLineDash(m.dash || []);
+        ctx.beginPath();
+        let on = false;
+        for (let j = 0; j < m.v.length; j++) {
+          if (m.v[j] == null) { on = false; continue; }
+          const px = this.x(m.xs[j]), py = y(m.v[j]);
+          if (on) ctx.lineTo(px, py); else { ctx.moveTo(px, py); on = true; }
+        }
+        ctx.stroke(); ctx.setLineDash([]);
+        const last = m.v.length - 1;
+        if (m.v[last] != null) label(m.label, this.x(m.xs[last]) + 6, y(m.v[last]), color);
+      } else if (m.type === "move" && vis(m.x0, m.x1)) {
+        const xa = this.x(m.x0), ya = y(m.p0), xb = this.x(m.x1), yb = y(m.p1);
+        ctx.strokeStyle = color; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.moveTo(xa, ya); ctx.lineTo(xb, yb); ctx.stroke();
+        const ang = Math.atan2(yb - ya, xb - xa);
+        ctx.fillStyle = color;
+        ctx.beginPath(); ctx.moveTo(xb, yb);
+        ctx.lineTo(xb - 8 * Math.cos(ang - 0.4), yb - 8 * Math.sin(ang - 0.4));
+        ctx.lineTo(xb - 8 * Math.cos(ang + 0.4), yb - 8 * Math.sin(ang + 0.4));
+        ctx.closePath(); ctx.fill();
+        label(m.label, (xa + xb) / 2 + 4, (ya + yb) / 2, color);
+      }
+    }
+    // the order: its price from where it was placed to its fill or its end
+    if (W.order && vis(W.order.x0, W.order.x1)) {
+      const o = W.order, py = y(o.price);
+      ctx.strokeStyle = "#e8eef5"; ctx.lineWidth = 1.2; ctx.setLineDash([4, 3]);
+      ctx.beginPath(); ctx.moveTo(this.x(o.x0), py); ctx.lineTo(this.x(o.x1), py); ctx.stroke();
+      ctx.setLineDash([]);
+      label(o.label, this.x(o.x1) + 6, py, "#e8eef5");
+    }
+    for (const m of W.marks) {
+      if (m.type !== "dot" || !vis(m.x, m.x)) continue;
+      const color = m.color || "#f0b429", px = this.x(m.x), py = y(m.price), r = m.small ? 3 : 4.5;
+      ctx.fillStyle = color; ctx.strokeStyle = "#0b0f14"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      label(m.label, px + 7, py, color);
+    }
+  }
+
+  // The selected signal's bar through the price and indicator panes, and its
+  // marks on the strategy's own sub-pane overlays.
+  _drawWhyBand(ctx) {
+    const W = this.data.why;
+    if (!W || !W.bar || !vis2(this, W.bar[0], W.bar[1])) return;
+    const top = this.panes.price.top, last = this.paneOrder.filter((k) => k !== "equity" && k !== "daily").pop();
+    const bottom = this.panes[last].bottom;
+    const xa = this.x(W.bar[0]), xb = Math.max(xa + 2, this.x(W.bar[1]));
+    ctx.fillStyle = "rgba(232,238,245,0.07)";
+    ctx.fillRect(xa, top, xb - xa, bottom - top);
+    ctx.strokeStyle = "rgba(232,238,245,0.35)"; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(xa + 0.5, top); ctx.lineTo(xa + 0.5, bottom); ctx.moveTo(xb - 0.5, top); ctx.lineTo(xb - 0.5, bottom); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = "bold 9px ui-sans-serif, system-ui";
+    ctx.fillStyle = "#e8eef5";
+    ctx.fillText("signal", xa + 2, top + 9);
+  }
+
+  _drawWhySub(ctx, P) {
+    const W = this.data.why;
+    if (!W || !this._subY) return;
+    for (const m of W.marks) {
+      if (m.type !== "sub" || !vis2(this, m.x, m.x)) continue;
+      const yf = this._subY.get(m.overlay);
+      if (!yf || m.value == null || !Number.isFinite(m.value)) continue;
+      const px = this.x(m.x), py = Math.max(P.top + 4, Math.min(P.bottom - 4, yf(m.value)));
+      ctx.fillStyle = "#f0b429"; ctx.strokeStyle = "#0b0f14"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.font = "10px ui-sans-serif, system-ui";
+      const w = ctx.measureText(m.label).width + 8;
+      const lx = Math.min(this.plotR - w - 2, px + 7), ly = Math.max(P.top + 2, Math.min(P.bottom - 15, py - 7));
+      ctx.fillStyle = "rgba(8,12,18,0.86)"; ctx.fillRect(lx, ly, w, 14);
+      ctx.fillStyle = "#f0b429"; ctx.fillText(m.label, lx + 4, ly + 10.5);
     }
   }
 
@@ -656,13 +832,16 @@ export class ChartView {
     // Histograms first so the lines whose crossing they represent sit on top.
     const ordered = [...ovs].sort((a, b) =>
       (a.kind === "hist" ? 0 : 1) - (b.kind === "hist" ? 0 : 1));
+    this._subY = new Map();   // each overlay's scale, for the selected entry's marks
     for (const o of ordered) {
       const [l, h] = o.autoRange ? [lo, hi] : (o.range || [lo, hi]);
       const oy = (l === lo && h === hi) ? y
                : (v) => P.bottom - ((v - l) / (h - l)) * P.height;
+      this._subY.set(o.name, oy);
       if (o.kind === "hist") this._drawOverlayHist(ctx, o, P, oy);
       else this._drawOverlayLine(ctx, o, P, oy);
     }
+    this._drawWhySub(ctx, P);
     this._paneLabel(ctx, P, ovs.map((o) => o.name).join("  ·  "), "sub");
   }
 
@@ -1083,7 +1262,6 @@ export class ChartView {
         this.requestDraw();
         return;
       }
-      el.style.cursor = mx > this.plotR ? "ns-resize" : "crosshair";
       this.hover = { x: mx, y: my };
       const t = this._hitTrade(mx, my);
       if (t !== this.hoverTrade) {
@@ -1091,7 +1269,24 @@ export class ChartView {
         this.requestDraw();
         if (this.onHoverTrade) this.onHoverTrade(t);
       }
+      const sg = t ? null : this._hitSignal(mx, my);
+      if (sg !== this.hoverSignal) {
+        this.hoverSignal = sg;
+        if (this.onHoverSignal) this.onHoverSignal(sg);
+      }
+      el.style.cursor = mx > this.plotR ? "ns-resize" : t || sg ? "pointer" : "crosshair";
       this._drawCrosshair();
+    });
+
+    // A click that did not drag: a trade, a signal marker, or empty chart.
+    let downAt = null;
+    el.addEventListener("pointerdown", (e) => { downAt = [e.clientX, e.clientY]; });
+    el.addEventListener("click", (e) => {
+      if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 4 || !this.onClick) return;
+      const r = el.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+      if (mx > this.plotR) return;
+      const t = this._hitTrade(mx, my), sg = t ? null : this._hitSignal(mx, my);
+      this.onClick(t ? { trade: t } : sg ? { signal: sg } : null);
     });
 
     el.addEventListener("mouseleave", () => {
@@ -1274,6 +1469,9 @@ export class ChartView {
     ctx.fillText(text, this.plotR + 5, py + 3);
   }
 }
+
+// Whether local bars a..b overlap the view.
+const vis2 = (c, a, b) => b >= c.i0 - 1 && a <= c.i1 + 1;
 
 function pointToSeg(px, py, x0, y0, x1, y1) {
   const dx = x1 - x0, dy = y1 - y0;

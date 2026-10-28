@@ -17,6 +17,7 @@
 // Treat it as a starting point.
 
 import { atr, adx, vwap } from "../src/indicators.mjs";
+import { chk, trig, verdict, cooldown, spark, mark, num, px, adxAtMost, COLOR } from "../src/explain.mjs";
 
 export default {
   id: "vwap_fade",
@@ -73,6 +74,26 @@ export default {
       last = i;
     }
 
+    // Bar k as the loop reads it: the cooldown, the ADX ceiling, then the
+    // distance from VWAP in ATRs against the band, faded or followed.
+    const explain = (k) => {
+      const ok = k >= 1 && Number.isFinite(a[k]) && a[k] > 0;
+      const dev = ok ? (C[k] - vw[k]) / a[k] : NaN, mag = Math.abs(dev), above = dev > 0;
+      const far = ok && !(mag < p.devMin);
+      const checks = [trig(`Close at least ${num(p.devMin)} × ATR from VWAP`, far,
+                           { text: ok ? `${above ? "+" : "−"}${num(mag)} × ATR (${px(C[k])} vs VWAP ${px(vw[k])})` : "ATR not ready",
+                             spark: spark(k, [[C, COLOR.close, "close"], [vw, COLOR.line, "VWAP"], [above ? upBand : dnBand, above ? COLOR.up : COLOR.down, "band"]]) })];
+      if (p.devMax > 0) checks.push(chk(`At most ${num(p.devMax)} × ATR`, !(mag > p.devMax), { text: `${num(mag)} × ATR` }));
+      if (adxArr) checks.push(adxAtMost(adxArr, k, p.adxMax, Math.max(2, Math.trunc(p.adxPeriod) || 14)));
+      checks.push(cooldown(sig, tday, k, p.cooldownBars));
+      const cand = far ? (fade ? (above ? -1 : 1) : (above ? 1 : -1)) : 0;
+      const marks = far ? [mark.level(vw[k], k - 12, k, `VWAP ${px(vw[k])}`, { color: COLOR.line }),
+                           mark.level(above ? upBand[k] : dnBand[k], k - 12, k, `${above ? "+" : "−"}${num(p.devMin)} × ATR`, { color: above ? COLOR.up : COLOR.down }),
+                           mark.dot(k, C[k], `close ${px(C[k])}`, { color: COLOR.close })] : [];
+      return { dir: verdict(cand, checks.filter(Boolean)), checks: checks.filter(Boolean), marks,
+               title: far ? `${num(mag)} × ATR ${above ? "above" : "below"} VWAP: ${fade ? "fade" : "follow"} → ${cand === 1 ? "long" : "short"}` : "Near VWAP" };
+    };
+
     return {
       sig,
       atr: a,
@@ -81,6 +102,7 @@ export default {
         { name: `VWAP +${p.devMin}×ATR`, pane: "price", color: "#3d7a5a", data: upBand, dash: [4, 3] },
         { name: `VWAP −${p.devMin}×ATR`, pane: "price", color: "#7a3d3d", data: dnBand, dash: [4, 3] },
       ],
+      explain,
     };
   },
 };

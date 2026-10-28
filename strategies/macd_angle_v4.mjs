@@ -73,6 +73,7 @@
 // original's published figures — not to plan against them.
 
 import { atr, ema } from "../src/indicators.mjs";
+import { consensusExplain } from "../src/explain.mjs";
 
 export default {
   id: "macd_angle_v4",
@@ -172,6 +173,11 @@ export default {
       overlays: [
         { name: "Set consensus (−4..+4)", pane: "sub", color: "#c9a227", data: consensus, threshold: 0, range: [-4.5, 4.5] },
       ],
+      // Bar k: every set's vote as the loop reads it; any disagreement stands aside.
+      explain: (bar) => consensusExplain(bars, bar, {
+        members: hists, names: sets.map(([f, s, g]) => `MACD ${f}/${Math.max(s, f + 1)}/${g}`), atr: a, slopeBars: k, thr: p.angleThr, priceScaled: true,
+        start: p.rthStartCt, end: p.rthEndCt, minAgree: 0, fade: false, consensus, overlay: "Set consensus (−4..+4)",
+      }),
     };
   },
 };

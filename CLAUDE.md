@@ -18,7 +18,7 @@ from any of them agrees with the others.
 | `search` | a grid ranked in-sample only, with out-of-sample, purge, rank correlation and PBO |
 | `walk_forward` | whether re-choosing from a grid month by month beats holding the base configuration |
 | `sensitivity` | how far the pass rate moves when each setting is nudged (knife-edge check) |
-| `window`, `bars` | one 30-day window in detail; raw bars |
+| `window`, `bars` | one 30-day window in detail (with `explain`: why each trade entered); raw bars |
 | `chart_state`, `chart_apply` | read and drive the chart page the person has open |
 | `papers` | the methodology library in `papers/` |
 
@@ -93,6 +93,11 @@ rule logic into a script: that is a second engine, and it drifts.
   volatility gates, as the research's sizers did.
 - **`tpMaxUsd`** caps the target at that many dollars for the size traded, as the
   MACD fade's `min(5.15 ATR, $600 / (2 x lots))`.
+- **`onSignal(k, dir, what, info)`** reports what became of each signal: entered,
+  armed then filled / replaced / cancelled / expired, flipped, held, ignored,
+  dropped, refused (with `why`). It observes only; test.mjs section 17 holds the
+  trades identical with it on. `runStrategy({ trace: true })` collects it as
+  `signals`.
 - **Day caps and overnight holds.** `dayLossStopUsd` and `dayProfitStopUsd` measure
   an open position from its fill, so use them with intraday-only books.
 - **After any engine change:**
@@ -102,7 +107,7 @@ rule logic into a script: that is a second engine, and it drifts.
 
 ## Tests
 
-- `npm run check`: test.mjs (279), audit, legacy parity (15), MCP end to end (18),
+- `npm run check`: test.mjs (425), audit, legacy parity (15), MCP end to end (19),
   chart link (7).
 - `FUZZ_SEED=<n> FUZZ_SCALE=<k> node test.mjs`: the randomised invariants.
 - `PARITY_SEED`, `PARITY_SCALE`: the same for test/legacy_parity.mjs.
@@ -147,6 +152,35 @@ rule logic into a script: that is a second engine, and it drifts.
 - **A book that wins in 2026 but not in the half-split or forward is selection,
   not edge.** That is the record here: every large 2026 grid's best fell apart on
   the other half.
+
+## Entry explanations (`src/explain.mjs`)
+
+Every strategy's `compute()` returns `explain(k)`. That is the chart's entry
+card, the signals layer's tooltips, the `window` tool's `explain` and
+`chart_state`'s `explained`.
+- **Each condition's `pass` is the signal loop's own expression**, NaN handling
+  included. For example, `!(adx < min)` where the loop skips `adx < min`, but
+  `adx >= min` where it skips `!(adx >= min)`.
+- **Derive the verdict with `verdict(cand, checks)`.** Return `size` when the
+  strategy returns `sizeMult`.
+- **Marks** use the strategy's bar indexes, or time for a longer timeframe's bar.
+  None may reach past bar k.
+- **State a loop carries is replayed from the session's start or the latest
+  cross.** That covers the one-per-side ORB slots, the gap's first window price
+  and a MACD build. Never read it from later bars.
+- **A book that wraps another and changes `sig` must return its own `explain`.**
+  Spreading the base's output carries the base's explain with it, which would
+  describe the wrong signal.
+- **Shared families have helpers there:** `donchianAdxExplain`, `channelBreak`,
+  `consensusExplain`, `htfTrend`, and the cross, ADX and ADR pieces. The MACD
+  families' helpers live in `macd_1m_flip`, `macd_1m_fade` and
+  `macd_5m_anticipate`.
+- test.mjs section 17 checks a new strategy automatically:
+  - the verdict equals `sig` and `sizeMult` on every bar, at the defaults and at
+    random settings;
+  - no failing condition on a bar that fired;
+  - nothing changes when later bars exist;
+  - no mark past the signal bar.
 
 ## Adding an indicator study
 
