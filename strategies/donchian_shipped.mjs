@@ -159,7 +159,7 @@ export default {
   // live $1,250 bot also gates on the 10-minute EMA 9/21 -- add it as an "EMA
   // cross" study on 10m with the gate "with": 59.4% (47.8 / 73.3) -- and has a
   // 40-minute exit and half size late in the day: strategies/donchian_1250.mjs
-  // is that bot whole (72.1%).
+  // is that bot whole (74.5%).
   evals: { "1250": { exec: { contracts: 4, dayBreakerUsd: 300, dayProfitBlockUsd: 250 } } },
 
   // Signal code is SHARED, not copied, so the two books cannot drift apart.

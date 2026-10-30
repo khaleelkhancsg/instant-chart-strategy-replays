@@ -175,8 +175,8 @@ Adding the live $1,250 bot's filter, an **EMA cross 9/21 on 10m** with the gate
 40-minute exit too, as **Stale exit after 20 bars, 1 ATR** in Execution & costs,
 gives **70.3%**. All history falls from 42.1% to 35.6% on the way, though, so this
 is a 2026 edge: check both before trusting one. The live bot also halves its size
-once the day has used 0.9 of its average range; `donchian_1250` is that bot whole,
-at 72.1%.
+once the day has used 0.9 of its average range and flattens at 15:06, not 15:04;
+`donchian_1250` is that bot whole, at 74.5%.
 
 ---
 
@@ -266,7 +266,7 @@ The five books built for the $1,250 eval (below) run here with this eval's $1,00
 
 | strategy | bars | trades | PF | $/trade | pass, all | pass, 2026 | Jan–Mar · Apr–Jul | 2026 at 1 tick | reach payout |
 |---|---|---|---|---|---|---|---|---|---|
-| `donchian_1250` | 2m | 2,354 | 1.175 | +$28.63 | 22.4% | 60.0% | 48.9 · 73.3 | 60.0% | 71.7% |
+| `donchian_1250` | 2m | 2,355 | 1.175 | +$28.62 | 22.6% | 63.0% | 54.4 · 73.3 | 63.0% | 71.4% |
 | `trend_pullback` | 1m | 3,445 | 0.915 | −$8.93 | 5.5% | 44.8% | 54.4 · 33.3 | 44.8% | 55.7% |
 | `macd_fade_1250` | 1m | 4,101 | 0.956 | −$4.19 | 9.3% | 44.2% | 43.3 · 45.3 | 44.2% | 62.3% |
 | `macd_cross` | 5m | 38,348 | 0.971 | −$5.80 | 13.1% | 42.4% | 56.7 · 25.3 | 43.0% | 15.4% |
@@ -310,7 +310,7 @@ block) and the five built for this eval. Every other book trades its $3,000 size
 
 | strategy | pass, all | pass, 2026 | Jan–Mar · Apr–Jul | 2026 at 1 tick | reach payout |
 |---|---|---|---|---|---|
-| `donchian_1250` (4 lots) | 34.4% | 72.1% | 71.1 · 73.3 | 72.1% | 60.0% |
+| `donchian_1250` (4 lots) | 34.7% | 74.5% | 75.6 · 73.3 | 74.5% | 60.0% |
 | `trend_pullback` | 22.3% | 72.1% | 82.2 · 60.0 | 72.1% | 32.9% |
 | `orb_trend` | 20.6% | 63.6% | 62.2 · 65.3 | 63.6% | 43.7% |
 | `macd_fade_1250` | 33.4% | 55.8% | 60.0 · 50.7 | 55.8% | 48.0% |
@@ -348,7 +348,7 @@ block) and the five built for this eval. Every other book trades its $3,000 size
 
 What the tables say:
 - **The Donchian books lead.**
-  - On the $1,250 eval, `donchian_1250` (the $1,250 bot whole) passes 72.1% of
+  - On the $1,250 eval, `donchian_1250` (the $1,250 bot whole) passes 74.5% of
     2026 windows, above 70% in both halves. It is the only book that also held up
     forward (below).
   - Over all history, `donchian_eff_rth` (42.0%) and `donchian_shipped` (35.5%)
@@ -395,7 +395,7 @@ trading days none of them was chosen on (`research/forward_1250.mjs`).
 
 | book | 2026 calendar (Jan–Mar · Apr–Jul) | 2026 bootstrap | coin-flip twin, calendar | forward: trades, net, windows passed |
 |---|---|---|---|---|
-| **`donchian_1250`** | **72.1%** (71.1 · 73.3) | 70.8% | 33.3% | 23, **+$2,532**, **100%** |
+| **`donchian_1250`** | **74.5%** (75.6 · 73.3) | 71.1% | 32.5% | 23, **+$2,532**, **100%** |
 | `trend_pullback` | 72.1% (82.2 · 60.0) | 72.4% | 31.2% | 51, −$2,162, 5.9% |
 | `orb_trend` | 63.6% (62.2 · 65.3) | 48.5% | 39.4% | 20, −$234, 58.8% |
 | `macd_fade_1250` | 55.8% (60.0 · 50.7) | 67.7% | 37.6% | 56, −$2,160, 17.6% |
@@ -405,16 +405,16 @@ What it shows:
 - **The two shipped books came over exactly.**
   - `macd_fade_1250` reproduces the research's 67.7% (bootstrap) to the decimal,
     with the same 172 trades.
-  - `donchian_1250` gives 70.8% against the research's 71.1%, with 127 trades
-    against 128. The small gap is the lab's physically consistent fills.
+  - `donchian_1250` reproduces the research's 71.1% (bootstrap) with the same 128
+    trades, at the bot's 15:06 flat.
 - **Adding an indicator improved neither** (`research/combos_1250.mjs`).
   - 31 variations of the Donchian and 30 of the MACD fade were tried one at a
     time. None beat its book in both halves by both methods.
   - Every combination of the near misses then failed the half-split test. The
-    Donchian combination best on Jan–Mar scored 89.2 there and 66.3 on Apr–Jul,
-    below the shipped book.
+    Donchian combination best on Jan–Mar scored 89.4 there and 66.3 on Apr–Jul,
+    below the shipped book's 74.6.
   - Some additions clearly hurt. An RSI no-chase gate takes the Donchian's
-    Jan–Mar from 71% to 7%: its profit is in the breakouts that chase.
+    Jan–Mar from 76% to 11%: its profit is in the breakouts that chase.
 - **The three combinations looked good in 2026 and did not survive**
   (`research/combos_1250_new.mjs`).
   - Each came from a grid on 2026 (2,304, 1,152 and 576 configurations) as the

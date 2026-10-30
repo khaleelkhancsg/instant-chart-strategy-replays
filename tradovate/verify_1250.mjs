@@ -52,16 +52,13 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const RULES = { target: 1250, dd: 1000, consistency: 0.5 };
 const FILL = { slipMult: 1, feeMult: 1, limitFillTp: "close", dayCap: 600, profitBlock: 250, cancelOpposite: true };
 
-// The chart lab's book on the $1,250 eval, with its per-bar explanations. Its
-// donchian_1250 flattens at 15:04, the $3,000 bot's time; the $1,250 bot and this
-// indicator flatten at 15:05, so `over` runs the lab at that time to compare them.
+// The chart lab's book on the $1,250 eval, with its per-bar explanations.
 const { bars: B1 } = loadBars();
 const STRATS = await loadStrategies();
-function labRun(id, over = {}) {
+function labRun(id) {
   const s = STRATS.get(id), b = evalBase(s, "1250");
-  return runStrategy(B1, s, b.params, resolveExec({ ...b.exec, ...over }), { filter: b.filter, explain: true });
+  return runStrategy(B1, s, b.params, resolveExec(b.exec), { filter: b.filter, explain: true });
 }
-const BOT_FLAT = { flattenCt: 905, noEntryMinsBeforeFlat: 10 };
 
 // ── load an indicator the way Tradovate does, with its tools stubbed ─────
 function loadIndicator(file) {
@@ -370,7 +367,7 @@ console.log("A. mnqDonchian1250 -- Donchian 30 + ADX + efficiency + rescue, 10-m
   compareTrades("Donchian", mine, lib);
   report("Donchian", mine, lib);
   const d0 = S.dayFirstBar.get(S.days[M.Y26[0]]);
-  const LAB = labRun("donchian_1250", BOT_FLAT);
+  const LAB = labRun("donchian_1250");
   check("the lab's 2-minute bars are this file's", LAB.tf.close.length === nT && LAB.tf.ts[nT - 1] === tf.ts[nT - 1] && LAB.tf.close[d0] === tf.close[d0]);
   compareLab("Donchian", mine, LAB.trades, d0);
 

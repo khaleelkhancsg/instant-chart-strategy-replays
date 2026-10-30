@@ -69,28 +69,28 @@
     }
    ]
   },
-  "cal": 73.3,
-  "calA": 73.3,
+  "cal": 75.8,
+  "calA": 77.8,
   "calB": 73.3,
   "ci": [
-   33.8,
-   93.7
+   35.7,
+   94.6
   ],
-  "boot": 73.3,
-  "bootA": 74.4,
+  "boot": 73.6,
+  "bootA": 75.2,
   "bootB": 75.8,
-  "trades": 124,
-  "net": 11009,
-  "winRate": 66.9,
+  "trades": 125,
+  "net": 11093,
+  "winRate": 67.2,
   "perTrade": 89,
   "pf": 1.73
  },
  "null": {
   "seeds": 20,
-  "cal": 35.7,
-  "calA": 38.5,
-  "calB": 32.3,
-  "boot": 34.2,
+  "cal": 34.9,
+  "calA": 38.7,
+  "calB": 30.4,
+  "boot": 33.7,
   "atLeastReal": 0,
   "best": 56.4
  },
@@ -104,19 +104,19 @@
     0
    ],
    "label": "adxMin=25, 10m 9/21, lateRangeUsed=0.9, until 15:00, no ADR cap",
-   "cal": 72.1,
-   "calA": 71.1,
+   "cal": 74.5,
+   "calA": 75.6,
    "calB": 73.3,
    "ci": [
-    32.9,
-    93.2
+    34.7,
+    94.2
    ],
-   "boot": 70.8,
-   "bootA": 71.1,
+   "boot": 71.1,
+   "bootA": 71.8,
    "bootB": 75.9,
-   "trades": 127,
-   "net": 9849,
-   "winRate": 66.1,
+   "trades": 128,
+   "net": 9933,
+   "winRate": 66.4,
    "perTrade": 78,
    "pf": 1.62
   },
@@ -129,19 +129,19 @@
     1
    ],
    "label": "adxMin=25, 10m 9/21, lateRangeUsed=0.9, until 15:00, ADR used <= 1.5",
-   "cal": 72.1,
-   "calA": 71.1,
+   "cal": 74.5,
+   "calA": 75.6,
    "calB": 73.3,
    "ci": [
-    32.9,
-    93.2
+    34.7,
+    94.2
    ],
-   "boot": 71.8,
-   "bootA": 71.1,
+   "boot": 72,
+   "bootA": 71.8,
    "bootB": 77.1,
-   "trades": 125,
-   "net": 9957,
-   "winRate": 66.4,
+   "trades": 126,
+   "net": 10040,
+   "winRate": 66.7,
    "perTrade": 80,
    "pf": 1.65
   },
@@ -204,21 +204,21 @@
     0
    ],
    "label": "adxMin=25, 10m 9/21, lateRangeUsed=1.1, until 15:00, no ADR cap",
-   "cal": 74.5,
-   "calA": 68.9,
+   "cal": 77,
+   "calA": 73.3,
    "calB": 81.3,
    "ci": [
-    34.7,
-    94.2
+    36.7,
+    95.1
    ],
-   "boot": 68.2,
-   "bootA": 67.5,
+   "boot": 68.6,
+   "bootA": 69.2,
    "bootB": 73.4,
-   "trades": 124,
-   "net": 9845,
-   "winRate": 66.1,
-   "perTrade": 79,
-   "pf": 1.57
+   "trades": 125,
+   "net": 10038,
+   "winRate": 66.4,
+   "perTrade": 80,
+   "pf": 1.58
   },
   {
    "idx": [
@@ -229,21 +229,21 @@
     1
    ],
    "label": "adxMin=25, 10m 9/21, lateRangeUsed=1.1, until 15:00, ADR used <= 1.5",
-   "cal": 74.5,
-   "calA": 68.9,
+   "cal": 77,
+   "calA": 73.3,
    "calB": 81.3,
    "ci": [
-    34.7,
-    94.2
+    36.7,
+    95.1
    ],
-   "boot": 68.5,
-   "bootA": 67.5,
+   "boot": 69,
+   "bootA": 69.2,
    "bootB": 73.4,
-   "trades": 122,
-   "net": 9952,
-   "winRate": 66.4,
+   "trades": 123,
+   "net": 10146,
+   "winRate": 66.7,
    "perTrade": 82,
-   "pf": 1.6
+   "pf": 1.61
   },
   {
    "idx": [
@@ -311,14 +311,14 @@
     32.9,
     93.2
    ],
-   "boot": 76.1,
-   "bootA": 89.2,
+   "boot": 76.3,
+   "bootA": 89.6,
    "bootB": 70.5,
-   "trades": 118,
-   "net": 11482,
-   "winRate": 69.5,
+   "trades": 119,
+   "net": 11564,
+   "winRate": 69.7,
    "perTrade": 97,
-   "pf": 1.92
+   "pf": 1.93
   },
   {
    "idx": [
@@ -336,13 +336,13 @@
     31.5,
     92.4
    ],
-   "boot": 77.2,
-   "bootA": 89.2,
+   "boot": 77.4,
+   "bootA": 89.6,
    "bootB": 72.5,
-   "trades": 115,
-   "net": 11678,
-   "winRate": 70.4,
-   "perTrade": 102,
+   "trades": 116,
+   "net": 11762,
+   "winRate": 70.7,
+   "perTrade": 101,
    "pf": 2
   },
   {
@@ -411,14 +411,14 @@
     34.3,
     93.9
    ],
-   "boot": 78.4,
-   "bootA": 88.8,
+   "boot": 78.9,
+   "bootA": 89.7,
    "bootB": 71.7,
-   "trades": 116,
-   "net": 12438,
-   "winRate": 69.8,
-   "perTrade": 107,
-   "pf": 1.99
+   "trades": 117,
+   "net": 12629,
+   "winRate": 70.1,
+   "perTrade": 108,
+   "pf": 2
   },
   {
    "idx": [
@@ -436,14 +436,14 @@
     32.9,
     93.2
    ],
-   "boot": 78.9,
-   "bootA": 88.8,
+   "boot": 79.5,
+   "bootA": 89.7,
    "bootB": 73,
-   "trades": 113,
-   "net": 12634,
-   "winRate": 70.8,
-   "perTrade": 112,
-   "pf": 2.07
+   "trades": 114,
+   "net": 12828,
+   "winRate": 71.1,
+   "perTrade": 113,
+   "pf": 2.08
   },
   {
    "idx": [
@@ -504,21 +504,21 @@
     0
    ],
    "label": "adxMin=20, 10m 9/21, lateRangeUsed=0.9, until 15:00, no ADR cap",
-   "cal": 73.3,
-   "calA": 73.3,
+   "cal": 75.8,
+   "calA": 77.8,
    "calB": 73.3,
    "ci": [
-    33.8,
-    93.7
+    35.7,
+    94.6
    ],
-   "boot": 71.9,
-   "bootA": 74.4,
+   "boot": 72.2,
+   "bootA": 75.2,
    "bootB": 73.3,
-   "trades": 126,
-   "net": 10902,
-   "winRate": 66.7,
+   "trades": 127,
+   "net": 10986,
+   "winRate": 66.9,
    "perTrade": 87,
-   "pf": 1.69
+   "pf": 1.7
   },
   {
    "idx": [
@@ -529,19 +529,19 @@
     1
    ],
    "label": "adxMin=20, 10m 9/21, lateRangeUsed=0.9, until 15:00, ADR used <= 1.5",
-   "cal": 73.3,
-   "calA": 73.3,
+   "cal": 75.8,
+   "calA": 77.8,
    "calB": 73.3,
    "ci": [
-    33.8,
-    93.7
+    35.7,
+    94.6
    ],
-   "boot": 73.3,
-   "bootA": 74.4,
+   "boot": 73.6,
+   "bootA": 75.2,
    "bootB": 75.8,
-   "trades": 124,
-   "net": 11009,
-   "winRate": 66.9,
+   "trades": 125,
+   "net": 11093,
+   "winRate": 67.2,
    "perTrade": 89,
    "pf": 1.73
   },
@@ -604,21 +604,21 @@
     0
    ],
    "label": "adxMin=20, 10m 9/21, lateRangeUsed=1.1, until 15:00, no ADR cap",
-   "cal": 73.3,
-   "calA": 73.3,
+   "cal": 75.2,
+   "calA": 76.7,
    "calB": 73.3,
    "ci": [
-    33.8,
-    93.7
+    35.2,
+    94.4
    ],
-   "boot": 69,
-   "bootA": 70.8,
+   "boot": 69.4,
+   "bootA": 72.4,
    "bootB": 70.1,
-   "trades": 124,
-   "net": 10744,
-   "winRate": 66.9,
+   "trades": 125,
+   "net": 10937,
+   "winRate": 67.2,
    "perTrade": 87,
-   "pf": 1.63
+   "pf": 1.64
   },
   {
    "idx": [
@@ -629,21 +629,21 @@
     1
    ],
    "label": "adxMin=20, 10m 9/21, lateRangeUsed=1.1, until 15:00, ADR used <= 1.5",
-   "cal": 73.3,
-   "calA": 73.3,
+   "cal": 75.2,
+   "calA": 76.7,
    "calB": 73.3,
    "ci": [
-    33.8,
-    93.7
+    35.2,
+    94.4
    ],
-   "boot": 70.1,
-   "bootA": 70.8,
+   "boot": 70.5,
+   "bootA": 72.4,
    "bootB": 71.9,
-   "trades": 122,
-   "net": 10851,
-   "winRate": 67.2,
-   "perTrade": 89,
-   "pf": 1.66
+   "trades": 123,
+   "net": 11045,
+   "winRate": 67.5,
+   "perTrade": 90,
+   "pf": 1.67
   },
   {
    "idx": [
@@ -711,14 +711,14 @@
     33.8,
     93.7
    ],
-   "boot": 77.2,
-   "bootA": 91,
+   "boot": 77.5,
+   "bootA": 91.4,
    "bootB": 67.7,
-   "trades": 118,
-   "net": 11935,
-   "winRate": 69.5,
+   "trades": 119,
+   "net": 12017,
+   "winRate": 69.7,
    "perTrade": 101,
-   "pf": 1.93
+   "pf": 1.94
   },
   {
    "idx": [
@@ -736,14 +736,14 @@
     32.4,
     92.9
    ],
-   "boot": 78.9,
-   "bootA": 91,
+   "boot": 79.2,
+   "bootA": 91.4,
    "bootB": 70.6,
-   "trades": 115,
-   "net": 12131,
-   "winRate": 70.4,
+   "trades": 116,
+   "net": 12215,
+   "winRate": 70.7,
    "perTrade": 105,
-   "pf": 2
+   "pf": 2.01
   },
   {
    "idx": [
@@ -811,14 +811,14 @@
     36.7,
     95.1
    ],
-   "boot": 79.2,
-   "bootA": 90.5,
+   "boot": 79.6,
+   "bootA": 91.1,
    "bootB": 68.5,
-   "trades": 117,
-   "net": 12737,
-   "winRate": 70.1,
-   "perTrade": 109,
-   "pf": 1.99
+   "trades": 118,
+   "net": 12929,
+   "winRate": 70.3,
+   "perTrade": 110,
+   "pf": 2
   },
   {
    "idx": [
@@ -836,14 +836,14 @@
     35.2,
     94.4
    ],
-   "boot": 80.3,
-   "bootA": 90.5,
+   "boot": 80.8,
+   "bootA": 91.1,
    "bootB": 70.8,
-   "trades": 114,
-   "net": 12933,
-   "winRate": 71.1,
-   "perTrade": 113,
-   "pf": 2.06
+   "trades": 115,
+   "net": 13127,
+   "winRate": 71.3,
+   "perTrade": 114,
+   "pf": 2.07
   },
   {
    "idx": [

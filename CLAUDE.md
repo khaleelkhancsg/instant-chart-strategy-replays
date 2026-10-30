@@ -134,7 +134,7 @@ rule logic into a script: that is a second engine, and it drifts.
 ## The $1,250 books, and testing a new one
 
 - **`donchian_1250` is the $1,250 bot whole and the book to beat.**
-  - 2026: calendar 72.1%, bootstrap 70.8%.
+  - 2026: calendar 74.5%, bootstrap 71.1%.
   - Forward, Sep 10 - Oct 26 2026: +$2,532, every window passed.
 - **`macd_fade_1250` reproduces the research's 67.7% exactly, but lost forward.**
 - **`trend_pullback`, `orb_trend` and `macd_momentum` are the indicator

@@ -26,42 +26,44 @@
 //                 the fail stretches looked like, would have avoided them.
 //
 // RESULT (2026; calendar windows, the chart's sweep):
-//   MECHANICS  donchian_1250 ($1,250) runs P x64, F x41, P x55. All 41 failed
-//     windows (starts Mar 11 - Apr 20) breached on 4 days, 80% on two: Apr 21
-//     (20) and Mar 31 (13), each a single -$600 trade at the platform's line. A
-//     window shares 29 of its 30 days with the next, so every window still
-//     short of the target on such a day fails on it. Beyond that: the same 137
-//     days in random order give ~12 pass / not-pass runs, the real order 4 (1%
-//     of shuffles), because 7 of the 17 cap losses fell in Mar 30 - Apr 23 (a
-//     bunch random order makes 10% of the time). donchian_shipped ($3,000):
+//   MECHANICS  donchian_1250 ($1,250) runs P x64, F x35, P x55, with a few stray
+//     fails in March. All 35 (starts Mar 17 - Apr 20) breached on 4 days, 94% on
+//     two: Apr 21 (20) and Mar 31 (13), each a single -$600 trade at the
+//     platform's line. A window shares 29 of its 30 days with the next, so every
+//     window still short of the target on such a day fails on it. Beyond that:
+//     the same 137 days in random order give ~12 pass / not-pass runs, the real
+//     order 6 (6% of shuffles), and 7 of the 17 cap losses fell in Mar 30 - Apr 23
+//     (a bunch random order makes 10% of the time). The one extra trade the 15:06
+//     flat allows (Feb 5, 15:04 CT) took that from 4 runs (1%) to 6 (6%), so treat
+//     the bunching as weak evidence. donchian_shipped ($3,000):
 //     its runs are what random order gives, and back-to-back cap losses are
 //     RARER than chance (10 against 16).
 //   WHAT DIFFERED  fail-regime days against pass-regime days:
 //     - not the breakouts: raw 30-bar breakouts reached +1.75 ATR before -3 ATR
-//       as often or more (69 vs 63%, 67 vs 59%);
-//     - the cap: losses at the platform line 3-4x as often (5.7 vs 1.6 per 20
-//       days; 9.7 vs 3.9), and half the losers (50%, 55%) saw price go 1.75 ATR
+//       as often or more (71 vs 62%, 67 vs 59%);
+//     - the cap: losses at the platform line 2-5x as often (7.5 vs 1.6 per 20
+//       days; 9.7 vs 3.9), and most losers (67%, 55%) saw price go 1.75 ATR
 //       their way later that day (27%, 18% in pass stretches): right, early;
 //     - the first hour flips from the best trades (81-82% won) to the worst
 //       (20%, 35%); breakouts against the 10-day move collapse (0 of 3, 36%
-//       won; 67-74% in pass stretches);
+//       won; 69-74% in pass stretches);
 //     - the market, where a 90% day-bootstrap interval excludes zero: the
-//       $1,250 fail phase sat in a stronger 10-day trend (efficiency 0.41 vs
+//       $1,250 fail phase sat in a stronger 10-day trend (efficiency 0.57 vs
 //       0.21; the $3,000 book's 0.31 vs 0.19 only reaches zero); the $3,000 book's are wider than their recent
 //       average (range 1.06 vs 0.89 ADR, overnight 0.94 vs 0.70, first hour
-//       0.64 vs 0.53) but the $1,250 phase's first hours were NARROWER (0.50 vs
+//       0.64 vs 0.53) but the $1,250 phase's first hours were NARROWER (0.47 vs
 //       0.62). ATR, gaps, intraday efficiency, 2-min autocorrelation and the
 //       share of bars the gates pass: no difference. In June 2026 the $3,000
 //       book met 2-min ATRs of 50-95 points, putting its $1,000 line (62.5
 //       points at 8 lots) under one ATR away.
 //   INDICATORS  barely differ by regime (largest: the $1,250 fail phase's trades
-//     at lower ATR, 20.5 vs 27.2, ATR ratio 0.77 vs 1.09; the $3,000 fail
+//     at lower ATR, 20.4 vs 27.1, ATR ratio 0.76 vs 1.09; the $3,000 fail
 //     trades later in the day's range, ADR used 0.75 vs 0.56). None tells
 //     winners from losers in both halves; the efficiency ratio leans right in
-//     both, weakly (AUC 0.53-0.65).
+//     both, weakly (AUC 0.53-0.66).
 //   FORESIGHT  skipping or halving first-hour entries after a wide night
 //     (0.8-1.2 ADR) improves no book in both halves by both methods; skipping
-//     every first-hour entry takes the $1,250 book from 72.1% to 40.6%. The
+//     every first-hour entry takes the $1,250 book from 74.5% to 40.6%. The
 //     TopstepX block (Sep 10 - Oct 26, every window passed) was trending
 //     (0.34) with wide nights (1.05 ADR) too. The fail stretches are visible
 //     afterwards and not, by these measures, beforehand.

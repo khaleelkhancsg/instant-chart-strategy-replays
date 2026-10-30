@@ -14,7 +14,7 @@
 //              its 10-session average ("ADR used")
 //   exit       the 40-minute exit: out at the next open once a trade has run 20
 //              bars without ever being 1 ATR in profit; else 5 ATR stop / 1.75
-//              ATR target, the $600 day line, flat 15:04 CT
+//              ATR target, the $600 day line, flat 15:06 CT
 //   day        4 lots, -$300 breaker, +$250 profit block, the $600 limit
 //
 // The trend filter and the late size refuse or shrink the ENTRY only: a refused
@@ -22,15 +22,15 @@
 //
 // Research (lib_shipped, bootstrap, 2026): 71.1% (Jan-Mar 74.3, Apr-Jul 75.1),
 // every real 21-day window 74.8%. The lab runs the physically consistent fills
-// (src/engine.mjs DEFAULT_EXEC), which differ slightly from the research
-// engine's older conventions. Its figures on the $1,250 rules
+// (src/engine.mjs DEFAULT_EXEC) and reproduces those 128 trades to the cent
+// (tradovate/verify_1250.mjs). Its figures on the $1,250 rules
 // (research/combos_1250.mjs, forward_1250.mjs):
-//   2026      calendar 72.1% (Jan-Mar 71.1, Apr-Jul 73.3), bootstrap 70.8%
-//             (71.1 / 75.9); 127 trades, 66% won, +$78 a trade.
-//   null      its coin-flip twin passes 33.3%; none of 20 seeds reached 72.1%.
+//   2026      calendar 74.5% (Jan-Mar 75.6, Apr-Jul 73.3), bootstrap 71.1%
+//             (71.8 / 75.9); 128 trades, 66% won, +$78 a trade.
+//   null      its coin-flip twin passes 32.5%; none of 20 seeds reached 74.5%.
 //   forward   TopstepX bars, Sep 10 - Oct 26 2026, after the lab's data ends:
 //             23 trades, +$2,532, PF 1.93, and all 17 calendar windows passed.
-//             Its twin netted +$985.
+//             Its twin netted +$1,005.
 // EMA, MACD, RSI, ADR and ADX variations found nothing that beats it in both
 // halves of 2026 by both methods: 31 tried one at a time, then every combination
 // of the near misses. Its settings stay as the bot trades them.
@@ -57,6 +57,9 @@ export default {
     dayLossStopUsd: 600,
     dayBreakerUsd: 300, dayProfitBlockUsd: 250,
     staleBars: 20, staleMfeAtr: 1,
+    // flat on the first bar opening at/after 15:05 (15:06 on these bars), the
+    // bot's and the research's time; donchian_shipped's 15:04 is the $3,000 bot's
+    flattenCt: 15 * 60 + 5, noEntryMinsBeforeFlat: 10,
   },
   evals: { "3000": { exec: { contracts: 7, dayBreakerUsd: 500, dayProfitBlockUsd: 400 } } },
 

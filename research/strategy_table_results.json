@@ -1,5 +1,5 @@
 {
- "measured": "2026-10-27",
+ "measured": "2026-10-30",
  "data": "2019-05-05 to 2026-07-14",
  "method": "calendar windows (the chart's sweep), flat by 15:05 CT, each strategy's own defaults under the eval",
  "rows": [
@@ -50,32 +50,32 @@
     "1250": {
      "contracts": 4,
      "slippageTicks": 1,
-     "trades": 2452,
-     "profitFactor": 1.173,
-     "expectancy": 15.9,
-     "net": 38982,
-     "passAll": 34.4,
-     "pass2026": 72.1,
-     "passJanMar": 71.1,
+     "trades": 2453,
+     "profitFactor": 1.172,
+     "expectancy": 15.83,
+     "net": 38842,
+     "passAll": 34.7,
+     "pass2026": 74.5,
+     "passJanMar": 75.6,
      "passAprJul": 73.3,
-     "pass2026OneTick": 72.1,
-     "passAllOneTick": 34.4,
+     "pass2026OneTick": 74.5,
+     "passAllOneTick": 34.7,
      "reachPayout": 60
     },
     "3000": {
      "contracts": 7,
      "slippageTicks": 1,
-     "trades": 2354,
+     "trades": 2355,
      "profitFactor": 1.175,
-     "expectancy": 28.63,
-     "net": 67391,
-     "passAll": 22.4,
-     "pass2026": 60,
-     "passJanMar": 48.9,
+     "expectancy": 28.62,
+     "net": 67404,
+     "passAll": 22.6,
+     "pass2026": 63,
+     "passJanMar": 54.4,
      "passAprJul": 73.3,
-     "pass2026OneTick": 60,
-     "passAllOneTick": 22.4,
-     "reachPayout": 71.7
+     "pass2026OneTick": 63,
+     "passAllOneTick": 22.6,
+     "reachPayout": 71.4
     }
    }
   },
