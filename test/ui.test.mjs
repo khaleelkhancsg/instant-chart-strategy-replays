@@ -3,9 +3,10 @@
 // public/ui.mjs holds what the page works out and has no DOM in it. Nothing here
 // draws: the page itself is checked by opening it.
 
+import fs from "node:fs";
 import { loadBars } from "../src/data.mjs";
 import { ctWall, fmtCt, lowerBound, upperBound, nthSmallest, wilson, rateOver, houseRates, runRecord, pairRuns, compareRuns, flips, linkSettings, linkDiff,
-        logPosition, logValue, LOG_TRACK, autoCandle, CANDLE_SIZES, sessionView, stepDays } from "../public/ui.mjs";
+        logPosition, logValue, LOG_TRACK, autoCandle, CANDLE_SIZES, sessionView, stepDays, familyOf, bookRate, pickerRows } from "../public/ui.mjs";
 
 let pass = 0, fail = 0;
 const failures = [];
@@ -216,6 +217,50 @@ t("stepping days moves whole trading days and stops at the ends", () => {
   eq(fake.tday[stepDays(fake, i, 9)], 102);
   eq(fake.tday[stepDays(fake, fake.tday.indexOf(102), -1)], 101);
   eq(fake.tday[stepDays(fake, i, -3)], 100);
+});
+
+console.log("\nthe strategy picker");
+console.log("-------------------");
+const table = JSON.parse(fs.readFileSync(new URL("../research/strategy_table_results.json", import.meta.url), "utf8"));
+const books = table.rows.map((r) => ({ id: r.id, name: r.name, description: "" }));
+t("every book has a family, and the obvious ones are where they should be", () => {
+  eq(books.filter((b) => familyOf(b.id) === "Other").map((b) => b.id), []);
+  eq(["donchian_1250", "orb_trend", "macd_fade_1250", "vwap_fade", "trend_pullback", "tpl_ma_cross", "ema_cross_macd_fade", "supertrend"].map(familyOf),
+     ["Donchian", "Breakouts", "MACD", "Mean reversion", "Trend", "Templates", "MACD", "Trend"]);
+  eq(familyOf("something_new"), "Other");
+});
+t("the rate shown includes a tick of slippage, and halves show only when they are that run", () => {
+  const row = { evals: { "1250": { pass2026: 50, pass2026OneTick: 40, passJanMar: 60, passAprJul: 30, slippageTicks: 0 } } };
+  eq(bookRate(row, "1250"), { rate: 40, q1: null, q2: null });
+  row.evals["1250"].slippageTicks = 1;
+  eq(bookRate(row, "1250"), { rate: 40, q1: 60, q2: 30 });
+  eq(bookRate(row, "3000"), null);
+  eq(bookRate(undefined, "1250"), null);
+});
+t("the list runs best first in each family, on the evaluation in force", () => {
+  const groups = pickerRows(books, table.rows, "1250", new Set());
+  const don = groups.find((g) => g.title === "Donchian").books;
+  eq(don[0].id, "donchian_1250");
+  eq(don[0].book.rate, 74.5);
+  for (const g of groups) for (let k = 1; k < g.books.length; k++) if (g.books[k - 1].book.rate < g.books[k].book.rate) throw new Error(g.title);
+  eq(groups.reduce((n, g) => n + g.books.length, 0), books.length);
+});
+t("favourites go on top, once", () => {
+  const groups = pickerRows(books, table.rows, "1250", new Set(["orb", "donchian_1250"]));
+  eq(groups[0].title, "Favourites");
+  eq(groups[0].books.map((b) => b.id), ["donchian_1250", "orb"]);
+  eq(groups.flatMap((g) => g.books).filter((b) => b.id === "orb").length, 1);
+});
+t("a search keeps every word, across name and id, and an empty family goes", () => {
+  const groups = pickerRows(books, table.rows, "1250", new Set(), "macd fade 1250");
+  eq(groups.map((g) => g.title), ["MACD"]);
+  eq(groups[0].books.map((b) => b.id), ["macd_fade_1250"]);
+  eq(pickerRows(books, table.rows, "1250", new Set(), "nothing like this"), []);
+});
+t("a book the table has not measured still lists, last in its family", () => {
+  const groups = pickerRows([...books, { id: "donchian_new", name: "New Donchian", description: "" }], table.rows, "1250", new Set());
+  const don = groups.find((g) => g.title === "Donchian").books;
+  eq([don.at(-1).id, don.at(-1).book], ["donchian_new", null]);
 });
 
 console.log(`\n${"=".repeat(64)}\n  ${pass} passed, ${fail} failed`);

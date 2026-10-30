@@ -472,7 +472,7 @@ export const TOOLS = [
   },
   {
     name: "chart_state",
-    description: "What the person is looking at in the chart lab (http://localhost:5178) right now: the evaluation tab, the strategy and every setting, the indicators on the chart (and which gate entries), the 30-day window on screen, the visible time range, the window's result and trades, and the sweep's summary -- with each indicator's edge by state -- if one has run. Use it before answering about 'this window' or 'this trade'.",
+    description: "What the person is looking at in the chart lab (http://localhost:5178) right now: the evaluation tab, the strategy and every setting, the indicators on the chart (and which gate entries), the 30-day window on screen, the visible time range, the window's result and trades, the sweep's summary -- with each indicator's edge by state -- if one has run, and the pinned baseline compared with this run, period by period, with the windows gained and lost. Times here are UTC, while the chart and tradingDay read Chicago time, so convert before quoting one. Use it before answering about 'this window' or 'this trade'.",
     inputSchema: obj({}),
     async run() {
       const r = await chartFetch("/api/chart/state");

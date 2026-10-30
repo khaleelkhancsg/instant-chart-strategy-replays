@@ -216,3 +216,32 @@ export function stepDays(bars, i, days) {
   }
   return k;
 }
+
+// ── the strategy picker ──────────────────────────────────────────────────
+// A new strategy file lands in the family its id names, or under Other.
+const FAMILIES = [
+  ["Templates", /^tpl_/], ["Donchian", /donchian/], ["Breakouts", /^orb|prior_day|breakout/], ["MACD", /macd/],
+  ["Mean reversion", /fade|zscore|reversion/], ["Trend", /trend|ema|adx|momentum/],
+];
+const FAMILY_ORDER = ["Donchian", "Breakouts", "Trend", "MACD", "Mean reversion", "Other", "Templates"];
+export const familyOf = (id) => (FAMILIES.find(([, re]) => re.test(id)) || ["Other"])[0];
+
+// What the measured table says of a book on an evaluation (research/strategy_table.mjs):
+// its 2026 rate with a tick of slippage a side, and its halves when the book's own
+// defaults include that slippage, because the table's halves are at the defaults.
+export function bookRate(row, evalId) {
+  const e = row && row.evals && row.evals[evalId];
+  if (!e) return null;
+  return { rate: e.pass2026OneTick ?? e.pass2026, q1: e.slippageTicks >= 1 ? e.passJanMar : null, q2: e.slippageTicks >= 1 ? e.passAprJul : null };
+}
+
+// The list to show: favourites first, then the families, the best book first in each.
+// A search keeps every word it is given, across the name, the id and the description.
+export function pickerRows(list, rows, evalId, favs, query = "") {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean), byId = new Map(rows.map((r) => [r.id, r]));
+  const hit = (s) => { const text = `${s.name} ${s.id} ${s.description || ""}`.toLowerCase(); return words.every((w) => text.includes(w)); };
+  const out = list.filter(hit).map((s) => ({ ...s, family: familyOf(s.id), fav: favs.has(s.id), book: bookRate(byId.get(s.id), evalId) }));
+  const best = (a, b) => (b.book ? b.book.rate : -1) - (a.book ? a.book.rate : -1) || a.name.localeCompare(b.name);
+  const groups = [["Favourites", out.filter((s) => s.fav)], ...FAMILY_ORDER.map((f) => [f, out.filter((s) => !s.fav && s.family === f)])];
+  return groups.filter(([, g]) => g.length).map(([title, g]) => ({ title, books: g.sort(best) }));
+}

@@ -1617,7 +1617,9 @@ export class Navigator {
 
   draw() {
     const dpr = window.devicePixelRatio || 1;
-    const w = this.c.parentElement.clientWidth, h = 46;
+    // inside the padding: past it the strip's last dates would be cut off
+    const box = this.c.parentElement, pad = getComputedStyle(box);
+    const w = box.clientWidth - parseFloat(pad.paddingLeft) - parseFloat(pad.paddingRight), h = 46;
     this.c.width = w * dpr; this.c.height = h * dpr;
     this.c.style.width = w + "px"; this.c.style.height = h + "px";
     const ctx = this.ctx;

@@ -16,7 +16,7 @@ import { windowSpan, DEFAULT_TAIL_MIN } from "/src/window.mjs";
 import { EVALS, EVAL_IDS, DEFAULT_EVAL, evalBase, evalKeys } from "/src/evals.mjs";
 import { STUDIES, STUDY_TFS, resolveStudy, studyLabel, isGating, gateLabel, computeStudy } from "/src/studies.mjs";
 import { describeEntry, describeExit, eventText, explainLines, num as fmtNum, px as fmtPx } from "/src/explain.mjs";
-import { Y2026, wilson, houseRates, runRecord, compareRuns, flips, linkSettings, linkDiff, logPosition, logValue, LOG_TRACK, sessionView, stepDays } from "/ui.mjs";
+import { Y2026, wilson, houseRates, runRecord, compareRuns, flips, linkSettings, linkDiff, logPosition, logValue, LOG_TRACK, sessionView, stepDays, pickerRows } from "/ui.mjs";
 import { loadIndicator, defaultProps, plotters, audit, formingProblems, Problems } from "/tradovate/mock/runtime.mjs";
 
 // The 1-minute x-position a resampled bar should be drawn at: the middle of the
@@ -230,6 +230,7 @@ const RULES_PARAMS = [
 const S = {
   meta: null,
   strategyList: [],
+  strategyTable: { rows: [] },   // measured rates, for the picker
   strategyDesc: null,
   strategyMod: null,
   params: {},
@@ -247,6 +248,7 @@ const S = {
   whyFolded: false,    // its card folded to the summary
   windowStart: null,
   blob: null,        // parsed window bars
+  blobUrl: "",       // the request they came from
   winStartLocal: 0,  // index of the window start inside the blob
   winEndLocal: 0,    // index of the first bar at or after the window end
   tailMin: DEFAULT_TAIL_MIN,   // bars loaded past the window end, so its last trade can finish
@@ -515,7 +517,7 @@ function renderSidebar() {
   const tfDesc = {
     key: "timeframeMin", label: "Signal timeframe (min)", type: "int",
     min: 1, max: 60, step: 1, default: S.strategyDesc.timeframeMin,
-    hint: "THIS is the one that changes results. Bars are rebuilt clock-aligned from the 1-minute source, and the indicators, the signals and the trades are all recomputed on them — donchian_shipped goes from 4,188 trades at 2m to 2,005 at 5m. The 'Candles' picker in the top bar only changes how the price is drawn.",
+    hint: "THIS is the one that changes results. Bars are rebuilt clock-aligned from the 1-minute source, and the indicators, the signals and the trades are all recomputed on them — donchian_shipped goes from 4,188 trades at 2m to 2,005 at 5m. The 'Candles' picker above the chart only changes how the price is drawn.",
   };
   for (const d of [tfDesc, ...(S.strategyDesc.params || [])]) {
     sig.body.appendChild(buildParamControl(d, S.params[d.key], (v) => {
@@ -956,7 +958,7 @@ function paintEdge() {
   }
   const sw = S.sweep;
   if (!sw || !sw.edge) {
-    host.innerHTML = `<div class="sweep-empty">${S.sweeping ? "Sweeping…" : "Run the sweep to see how the trades did in each indicator state."}</div>`;
+    host.innerHTML = `<div class="sweep-empty">${S.sweeping ? "Sweeping…" : "The sweep fills this in."}</div>`;
     return;
   }
   const cell = (r, m) => {
@@ -1224,7 +1226,7 @@ function paintBreakdown() {
   if (!host) return;
   const sw = S.sweep;
   if (!sw || !sw.byHourCt) {
-    host.innerHTML = `<div class="sweep-empty">${S.sweeping ? "Sweeping…" : "Run the sweep to see where the P&L comes from."}</div>`;
+    host.innerHTML = `<div class="sweep-empty">${S.sweeping ? "Sweeping…" : "The sweep fills this in."}</div>`;
     return;
   }
   // Diverging bars: profit to the right of the centre line, loss to the left,
@@ -1258,7 +1260,7 @@ function paintFundedStats() {
   const f = S.sweep && S.sweep.funded;
   if (!f) {
     host.innerHTML = `<div class="sweep-empty">${
-      S.sweeping ? "Simulating funded accounts…" : "Run the sweep to model payouts."
+      S.sweeping ? "Simulating funded accounts…" : "The sweep fills this in."
     }</div>`;
     return;
   }
@@ -1341,12 +1343,13 @@ function pinRun(run) {
 
 // One setting of a link, in the sidebar's words.
 const URL_NAME = { p: "params", x: "exec", r: "rules", f: "filter", u: "funded" };
-function settingName(key) {
+function settingName(key, strategyId = S.strategyDesc.id) {
   if (key === "s") return "Strategy";
   if (key === "e") return "Evaluation";
   if (key === "st") return "Indicators";
   if (key === "tv") return "Tradovate indicators";
-  const k = key.slice(key.indexOf(".") + 1), own = S.strategyDesc && (S.strategyDesc.params || []).find((d) => d.key === k);
+  const k = key.slice(key.indexOf(".") + 1), desc = S.strategyList.find((s) => s.id === strategyId);
+  const own = desc && (desc.params || []).find((d) => d.key === k);
   return own ? own.label : SETTING_LABEL.get(k) || k;
 }
 function settingValue(key, v) {
@@ -1358,7 +1361,7 @@ function settingValue(key, v) {
 }
 // What a run set away from the strategy's defaults.
 function changesText(run) {
-  const list = [...linkSettings(run.hash)].filter(([k]) => k !== "s" && k !== "e").map(([k, v]) => `${settingName(k)} ${settingValue(k, v)}`);
+  const list = [...linkSettings(run.hash)].filter(([k]) => k !== "s" && k !== "e").map(([k, v]) => `${settingName(k, run.strategy)} ${settingValue(k, v)}`);
   return list.length ? list.join(" · ") : "its defaults";
 }
 const signed = (v, dp = 1) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(dp)}`;
@@ -1842,8 +1845,12 @@ async function loadWindow(startMs, { keepTail = false } = {}) {
   S.loadedWarmupMin = warmupMin;
 
   const url = `/api/window?start=${startMs}&days=${S.rules.windowDays}&warmupMin=${warmupMin}&tailMin=${tailMin}`;
-  const ab = await fetch(url).then((r) => r.arrayBuffer());
-  S.blob = parseWindowBlob(ab);
+  // Opening a link asks twice, for the strategy and then its settings, and a book
+  // that holds overnight is 70 MB of bars.
+  if (url !== S.blobUrl) {
+    S.blob = parseWindowBlob(await fetch(url).then((r) => r.arrayBuffer()));
+    S.blobUrl = url;
+  }
   S.winStartLocal = indexAtOrAfter(S.blob.ts, startMs);
   S.winEndLocal = indexAtOrAfter(S.blob.ts, startMs + S.rules.windowDays * DAY);
 
@@ -1894,7 +1901,12 @@ function scheduleSweep() {
 
 async function runSweep() {
   const key = sweepKey(), strategyId = S.strategyDesc.id;
-  if (S.sweeping || key === S.lastSweepKey) return;
+  if (S.sweeping) return;
+  if (key === S.lastSweepKey) {
+    // The settings came back to what was last swept, so its numbers are true again.
+    if (S.sweepStale) { S.sweepStale = false; paintSweepStats(); paintRuns(); }
+    return;
+  }
   S.sweeping = true;
   $("runSweep").disabled = true;
   if (!S.sweep) paintSweepStats();
@@ -2094,7 +2106,7 @@ function renderEvalTabs() {
   $("evalDesc").textContent = EVALS[S.eval].blurb + (list.length ? ` · this strategy's own for it: ${list.join(", ")}` : "");
 }
 // A setting's sidebar label, without its units and "(0 = off)" notes.
-const SETTING_LABEL = new Map([...EXEC_PARAMS, ...ORDER_PARAMS, ...SESSION_PARAMS, ...RULES_PARAMS, ...FILTER_PARAMS]
+const SETTING_LABEL = new Map([...EXEC_PARAMS, ...ORDER_PARAMS, ...SESSION_PARAMS, ...RULES_PARAMS, ...FILTER_PARAMS, ...FUNDED_PARAMS]
   .map((d) => [d.key, d.label.replace(/\s*\([^)]*\)\s*$/, "").replace(/\s*\$$/, "")]));
 
 // ─────────────────────────────── the address bar ───────────────────────────────
@@ -2249,12 +2261,85 @@ function tradeTooltip(t, ev) {
   el.style.top = Math.min(window.innerHeight - el.offsetHeight - 8, ev.clientY + pad) + "px";
 }
 
+// ─────────────────────────────── the strategy picker ───────────────────────────────
+// Every book by its full name, grouped by family with the best first and favourites
+// on top. The rates are the measured table's, at each book's defaults, under the
+// evaluation in force: what the book is worth trying for. The sweep measures the
+// settings actually on screen.
+const FAVS = (() => { try { return new Set(JSON.parse(localStorage.getItem("mnq.favs") || "[]")); } catch { return new Set(); } })();
+let pickAt = -1;
+function paintPicker() {
+  const whole = (v) => (v == null ? "" : v.toFixed(0));
+  const groups = pickerRows(S.strategyList, S.strategyTable.rows, S.eval, FAVS, $("stratSearch").value);
+  $("stratCols").textContent = `2026 pass, ${EVALS[S.eval].label}, a tick of slippage a side · Jan–Mar·Apr–Jul`;
+  $("stratList").innerHTML = groups.map((g) => `<div class="pk-head">${g.title}</div>` + g.books.map((s) => {
+    const b = s.book;
+    return `<div class="pk-row${s.id === S.strategyDesc.id ? " current" : ""}" role="option" data-id="${s.id}" title="${esc(s.description || s.name)}">` +
+      `<button class="pk-star${s.fav ? " on" : ""}" data-star="${s.id}" tabindex="-1" title="${s.fav ? "Remove from favourites" : "Add to favourites"}">★</button>` +
+      `<span class="pk-name">${esc(s.name)}</span><span class="pk-rate">${b ? b.rate.toFixed(1) : "—"}</span>` +
+      `<span class="pk-q">${b && b.q1 != null ? `${whole(b.q1)}·${whole(b.q2)}` : ""}</span></div>`;
+  }).join("")).join("") || `<div class="sweep-empty">Nothing matches.</div>`;
+  pickAt = -1;
+}
+const pickerOpen = () => !$("stratPop").classList.contains("hidden");
+function openPicker() {
+  const pop = $("stratPop"), at = $("stratBtn").getBoundingClientRect();
+  pop.style.top = `${at.bottom + 4}px`;
+  pop.style.left = `${Math.max(6, at.left)}px`;
+  $("stratSearch").value = "";
+  paintPicker();
+  pop.classList.remove("hidden");
+  $("stratBtn").setAttribute("aria-expanded", "true");
+  $("stratSearch").focus();
+  const cur = pop.querySelector(".pk-row.current");
+  if (cur) cur.scrollIntoView({ block: "center" });
+}
+function closePicker() {
+  $("stratPop").classList.add("hidden");
+  $("stratBtn").setAttribute("aria-expanded", "false");
+}
+function movePick(step) {
+  const rows = [...$("stratList").querySelectorAll(".pk-row")];
+  if (!rows.length) return;
+  pickAt = Math.max(0, Math.min(rows.length - 1, pickAt + step));
+  rows.forEach((r, k) => r.classList.toggle("at", k === pickAt));
+  rows[pickAt].scrollIntoView({ block: "nearest" });
+}
+function pickStrategy(id) {
+  closePicker();
+  if (id !== S.strategyDesc.id) selectStrategy(id);
+}
+function bindPicker() {
+  $("stratBtn").onclick = () => (pickerOpen() ? closePicker() : openPicker());
+  $("stratSearch").addEventListener("input", paintPicker);
+  $("stratSearch").addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") { movePick(e.key === "ArrowDown" ? 1 : -1); e.preventDefault(); }
+    else if (e.key === "Enter") {
+      const rows = $("stratList").querySelectorAll(".pk-row"), row = rows[Math.max(0, pickAt)];
+      if (row) pickStrategy(row.dataset.id);
+    }
+  });
+  $("stratList").addEventListener("click", (e) => {
+    const star = e.target.closest("[data-star]"), row = e.target.closest(".pk-row");
+    if (star) {
+      const id = star.dataset.star;
+      if (!FAVS.delete(id)) FAVS.add(id);
+      try { localStorage.setItem("mnq.favs", JSON.stringify([...FAVS])); } catch { /* private mode */ }
+      paintPicker();
+      $("stratSearch").focus();
+    } else if (row) pickStrategy(row.dataset.id);
+  });
+  document.addEventListener("mousedown", (e) => { if (pickerOpen() && !e.target.closest("#stratPop, #stratBtn")) closePicker(); });
+}
+
 // ─────────────────────────────── boot ───────────────────────────────
 const FIRST_BOOK = "donchian_1250", FIRST_EVAL = "1250";
 
 async function selectStrategy(id) {
   S.strategyDesc = S.strategyList.find((s) => s.id === id) || S.strategyList[0];
-  $("strategy").value = S.strategyDesc.id;   // also when the switch came from the chart link or a URL
+  // also when the switch came from the chart link or a URL
+  $("stratName").textContent = S.strategyDesc.name;
+  $("stratBtn").title = `${S.strategyDesc.name} (S)`;
   $("strategyDesc").textContent = S.strategyDesc.description || "";
   const mod = await import(`/strategies/${S.strategyDesc.file}?t=${Date.now()}`);
   S.strategyMod = mod.default;
@@ -2288,16 +2373,9 @@ async function boot() {
   S.strategyList = await fetch("/api/strategies").then((r) => r.json());
   if (!S.strategyList.length) { toast("No strategies found in strategies/", true); return; }
   S.tvLib = await fetch("/api/tradovate").then((r) => r.json());
+  S.strategyTable = await fetch("/api/strategies/table").then((r) => r.json()).catch(() => ({ rows: [] }));
   loadRuns();
-
-  const sel = $("strategy");
-  sel.innerHTML = "";
-  for (const s of S.strategyList) {
-    const o = document.createElement("option");
-    o.value = s.id; o.textContent = s.name;
-    sel.appendChild(o);
-  }
-  sel.addEventListener("change", () => selectStrategy(sel.value));
+  bindPicker();
 
   let tab = "results";
   try { tab = localStorage.getItem("mnq.tab") || tab; } catch { /* private mode */ }
@@ -2419,12 +2497,6 @@ async function boot() {
   $("runSweep").onclick = () => { S.lastSweepKey = ""; runSweep(); };
   $("reloadStrategies").onclick = async () => {
     S.strategyList = await fetch("/api/strategies/reload").then((r) => r.json());
-    sel.innerHTML = "";
-    for (const s of S.strategyList) {
-      const o = document.createElement("option");
-      o.value = s.id; o.textContent = s.name;
-      sel.appendChild(o);
-    }
     toast(`Loaded ${S.strategyList.length} strategies`);
     await selectStrategy(S.strategyList.some((s) => s.id === S.strategyDesc.id) ? S.strategyDesc.id : S.strategyList[0].id);
   };
@@ -2437,10 +2509,22 @@ async function boot() {
     loadWindow(S.windowStart);
   };
 
+  const help = $("keysHelp"), toggleHelp = () => help.classList.toggle("hidden");
+  $("keysBtn").onclick = toggleHelp;
+  help.onclick = toggleHelp;
+  // On a narrow screen the sidebar is a drawer, closed by a click on the chart.
+  $("sideToggle").onclick = () => document.body.classList.toggle("side-open");
+  $("main").addEventListener("mousedown", (e) => { if (!e.target.closest("#sideToggle")) document.body.classList.remove("side-open"); });
+
   window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && pickerOpen()) { closePicker(); return; }
+    if (e.key === "Escape" && !help.classList.contains("hidden")) { toggleHelp(); return; }
     if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;     // the browser's own
     if (e.key === "Escape" && S.why) { selectWhy(null); return; }
     if (e.key === "/") { showTab("settings"); $("setSearch").focus(); e.preventDefault(); return; }
+    if (e.key === "?") { toggleHelp(); return; }
+    if (e.key === "s") { openPicker(); e.preventDefault(); return; }
     if (e.key === "ArrowLeft") { stepWindow(e.shiftKey ? -7 : -1); e.preventDefault(); }
     else if (e.key === "ArrowRight") { stepWindow(e.shiftKey ? 7 : 1); e.preventDefault(); }
     else if (e.key === "r") S.chart.resetView();
@@ -2449,8 +2533,8 @@ async function boot() {
     else if (e.key === "3") setZoom("window");
     else if (e.key === "[") pageView(-1);
     else if (e.key === "]") pageView(1);
-    else if (e.key === "b" && !e.ctrlKey && !e.metaKey && !e.altKey && S.run && !S.sweepStale) pinRun(S.run);
-    else if (e.key === "e" && !e.ctrlKey && !e.metaKey && !e.altKey) switchEval(EVAL_IDS[(EVAL_IDS.indexOf(S.eval) + 1) % EVAL_IDS.length]);
+    else if (e.key === "b" && S.run && !S.sweepStale) pinRun(S.run);
+    else if (e.key === "e") switchEval(EVAL_IDS[(EVAL_IDS.indexOf(S.eval) + 1) % EVAL_IDS.length]);
   });
 }
 

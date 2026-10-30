@@ -206,6 +206,13 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, [...strategies.values()].map(describe));
     }
 
+    // The measured table behind the README's (research/strategy_table.mjs), for the
+    // strategy picker. Read fresh, so a re-measure shows without a restart.
+    if (p === "/api/strategies/table") {
+      try { return sendJson(res, 200, JSON.parse(fs.readFileSync(path.join(HERE, "research", "strategy_table_results.json"), "utf8"))); }
+      catch { return sendJson(res, 200, { rows: [] }); }
+    }
+
     if (p === "/api/strategies/reload") {
       strategies = await loadStrategies({ force: true });
       runCache.clear();

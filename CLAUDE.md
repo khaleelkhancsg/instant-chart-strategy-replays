@@ -108,8 +108,9 @@ rule logic into a script: that is a second engine, and it drifts.
 ## Tests
 
 - `npm run check`: test.mjs (425), audit, legacy parity (15), MCP end to end (19),
-  chart link (9), the indicator mock (89, `npm run test:mock`), the $1,250 Tradovate
-  indicators (41, `npm run verify:tradovate`, about 2 minutes).
+  chart link (10), the indicator mock (90, `npm run test:mock`), the page's arithmetic
+  (30, `npm run test:ui`), the $1,250 Tradovate indicators (41, `npm run
+  verify:tradovate`, about 2 minutes).
 - `FUZZ_SEED=<n> FUZZ_SCALE=<k> node test.mjs`: the randomised invariants.
 - `PARITY_SEED`, `PARITY_SCALE`: the same for test/legacy_parity.mjs.
 
@@ -125,7 +126,27 @@ rule logic into a script: that is a second engine, and it drifts.
   every changed setting
   (`#s=donchian_shipped&d=2026-03-09&e=1250&st=emacross:10::with&x.slippageTicks=1`),
   so a view can be shared or restored.
-- The eval tabs and the indicators persist in localStorage when there is no link.
+- With no link, a visit opens where the last one left off, zoom included
+  (localStorage `mnq.last`, `mnq.view`). A first visit opens on `donchian_1250`,
+  the $1,250 eval, in 2026.
+- **`public/ui.mjs` is the page's arithmetic, with no DOM,** and `test/ui.test.mjs`
+  runs it in Node. Put new logic there; `chart.js` draws and `app.js` wires. Browsers
+  are not part of `npm run check`, so check anything else on the page itself.
+- **Everything leads with 2026:** the top bar's figure, the line under the navigator
+  and the head of "All windows", with all history below as context. The navigator
+  shows 2026 alone unless "All" is picked.
+- **Compare runs** keeps each finished sweep as a small record, one letter per window
+  (`runRecord`), in localStorage only. A pinned baseline is paired with the current
+  run date by date, as the `compare` tool does: the two have been checked equal on
+  every period. `chart_state` carries it as `baseline`.
+- **Time:** the axis and crosshair read Chicago time, worked out from each bar's
+  `ctMin`. `chart_state` and the CSVs stay in UTC.
+- **Frames** are under 7 ms on every strategy at the full window. Keep it so: a frame
+  must not sort, and zoomed out each pixel draws one thing (`nthSmallest`, the
+  histogram's columns, dots for dense trades).
+- **A book that holds overnight loads all of history** (src/window.mjs), so its re-run
+  takes up to 0.8 s and happens on a pause, not on every step. That cost is the price
+  of matching the sweep. A slow Tradovate indicator gets the same treatment.
 - Data: `node prepare.mjs` builds the binary cache in `data/` once.
 - Strategy table for the README: `node --max-old-space-size=8192
   research/strategy_table.mjs`. The README's other figures come from

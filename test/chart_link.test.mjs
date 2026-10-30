@@ -110,6 +110,11 @@ await t("Tradovate indicators: listed with their tools, and read from their file
   eq((await fetch(`${BASE}/api/tradovate/source?name=..%2F..%2Fbot%2F.env`)).status, 404, "a path for a name:");
   eq((await fetch(`${BASE}/api/tradovate/source?name=nope`)).status, 404, "an unknown name:");
 });
+await t("the measured table is served for the strategy picker", async () => {
+  const r = await (await fetch(`${BASE}/api/strategies/table`)).json();
+  const row = r.rows.find((x) => x.id === "donchian_1250");
+  if (!row || !(row.evals["1250"].pass2026OneTick > 0)) throw new Error("no rate for the book to beat");
+});
 await t("the page can load the mock, and static files stay inside their folders", async () => {
   eq((await fetch(`${BASE}/tradovate/mock/draw.mjs`)).status, 200);
   for (const p of ["/src/..%2fpackage.json", "/tradovate/mock/..%2f..%2fpackage.json", "/public/..%2f..%2f..%2fserver.mjs", "/tradovate/verify_1250.mjs"]) {

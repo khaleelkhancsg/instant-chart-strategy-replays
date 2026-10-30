@@ -24,7 +24,9 @@
       </div>
 
       <div class="field">
-        <select id="strategy" aria-label="Strategy"></select>
+        <button id="stratBtn" class="stratbtn" aria-haspopup="dialog" aria-expanded="false">
+          <span id="stratName"></span><span class="group-caret">▼</span>
+        </button>
       </div>
 
       <div class="sidetabs" id="sideTabs" role="tablist" aria-label="Sidebar">
@@ -39,7 +41,7 @@
 
       <div class="sidepane" data-tab="settings">
         <div class="settools">
-          <input type="search" id="setSearch" placeholder="Search settings  ( / )" aria-label="Search settings">
+          <input type="search" id="setSearch" placeholder="Search settings" title="Search settings (/)" aria-label="Search settings">
           <button id="changedOnly" class="ghost" aria-pressed="false" title="Show only what differs from this strategy's defaults">Changed</button>
         </div>
         <div class="sweep-empty setnone hidden" id="setNone">Nothing matches.</div>
@@ -60,6 +62,7 @@
 
   <main id="main">
     <header id="topbar">
+      <button id="sideToggle" class="sidetoggle" title="Show or hide the sidebar" aria-label="Sidebar">☰</button>
       <div class="winnav">
         <button id="prevWin" title="Previous day (←)">◀</button>
         <input type="date" id="startDate">
@@ -117,6 +120,7 @@
       </div>
 
       <button id="sigToggle" class="sigtoggle" aria-pressed="false" title="Mark every signal bar the strategy produced: ◆ entered, ◇ an order that never filled, × refused (with the reason on hover), · already in a position. Click one, or any trade, for what triggered it.">Signals</button>
+      <button id="keysBtn" class="keysbtn" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">?</button>
     </div>
 
     <div id="chartWrap"><div id="whyCard" class="whycard hidden" role="dialog" aria-label="What triggered this entry"></div></div>
@@ -124,6 +128,34 @@
     <div id="tooltip" class="tooltip hidden"></div>
     <div id="toast" class="toast hidden"></div>
   </main>
+
+  <div id="stratPop" class="stratpop hidden" role="dialog" aria-label="Pick a strategy">
+    <input type="search" id="stratSearch" placeholder="Search strategies" aria-label="Search strategies">
+    <div class="pk-cols" id="stratCols"></div>
+    <div class="pk-list" id="stratList" role="listbox"></div>
+  </div>
+
+  <div id="keysHelp" class="keyshelp hidden" role="dialog" aria-label="Keyboard shortcuts">
+    <div class="kh-card">
+      <div class="kh-title">Keyboard and mouse</div>
+      <dl>
+        <dt>← →</dt><dd>Window back or on a day (Shift: a week)</dd>
+        <dt>1 2 3</dt><dd>Zoom to a day, a week, the window</dd>
+        <dt>[ ]</dt><dd>Along the chart by a day, a week or a screen</dd>
+        <dt>R</dt><dd>Back to the opening view</dd>
+        <dt>E</dt><dd>Switch evaluation</dd>
+        <dt>S</dt><dd>Pick a strategy</dd>
+        <dt>B</dt><dd>Pin this run as the baseline</dd>
+        <dt>/</dt><dd>Search the settings</dd>
+        <dt>Esc</dt><dd>Close whatever is open</dd>
+        <dt>Wheel</dt><dd>Zoom the time axis at the pointer</dd>
+        <dt>Drag</dt><dd>Pan</dd>
+        <dt>Shift + wheel</dt><dd>Zoom the pane's prices (or wheel over the price axis)</dd>
+        <dt>Double-click</dt><dd>Back to the opening view (on the axis: that pane's scale)</dd>
+        <dt>Click</dt><dd>A trade or signal: what triggered it</dd>
+      </dl>
+    </div>
+  </div>
 </div>
 
 <script type="module" src="/app.js"></script>

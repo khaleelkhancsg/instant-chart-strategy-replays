@@ -82,7 +82,7 @@ what the rule read:
   - a note when something on the chart is display only.
 
   ◀ ▶ step through the window's trades, ▴ folds the card, Esc closes it.
-- **Signals** in the top bar marks every signal bar, entered or not:
+- **Signals** above the chart marks every signal bar, entered or not:
   - ◆ an entry;
   - ◇ an order that never filled;
   - × a refusal;
@@ -757,33 +757,60 @@ blocks *new* entries and a single trade can blow straight through it.
 |---|---|
 | `←` / `→` | Step window ±1 day |
 | `Shift` + `←`/`→` | Step ±7 days |
+| `1` `2` `3` | Zoom to a day, a week, the window |
+| `[` / `]` | Along the chart by a day, a week or a screen |
 | `e` | Switch evaluation ($3,000 ↔ $1,250) |
-| `Esc` | Close the entry card |
-| `r` | Reset zoom |
+| `s` | Pick a strategy |
+| `b` | Pin this run as the baseline |
+| `/` | Search the settings |
+| `?` | List these |
+| `Esc` | Close the entry card, the picker or the list |
+| `r` | Back to the opening view |
 | Wheel / drag | Zoom / pan |
-| Double-click | Fit window |
+| Double-click | Back to the opening view |
 
-The full sweep runs on demand (**Run full sweep**); after the first run it
-re-sweeps automatically ~700ms after you stop adjusting parameters.
+The sweep runs by itself about 700 ms after a setting stops moving, and **↻ Sweep**
+forces one. A sweep that lands after the settings have moved is marked as old, and
+the next one starts on its own.
+
+Times on the chart are Chicago time.
 
 ### Panels and links
 
+The sidebar has three tabs. **Results** says what happened, **Settings** holds what
+to try next, and **Indicators** holds the studies and Tradovate indicators. The top
+bar and the line under the navigator stay in view whichever tab is open.
+
+- **Settings** can be searched (`/`). A changed setting is marked and counted, its ↺
+  goes back to the strategy's default, and **Changed** shows only what differs.
+  Stop and Target use a log slider, because they run from 0.25 to 1000.
+- **The strategy picker** (`s`) lists every book by family, best first, with its 2026
+  rate on the evaluation in force, a tick of slippage included. Those rates are the
+  measured table's, at each book's defaults. ★ keeps favourites at the top.
+- **The navigator** shows 2026 by default, and **All** shows all of history. Hover a
+  start date for what that window did.
+- **Day, Week and Window** above the chart set the zoom, and the choice holds as the
+  window moves, so the arrows walk through a day at a time. **Candles** on Auto picks
+  the size that fits the zoom. It sizes the drawing only.
+- **Compare runs** keeps your recent sweeps. Click one to go back to its settings, and
+  pin one as the baseline (`b`): every later run then shows as a difference from it in
+  2026, both halves and all history, with the windows it gained and lost, and the
+  navigator marks those dates. All of this stays in your browser.
 - **Trades in this window** lists every signal, including those a rule blocked.
   Click one to zoom the chart to it and open its entry card; **CSV** downloads
   the list.
-- **All windows** shows the pass rate with a 95% interval. The interval counts one
-  independent sample per 30 days of start dates, because neighbouring windows
-  share most of their days. It also shows the 2026 check (all of 2026, then
-  Jan–Mar against Apr–Jul), and **CSV** downloads every window's result.
+- **All windows** leads with the 2026 pass rate and a 95% interval, then Jan–Mar
+  against Apr–Jul, then all of history. The interval counts one independent sample
+  per 30 days of start dates, because neighbouring windows share most of their days.
+  **CSV** downloads every window's result.
 - **P&L by hour and weekday** shows where the profit comes from, over all of
   history and over 2026.
 - **Indicators** and **Indicator edge**: see "Indicators beside the strategy".
   Your indicators are remembered between visits.
-- **The evaluation tabs** sit above the strategy picker; the tab you used last is
-  remembered too.
+- **The evaluation tabs** sit above the strategy picker.
 - **The address bar** carries the strategy, the window, the evaluation, the
   indicators and every setting changed from the strategy's defaults, so a link
-  brings the exact view back.
+  brings the exact view back. With no link, the page opens where you left off.
 
 ---
 
