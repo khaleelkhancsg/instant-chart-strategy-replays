@@ -19,7 +19,7 @@ from any of them agrees with the others.
 | `walk_forward` | whether re-choosing from a grid month by month beats holding the base configuration |
 | `sensitivity` | how far the pass rate moves when each setting is nudged (knife-edge check) |
 | `window`, `bars` | one 30-day window in detail (with `explain`: why each trade entered); raw bars |
-| `chart_state`, `chart_apply` | read and drive the chart page the person has open |
+| `chart_state`, `chart_apply` | read and drive the chart page the person has open, Tradovate indicators included |
 | `papers` | the methodology library in `papers/` |
 
 Every configuration also takes:
@@ -108,8 +108,8 @@ rule logic into a script: that is a second engine, and it drifts.
 ## Tests
 
 - `npm run check`: test.mjs (425), audit, legacy parity (15), MCP end to end (19),
-  chart link (7), the $1,250 Tradovate indicators (41, `npm run verify:tradovate`,
-  about 2 minutes).
+  chart link (9), the indicator mock (89, `npm run test:mock`), the $1,250 Tradovate
+  indicators (41, `npm run verify:tradovate`, about 2 minutes).
 - `FUZZ_SEED=<n> FUZZ_SCALE=<k> node test.mjs`: the randomised invariants.
 - `PARITY_SEED`, `PARITY_SCALE`: the same for test/legacy_parity.mjs.
 
@@ -182,6 +182,29 @@ card, the signals layer's tooltips, the `window` tool's `explain` and
   - no failing condition on a bar that fired;
   - nothing changes when later bars exist;
   - no mark past the signal bar.
+
+## Looking at a Tradovate indicator
+
+`tradovate/mock/` is a mock of Tradovate's indicator runtime, drawn on this project's
+own chart. Use it for any new or changed indicator, before calling it finished.
+Nothing external is involved: no API, and no page outside the chart.
+
+- **Check it:** `npm run mock -- <name> --date <day>` prints the problems, how its
+  labels fit on that day, and a link to the chart. `<name>` is a file in `tradovate/`
+  or `../TradingCustomIndicators/tradovate/`, or `builtin:<name>`.
+- **Show it:** open that link in the preview ("chart-lab"), zoom to about 6 px a bar
+  (the indicator's card shows the figure), and screenshot it. The person can open the
+  same link themselves, or use **Tradovate indicators** in the sidebar.
+- **Iterate:** edit the `.js`, press ↻ on the card, read the overlap count. That count
+  is how a label layout gets judged, not a guess from the source.
+- **On the chart** an indicator is a study with a `tv` field: panes, the crosshair and
+  the price scale treat it like any other, and `ChartView._drawTradovate` draws it
+  through `tradovate/mock/draw.mjs`.
+- **The runtime** (`runtime.mjs`) follows Tradovate's definitions, and `vendor/` holds
+  its real tools and built-ins. `test/mock.test.mjs` runs all of them through it, so a
+  rule that a built-in breaks is the rule that is wrong. `tradovate/mock/README.md`
+  lists what is an assumption.
+- `tradovate/verify_1250.mjs` runs on this same runtime: there is one emulation.
 
 ## Adding an indicator study
 

@@ -204,6 +204,16 @@ button.mini { padding: 2px 8px; font-size: 10.5px; font-family: var(--mono); fle
 .st-body { display: none; padding: 4px 8px 2px; border-top: 1px solid var(--line); }
 .st-card.open .st-body { display: block; }
 .st-card.hidden-st .st-name { color: var(--dim); text-decoration: line-through; }
+.tv-checks { display: flex; flex-direction: column; gap: 3px; margin: 8px 0 6px; }
+.tv-check { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 6px; padding: 2px 0 2px 6px; font-size: 10.5px; line-height: 1.4; color: var(--text);
+            text-align: left; background: none; border: 0; border-left: 2px solid var(--line-2); border-radius: 0; }
+.tv-check i { font-style: normal; font-family: var(--mono); color: var(--muted); }
+.tv-check.error { border-left-color: var(--bear); } .tv-check.error i { color: var(--bear); }
+.tv-check.warn { border-left-color: var(--warn); } .tv-check.warn i { color: var(--warn); }
+.tv-check.pass { border-left-color: var(--bull); } .tv-check.pass i { color: var(--bull); }
+button.tv-check { cursor: pointer; }
+button.tv-check:hover { background: var(--panel); }
+.tv-fit { font-family: var(--mono); font-size: 10.5px; color: var(--muted); margin-bottom: 4px; }
 
 /* indicator edge: one row per state, diverging bars as in the hour table */
 .ek-study { margin-bottom: 12px; }

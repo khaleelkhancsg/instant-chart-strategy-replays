@@ -100,6 +100,22 @@ await t("the sweep takes an eval and indicator studies, and refuses a bad study"
   eq((await post("/api/sweep", { strategyId: "donchian_shipped", studies: [{ type: "nope" }] })).status, 400, "a bad study:");
   eq((await post("/api/sweep", { strategyId: "donchian_shipped", eval: "999" })).status, 400, "a bad eval:");
 });
+await t("Tradovate indicators: listed with their tools, and read from their files", async () => {
+  const lib = await (await fetch(`${BASE}/api/tradovate`)).json();
+  if (!lib.mine.some((x) => x.name === "mnqDonchian1250" && x.minutes === 2)) throw new Error("no mnqDonchian1250 at 2 minutes");
+  if (!lib.builtin.some((x) => x.name === "builtin:macd")) throw new Error("no built-ins");
+  if (!lib.tools.EMA || !lib.tools.predef) throw new Error("no tools");
+  const r = await (await fetch(`${BASE}/api/tradovate/source?name=mnqMacdFade1250`)).json();
+  if (!r.source.includes("class mnqMacdFade1250")) throw new Error("not the file");
+  eq((await fetch(`${BASE}/api/tradovate/source?name=..%2F..%2Fbot%2F.env`)).status, 404, "a path for a name:");
+  eq((await fetch(`${BASE}/api/tradovate/source?name=nope`)).status, 404, "an unknown name:");
+});
+await t("the page can load the mock, and static files stay inside their folders", async () => {
+  eq((await fetch(`${BASE}/tradovate/mock/draw.mjs`)).status, 200);
+  for (const p of ["/src/..%2fpackage.json", "/tradovate/mock/..%2f..%2fpackage.json", "/public/..%2f..%2f..%2fserver.mjs", "/tradovate/verify_1250.mjs"]) {
+    eq((await fetch(BASE + p)).status, 404, `${p}:`);
+  }
+});
 page.close();
 await new Promise((r) => setTimeout(r, 300));
 await t("once the page closes, the state is no longer offered as current", async () => {

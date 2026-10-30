@@ -6,6 +6,8 @@
 // overlay that redraws on mousemove. Repainting 30k candles at pointer rate is
 // the classic way these things end up feeling sluggish.
 
+import { graphicsPrims, plotPrims, paintPrim, overlaps, fontOf } from "/tradovate/mock/draw.mjs";
+
 const CSS = {
   bg: "#0b0f14",
   grid: "#18202b",
@@ -204,7 +206,9 @@ export class ChartView {
     if (!showSub) { weights.price += weights.sub; weights.sub = 0; }
     const studies = this._studyPanes();
     for (const o of studies) weights[o.key] = STUDY_PANE_WEIGHT;
-    const order = ["price", ...(showSub ? ["sub"] : []), ...studies.map((o) => o.key), "equity", "daily"];
+    // With `focus` the chart is the price and an indicator's panes, nothing else.
+    const book = this.data && this.data.focus ? [] : ["equity", "daily"];
+    const order = ["price", ...(showSub ? ["sub"] : []), ...studies.map((o) => o.key), ...book];
     const total = order.reduce((s, k) => s + weights[k], 0);
 
     const usable = this.h - PAD.t - PAD.b - AXIS_H;
@@ -215,7 +219,7 @@ export class ChartView {
       this.panes[k] = { top: y, height: ph, bottom: y + ph };
       y += ph + (ph > 0 ? 6 : 0);
     }
-    if (!this.panes.sub) this.panes.sub = { top: y, height: 0, bottom: y };
+    for (const k of ["sub", "equity", "daily"]) if (!this.panes[k]) this.panes[k] = { top: y, height: 0, bottom: y };
     this.paneOrder = order;
     this.plotL = PAD.l;
     this.plotR = this.w - PAD.r;
@@ -469,6 +473,11 @@ export class ChartView {
       lo = Math.min(lo, t.entryPrice, t.exitPrice);
       hi = Math.max(hi, t.entryPrice, t.exitPrice);
     }
+    // A Tradovate indicator's plots count too, as they do on the platform.
+    for (const st of this.data.studyOverlays || []) {
+      if (!st.tv || st.pane !== "price" || st.hidden) continue;
+      for (const v of this._visibleValues(st.lines, st.map)) { if (v < lo) lo = v; if (v > hi) hi = v; }
+    }
     if (!Number.isFinite(lo) || !Number.isFinite(hi)) return [0, 1];
     const pad = (hi - lo) * 0.06 || 1;
     return [lo - pad, hi + pad];
@@ -519,6 +528,7 @@ export class ChartView {
     // Indicator studies added beside the strategy, each on its own bars.
     for (const st of this.data.studyOverlays || []) {
       if (st.pane !== "price" || st.hidden) continue;
+      if (st.tv) { this._drawTradovate(ctx, P, y, st); continue; }
       for (const ln of st.lines) this._drawOverlayLine(ctx, { ...ln, color: ln.color || st.color, width: 1.3 }, P, y, st.map);
     }
 
@@ -532,6 +542,40 @@ export class ChartView {
     this._paneLabel(ctx, P,
                     (this.data.title || "Price") + tfNote(this.tfMin, this.tfApplied, stride),
                     "price");
+  }
+
+  // A Tradovate indicator: its plots and graphics, resolved by tradovate/mock/draw.mjs.
+  // Its x axis is its own bar index, which map places on this chart's 1-minute axis.
+  _drawTradovate(ctx, P, y, st) {
+    const xs = st.map.localIdx, n = xs.length, stride = st.map.stride || 1;
+    if (!n) return;
+    const onAxis = (k) => {
+      const i = Math.floor(k);
+      if (i < 0) return xs[0] + k * stride;
+      if (i >= n - 1) return xs[n - 1] + (k - n + 1) * stride;
+      return xs[i] + (k - i) * (xs[i + 1] - xs[i]);
+    };
+    const barW = (this.plotW / (this.i1 - this.i0)) * stride;
+    const A = {
+      left: this.plotL, right: this.plotR, top: P.top, bottom: P.bottom, barW, pxPerPrice: Math.abs(y(1) - y(0)), tick: 0.25,
+      x: { pos: (k) => this.x(onAxis(k)), unit: barW, base: (v) => this.plotL + v },
+      y: { pos: y, unit: y(1) - y(0), base: (v) => P.top + v },
+    };
+    let from = 0, to = n - 1;
+    while (from < to && xs[from] < this.i0) from++;
+    while (to > from && xs[to] > this.i1) to--;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(this.plotL, P.top, this.plotW, P.height);
+    ctx.clip();
+    for (const p of plotPrims(st.tv.run, st.tv.plot, A, from, to)) paintPrim(ctx, p);
+    const items = graphicsPrims(st.tv.run.rows, A, from, to);
+    for (const p of items) paintPrim(ctx, p);
+    ctx.restore();
+    if (this.onTradovateDrawn) {
+      const clash = items.length > 400 ? null : overlaps(items, (p) => { ctx.font = fontOf(p); return ctx.measureText(p.text).width; });
+      this.onTradovateDrawn(st.tv, { barW, labels: items.filter((p) => p.t === "text").length, clash });
+    }
   }
 
   // `map` places point k on the 1-minute axis: at its bar's centre, or -- for a
@@ -920,7 +964,8 @@ export class ChartView {
       ctx.fillStyle = CSS.text;
       ctx.fillText(String(+g.toFixed(4)), this.plotR + 4, gy + 3);
     }
-    const ordered = [...st.lines].sort((a, b) => (a.kind === "hist" ? 0 : 1) - (b.kind === "hist" ? 0 : 1));
+    if (st.tv) this._drawTradovate(ctx, P, y, st);
+    const ordered = st.tv ? [] : [...st.lines].sort((a, b) => (a.kind === "hist" ? 0 : 1) - (b.kind === "hist" ? 0 : 1));
     for (const ln of ordered) {
       if (ln.kind === "hist") this._drawOverlayHist(ctx, { ...ln, colorUp: "rgba(38,166,154,0.55)", colorDown: "rgba(239,83,80,0.55)" }, P, y, st.map);
       else this._drawOverlayLine(ctx, { ...ln, color: ln.color || st.color, width: 1.2 }, P, y, st.map);

@@ -11,11 +11,12 @@ import { runStrategy } from "/src/run.mjs";
 import { replayWindow, DEFAULT_RULES } from "/src/challenge.mjs";
 import { DEFAULT_EXEC } from "/src/engine.mjs";
 import { NO_FILTER } from "/src/filters.mjs";
-import { indexAtOrAfter } from "/src/resample.mjs";
+import { indexAtOrAfter, resample } from "/src/resample.mjs";
 import { windowSpan, DEFAULT_TAIL_MIN } from "/src/window.mjs";
 import { EVALS, EVAL_IDS, DEFAULT_EVAL, evalBase, evalKeys } from "/src/evals.mjs";
 import { STUDIES, STUDY_TFS, resolveStudy, studyLabel, isGating, gateLabel, computeStudy } from "/src/studies.mjs";
 import { describeEntry, describeExit, eventText, explainLines, num as fmtNum, px as fmtPx } from "/src/explain.mjs";
+import { loadIndicator, defaultProps, plotters, audit } from "/tradovate/mock/runtime.mjs";
 
 // The 1-minute x-position a resampled bar should be drawn at: the middle of the
 // minutes it covers. srcLast+1 is the exclusive end, so the centre of bar k is
@@ -237,6 +238,9 @@ const S = {
   filter: { ...NO_FILTER },
   eval: DEFAULT_EVAL,  // which evaluation's rules (src/evals.mjs)
   studies: [],         // indicators added to the chart (src/studies.mjs), some gating entries
+  tv: [],              // Tradovate indicators on the chart (tradovate/mock/)
+  tvLib: null,         // what can be added, and the tools they run on
+  tvFocus: true,       // the chart given over to them: no trades, equity or daily panes
   showSignals: false,  // mark every signal bar, entered or not (a view preference)
   why: null,           // the entry explained: { ts: its signal bar's open time }
   whyFolded: false,    // its card folded to the summary
@@ -314,6 +318,13 @@ function buildParamControl(d, value, onChange) {
       val.textContent = hhmm(v);
       onChange(v);
     });
+  } else if (d.type === "text") {
+    wrap.appendChild(head);
+    const box = document.createElement("input");
+    box.type = "text";
+    box.value = value ?? "";
+    box.addEventListener("change", () => onChange(box.value));
+    wrap.appendChild(box);
   } else {
     const num = document.createElement("input");
     num.type = "number";
@@ -371,6 +382,8 @@ function buildGroup(title, collapsed = false) {
 function renderSidebar() {
   const host = $("paramGroups");
   host.innerHTML = "";
+
+  host.appendChild(buildTvGroup());
 
   // Live results first — it is what you watch while dragging a slider.
   const gStats = buildGroup("This window");
@@ -619,6 +632,208 @@ function studyOverlays(res) {
   }
   return out;
 }
+
+// ──────────────────────────── Tradovate indicators ─────────────────────────────
+// An indicator written for Tradovate, run by the mock of its runtime (tradovate/
+// mock/) on this chart's own bars, so it can be looked at and its settings tried
+// before it goes to the platform. Nothing leaves this machine: the code is the file
+// on disk, the bars are the window's, and it runs here in the page.
+const TV_WARMUP_MIN = 21 * 1440;     // three weeks: a 10-session average, and a slow EMA settled
+const TV_MINUTES = [1, 2, 3, 5, 10, 15, 30, 60];
+const OPEN_TV = new Set();           // cards shown expanded, this visit
+const tvWarmupMin = () => (S.tv.length ? TV_WARMUP_MIN : 0);
+const tvFocused = () => S.tv.length > 0 && S.tvFocus;
+
+// An indicator from its file, with `props` over its defaults. Read fresh each time.
+async function tvMake({ name, minutes, props = {}, hidden = false }) {
+  const r = await fetch(`/api/tradovate/source?name=${encodeURIComponent(name)}`), src = await r.json();
+  if (!r.ok) throw new Error(src.error);
+  const mod = loadIndicator(src.source, S.tvLib.tools), d0 = defaultProps(mod), set = {};
+  for (const [k, v] of Object.entries(props)) {
+    if (!(k in d0)) throw new Error(`${name} has no setting "${k}"`);
+    set[k] = typeof v === "string" ? coerceLike(d0[k], v) : v;
+  }
+  return { name, source: src.source, mod, minutes: Number(minutes) || src.minutes, props: { ...d0, ...set }, hidden, plot: plotters(mod), key: "" };
+}
+
+// Its bars, built clock-aligned from the window's 1-minute bars once per size.
+const tvBarCache = new WeakMap();
+function tvBars(minutes) {
+  let byMin = tvBarCache.get(S.blob);
+  if (!byMin) tvBarCache.set(S.blob, byMin = new Map());
+  if (!byMin.has(minutes)) {
+    const tf = resample(S.blob, minutes), n = tf.close.length, rows = new Array(n);
+    for (let i = 0; i < n; i++) rows[i] = { ts: tf.ts[i], o: tf.open[i], h: tf.high[i], l: tf.low[i], c: tf.close[i], v: tf.volume[i], td: tf.tday[i], ct: tf.ctMin[i] };
+    byMin.set(minutes, { tf, rows });
+  }
+  return byMin.get(minutes);
+}
+
+// Run it, and check it, when its bars or settings have changed.
+function tvRun(ind) {
+  const key = `${S.blob.ts[0]}:${S.blob.count}:${ind.minutes}:${JSON.stringify(ind.props)}`;
+  if (ind.key === key) return;
+  const { tf, rows } = tvBars(ind.minutes);
+  const a = audit(ind.mod, ind.source, rows, { props: ind.props, minutes: ind.minutes, formingFrom: Math.max(0, rows.length - 4000) });
+  ind.run = a.run; ind.problems = a.problems; ind.tf = tf; ind.key = key;
+  const titles = ind.mod.plots || { value: { title: ind.name } };
+  ind.lines = Object.entries(titles).filter(([, d]) => !d.displayOnly)
+    .map(([f, d]) => ({ name: d.title, data: Float64Array.from(a.run.rows, (r) => (typeof r[f] === "number" ? r[f] : NaN)) }));
+  tvPaintChecks(ind);
+}
+
+// On the chart each one is a study, so panes, the crosshair and the price scale
+// take it as they take any other; `tv` tells the chart to draw it through the mock.
+function tvOverlays() {
+  return S.tv.map((ind) => {
+    tvRun(ind);
+    return { key: `tv:${ind.name}`, name: `${ind.name} · ${ind.minutes}m`, color: "#9fb3c8", pane: ind.mod.areaChoice === "new" ? "sub" : "price",
+             hidden: ind.hidden, lines: ind.lines, map: { localIdx: centresOf(ind.tf), stride: ind.minutes }, tv: ind };
+  });
+}
+
+// The window's first day, 08:15-15:15 CT: what an indicator is looked at on.
+function tvDayView() {
+  const b = S.blob, td = b.tday[Math.min(S.winStartLocal, b.count - 1)];
+  const inDay = (i) => i < b.count && b.tday[i] === td && b.ctMin[i] >= 495 && b.ctMin[i] <= 915;
+  let a = S.winStartLocal;
+  while (a < b.count && !inDay(a)) a++;
+  if (a >= b.count) return null;
+  let e = a;
+  while (inDay(e + 1)) e++;
+  return [a, e + 1];
+}
+function tvShowDay() {
+  const v = tvFocused() ? tvDayView() : null;
+  if (v) S.chart.zoomTo(v[0], v[1]);
+}
+
+function saveTv() {
+  try { localStorage.setItem("mnq.tv", JSON.stringify({ focus: S.tvFocus, list: tvConfig() })); } catch { /* private mode */ }
+}
+// What identifies each one: its name, its bars, and the settings changed.
+function tvConfig() {
+  return S.tv.map((ind) => {
+    const d0 = defaultProps(ind.mod), props = {};
+    for (const [k, v] of Object.entries(ind.props)) if (v !== d0[k]) props[k] = v;
+    return { name: ind.name, minutes: ind.minutes, props, ...(ind.hidden ? { hidden: true } : {}) };
+  });
+}
+async function tvChanged({ day = false } = {}) {
+  saveTv();
+  renderSidebar();
+  if (warmupGrew()) await loadWindow(S.windowStart);
+  else recompute();
+  if (day) tvShowDay();
+}
+async function addTv(name) {
+  if (S.tv.some((x) => x.name === name)) return;
+  try {
+    S.tv.push(await tvMake({ name }));
+  } catch (e) { toast(`${name}: ${e.message}`, true); return; }
+  OPEN_TV.add(name);
+  await tvChanged({ day: true });
+}
+
+// Numbers get a slider's range from the indicator's own restrictions.
+function tvParamDesc(key, spec) {
+  const s = spec && typeof spec === "object" ? spec : { def: spec };
+  if (s.type === "boolean") return { key, label: key, type: "select", options: onOff(), bool: true };
+  if (s.type === "enum") return { key, label: key, type: "select", options: Object.entries(s.enumSet || {}) };
+  if (s.type !== "number") return { key, label: key, type: "text" };
+  const r = s.restrictions || {}, step = r.step || 1;
+  return { key, label: key, type: Number.isInteger(step) ? "int" : "float", step, min: r.min ?? 0, max: r.max ?? Math.max(10, Math.abs(s.def) * 4) };
+}
+
+function tvPaintChecks(ind) {
+  const box = document.querySelector(`.tv-checks[data-name="${ind.name}"]`);
+  if (!box) return;
+  box.innerHTML = "";
+  if (!ind.problems || !ind.problems.length) {
+    box.innerHTML = `<div class="tv-check pass"><i>pass</i><span>Well formed, and a forming bar changes nothing.</span></div>`;
+    return;
+  }
+  for (const p of ind.problems) {
+    const b = document.createElement("button");
+    b.className = `tv-check ${p.level}`;
+    b.title = "Show the first bar it happened on";
+    b.innerHTML = `<i>${p.level}</i><span></span>`;
+    b.lastChild.textContent = p.text + (p.count > 1 ? ` (${p.count} times)` : "");
+    b.onclick = () => { const c = ind.tf.srcFirst[p.bar]; S.chart.zoomTo(c - 60 * ind.minutes, c + 60 * ind.minutes); };
+    box.appendChild(b);
+  }
+}
+
+// How it fits at this zoom, from what the chart just drew.
+function tvPaintFit(ind, f) {
+  const el = document.querySelector(`.tv-fit[data-name="${ind.name}"]`);
+  if (el) el.textContent = `${f.barW.toFixed(1)} px a bar · ${f.labels} labels` + (f.clash ? ` · ${f.clash.length} overlapping` : "");
+}
+
+function buildTvCard(ind) {
+  const card = document.createElement("div");
+  card.className = "st-card" + (OPEN_TV.has(ind.name) ? " open" : "") + (ind.hidden ? " hidden-st" : "");
+  const head = document.createElement("div");
+  head.className = "st-head";
+  head.innerHTML = `<span class="st-name"></span>` +
+    `<button class="st-btn st-re" title="Read the file again, keeping these settings">↻</button>` +
+    `<button class="st-btn st-eye" title="Hide or show it on the chart">${ind.hidden ? "◌" : "●"}</button>` +
+    `<button class="st-btn st-x" title="Remove">✕</button>`;
+  const name = head.querySelector(".st-name");
+  name.textContent = `${ind.name} · ${ind.minutes}m`;
+  name.title = ind.mod.description || ind.name;
+  name.onclick = () => {
+    if (card.classList.toggle("open")) OPEN_TV.add(ind.name); else OPEN_TV.delete(ind.name);
+  };
+  head.querySelector(".st-re").onclick = async () => {
+    try {
+      const fresh = await tvMake({ ...tvConfig().find((c) => c.name === ind.name) });
+      S.tv[S.tv.indexOf(ind)] = fresh;
+      await tvChanged();
+      toast(`${ind.name} read again`);
+    } catch (e) { toast(`${ind.name}: ${e.message}`, true); }
+  };
+  head.querySelector(".st-eye").onclick = () => { ind.hidden = !ind.hidden; tvChanged(); };
+  head.querySelector(".st-x").onclick = () => { S.tv = S.tv.filter((x) => x !== ind); OPEN_TV.delete(ind.name); tvChanged(); };
+  card.appendChild(head);
+
+  const body = document.createElement("div");
+  body.className = "st-body";
+  body.insertAdjacentHTML("beforeend", `<div class="tv-checks" data-name="${ind.name}"></div><div class="tv-fit" data-name="${ind.name}"></div>`);
+  const tfDesc = { key: "minutes", label: "Chart bars", type: "select", options: TV_MINUTES.map((m) => [String(m), `${m} min`]) };
+  body.appendChild(buildParamControl(tfDesc, String(ind.minutes), (v) => { ind.minutes = Number(v); tvChanged(); }));
+  for (const [k, spec] of Object.entries(ind.mod.params || {})) {
+    const d = tvParamDesc(k, spec), v = ind.props[k];
+    body.appendChild(buildParamControl(d, d.bool ? (v ? "on" : "off") : v, (x) => { ind.props[k] = d.bool ? x === "on" : x; saveTv(); recompute(); }));
+  }
+  card.appendChild(body);
+  tvPaintChecks(ind);
+  return card;
+}
+
+function buildTvGroup() {
+  const g = buildGroup("Tradovate indicators");
+  const pick = document.createElement("select");
+  pick.className = "st-pick";
+  const opts = (list) => list.map((x) => `<option value="${x.name}">${x.name.replace("builtin:", "")}</option>`).join("");
+  pick.innerHTML = `<option value="">＋ Add a Tradovate indicator…</option>` +
+    `<optgroup label="Yours">${opts(S.tvLib.mine)}</optgroup><optgroup label="Tradovate's own">${opts(S.tvLib.builtin)}</optgroup>`;
+  pick.onchange = () => { const v = pick.value; pick.value = ""; if (v) addTv(v); };
+  g.body.appendChild(pick);
+  if (S.tv.length) {
+    const d = { key: "focus", label: "Chart shows", type: "select", options: [["on", "The indicator only"], ["off", "The indicator and the strategy"]] };
+    g.body.appendChild(buildParamControl(d, S.tvFocus ? "on" : "off", (v) => { S.tvFocus = v === "on"; tvChanged({ day: true }); }));
+  }
+  for (const ind of S.tv) { tvRunSafe(ind); g.body.appendChild(buildTvCard(ind)); }
+  const h = document.createElement("div");
+  h.className = "hint";
+  h.textContent = S.tv.length
+    ? "Runs the file on this window's bars, here in the page. Edit the file, then ↻ reads it again. Day arrows walk the chart a day at a time."
+    : "Try an indicator on the backtest's bars before it goes to Tradovate: how it looks, its settings, and what would go wrong there.";
+  g.body.appendChild(h);
+  return g;
+}
+const tvRunSafe = (ind) => { if (S.blob) tvRun(ind); };
 
 // ───────────────────── indicator edge (from the sweep) ─────────────────────
 function paintEdge() {
@@ -1212,18 +1427,24 @@ function paintChart(res, replay) {
   const subOverlays = (res.overlays || []).filter((o) => o.pane === "sub");
   const why = whyLayer(res, trades);
 
+  // Given over to Tradovate indicators, the chart is theirs, with candles of their size.
+  const focus = tvFocused();
+  S.chart.setTimeframe(focus ? S.tv[0].minutes : Number($("chartTf").value) || 1);
+  $("chartTf").disabled = focus;
+
   S.chart.setData({
     token: `${S.windowStart}:${blob.count}`,
     bars: blob,
-    trades,
-    replay,
+    trades: focus ? [] : trades,
+    replay: focus ? null : replay,
     equityPts,
     dayBars,
-    priceOverlays,
-    subOverlays,
-    studyOverlays: studyOverlays(res),
-    why,
-    signalMarks: S.showSignals ? signalMarks(res) : null,
+    priceOverlays: focus ? [] : priceOverlays,
+    subOverlays: focus ? [] : subOverlays,
+    studyOverlays: [...studyOverlays(res), ...tvOverlays()],
+    focus,
+    why: focus ? null : why,
+    signalMarks: !focus && S.showSignals ? signalMarks(res) : null,
     // Overlays are indexed in signal-timeframe space; stride lets the renderer
     // convert a 1-minute pixel budget into a sane sampling step.
     // Overlay points land at the CENTRE of the bar that produced them, for the
@@ -1233,10 +1454,10 @@ function paintChart(res, replay) {
     tfToLocal: { localIdx: centresOf(tf), stride: S.params.timeframeMin || 1 },
     lockX: replay.lockMs ? indexAtOrAfter(blob.ts, replay.lockMs) : null,
     // Where the evaluation actually ended — pass or breach, whichever came first.
-    resolveX: (replay.passMs ?? replay.failMs) != null
+    resolveX: !focus && (replay.passMs ?? replay.failMs) != null
       ? indexAtOrAfter(blob.ts, replay.passMs ?? replay.failMs) : null,
-    title: `MNQ · ${S.strategyDesc.name}`,
-    initialView: [S.winStartLocal, Math.min(blob.count, S.winEndLocal + 1)],
+    title: focus ? `MNQ · ${S.tv.map((x) => x.name).join(" + ")}` : `MNQ · ${S.strategyDesc.name}`,
+    initialView: (focus && tvDayView()) || [S.winStartLocal, Math.min(blob.count, S.winEndLocal + 1)],
   });
 }
 
@@ -1309,7 +1530,8 @@ async function loadWindow(startMs, { keepTail = false } = {}) {
   // window for the strategy's indicators to match the full-history run, and
   // enough after it for the window's last trade to finish. test.mjs checks the
   // result against the sweep for every strategy.
-  const { warmupMin, tailMin } = windowSpan(S.strategyMod, S.params, { tailMin: S.tailMin, filter: S.filter, exec: S.exec, studies: S.studies });
+  const span = windowSpan(S.strategyMod, S.params, { tailMin: S.tailMin, filter: S.filter, exec: S.exec, studies: S.studies });
+  const warmupMin = Math.max(span.warmupMin, tvWarmupMin()), tailMin = span.tailMin;
   S.loadedWarmupMin = warmupMin;
 
   const url = `/api/window?start=${startMs}&days=${S.rules.windowDays}&warmupMin=${warmupMin}&tailMin=${tailMin}`;
@@ -1333,7 +1555,8 @@ async function loadWindow(startMs, { keepTail = false } = {}) {
 
 // The current settings need more history before the window than is loaded.
 function warmupGrew() {
-  return windowSpan(S.strategyMod, S.params, { filter: S.filter, exec: S.exec, studies: S.studies }).warmupMin > (S.loadedWarmupMin || 0);
+  const need = windowSpan(S.strategyMod, S.params, { filter: S.filter, exec: S.exec, studies: S.studies }).warmupMin;
+  return Math.max(need, tvWarmupMin()) > (S.loadedWarmupMin || 0);
 }
 
 function stepWindow(days) {
@@ -1443,6 +1666,7 @@ function chartSnapshot(appliedId, applyError) {
     params: S.params, exec: S.exec, rules: S.rules, filter: S.filter, funded: S.funded,
     studies: S.studies.map((st) => ({ id: st.id, type: st.type, tf: st.tf, params: st.params, gate: st.gate, label: studyLabel(st),
                                       ...(isGating(st) ? { gateText: gateLabel(st.type, st.gate, st.params) } : {}), ...(st.hidden ? { hidden: true } : {}) })),
+    tradovate: { chartOnly: S.tvFocus, indicators: S.tv.map((ind, k) => ({ ...tvConfig()[k], problems: ind.problems || [] })) },
     window: { start: isoMin(S.windowStart), tradingDay: $("startDate").value, end: isoMin(S.windowStart + S.rules.windowDays * DAY) },
     view: cb && cb.count ? { from: isoMin(cb.ts[Math.max(0, Math.floor(c.i0))]), to: isoMin(cb.ts[Math.min(cb.count - 1, Math.ceil(c.i1) - 1)]), candleMin: c.tfMin } : null,
     result: rp ? { outcome: rp.outcome, net: Math.round(st.netPnl), trades: st.trades, skipped: st.skipped, winRate: +st.winRate.toFixed(1),
@@ -1472,6 +1696,7 @@ async function applySettings(m) {
   if (m.eval != null && !EVALS[String(m.eval)]) throw new Error(`unknown eval "${m.eval}"; one of ${EVAL_IDS.join(", ")}`);
   // checked before anything changes, so a bad study leaves the page as it was
   const studies = m.studies == null ? null : adoptStudies(m.studies.map((st) => resolveStudy(st, { strict: !m.fromUrl })));
+  const tv = m.tradovate == null ? null : await Promise.all(m.tradovate.map(tvMake));
   const keysOf = (o) => new Set(Object.keys(o));
   const check = (what, obj, valid) => {
     const bad = Object.keys(obj || {}).filter((k) => !valid.has(k));
@@ -1481,6 +1706,10 @@ async function applySettings(m) {
   if (m.eval != null) setEval(String(m.eval));
   if (m.reset) Object.assign(S, baseConfig());
   if (studies) { S.studies = studies; saveStudies(); }
+  if (tv) S.tv = tv;
+  const focus = m.tvFocus ?? m.chartOnly;
+  if (focus != null) S.tvFocus = !!focus;
+  if (tv || focus != null) saveTv();
   check("params", m.params, new Set([...(S.strategyMod.params || []).map((d) => d.key), "timeframeMin"]));
   check("exec", m.exec, keysOf(S.meta.defaults.exec));
   check("rules", m.rules, keysOf(S.meta.defaults.rules));
@@ -1494,6 +1723,7 @@ async function applySettings(m) {
   renderEvalTabs();
   renderSidebar();
   await loadWindow(startMs);
+  if (tv) tvShowDay();
   if (m.sweep) {
     // an automatic sweep may already be running, for settings just replaced
     while (S.sweeping) await new Promise((r) => setTimeout(r, 100));
@@ -1582,6 +1812,16 @@ function studiesFromUrl(s) {
     return { type, tf: Number(tf) || 0, params, gate: gate || "off", ...(color ? { color: "#" + color } : {}), ...(hidden === "h" ? { hidden: true } : {}) };
   });
 }
+// Tradovate indicators: name!minutes!key=value,... joined by "~".
+const tvToUrl = (list) => list.map((c) => [c.name, c.minutes, Object.entries(c.props).map(([k, v]) => `${k}=${v}`).join(","), c.hidden ? "h" : ""].join("!").replace(/!+$/, "")).join("~");
+function tvFromUrl(s) {
+  if (!s) return [];
+  return s.split("~").filter(Boolean).map((part) => {
+    const [name, minutes, ps, hidden] = part.split("!"), props = {};
+    for (const kv of (ps || "").split(",").filter(Boolean)) { const i = kv.indexOf("="); if (i > 0) props[kv.slice(0, i)] = kv.slice(i + 1); }
+    return { name, minutes: Number(minutes) || 0, props, hidden: hidden === "h" };
+  });
+}
 function coerceLike(current, raw) {
   if (raw === "null") return null;
   if (typeof current === "boolean") return raw === "true";
@@ -1598,6 +1838,8 @@ function urlHash() {
   q.set("d", $("startDate").value);
   if (S.eval !== DEFAULT_EVAL) q.set("e", S.eval);
   if (S.studies.length) q.set("st", studiesToUrl(S.studies));
+  if (S.tv.length) q.set("tv", tvToUrl(tvConfig()));
+  if (S.tv.length && !S.tvFocus) q.set("tvf", "0");
   for (const [g, name] of Object.entries(URL_GROUPS))
     for (const [k, v] of Object.entries(S[name]))
       if (typeof v !== "function" && !Object.is(v, base[name][k]) && JSON.stringify(v) !== JSON.stringify(base[name][k])) q.set(`${g}.${k}`, String(v));
@@ -1613,7 +1855,8 @@ function readHash() {
   if (!q.get("s")) return null;
   // A link names its eval and indicators whenever they are not the defaults.
   const m = { strategy: q.get("s"), date: q.get("d") || null, reset: true, fromUrl: true,
-              eval: q.get("e") || DEFAULT_EVAL, studies: studiesFromUrl(q.get("st")) };
+              eval: q.get("e") || DEFAULT_EVAL, studies: studiesFromUrl(q.get("st")),
+              tradovate: tvFromUrl(q.get("tv")), tvFocus: q.get("tvf") !== "0" };
   for (const name of Object.values(URL_GROUPS)) m[name] = {};
   for (const [k, v] of q) {
     const i = k.indexOf("."), name = i > 0 ? URL_GROUPS[k.slice(0, i)] : null;
@@ -1709,6 +1952,7 @@ async function boot() {
 
   S.strategyList = await fetch("/api/strategies").then((r) => r.json());
   if (!S.strategyList.length) { toast("No strategies found in strategies/", true); return; }
+  S.tvLib = await fetch("/api/tradovate").then((r) => r.json());
 
   const sel = $("strategy");
   sel.innerHTML = "";
@@ -1724,6 +1968,7 @@ async function boot() {
   S.chart.onHoverSignal = (sg) => { if (!sg && !window._hoverTrade) tradeTooltip(null); };
   // A trade or a signal marker clicked: what triggered it (the card has its own close).
   S.chart.onClick = (hit) => { if (hit) selectWhy(hit.trade || hit.signal); };
+  S.chart.onTradovateDrawn = tvPaintFit;
   // Every signal bar on the chart, entered or not: a view preference, kept.
   try { S.showSignals = localStorage.getItem("mnq.signals") === "1"; } catch { /* private mode */ }
   const sigBtn = $("sigToggle");
@@ -1773,6 +2018,11 @@ async function boot() {
       if (e && EVALS[e]) S.eval = e;
       const saved = JSON.parse(localStorage.getItem("mnq.studies") || "[]");
       S.studies = adoptStudies(saved.flatMap((st) => { try { return [{ ...resolveStudy(st), id: st.id, color: st.color, hidden: st.hidden }]; } catch { return []; } }));
+      const tv = JSON.parse(localStorage.getItem("mnq.tv") || "null");
+      if (tv) {
+        S.tvFocus = tv.focus !== false;
+        for (const c of tv.list || []) { try { S.tv.push(await tvMake(c)); } catch { /* the file has gone */ } }
+      }
     } catch { /* private mode, or a layout from an older version */ }
   }
   $("evalTabs").addEventListener("click", (e) => { const b = e.target.closest("button[data-eval]"); if (b) switchEval(b.dataset.eval); });

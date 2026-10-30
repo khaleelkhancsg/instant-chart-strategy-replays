@@ -2,7 +2,7 @@
 //
 // Runs mnqDonchian1250.js (2-min) and mnqMacdFade1250.js (1-min) exactly as
 // Tradovate would -- CommonJS module, `new calculator()`, props, init(), then
-// map(d, i) once per bar in order -- with the Tradovate tool modules stubbed,
+// map(d, i) once per bar in order -- on the mock of its runtime (tradovate/mock/),
 // over the whole history, and checks each against research/rules_1250_2026.mjs:
 //
 //   1. the signal on every bar
@@ -45,6 +45,8 @@ import { resolveExec } from "../src/engine.mjs";
 import { evalBase } from "../src/evals.mjs";
 import { loadStrategies } from "../src/registry.mjs";
 import { runStrategy } from "../src/run.mjs";
+import { checkOutput as checkItems, loadIndicator as loadWith, Problems } from "./mock/runtime.mjs";
+import { loadTools } from "./mock/library.mjs";
 import * as S from "../research/lib_shipped.mjs";
 import * as M from "../research/lib_donchian_mgmt.mjs";
 
@@ -60,45 +62,20 @@ function labRun(id) {
   return runStrategy(B1, s, b.params, resolveExec(b.exec), { filter: b.filter, explain: true });
 }
 
-// ── load an indicator the way Tradovate does, with its tools stubbed ─────
-function loadIndicator(file) {
-  const src = fs.readFileSync(path.join(HERE, file), "utf8");
-  const stubs = {
-    "./tools/predef": { paramSpecs: {
-      period: (v) => ({ kind: "int", def: v }),
-      number: (v) => ({ kind: "number", def: v }),
-      bool: (v) => ({ kind: "bool", def: v }) } },
-    "./tools/meta": { InputType: { BARS: "BARS" }, AreaChoice: { OVERLAY: "OVERLAY" } },
-    "./tools/graphics": { du: (v) => ({ du: v }), px: (v) => ({ px: v }), op: (a, o, b) => ({ op: [a, o, b] }) },
-  };
-  const module = { exports: {} };
-  const req = (n) => { if (!(n in stubs)) throw new Error("unexpected require " + n); return stubs[n]; };
-  new Function("require", "module", "exports", src)(req, module, module.exports);
-  return module.exports;
-}
+// ── load an indicator the way Tradovate does ─────────────────────────────
+const TOOLS = loadTools();
+const loadIndicator = (file) => loadWith(fs.readFileSync(path.join(HERE, file), "utf8"), TOOLS);
 const defaults = (mod) => Object.fromEntries(Object.entries(mod.params).map(([k, s]) => [k, s.def]));
 const mkD = (b, i) => ({ open: () => b.o, high: () => b.h, low: () => b.l, close: () => b.c,
                          volume: () => 0, timestamp: () => new Date(b.ts), index: () => i, value: () => b.c });
 const barOf = (T, i) => ({ ts: T.ts[i], o: T.open[i], h: T.high[i], l: T.low[i], c: T.close[i] });
 
-// Everything Tradovate will be handed must be a finite number or absent.
+// Everything Tradovate will be handed must be what its definitions accept.
 function checkOutput(mod, out, where) {
-  for (const k of Object.keys(out)) {
-    if (k === "graphics" || k === "_ev") continue;
-    if (!(k in mod.plots)) throw new Error(where + ": undeclared plot " + k);
-    if (out[k] !== undefined && !Number.isFinite(out[k])) throw new Error(where + ": plot " + k + " = " + out[k]);
-  }
-  const coordOk = (c) => !!c && (Number.isFinite(c.du) || Number.isFinite(c.px) ||
-    (Array.isArray(c.op) && coordOk(c.op[0]) && typeof c.op[1] === "string" && coordOk(c.op[2])));
-  for (const it of (out.graphics && out.graphics.items) || []) {
-    if (typeof it.key !== "string") throw new Error(where + ": bad graphics item");
-    if (it.tag === "LineSegments") {
-      for (const l of it.lines) if (![l.a.x, l.a.y, l.b.x, l.b.y].every(coordOk)) throw new Error(where + ": bad line " + JSON.stringify(l));
-      continue;
-    }
-    if (!coordOk(it.point.x) || !coordOk(it.point.y)) throw new Error(where + ": bad graphics point " + JSON.stringify(it.point));
-    if (typeof it.text !== "string") throw new Error(where + ": bad graphics item");
-  }
+  const found = new Problems();
+  checkItems(out, 0, mod, found);
+  const bad = found.list().filter((p) => p.level === "error");
+  if (bad.length) throw new Error(where + ": " + bad[0].text);
 }
 
 const results = [];
@@ -425,7 +402,7 @@ console.log("A. mnqDonchian1250 -- Donchian 30 + ADX + efficiency + rescue, 10-m
     if (i < d0) return;
     const { S: st, pre, B } = out._ev;
     const w = itemOf(out, i, "w"), r = itemOf(out, i, "r");
-    if (pre && !w) W.ordersBad++;
+    if (pre && !w && SIG[i - 1] !== SIG[i]) W.ordersBad++;      // a run of breakouts says why on its first bar
     if (w) {
       W.orders++;
       const e = LAB.explain(i);
@@ -434,10 +411,10 @@ console.log("A. mnqDonchian1250 -- Donchian 30 + ADX + efficiency + rescue, 10-m
       const ok = m && pre && e.dir === SIG[i] && e.dir !== 0 && e.size === (B.lots === 2 ? 0.5 : 1) && floored(+m[1], ax[i], 1) && floored(+m[2], eff[i], 0.01) &&
                  !!m[3] === (plain[i] === 0) && m[4] === word(HTF[i]) && (m[5] === undefined ? !(u > 0) : floored(+m[5], 100 * u, 1));
       if (!ok) { W.ordersBad++; W.eg = W.eg || { i, text: w.text }; }
-      const seg = itemOf(out, i, "lvl").lines[0], lvl = SIG[i] === 1 ? dh[i] : dl[i], at = seg.a.x.du;
+      const seg = itemOf(out, i, "lvl").lines[0], lvl = SIG[i] === 1 ? dh[i] : dl[i], at = seg.a.x.value;
       const lab = itemOf(out, i, "ll");
       const setBy = SIG[i] === 1 ? tf.high[at] : tf.low[at];
-      if (!(seg.a.y.du === lvl && seg.b.y.du === lvl && seg.b.x.du === i && setBy === lvl && at >= i - 30 && at < i &&
+      if (!(seg.a.y.value === lvl && seg.b.y.value === lvl && seg.b.x.value === i && setBy === lvl && at >= i - 30 && at < i &&
             lab.text === "30-bar " + (SIG[i] === 1 ? "high " : "low ") + lvl.toFixed(2))) { W.levelsBad++; W.eg = W.eg || { i, seg, lvl }; }
     }
     const due = fresh && SIG[i] === 0 && tf.ctMin[i] >= 510 && tf.ctMin[i] < 900 && st.pos !== side && !blocked(st);

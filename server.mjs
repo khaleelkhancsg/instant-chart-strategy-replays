@@ -23,6 +23,7 @@ import { sweepWindows, sweepFunded, DEFAULT_RULES, DEFAULT_FUNDED, resolveRules,
 import { indexAtOrAfter } from "./src/resample.mjs";
 import { evalBase, evalOf } from "./src/evals.mjs";
 import { resolveStudies, gateKey, studyOnSignal, studyEdge } from "./src/studies.mjs";
+import { listIndicators, loadTools, readIndicator } from "./tradovate/mock/library.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 5178;
@@ -161,14 +162,17 @@ function readBody(req) {
   });
 }
 
-// Static files, restricted to the three folders the app actually needs.
+// Static files, restricted to the folders the app actually needs. Checked after
+// the path is resolved: an encoded "..%2f" gets past the prefix test, and bot/.env
+// sits in this project.
+const STATIC_ROOTS = ["public", "src", "strategies", path.join("tradovate", "mock")].map((d) => path.join(HERE, d) + path.sep);
 function serveStatic(res, urlPath) {
   let rel = decodeURIComponent(urlPath);
   if (rel === "/" || rel === "") rel = "/public/index.html";
-  else if (!/^\/(public|src|strategies)\//.test(rel)) rel = "/public" + rel;
+  else if (!/^\/(public|src|strategies|tradovate\/mock)\//.test(rel)) rel = "/public" + rel;
 
   const full = path.normalize(path.join(HERE, rel));
-  if (!full.startsWith(HERE) || !fs.existsSync(full) || !fs.statSync(full).isFile()) {
+  if (!STATIC_ROOTS.some((r) => full.startsWith(r)) || !fs.existsSync(full) || !fs.statSync(full).isFile()) {
     res.writeHead(404, { "content-type": "text/plain" });
     res.end("Not found");
     return;
@@ -207,6 +211,13 @@ const server = http.createServer(async (req, res) => {
       runCache.clear();
       console.log(`Reloaded ${strategies.size} strategies`);
       return sendJson(res, 200, [...strategies.values()].map(describe));
+    }
+
+    // ── Tradovate indicators, read fresh so an edited file shows on its next load ──
+    if (p === "/api/tradovate") return sendJson(res, 200, { ...listIndicators(), tools: loadTools() });
+    if (p === "/api/tradovate/source") {
+      try { return sendJson(res, 200, readIndicator(url.searchParams.get("name") || "")); }
+      catch (e) { return sendJson(res, 404, { error: e.message }); }
     }
 
     // ── window bars, binary ──

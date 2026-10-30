@@ -52,9 +52,10 @@
  *                          · cancels sell stop (one resting the other way is
  *                          cancelled at the next open), · flip (reverses an
  *                          open trade). ▲ · closes trade: exits the open trade,
- *                          no new order. ▲ · in trade / ▲ · too late places
- *                          nothing. Not drawn once the day is done
- *   ADX 39 · eff 0.53 ...  under an order: why it fired (showWhy). The readings
+ *                          no new order. A bare ▲ (already in that trade) or
+ *                          ▲ · too late places nothing. Not drawn once the day
+ *                          is done
+ *   ADX 39 · eff 0.53 ...  under the first order of a run: why it fired (showWhy). The readings
  *                          the rules used -- ADX (25 or more), efficiency (0.5
  *                          or more; "+ trend" when the slow trend rescued it),
  *                          the 10-minute EMA direction, and the share of its
@@ -482,9 +483,10 @@ class mnqDonchian1250 {
           else if (S.armDir !== 0) q.push(S.armDir === B.sig ? "moves stop if unfilled" : "cancels " + (S.armDir === 1 ? "buy" : "sell") + " stop");
           str = mark + " " + (long ? "BUY " : "SELL ") + pre.lots + (q.length ? " · " + q.join(" · ") : "");
         } else if (S.pos === -B.sig) str = mark + " · closes trade";
-        else str = mark + " · " + (S.pos === B.sig ? "in trade" : "too late");
+        else if (S.pos !== B.sig) str = mark + " · too late";
         text("s", du(idx), y, str, col, "centerMiddle", 13, true);
-        if (pre && why) {
+        // a run of breakouts is one story: only its first bar says why
+        if (pre && why && !(prev && prev.sig === B.sig)) {
           text("w", du(idx), y, readings(B, K), col, "centerMiddle", 10, false, long ? 15 : -15);
           // the level the close broke, from the bar that set it to the signal bar
           const lvl = long ? B.dh : B.dl, at = long ? B.dhAt : B.dlAt;

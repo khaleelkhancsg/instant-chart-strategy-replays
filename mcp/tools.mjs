@@ -485,6 +485,8 @@ export const TOOLS = [
     inputSchema: obj({ strategy: CFG.strategy, eval: { ...CFG.eval, description: "Switch the evaluation tab ('3000' or '1250'). Settings the eval decides reset; other changes carry over, as the tabs do." },
                        params: CFG.params, exec: CFG.exec, filter: CFG.filter, rules: CFG.rules,
                        studies: { ...CFG.studies, description: "REPLACES the chart's indicators: [{type, tf, params, gate}] (list_studies). [] removes them all." },
+                       tradovate: { type: "array", items: { type: "object" }, description: "REPLACES the Tradovate indicators on the chart: [{name, minutes, props}]. name is a file in tradovate/ or TradingCustomIndicators/tradovate/, or builtin:<name> for one of Tradovate's own. They run in the page on the chart's own bars (tradovate/mock/)." },
+                       chartOnly: { type: "boolean", description: "With Tradovate indicators on it, show only them, zoomed to the window's first day (the default), or false to show them with the strategy's trades." },
                        funded: { type: "object", description: "Funded-stage settings." },
                        date: { type: "string", description: "Move to the window starting this trading day (YYYY-MM-DD)." },
                        reset: { type: "boolean", description: "Start from the strategy's own defaults (under the eval) rather than the current settings." },

@@ -2,6 +2,8 @@
 
 Two custom indicators that draw what `bot/mnq_donchian_bot.py` sees and does, on the chart you trade from. Two more below are for the $1,250 evaluation: `mnqDonchian1250.js`, which draws what `bot/mnq_donchian1250_bot.py` does, and `mnqMacdFade1250.js`. Their full guide is in the TradingCustomIndicators repo (`tradovate/README.md`).
 
+To see any of these before pasting it into Tradovate, add it on the backtester's chart: see [mock/README.md](mock/README.md).
+
 | File | Chart | Shows |
 |---|---|---|
 | `mnqDonchianBot.js` | **2-minute** MNQ | Donchian channel, the signals the bot acts on, the stop-entry each one arms, the bracket, fills and exits |

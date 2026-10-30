@@ -178,6 +178,10 @@ is a 2026 edge: check both before trusting one. The live bot also halves its siz
 once the day has used 0.9 of its average range and flattens at 15:06, not 15:04;
 `donchian_1250` is that bot whole, at 74.5%.
 
+### Try a Tradovate indicator on the chart
+
+**Tradovate indicators** in the sidebar puts an indicator written for Tradovate on this chart, on the window's own bars, with nothing external involved. Add one of yours or one of Tradovate's built-ins, and the chart opens on the window's first day with candles of its size. Its settings come from the file, a list of checks says what would go wrong on the platform, and ↻ reads the file again after an edit. `tradovate/mock/README.md` has the details.
+
 ---
 
 ## Why it feels instant
@@ -626,7 +630,7 @@ happened and one that doesn't.
 ## Verification
 
 ```bash
-npm run check          # test.mjs, audit.mjs, legacy parity, the MCP server, the chart link, the Tradovate indicators
+npm run check          # test.mjs, audit.mjs, legacy parity, the MCP server, the chart link, the indicator mock, the Tradovate indicators
 npm run verify-rolls   # seam coherence against the incoming contract
 FUZZ_SEED=7 FUZZ_SCALE=3 node test.mjs   # the randomised invariants, harder
 ```

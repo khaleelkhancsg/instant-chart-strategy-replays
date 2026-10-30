@@ -430,7 +430,7 @@ class mnqMacdFade1250 {
         } else if (closes) {
           text("s", du(idx), y, mark + " · closes trade", long ? COL.up : COL.dn, "centerMiddle", 12, true);
         } else {
-          text("s", du(idx), y, mark + " · " + (S.pos === B.sig ? "in trade" : "too late"), long ? COL.up : COL.dn, "centerMiddle", 12, true);
+          text("s", du(idx), y, S.pos === B.sig ? mark : mark + " · too late", long ? COL.up : COL.dn, "centerMiddle", 12, true);
         }
       }
       if (ev.fill) {
