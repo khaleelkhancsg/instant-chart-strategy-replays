@@ -64,6 +64,8 @@
 
       <button id="sigToggle" class="sigtoggle" aria-pressed="false" title="Mark every signal bar the strategy produced: ◆ entered, ◇ an order that never filled, × refused (with the reason on hover), · already in a position. Click one, or any trade, for what triggered it.">Signals</button>
 
+      <div class="housechip" id="houseChip"></div>
+
       <div class="verdict" id="verdict"><span class="badge open">—</span></div>
 
       <div class="topstats" id="topStats"></div>
@@ -74,7 +76,10 @@
     <div id="navWrap">
       <canvas id="nav"></canvas>
       <div class="navbar-foot">
-        <span id="navSummary">Full-history sweep: every 30-day start, coloured by outcome. Click to jump.</span>
+        <div class="navspan" id="navSpan" title="What the strip above covers">
+          <button data-span="2026">2026</button><button data-span="all">All</button>
+        </div>
+        <span id="navSummary"></span>
         <button id="runSweep" class="primary">Run full sweep</button>
       </div>
     </div>

@@ -7,7 +7,7 @@
 // the classic way these things end up feeling sluggish.
 
 import { graphicsPrims, plotPrims, paintPrim, overlaps, fontOf } from "/tradovate/mock/draw.mjs";
-import { fmtCt, lowerBound, upperBound, nthSmallest } from "/ui.mjs";
+import { fmtCt, lowerBound, upperBound, nthSmallest, Y2026 } from "/ui.mjs";
 
 const CSS = {
   bg: "#0b0f14",
@@ -70,10 +70,10 @@ function tfNote(want, applied, signalTf) {
   return s;
 }
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 function fmtDay(ms) {
   const d = new Date(ms);
-  const M = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  return `${d.getUTCDate()} ${M[d.getUTCMonth()]}`;
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
 }
 
 export class ChartView {
@@ -1564,12 +1564,13 @@ export class Navigator {
     this.windows = null;
     this.range = null;
     this.cursorMs = null;
+    this.span = "2026";   // what the strip covers: "2026" or "all"
 
     canvas.addEventListener("click", (e) => {
       if (!this.range) return;
       const r = canvas.getBoundingClientRect();
-      const f = (e.clientX - r.left) / r.width;
-      this.onPick(this.range[0] + f * (this.range[1] - this.range[0]));
+      const f = (e.clientX - r.left) / r.width, [t0, t1] = this.shown();
+      this.onPick(t0 + f * (t1 - t0));
     });
     canvas.addEventListener("mousemove", (e) => {
       const r = canvas.getBoundingClientRect();
@@ -1587,6 +1588,14 @@ export class Navigator {
     this.draw();
   }
 
+  // The dates across the strip. 2026 runs to its last window's start, since the
+  // final 30 days have no window of their own.
+  shown() {
+    const [a, b] = this.range, w = this.windows;
+    if (this.span !== "2026" || b <= Y2026 || !w || !w.length) return this.range;
+    return [Math.max(a, Y2026), Math.min(b, w[w.length - 1].startMs + 86400000)];
+  }
+
   draw() {
     const dpr = window.devicePixelRatio || 1;
     const w = this.c.parentElement.clientWidth, h = 46;
@@ -1601,14 +1610,15 @@ export class Navigator {
     if (!this.windows || !this.range) {
       ctx.fillStyle = CSS.text;
       ctx.font = "11px ui-sans-serif, system-ui";
-      ctx.fillText("Run the full-history sweep to map every 30-day window …", 10, 27);
+      ctx.fillText("Sweeping every window …", 10, 27);
       return;
     }
-    const [t0, t1] = this.range;
+    const [t0, t1] = this.shown();
     const x = (ms) => ((ms - t0) / (t1 - t0)) * w;
-    const bw = Math.max(1, w / this.windows.length + 0.5);
+    const bw = Math.max(1, (86400000 / (t1 - t0)) * w + 0.5);
 
     for (const win of this.windows) {
+      if (win.startMs < t0 || win.startMs >= t1) continue;
       const px = x(win.startMs);
       ctx.fillStyle = win.outcome === "PASS" ? "rgba(38,166,154,0.85)"
         : win.outcome === "FAIL" ? "rgba(239,83,80,0.75)"
@@ -1616,16 +1626,20 @@ export class Navigator {
       ctx.fillRect(px, 6, bw, h - 22);
     }
 
-    // Year ticks
+    // Year ticks, or months across a single year
     ctx.fillStyle = CSS.text;
     ctx.font = "9px ui-monospace, monospace";
-    const y0 = new Date(t0).getUTCFullYear(), y1 = new Date(t1).getUTCFullYear();
-    for (let yr = y0; yr <= y1; yr++) {
-      const ms = Date.UTC(yr, 0, 1);
-      if (ms < t0 || ms > t1) continue;
+    const tick = (ms, text) => {
+      if (ms < t0 || ms > t1) return;
       const px = x(ms);
       ctx.fillRect(px, 6, 1, h - 22);
-      ctx.fillText(String(yr), px + 3, h - 6);
+      ctx.fillText(text, px + 3, h - 6);
+    };
+    const y0 = new Date(t0).getUTCFullYear(), y1 = new Date(t1).getUTCFullYear();
+    if (t1 - t0 < 400 * 86400000) {
+      for (let m = 0; m < 24; m++) { const ms = Date.UTC(y0, m, 1); tick(ms, MONTHS[new Date(ms).getUTCMonth()]); }
+    } else {
+      for (let yr = y0; yr <= y1; yr++) tick(Date.UTC(yr, 0, 1), String(yr));
     }
 
     if (this.cursorMs != null) {
@@ -1636,7 +1650,22 @@ export class Navigator {
     if (this.hoverX != null) {
       ctx.strokeStyle = CSS.crosshair;
       ctx.beginPath(); ctx.moveTo(this.hoverX + 0.5, 2); ctx.lineTo(this.hoverX + 0.5, h - 12); ctx.stroke();
+      this._drawHover(ctx, w, t0, t1);
     }
+  }
+
+  // What the window under the pointer did.
+  _drawHover(ctx, w, t0, t1) {
+    const first = this.windows[0], k = Math.floor((t0 + (this.hoverX / w) * (t1 - t0) - first.startMs) / 86400000);
+    const win = this.windows[k];
+    if (!win) return;
+    const text = `${new Date(win.startMs).toISOString().slice(0, 10)}  ${win.outcome === "IN_PROGRESS" ? "UNRESOLVED" : win.outcome}  ${fmtUsd(win.netPnl)}  ${win.daysUsed}d`;
+    ctx.font = "10px ui-monospace, monospace";
+    const tw = ctx.measureText(text).width + 10, lx = Math.max(0, Math.min(w - tw, this.hoverX + 8));
+    ctx.fillStyle = "rgba(11,15,20,0.92)";
+    ctx.fillRect(lx, 8, tw, 15);
+    ctx.fillStyle = win.outcome === "PASS" ? CSS.bull : win.outcome === "FAIL" ? CSS.bear : CSS.textBright;
+    ctx.fillText(text, lx + 5, 19);
   }
 }
 

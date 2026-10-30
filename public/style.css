@@ -146,7 +146,7 @@ select:focus, input:focus { border-color: var(--accent); }
 .yr-note { font-size: 9px; color: var(--dim); margin-top: 4px; font-family: var(--mono); }
 
 .sweep-foot { margin-top: 10px; font-family: var(--mono); font-size: 9.5px; color: var(--dim); }
-.sweep-foot .warn { color: var(--warn); }
+.sweep-foot .warn, .yr-note .warn { color: var(--warn); }
 .stat-v .ci, .ci { color: var(--dim); font-size: 10px; }
 .stale { opacity: .45; }
 
@@ -261,6 +261,10 @@ button:disabled { opacity: .5; cursor: default; }
 .badge.fail { background: var(--bear); color: #2b0b0a; }
 .badge.open { background: var(--line-2); color: var(--muted); }
 
+.housechip { white-space: nowrap; padding: 0 12px; border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
+.housechip .tstat-v b { color: var(--bull); font-size: 14px; font-weight: 650; }
+.housechip .hc-q { color: var(--muted); font-size: 11px; margin-left: 2px; }
+
 .topstats { display: flex; gap: 16px; flex: 1; overflow: hidden; }
 .tstat { white-space: nowrap; }
 .tstat-k { font-size: 9.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--dim); }
@@ -273,7 +277,11 @@ button:disabled { opacity: .5; cursor: default; }
 #navWrap { border-bottom: 1px solid var(--line); background: var(--panel); padding: 6px 14px 7px; flex: 0 0 auto; }
 #nav { display: block; width: 100%; cursor: pointer; border-radius: 3px; }
 .navbar-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 5px; }
-#navSummary { font-size: 11px; color: var(--dim); font-family: var(--mono); }
+.navspan { display: flex; flex: 0 0 auto; gap: 1px; background: var(--line); border-radius: 5px; padding: 1px; }
+.navspan button { border: 0; background: transparent; color: var(--muted); padding: 2px 8px; font-size: 10.5px; font-family: var(--mono); border-radius: 4px; }
+.navspan button:hover { color: #fff; }
+.navspan button.on { background: var(--line-2); color: var(--text); }
+#navSummary { flex: 1; min-width: 0; font-size: 11px; color: var(--dim); font-family: var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #navSummary .k { color: var(--muted); }
 #navSummary .pass { color: var(--bull); } #navSummary .fail { color: var(--bear); }
 

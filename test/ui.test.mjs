@@ -4,7 +4,7 @@
 // draws: the page itself is checked by opening it.
 
 import { loadBars } from "../src/data.mjs";
-import { ctWall, fmtCt, lowerBound, upperBound, nthSmallest } from "../public/ui.mjs";
+import { ctWall, fmtCt, lowerBound, upperBound, nthSmallest, wilson, rateOver, houseRates, Y2026, APR_2026 } from "../public/ui.mjs";
 
 let pass = 0, fail = 0;
 const failures = [];
@@ -70,6 +70,32 @@ t("nthSmallest is the value a sort gives", () => {
     }
     eq([...a.slice().sort()], [...sorted], "it only reorders:");
   }
+});
+
+console.log("\nthe house numbers");
+console.log("-----------------");
+const day = (iso) => Date.parse(iso + "T22:03:00Z");
+const windows = [
+  { startMs: day("2025-12-30"), outcome: "PASS" },        // before 2026: not counted
+  { startMs: day("2026-01-05"), outcome: "PASS" },
+  { startMs: day("2026-03-31"), outcome: "FAIL" },        // the last of Jan-Mar
+  { startMs: day("2026-04-01"), outcome: "PASS" },        // the first of Apr-Jul
+  { startMs: day("2026-06-01"), outcome: "IN_PROGRESS" },
+];
+t("2026 and its halves split at the first of April, and exclude 2025", () => {
+  const h = houseRates(windows, 30);
+  eq([h.y2026.n, h.y2026.pass, h.y2026.fail], [4, 2, 1]);
+  eq([h.q1.n, h.q1.rate], [2, 50]);
+  eq([h.q2.n, h.q2.rate], [2, 50]);
+  eq(h.y2026.openRate, 25);
+});
+t("no windows in a period is no figure, not a zero", () => eq(rateOver(windows, Date.UTC(2020, 0, 1), Date.UTC(2021, 0, 1), 30), null));
+t("the interval counts one sample per window length, and stays inside 0-100", () => {
+  const [lo, hi] = wilson(0.745, 5.5);
+  if (!(lo > 30 && lo < 40 && hi > 90 && hi < 97)) throw new Error(`${lo}-${hi}`);
+  eq(wilson(0.5, 0), null);
+  const [a, b] = wilson(1, 2);
+  if (!(a >= 0 && b === 100)) throw new Error(`${a}-${b}`);
 });
 
 console.log(`\n${"=".repeat(64)}\n  ${pass} passed, ${fail} failed`);

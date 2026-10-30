@@ -16,6 +16,7 @@ import { windowSpan, DEFAULT_TAIL_MIN } from "/src/window.mjs";
 import { EVALS, EVAL_IDS, DEFAULT_EVAL, evalBase, evalKeys } from "/src/evals.mjs";
 import { STUDIES, STUDY_TFS, resolveStudy, studyLabel, isGating, gateLabel, computeStudy } from "/src/studies.mjs";
 import { describeEntry, describeExit, eventText, explainLines, num as fmtNum, px as fmtPx } from "/src/explain.mjs";
+import { Y2026, wilson, houseRates } from "/ui.mjs";
 import { loadIndicator, defaultProps, plotters, audit, formingProblems, Problems } from "/tradovate/mock/runtime.mjs";
 
 // The 1-minute x-position a resampled bar should be drawn at: the middle of the
@@ -1124,15 +1125,6 @@ function downloadCsv(name, rows) {
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
-// An approximate 95% interval for a pass rate (Wilson), in percent. Neighbouring
-// windows share all but a day of their days, so the honest sample is about one
-// window per windowDays -- which is why these are wide, and should be.
-function wilson(p, nEff) {
-  if (!(nEff > 0)) return null;
-  const z2 = 1.96 * 1.96, d = 1 + z2 / nEff;
-  const c = (p + z2 / (2 * nEff)) / d, h = (1.96 * Math.sqrt((p * (1 - p)) / nEff + z2 / (4 * nEff * nEff))) / d;
-  return [Math.max(0, c - h) * 100, Math.min(1, c + h) * 100];
-}
 const ciText = (ci) => (ci ? `${ci[0].toFixed(0)}–${ci[1].toFixed(0)}%` : "—");
 
 // ───────────────────── P&L by hour and weekday ─────────────────────
@@ -1233,13 +1225,39 @@ function median(arr) {
   return a[Math.floor(a.length / 2)];
 }
 
+// What the sweep says at a glance: the top bar's 2026 figure and the line under the
+// navigator. Both name the evaluation's result on 2026, in its two halves, because
+// that is what a result is judged on; all history is context.
+function paintHouse() {
+  const chip = $("houseChip"), line = $("navSummary"), sw = S.sweep;
+  chip.classList.toggle("stale", !!S.sweepStale);
+  line.classList.toggle("stale", !!S.sweepStale);
+  if (!sw) {
+    chip.innerHTML = `<div class="tstat-k">2026 pass</div><div class="tstat-v">${S.sweeping ? "…" : "—"}</div>`;
+    line.innerHTML = `<span class="k">${S.sweeping ? `sweeping all ${S.rules.windowDays}-day windows…` : "Every start date, coloured by outcome. Click to jump."}</span>`;
+    return;
+  }
+  const { y2026: h, q1, q2 } = houseRates(sw.windows, S.rules.windowDays), s = sw.summary;
+  const n1 = (r) => (r ? r.rate.toFixed(1) : "—");
+  chip.innerHTML = h
+    ? `<div class="tstat-k">2026 pass · ${EVALS[sw.eval || S.eval].label.replace(" eval", "")}</div>` +
+      `<div class="tstat-v"><b>${h.rate.toFixed(1)}%</b> <span class="ci">${ciText(h.ci)}</span> <span class="hc-q">${n1(q1)} · ${n1(q2)}</span></div>`
+    : `<div class="tstat-k">Pass, all history</div><div class="tstat-v"><b>${s.passRate.toFixed(1)}%</b></div>`;
+  chip.title = h ? `Calendar windows that start in 2026: ${h.n}, about ${(h.n / S.rules.windowDays).toFixed(1)} independent periods, so the 95% interval is wide. Then Jan–Mar · Apr–Jul: a result has to hold in both.` : "";
+  line.innerHTML =
+    `<span class="k">${EVALS[sw.eval || S.eval].label}</span> · ` +
+    (h ? `<span class="pass">2026 ${h.rate.toFixed(1)}% pass</span> <span class="k">(${ciText(h.ci)})</span> · Jan–Mar ${n1(q1)} · Apr–Jul ${n1(q2)} · <span class="fail">${h.failRate.toFixed(1)}% breached</span> · ` : "") +
+    `<span class="k">all history ${s.passRate.toFixed(1)}%${s.medianDaysToPass ? `, median ${s.medianDaysToPass}d to pass` : ""}</span>`;
+}
+
 function paintSweepStats() {
+  paintHouse();
   const host = $("sweepPanel");
   if (!host) return;
 
   if (!S.sweep) {
     host.innerHTML = `<div class="sweep-empty">${
-      S.sweeping ? "Sweeping every 30-day window…" : "Not run yet — press <b>Run full sweep</b>."
+      S.sweeping ? `Sweeping every ${S.rules.windowDays}-day window…` : "Not run yet: it starts by itself."
     }</div>`;
     return;
   }
@@ -1279,46 +1297,46 @@ function paintSweepStats() {
     </div>`;
   }).join("") + `<div class="yr-note">* partial year — fewer windows behind the number</div>`;
 
-  // The house check: results are judged on 2026, and 2026 is split in two so a
-  // result has to hold in both halves.
+  // The house check: 2026 leads, in its two halves, and all history follows.
   const W = S.rules.windowDays;
-  const part = (lo, hi) => {
-    const ws = windows.filter((w) => w.startMs >= lo && w.startMs < hi);
-    const p = ws.filter((w) => w.outcome === "PASS").length / (ws.length || 1);
-    return ws.length ? { n: ws.length, rate: p * 100, ci: wilson(p, ws.length / W) } : null;
-  };
-  const y26 = Date.UTC(2026, 0, 1), apr26 = Date.UTC(2026, 3, 1);
-  const h26 = part(y26, Infinity), q1 = part(y26, apr26), q2 = part(apr26, Infinity);
-  const house = h26 ? `
-    <div class="sweep-label">2026 — judged here, checked in halves</div>
-    <div class="statgrid">
-      ${statCell("2026 pass rate", `${h26.rate.toFixed(1)}% <span class="ci">${ciText(h26.ci)}</span>`)}
-      ${statCell("Jan–Mar · Apr–Jul", q1 && q2 ? `${q1.rate.toFixed(1)}% · ${q2.rate.toFixed(1)}%` : "—")}
-    </div>
-    <div class="yr-note">${h26.n} windows, but only ≈${(h26.n / W).toFixed(1)} independent ${W}-day periods — hence the wide interval</div>` : "";
+  const { y2026: h26, q1, q2 } = houseRates(windows, W);
+  const lead = h26 || { n: s.n, rate: s.passRate, failRate: s.failRate, openRate: s.openRate, ci: wilson(s.passRate / 100, s.n / W) };
+  const noCost = !(S.exec.slippageTicks > 0);
+  const gates = S.studies.filter(isGating).length;
 
   host.innerHTML = `
     <div class="sweep-head ${stale ? "stale" : ""}">
-      <div class="sweep-rate">${s.passRate.toFixed(1)}<span>%</span></div>
+      <div class="sweep-rate">${lead.rate.toFixed(1)}<span>%</span></div>
       <div class="sweep-sub">
-        pass rate · <span title="Approximate 95% interval, counting one independent sample per ${W} days of start dates (neighbouring windows share most of their days)">95% CI ${ciText(wilson(s.passRate / 100, s.n / W))}</span><br>
-        <span class="k">${EVALS[S.sweep.eval || S.eval].label} · ${s.n.toLocaleString()} windows${
-          S.studies.some(isGating) ? ` · ${S.studies.filter(isGating).length} indicator gate${S.studies.filter(isGating).length > 1 ? "s" : ""}` : ""}</span>
+        ${h26 ? "2026 pass rate" : "pass rate"} · <span title="Approximate 95% interval, counting one independent sample per ${W} days of start dates (neighbouring windows share most of their days)">95% CI ${ciText(lead.ci)}</span><br>
+        <span class="k">${EVALS[S.sweep.eval || S.eval].label} · ${lead.n.toLocaleString()} calendar windows${gates ? ` · ${gates} indicator gate${gates > 1 ? "s" : ""}` : ""}</span>
       </div>
     </div>
 
     <div class="stackbar" title="pass / fail / unresolved">
-      <i class="sb-pass" style="width:${s.passRate}%"></i>
-      <i class="sb-fail" style="width:${s.failRate}%"></i>
-      <i class="sb-open" style="width:${s.openRate}%"></i>
+      <i class="sb-pass" style="width:${lead.rate}%"></i>
+      <i class="sb-fail" style="width:${lead.failRate}%"></i>
+      <i class="sb-open" style="width:${lead.openRate}%"></i>
     </div>
     <div class="stackkey">
-      <span><b class="sb-pass"></b>${s.passRate.toFixed(1)}% pass</span>
-      <span><b class="sb-fail"></b>${s.failRate.toFixed(1)}% breached</span>
-      <span><b class="sb-open"></b>${s.openRate.toFixed(1)}% ran out of time</span>
+      <span><b class="sb-pass"></b>${lead.rate.toFixed(1)}% pass</span>
+      <span><b class="sb-fail"></b>${lead.failRate.toFixed(1)}% breached</span>
+      <span><b class="sb-open"></b>${lead.openRate.toFixed(1)}% ran out of time</span>
     </div>
 
+    ${h26 ? `
     <div class="statgrid" style="margin-top:9px">
+      ${statCell("Jan–Mar", q1 ? `${q1.rate.toFixed(1)}% <span class="ci">${ciText(q1.ci)}</span>` : "—")}
+      ${statCell("Apr–Jul", q2 ? `${q2.rate.toFixed(1)}% <span class="ci">${ciText(q2.ci)}</span>` : "—")}
+    </div>
+    <div class="yr-note">${h26.n} windows, but only ≈${(h26.n / W).toFixed(1)} independent ${W}-day periods, hence the wide intervals${
+      noCost ? `. <span class="warn">No slippage set: live fills pay about a tick a side.</span>` : ""}</div>` : ""}
+
+    <div class="sweep-label">All history</div>
+    <div class="statgrid">
+      ${statCell("Pass rate", `${s.passRate.toFixed(1)}% <span class="ci">${ciText(wilson(s.passRate / 100, s.n / W))}</span>`)}
+      ${statCell("Breached", s.failRate.toFixed(1) + "%")}
+      ${statCell("Windows", s.n.toLocaleString())}
       ${statCell("Median days to pass", s.medianDaysToPass ?? "—")}
       ${statCell("Profit at pass (median / max)", passNets.length ? `${fmtUsd(median(passNets))} / ${fmtUsd(Math.max(...passNets))}` : "—")}
       ${statCell("Median net / window", fmtUsd(median(nets) ?? 0), sign(median(nets) ?? 0))}
@@ -1327,8 +1345,6 @@ function paintSweepStats() {
       ${statCell("Median trades / window", median(windows.map((w) => w.trades)) ?? 0)}
       ${statCell("Median breach margin", fmtUsd(median(failed.map((w) => w.minCushion).filter((v) => v != null)) ?? 0), "neg")}
     </div>
-
-    ${house}
 
     <div class="sweep-label">Pass rate by year</div>
     <div class="yrs">${yearRows}</div>
@@ -1584,7 +1600,8 @@ async function loadWindow(startMs, { keepTail = false } = {}) {
   const first = S.blob.tday[Math.min(S.winStartLocal, S.blob.tday.length - 1)];
   $("startDate").value = new Date(first * DAY).toISOString().slice(0, 10);
   const end = new Date(startMs + S.rules.windowDays * DAY);
-  $("winRange").textContent = `→ ${end.toISOString().slice(0, 10)} · ${(S.winEndLocal - S.winStartLocal).toLocaleString()} 1-min bars`;
+  $("winRange").textContent = `→ ${end.toISOString().slice(0, 10)}`;
+  $("winRange").title = `${(S.winEndLocal - S.winStartLocal).toLocaleString()} 1-minute bars in this window`;
   if (S.nav) { S.nav.cursorMs = startMs; S.nav.draw(); }
 
   const settled = recompute();   // a promise while a longer tail is still loading
@@ -1628,7 +1645,6 @@ async function runSweep() {
   S.sweeping = true;
   $("runSweep").disabled = true;
   if (!S.sweep) paintSweepStats();
-  $("navSummary").innerHTML = `<span class="k">sweeping all 30-day windows…</span>`;
 
   try {
     const r = await fetch("/api/sweep", {
@@ -1654,14 +1670,6 @@ async function runSweep() {
     paintFundedStats();
     paintBreakdown();
     paintEdge();
-    const s = r.summary;
-    $("navSummary").innerHTML =
-      `<span class="k">${EVALS[S.eval].label} · ${s.n.toLocaleString()} × ${S.rules.windowDays}-day windows</span> · ` +
-      `<span class="pass">${s.passRate.toFixed(1)}% pass</span> · ` +
-      `<span class="fail">${s.failRate.toFixed(1)}% breached</span> · ` +
-      `${s.openRate.toFixed(1)}% unresolved` +
-      (s.medianDaysToPass ? ` · median ${s.medianDaysToPass}d to pass` : "") +
-      ` <span class="k">— see “All windows” in the sidebar</span>`;
   } catch (e) {
     toast(e.message, true);
     S.failedSweepKey = key;
@@ -1893,10 +1901,29 @@ function urlHash() {
       if (typeof v !== "function" && !Object.is(v, base[name][k]) && JSON.stringify(v) !== JSON.stringify(base[name][k])) q.set(`${g}.${k}`, String(v));
   return "#" + q.toString();
 }
+// Kept as well, so a visit with no link opens where the last one left off.
 let hashTimer = 0;
 function queueHash() {
   clearTimeout(hashTimer);
-  hashTimer = setTimeout(() => { const h = urlHash(); if (h !== location.hash) history.replaceState(null, "", h); }, 300);
+  hashTimer = setTimeout(() => {
+    if (!S.booted) return;
+    const h = urlHash();
+    if (h !== location.hash) history.replaceState(null, "", h);
+    try { localStorage.setItem("mnq.last", h); } catch { /* private mode */ }
+  }, 300);
+}
+// And what was in view, in time, for the same window.
+function saveView() {
+  const c = S.chart, b = S.blob;
+  if (!S.booted || !b || !b.count) return;
+  const at = (i) => b.ts[Math.max(0, Math.min(b.count - 1, Math.round(i)))];
+  try { localStorage.setItem("mnq.view", JSON.stringify({ start: S.windowStart, from: at(c.i0), to: at(c.i1 - 1) })); } catch { /* private mode */ }
+}
+function restoreView() {
+  try {
+    const v = JSON.parse(localStorage.getItem("mnq.view") || "null");
+    if (v && v.start === S.windowStart) S.chart.zoomTo(indexAtOrAfter(S.blob.ts, v.from), indexAtOrAfter(S.blob.ts, v.to) + 1);
+  } catch { /* private mode, or an older format */ }
 }
 function readHash() {
   const q = new URLSearchParams(location.hash.slice(1));
@@ -1966,6 +1993,8 @@ function tradeTooltip(t, ev) {
 }
 
 // ─────────────────────────────── boot ───────────────────────────────
+const FIRST_BOOK = "donchian_1250", FIRST_EVAL = "1250";
+
 async function selectStrategy(id) {
   S.strategyDesc = S.strategyList.find((s) => s.id === id) || S.strategyList[0];
   $("strategy").value = S.strategyDesc.id;   // also when the switch came from the chart link or a URL
@@ -2052,18 +2081,34 @@ async function boot() {
     const hi = S.meta.endMs - S.rules.windowDays * DAY;
     loadWindow(Math.max(S.meta.startMs, Math.min(hi, ms)));
   });
+  // 2026 alone by default: on all seven years it gets a sliver of the strip.
+  try { S.nav.span = localStorage.getItem("mnq.nav") === "all" ? "all" : "2026"; } catch { /* private mode */ }
+  const paintNavSpan = () => { for (const b of $("navSpan").querySelectorAll("button")) b.classList.toggle("on", b.dataset.span === S.nav.span); };
+  paintNavSpan();
+  $("navSpan").addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    S.nav.span = b.dataset.span;
+    try { localStorage.setItem("mnq.nav", S.nav.span); } catch { /* private mode */ }
+    paintNavSpan();
+    S.nav.draw();
+  });
 
-  // Start 30 days in so the warm-up prefix has real history behind it -- or
-  // where the URL says, with the settings it carries.
-  S.windowStart = S.meta.startMs + 30 * DAY;
+  // A link opens what it names. Without one, the last visit's view comes back, and
+  // a first visit opens on the book to beat, in the year results are judged on.
+  let resumed = false;
+  try {
+    const last = location.hash ? null : localStorage.getItem("mnq.last");
+    if (last) { history.replaceState(null, "", last); resumed = true; }
+  } catch { /* private mode */ }
+  S.windowStart = Y2026;
   const fromUrl = readHash();
   const urlStart = fromUrl && fromUrl.date ? Date.parse(fromUrl.date + "T00:00:00Z") : NaN;
   if (Number.isFinite(urlStart)) S.windowStart = urlStart;
-  // Without a link, the evaluation and indicators of the last visit.
   if (!fromUrl) {
     try {
       const e = localStorage.getItem("mnq.eval");
-      if (e && EVALS[e]) S.eval = e;
+      S.eval = e && EVALS[e] ? e : FIRST_EVAL;
       const saved = JSON.parse(localStorage.getItem("mnq.studies") || "[]");
       S.studies = adoptStudies(saved.flatMap((st) => { try { return [{ ...resolveStudy(st), id: st.id, color: st.color, hidden: st.hidden }]; } catch { return []; } }));
       const tv = JSON.parse(localStorage.getItem("mnq.tv") || "null");
@@ -2074,8 +2119,13 @@ async function boot() {
     } catch { /* private mode, or a layout from an older version */ }
   }
   $("evalTabs").addEventListener("click", (e) => { const b = e.target.closest("button[data-eval]"); if (b) switchEval(b.dataset.eval); });
-  await selectStrategy(fromUrl && S.strategyList.some((s) => s.id === fromUrl.strategy) ? fromUrl.strategy : S.strategyList[0].id);
+  const first = S.strategyList.find((s) => s.id === FIRST_BOOK) || S.strategyList[0];
+  await selectStrategy(fromUrl && S.strategyList.some((s) => s.id === fromUrl.strategy) ? fromUrl.strategy : first.id);
   if (fromUrl) await applySettings(fromUrl).catch((e) => toast(`The link's settings: ${e.message}`, true));
+  if (resumed) restoreView();
+  S.booted = true;
+  queueHash();
+  window.addEventListener("pagehide", saveView);
   connectChartLink();
   // A link pasted into this tab, or the back button through edited links.
   window.addEventListener("hashchange", () => {
