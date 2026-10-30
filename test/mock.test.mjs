@@ -210,6 +210,16 @@ t("state that breaks when a bar forms is noted; derived state is not", () => {
   const pure = indicator(`init() { this.v = []; } map(d, i) { this.v[i] = (this.v[i - 1] || 0) + d.close(); return this.v[i]; }`);
   eq(audit(pure, "", b).problems.length, 0);
 });
+t("the page's quick paths: the forming check can run later, and a redraw can skip validation", () => {
+  const b = BARS.slice(0, 50);
+  const count = indicator(`init() { this.n = 0; } map() { return ++this.n; }`);
+  eq(audit(count, "", b, { forming: false }).problems.length, 0);
+  const bad = withOutput(`{ a: Infinity }`);
+  const quick = new Run(bad, { check: false });
+  quick.compute(b);
+  eq(quick.problems.list().length, 0);
+  if (quick.rows[5].a !== Infinity) throw new Error("the output itself changed");
+});
 
 console.log("\nconformance: Tradovate's own indicators, and ours");
 const files = (d) => fs.readdirSync(path.join(VENDOR, d)).filter((f) => f.endsWith(".js"));

@@ -17,7 +17,8 @@
     "verify:tradovate": "node --max-old-space-size=8192 tradovate/verify_1250.mjs",
     "mock": "node --max-old-space-size=8192 tradovate/mock/check.mjs",
     "test:mock": "node test/mock.test.mjs",
-    "check": "npm test && npm run audit && npm run parity && npm run test:mcp && npm run test:link && npm run test:mock && npm run verify:tradovate"
+    "test:ui": "node --max-old-space-size=4096 test/ui.test.mjs",
+    "check": "npm test && npm run audit && npm run parity && npm run test:mcp && npm run test:link && npm run test:mock && npm run test:ui && npm run verify:tradovate"
   },
   "engines": { "node": ">=18" }
 }

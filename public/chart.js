@@ -7,6 +7,7 @@
 // the classic way these things end up feeling sluggish.
 
 import { graphicsPrims, plotPrims, paintPrim, overlaps, fontOf } from "/tradovate/mock/draw.mjs";
+import { fmtCt, lowerBound, upperBound, nthSmallest } from "/ui.mjs";
 
 const CSS = {
   bg: "#0b0f14",
@@ -24,6 +25,13 @@ const CSS = {
   session: "#d8b13a",
   crosshair: "#5a6b7d",
 };
+
+// How each kind of trade is drawn on the price pane.
+const TRADE_KINDS = [
+  { is: (t) => !t.taken, color: CSS.skip, width: 1, alpha: 1, dash: [2, 3], r: 4, end: false },
+  { is: (t) => t.taken && t.pnl > 0, color: CSS.bull, width: 1.6, alpha: 0.85, dash: [], r: 5.5, end: true },
+  { is: (t) => t.taken && !(t.pnl > 0), color: CSS.bear, width: 1.6, alpha: 0.85, dash: [], r: 5.5, end: true },
+];
 
 const PANE_WEIGHTS = { price: 0.46, sub: 0.12, equity: 0.27, daily: 0.15 };
 // Each oscillator study added beside the strategy gets a pane of its own.
@@ -62,11 +70,6 @@ function tfNote(want, applied, signalTf) {
   return s;
 }
 
-function fmtTime(ms) {
-  const d = new Date(ms);
-  const p = (x) => String(x).padStart(2, "0");
-  return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
-}
 function fmtDay(ms) {
   const d = new Date(ms);
   const M = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -609,50 +612,56 @@ export class ChartView {
   }
 
   _drawTrades(ctx, P, y) {
-    const trades = this.data.trades || [];
-    for (const t of trades) {
-      if (t.xEnd < this.i0 - 5 || t.xStart > this.i1 + 5) continue;
-      const x0 = this.x(t.xStart), x1 = this.x(t.xEnd);
-      const y0 = y(t.entryPrice), y1 = y(t.exitPrice);
-
-      if (!t.taken) {
-        // Signal fired, but a soft stop was in force — worth seeing, since it is
-        // the rules layer (not the strategy) suppressing these.
-        ctx.strokeStyle = CSS.skip;
-        ctx.lineWidth = 1;
-        ctx.setLineDash([2, 3]);
-        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
-        ctx.setLineDash([]);
-        this._marker(ctx, x0, y0, t.dir, CSS.skip, 4);
+    const trades = (this.data.trades || []).filter((t) => t.xEnd >= this.i0 - 5 && t.xStart <= this.i1 + 5);
+    // the selected trade keeps its bracket drawn, as a hovered one shows it
+    const lit = (t) => t.taken && (this.hoverTrade === t || (!!this.data.why && this.data.why.entryTime === t.entryTime));
+    // Skipped signals are worth seeing: the rules layer, not the strategy, suppressed
+    // them. Each kind is one path, drawn once. When there are more trades than a third
+    // of the pixels, a 1-minute book at full width, a dot at each entry is all that
+    // could show, and the dots are far cheaper than thousands of shapes.
+    const dense = trades.length > this.plotW / 3;
+    for (const K of TRADE_KINDS) {
+      if (dense) {
+        ctx.fillStyle = K.color;
+        for (const t of trades) if (K.is(t) && !lit(t)) ctx.fillRect(this.x(t.xStart) - 1.5, y(t.entryPrice) - 1.5, 3, 3);
         continue;
       }
+      const lines = new Path2D(), marks = new Path2D();
+      for (const t of trades) {
+        if (!K.is(t) || lit(t)) continue;
+        const x0 = this.x(t.xStart), x1 = this.x(t.xEnd), y0 = y(t.entryPrice), y1 = y(t.exitPrice);
+        lines.moveTo(x0, y0); lines.lineTo(x1, y1);
+        this._marker(marks, x0, y0, t.dir, K.r);
+        if (K.end) marks.rect(x1 - 2, y1 - 2, 4, 4);
+      }
+      ctx.strokeStyle = K.color; ctx.lineWidth = K.width; ctx.globalAlpha = K.alpha; ctx.setLineDash(K.dash);
+      ctx.stroke(lines);
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
+      ctx.fillStyle = K.color;
+      ctx.fill(marks);
+    }
 
-      const win = t.pnl > 0;
-      const color = win ? CSS.bull : CSS.bear;
-      // the selected trade keeps its bracket drawn, as a hovered one shows it
-      const isHover = this.hoverTrade === t || (!!this.data.why && this.data.why.entryTime === t.entryTime);
-
-      ctx.globalAlpha = isHover ? 1 : 0.85;
+    for (const t of trades) {
+      if (!lit(t)) continue;
+      const x0 = this.x(t.xStart), x1 = this.x(t.xEnd), y0 = y(t.entryPrice), y1 = y(t.exitPrice);
+      const color = t.pnl > 0 ? CSS.bull : CSS.bear;
       ctx.strokeStyle = color;
-      ctx.lineWidth = isHover ? 2.4 : 1.6;
+      ctx.lineWidth = 2.4;
       ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
-      ctx.globalAlpha = 1;
 
-      this._marker(ctx, x0, y0, t.dir, color, isHover ? 7 : 5.5);
       ctx.fillStyle = color;
+      ctx.beginPath(); this._marker(ctx, x0, y0, t.dir, 7); ctx.fill();
       ctx.fillRect(x1 - 2, y1 - 2, 4, 4);
 
-      if (isHover) {
-        // Show the bracket that was live for this trade.
-        const slY = y(t.stop), tpY = y(t.target);
-        ctx.setLineDash([5, 4]);
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = CSS.bear;
-        ctx.beginPath(); ctx.moveTo(x0, slY); ctx.lineTo(x1, slY); ctx.stroke();
-        ctx.strokeStyle = CSS.bull;
-        ctx.beginPath(); ctx.moveTo(x0, tpY); ctx.lineTo(x1, tpY); ctx.stroke();
-        ctx.setLineDash([]);
-      }
+      // Show the bracket that was live for this trade.
+      const slY = y(t.stop), tpY = y(t.target);
+      ctx.setLineDash([5, 4]);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = CSS.bear;
+      ctx.beginPath(); ctx.moveTo(x0, slY); ctx.lineTo(x1, slY); ctx.stroke();
+      ctx.strokeStyle = CSS.bull;
+      ctx.beginPath(); ctx.moveTo(x0, tpY); ctx.lineTo(x1, tpY); ctx.stroke();
+      ctx.setLineDash([]);
     }
   }
 
@@ -816,13 +825,12 @@ export class ChartView {
     }
   }
 
-  _marker(ctx, x, y, dir, color, r) {
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    if (dir === 1) { ctx.moveTo(x, y - r); ctx.lineTo(x - r, y + r * 0.8); ctx.lineTo(x + r, y + r * 0.8); }
-    else { ctx.moveTo(x, y + r); ctx.lineTo(x - r, y - r * 0.8); ctx.lineTo(x + r, y - r * 0.8); }
-    ctx.closePath();
-    ctx.fill();
+  // Adds the triangle to a context's path or a Path2D. Both ways up wind the same
+  // way, as a rect does, so overlapping marks in one path do not cut holes.
+  _marker(path, x, y, dir, r) {
+    if (dir === 1) { path.moveTo(x, y - r); path.lineTo(x + r, y + r * 0.8); path.lineTo(x - r, y + r * 0.8); }
+    else { path.moveTo(x, y + r); path.lineTo(x - r, y - r * 0.8); path.lineTo(x + r, y - r * 0.8); }
+    path.closePath();
   }
 
   _drawSubPane(ctx) {
@@ -901,37 +909,41 @@ export class ChartView {
     // crossing compressed into a couple of pixels — which is how this pane
     // ended up using a fifth of its height. The rare spike clips at the pane
     // edge instead; the line renderer already drops points that fall outside.
-    vals.sort((a, b) => a - b);
-    const m = vals[Math.min(vals.length - 1, Math.floor(vals.length * 0.98))];
+    const m = nthSmallest(vals, Math.min(vals.length - 1, Math.floor(vals.length * 0.98)));
     if (!(m > 0)) return null;
     return [-m * 1.15, m * 1.15];
   }
 
-  // The values of these series on screen (absolute values when `abs`).
+  // The values of these series on screen (absolute values when `abs`), in a buffer
+  // kept between frames: a 1-minute book has 80,000 of them on every frame of a pan.
   _visibleValues(ovs, map, abs = false) {
-    const vals = [];
+    const xs = map.localIdx, from = lowerBound(xs, this.i0), to = upperBound(xs, this.i1);
+    const need = ovs.length * (to - from);
+    if (!this._vals || this._vals.length < need) this._vals = new Float64Array(need * 2);
+    const vals = this._vals;
+    let n = 0;
     for (const o of ovs) {
       if (!o.data) continue;
-      for (let k = 0; k < o.data.length; k++) {
-        const li = map.localIdx[k];
-        if (li < this.i0 || li > this.i1) continue;
+      const end = Math.min(to, o.data.length);
+      for (let k = from; k < end; k++) {
         const v = abs ? Math.abs(o.data[k]) : o.data[k];
-        if (Number.isFinite(v)) vals.push(v);
+        if (Number.isFinite(v)) vals[n++] = v;
       }
     }
-    return vals;
+    return vals.subarray(0, n);
   }
 
   // An unsigned series (ATR, ADX, relative volume): from its 2nd to its 98th
   // percentile on screen, padded, and from zero when it never goes below.
   _visibleMinMax(ovs, map) {
-    const vals = this._visibleValues(ovs, map);
-    if (!vals.length) return null;
-    vals.sort((a, b) => a - b);
-    let lo = vals[Math.floor(vals.length * 0.02)], hi = vals[Math.min(vals.length - 1, Math.floor(vals.length * 0.98))];
+    const vals = this._visibleValues(ovs, map), n = vals.length;
+    if (!n) return null;
+    let least = Infinity;
+    for (let k = 0; k < n; k++) if (vals[k] < least) least = vals[k];
+    let lo = nthSmallest(vals, Math.floor(n * 0.02)), hi = nthSmallest(vals, Math.min(n - 1, Math.floor(n * 0.98)));
     if (!(hi > lo)) { lo -= 1; hi += 1; }
     const pad = (hi - lo) * 0.12;
-    return [vals[0] >= 0 ? Math.max(0, lo - pad) : lo - pad, hi + pad];
+    return [least >= 0 ? Math.max(0, lo - pad) : lo - pad, hi + pad];
   }
 
   // One indicator study in a pane of its own: its lines and histogram, its
@@ -1001,23 +1013,34 @@ export class ChartView {
     const upF = ov.colorUpFade || up, dnF = ov.colorDownFade || dn;
     // a step map's bar belongs to the span after its close, where it is known
     const off = map.step ? (map.stride || 1) / 2 : 0;
-    for (let k = 0; k < ov.data.length; k++) {
-      const li = map.localIdx[k] + off;
-      if (li < this.i0 || li > this.i1) continue;
-      const v = ov.data[k];
-      if (!Number.isFinite(v)) continue;
-      const py = y(v);
-      if (!Number.isFinite(py)) continue;
+    const xs = map.localIdx, data = ov.data;
+    const bar = (k) => {
+      const v = data[k], py = y(v);
+      if (!Number.isFinite(py)) return;
       // "Lower than the last bar" means CLOSER TO THE BASELINE, not smaller as
       // a signed number. Below zero those are opposites: a histogram going from
       // -3 to -5 is a bigger bar, not a smaller one, and shading it as the fade
       // would mark a strengthening move as a weakening one.
-      const prev = k > 0 ? ov.data[k - 1] : NaN;
+      const prev = k > 0 ? data[k - 1] : NaN;
       const fading = Number.isFinite(prev) && Math.abs(v) < Math.abs(prev);
       ctx.fillStyle = v >= 0 ? (fading ? upF : up) : (fading ? dnF : dn);
       const top = Math.min(py, zero), hgt = Math.max(1, Math.abs(py - zero));
-      ctx.fillRect(this.x(li) - bw / 2, top, bw, hgt);
+      ctx.fillRect(this.x(xs[k] + off) - bw / 2, top, bw, hgt);
+    };
+    // Zoomed out there are many bars to a pixel, and only the tallest either side
+    // of zero can show, so each pixel column draws those two and no more.
+    const from = lowerBound(xs, this.i0 - off), to = Math.min(data.length, upperBound(xs, this.i1 - off));
+    let col = NaN, top = -1, bottom = -1;
+    const flush = () => { if (top >= 0) bar(top); if (bottom >= 0) bar(bottom); top = bottom = -1; };
+    for (let k = from; k < to; k++) {
+      const v = data[k];
+      if (!Number.isFinite(v)) continue;
+      const c = Math.round(this.x(xs[k] + off));
+      if (c !== col) { flush(); col = c; }
+      if (v >= 0) { if (top < 0 || v > data[top]) top = k; }
+      else if (bottom < 0 || v < data[bottom]) bottom = k;
     }
+    flush();
   }
 
   _drawEquityPane(ctx) {
@@ -1122,13 +1145,15 @@ export class ChartView {
     ctx.lineTo(this.plotR, y(pts[pts.length - 1].cum));
     ctx.stroke();
 
-    // Dots at each realised trade
+    // Dots at each realised trade, one path per colour
+    const won = new Path2D(), lost = new Path2D();
     for (const p of pts) {
-      ctx.fillStyle = p.pnl > 0 ? CSS.bull : CSS.bear;
-      ctx.beginPath();
-      ctx.arc(this.x(p.x), y(p.cum), 2.2, 0, Math.PI * 2);
-      ctx.fill();
+      const dots = p.pnl > 0 ? won : lost, px = this.x(p.x), py = y(p.cum);
+      dots.moveTo(px + 2.2, py);
+      dots.arc(px, py, 2.2, 0, Math.PI * 2);
     }
+    ctx.fillStyle = CSS.bull; ctx.fill(won);
+    ctx.fillStyle = CSS.bear; ctx.fill(lost);
 
     // Outcome flag
     const last = pts[pts.length - 1];
@@ -1264,11 +1289,14 @@ export class ChartView {
       const i = Math.floor(this.i0 + k * step);
       if (i < 0 || i >= bars.count) continue;
       const px = this.x(i);
-      if (px > this.plotR) break;
-      const label = span > 3000 ? fmtDay(bars.ts[i]) : fmtTime(bars.ts[i]).slice(5);
+      // Chicago's clock when it shows hours, as the rules and the trade list read;
+      // zoomed out, the trading day, as the date box does.
+      const label = span > 3000 ? fmtDay(bars.tday[i] * 86400000) : fmtCt(bars.ts[i], bars.ctMin[i]).slice(5);
+      if (px + 2 + ctx.measureText(label).width > this.plotR) break;
       ctx.fillText(label, px + 2, this.axisY + 12);
       ctx.beginPath(); ctx.moveTo(px + 0.5, this.axisY - 2); ctx.lineTo(px + 0.5, this.axisY + 2); ctx.stroke();
     }
+    ctx.fillText("CT", this.plotR + 4, this.axisY + 12);
   }
 
   // ── crosshair + hit testing ──
@@ -1431,7 +1459,7 @@ export class ChartView {
     if (i < 0 || i >= b.count) return;
 
     // Time label on the axis
-    const label = fmtTime(b.ts[i]);
+    const label = `${fmtCt(b.ts[i], b.ctMin[i])} CT`;
     ctx.font = "10px ui-monospace, monospace";
     const w = ctx.measureText(label).width + 10;
     ctx.fillStyle = "#1c2530";
@@ -1612,4 +1640,4 @@ export class Navigator {
   }
 }
 
-export { fmtUsd, fmtTime, fmtDay, CSS };
+export { fmtUsd, fmtDay, CSS };

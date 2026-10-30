@@ -219,11 +219,12 @@ const MNQ = { contract: "MNQZ6", product: "MNQ", tickSize: 0.25 };
 const MAX_THROWN = 200;
 
 export class Run {
-  constructor(mod, { props, minutes = 1, contract = MNQ, problems = new Problems() } = {}) {
+  constructor(mod, { props, minutes = 1, contract = MNQ, problems = new Problems(), check = true } = {}) {
     this.mod = mod;
     this.props = { ...defaultProps(mod), ...props };
     this.rows = [];
     this.problems = problems;
+    this.check = check;          // validate what map() returns (`false` for a quick redraw)
     this.series = new Series();
     this.minutes = minutes;
     this.contract = contract;
@@ -251,7 +252,7 @@ export class Run {
       this.problems.add("error", "map", `map() returned a ${typeof out}`, i);
       out = {};
     }
-    checkOutput(out, i, this.mod, this.problems);
+    if (this.check) checkOutput(out, i, this.mod, this.problems);
     if (this.calc.filter) {
       let keep = true;
       try { keep = this.calc.filter(out); } catch (err) { this.problems.add("error", "throw", `filter() threw: ${err && err.message}`, i); }
@@ -305,12 +306,13 @@ export function staticProblems(mod, source, problems) {
   if (mod.requirements && mod.requirements.volumeProfiles) problems.add("note", "profile", "asks for volume profiles: d.profile() returns nothing here, so this shows its fallback", 0);
 }
 
-// Every problem an indicator has on these bars.
-export function audit(mod, source, bars, { props, minutes, formingFrom = 0 } = {}) {
+// Every problem an indicator has on these bars. `forming: false` leaves out the
+// forming check, by far the slowest part, for a caller that runs it separately.
+export function audit(mod, source, bars, { props, minutes, formingFrom = 0, forming = true } = {}) {
   const problems = new Problems();
   staticProblems(mod, source, problems);
   const run = new Run(mod, { props, minutes, problems });
   run.compute(bars);
-  formingProblems(mod, bars.slice(formingFrom), { props, minutes, problems });
+  if (forming) formingProblems(mod, bars.slice(formingFrom), { props, minutes, problems });
   return { run, problems: problems.list() };
 }

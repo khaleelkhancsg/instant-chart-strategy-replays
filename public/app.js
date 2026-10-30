@@ -16,7 +16,7 @@ import { windowSpan, DEFAULT_TAIL_MIN } from "/src/window.mjs";
 import { EVALS, EVAL_IDS, DEFAULT_EVAL, evalBase, evalKeys } from "/src/evals.mjs";
 import { STUDIES, STUDY_TFS, resolveStudy, studyLabel, isGating, gateLabel, computeStudy } from "/src/studies.mjs";
 import { describeEntry, describeExit, eventText, explainLines, num as fmtNum, px as fmtPx } from "/src/explain.mjs";
-import { loadIndicator, defaultProps, plotters, audit } from "/tradovate/mock/runtime.mjs";
+import { loadIndicator, defaultProps, plotters, audit, formingProblems, Problems } from "/tradovate/mock/runtime.mjs";
 
 // The 1-minute x-position a resampled bar should be drawn at: the middle of the
 // minutes it covers. srcLast+1 is the exclusive end, so the centre of bar k is
@@ -256,6 +256,8 @@ const S = {
   sweeping: false,
   sweepTimer: 0,
   lastSweepKey: "",
+  failedSweepKey: "", // settings the last sweep failed on, so they are not retried for ever
+  chartTf: 1,         // the candle size picked in the top bar
 };
 
 // ───────────────────────── binary window parsing ─────────────────────────
@@ -669,17 +671,36 @@ function tvBars(minutes) {
   return byMin.get(minutes);
 }
 
-// Run it, and check it, when its bars or settings have changed.
+// Run it when its bars or settings have changed. Whether it survives a forming bar
+// is checked once they stop changing: that pass is most of the cost of a setting, and
+// a slider sends one every few milliseconds.
 function tvRun(ind) {
   const key = `${S.blob.ts[0]}:${S.blob.count}:${ind.minutes}:${JSON.stringify(ind.props)}`;
   if (ind.key === key) return;
-  const { tf, rows } = tvBars(ind.minutes);
-  const a = audit(ind.mod, ind.source, rows, { props: ind.props, minutes: ind.minutes, formingFrom: Math.max(0, rows.length - 4000) });
-  ind.run = a.run; ind.problems = a.problems; ind.tf = tf; ind.key = key;
+  const { tf, rows } = tvBars(ind.minutes), t0 = performance.now();
+  const a = audit(ind.mod, ind.source, rows, { props: ind.props, minutes: ind.minutes, forming: false });
+  tvRunMs = performance.now() - t0;
+  ind.run = a.run; ind.problems = a.problems; ind.tf = tf; ind.key = key; ind.formingKey = "";
   const titles = ind.mod.plots || { value: { title: ind.name } };
   ind.lines = Object.entries(titles).filter(([, d]) => !d.displayOnly)
     .map(([f, d]) => ({ name: d.title, data: Float64Array.from(a.run.rows, (r) => (typeof r[f] === "number" ? r[f] : NaN)) }));
   tvPaintChecks(ind);
+  clearTimeout(tvFormingTimer);
+  tvFormingTimer = setTimeout(tvCheckForming, 500);
+}
+
+let tvFormingTimer = 0;
+function tvCheckForming() {
+  clearTimeout(tvFormingTimer);
+  for (const ind of S.tv) {
+    if (!ind.key || ind.formingKey === ind.key) continue;
+    const { rows } = tvBars(ind.minutes), problems = new Problems();
+    formingProblems(ind.mod, rows.slice(Math.max(0, rows.length - 4000)), { props: ind.props, minutes: ind.minutes, problems });
+    ind.problems = [...ind.problems, ...problems.list()];
+    ind.formingKey = ind.key;
+    tvPaintChecks(ind);
+  }
+  queuePostState();
 }
 
 // On the chart each one is a study, so panes, the crosshair and the price scale
@@ -749,7 +770,7 @@ function tvPaintChecks(ind, box = document.querySelector(`.tv-checks[data-name="
   if (!box) return;
   box.innerHTML = "";
   if (!ind.problems || !ind.problems.length) {
-    box.innerHTML = `<div class="tv-check pass"><i>pass</i><span>Well formed, and a forming bar changes nothing.</span></div>`;
+    box.innerHTML = `<div class="tv-check pass"><i>pass</i><span>${ind.formingKey ? "Well formed, and a forming bar changes nothing." : "Well formed. Checking forming bars…"}</span></div>`;
     return;
   }
   for (const p of ind.problems) {
@@ -803,7 +824,7 @@ function buildTvCard(ind) {
   body.appendChild(buildParamControl(tfDesc, String(ind.minutes), (v) => { ind.minutes = Number(v); tvChanged(); }));
   for (const [k, spec] of Object.entries(ind.mod.params || {})) {
     const d = tvParamDesc(k, spec), v = ind.props[k];
-    body.appendChild(buildParamControl(d, d.bool ? (v ? "on" : "off") : v, (x) => { ind.props[k] = d.bool ? x === "on" : x; saveTv(); recompute(); }));
+    body.appendChild(buildParamControl(d, d.bool ? (v ? "on" : "off") : v, (x) => { ind.props[k] = d.bool ? x === "on" : x; saveTv(); tvRepaint(); }));
   }
   card.appendChild(body);
   tvPaintChecks(ind, body.querySelector(".tv-checks"));
@@ -1338,13 +1359,19 @@ function paintSweepStats() {
 
 // ───────────────────────────── recompute ─────────────────────────────
 let rafPending = 0;
+let rerunTimer = 0;
+let lastRunMs = 0;
 let lastResult = null;
 
 function onParamsChanged(needsWarmupCheck = false) {
   if (needsWarmupCheck) { loadWindow(S.windowStart); return; }
+  scheduleSweep();
+  // A book that holds overnight loads all of history (src/window.mjs), so one run
+  // can take most of a second. Run on every step, that would freeze the slider.
+  clearTimeout(rerunTimer);
+  if (lastRunMs > 100) { rerunTimer = setTimeout(recompute, 150); return; }
   if (rafPending) return;
   rafPending = requestAnimationFrame(() => { rafPending = 0; recompute(); });
-  scheduleSweep();
 }
 
 function recompute() {
@@ -1370,6 +1397,7 @@ function recompute() {
   }
   const replay = replayWindow(res.trades, S.windowStart, S.rules);
   const ms = performance.now() - t0;
+  lastRunMs = ms;
 
   lastResult = { res, replay };
   paintChart(res, replay);
@@ -1427,8 +1455,9 @@ function paintChart(res, replay) {
   const why = whyLayer(res, trades);
 
   // Given over to Tradovate indicators, the chart is theirs, with candles of their size.
-  const focus = tvFocused();
-  S.chart.setTimeframe(focus ? S.tv[0].minutes : Number($("chartTf").value) || 1);
+  const focus = tvFocused(), candleMin = focus ? S.tv[0].minutes : S.chartTf;
+  S.chart.setTimeframe(candleMin);
+  $("chartTf").value = String(candleMin);
   $("chartTf").disabled = focus;
 
   S.chart.setData({
@@ -1462,6 +1491,17 @@ function paintChart(res, replay) {
 
 // Redraw without re-running anything: a study's colour or visibility changed.
 function repaint() { if (lastResult) paintChart(lastResult.res, lastResult.replay); }
+
+// An indicator's setting moved. The strategy's trades have not, so only the
+// indicator runs again: at most once a frame, or on a pause in the drag if a run
+// takes longer than that, which keeps the slider moving whatever the script costs.
+let tvRaf = 0, tvPause = 0, tvRunMs = 0;
+function tvRepaint() {
+  const go = () => { tvRaf = 0; repaint(); queueHash(); };
+  clearTimeout(tvPause);
+  if (tvRunMs > 50) tvPause = setTimeout(go, 120);
+  else if (!tvRaf) tvRaf = requestAnimationFrame(go);
+}
 
 function statCell(k, v, cls = "") {
   return `<div class="stat"><div class="stat-k">${k}</div><div class="stat-v ${cls}">${v}</div></div>`;
@@ -1583,7 +1623,7 @@ function scheduleSweep() {
 }
 
 async function runSweep() {
-  const key = sweepKey();
+  const key = sweepKey(), strategyId = S.strategyDesc.id;
   if (S.sweeping || key === S.lastSweepKey) return;
   S.sweeping = true;
   $("runSweep").disabled = true;
@@ -1603,9 +1643,11 @@ async function runSweep() {
     }).then((x) => x.json());
 
     if (r.error) throw new Error(r.error);
+    if (strategyId !== S.strategyDesc.id) return;   // answers a strategy no longer on screen
     S.lastSweepKey = key;
     S.sweep = r;
-    S.sweepStale = false;
+    // The settings may have moved while it ran, and then this is already old.
+    S.sweepStale = sweepKey() !== key;
 
     S.nav.set(r.windows, [S.meta.startMs, S.meta.endMs], S.windowStart);
     paintSweepStats();
@@ -1622,11 +1664,17 @@ async function runSweep() {
       ` <span class="k">— see “All windows” in the sidebar</span>`;
   } catch (e) {
     toast(e.message, true);
-    S.sweepStale = false;
+    S.failedSweepKey = key;
+    S.sweepStale = !!S.sweep;     // what is shown is still the last good settings'
+    paintSweepStats();
     $("navSummary").innerHTML = `<span class="k">sweep failed</span>`;
   } finally {
     S.sweeping = false;
     $("runSweep").disabled = false;
+    // A timer that fired while this ran found a sweep going and gave up, so the
+    // newest settings are still owed one.
+    const now = sweepKey();
+    if (now !== S.lastSweepKey && now !== S.failedSweepKey) scheduleSweep();
     queuePostState();
   }
 }
@@ -1723,6 +1771,7 @@ async function applySettings(m) {
   renderSidebar();
   await loadWindow(startMs);
   if (tv) tvShowDay();
+  tvCheckForming();      // the state that goes back reports the finished checks
   if (m.sweep) {
     // an automatic sweep may already be running, for settings just replaced
     while (S.sweeping) await new Promise((r) => setTimeout(r, 100));
@@ -1907,7 +1956,7 @@ function tradeTooltip(t, ev) {
     row("Stop / target", `${t.stop.toFixed(2)} / ${t.target.toFixed(2)}`) +
     row("MAE / MFE", `${fmtUsd(t.mae)} / ${fmtUsd(t.mfe)}`) +
     row("Bars held", t.bars) +
-    row("Entered", new Date(t.entryTime).toISOString().slice(0, 16).replace("T", " ")) +
+    row("Entered", `${new Date(tradingDayOf(t.entryTime) * DAY).toISOString().slice(0, 10)} ${ctClock(t.entryCt)} CT`) +
     (t.taken && t.cum != null ? row("Equity after", fmtUsd(t.cum)) : "") +
     `<div class="t-hint">Click for what triggered it</div>`;
   el.classList.remove("hidden");
@@ -1985,13 +2034,13 @@ async function boot() {
   // same trades whatever size the candles are drawn at. Remembered between
   // visits because it is a preference, not part of a result.
   const tfSel = $("chartTf");
-  const savedTf = Number(localStorage.getItem("mnq.chartTf")) || 1;
-  tfSel.value = String(savedTf);
-  S.chart.setTimeframe(savedTf);
+  S.chartTf = Number(localStorage.getItem("mnq.chartTf")) || 1;
+  tfSel.value = String(S.chartTf);
+  S.chart.setTimeframe(S.chartTf);
   tfSel.addEventListener("change", () => {
-    const v = Number(tfSel.value) || 1;
-    try { localStorage.setItem("mnq.chartTf", String(v)); } catch { /* private mode */ }
-    S.chart.setTimeframe(v);
+    S.chartTf = Number(tfSel.value) || 1;
+    try { localStorage.setItem("mnq.chartTf", String(S.chartTf)); } catch { /* private mode */ }
+    S.chart.setTimeframe(S.chartTf);
   });
   $("chartWrap").addEventListener("mousemove", (e) => {
     if (e.target.closest("#whyCard")) { $("tooltip").classList.add("hidden"); return; }   // the card is not the chart
