@@ -40,8 +40,10 @@
  *   exits     the next cross -- weak or strong, moving or not -- closes the
  *             trade at the next open, before that bar can touch the stop or
  *             target (and places the next fade if that cross qualifies); the
- *             bracket; flat 15:05 CT, or at the last close of a session that
- *             ends early. Every cross also cancels a resting order the other way
+ *             bracket; flat 15:05 CT. On a scheduled early close (EARLY below): no
+ *             new order from 15 minutes before Topstep's cutoff, flat from 5 before
+ *             it. A session that ends early without being on that list: out at its
+ *             last close. Every cross also cancels a resting order the other way
  *   day       stop for the day once it is -$200 (breaker), +$250 (profit block)
  *             or at the -$600 limit. The +$250 block is what keeps every day
  *             under the $625 the consistency rule allows at a $1,250 pass.
@@ -113,6 +115,11 @@ const CFG = {
   pointValue: 2, commission: 0.75, slip: 0.25, tick: 0.25, tfMs: 60000,
 };
 
+// Early closes: Topstep's close-positions-by time (CT minutes) by session, as the
+// bot has them (EARLY_CUTOFF in bot/donchian1250_core.py). Add each year's dates.
+const EARLY = [["2026-11-26", 705], ["2026-11-27", 720], ["2026-12-24", 720]]
+  .reduce((m, e) => { m[Date.parse(e[0]) / 86400000] = e[1]; return m; }, {});
+
 // ── time: UTC -> America/Chicago with US DST rules, no Intl dependency ───
 function nthSunday(y, m, n) {
   const dow = new Date(Date.UTC(y, m, 1)).getUTCDay();
@@ -163,8 +170,10 @@ function barState(prev, o, h, l, c, ms, K) {
   const weakOk = !K.onlyWeak || (sig !== 0 && Math.sign(line) === sig);
   const moving = !(K.minVolRatio > 0) || !(volRel < K.minVolRatio);
   const enter = sig !== 0 && weakOk && moving;
+  const cut = EARLY[sk];                                     // today's times: an early close moves them
+  const flatCt = cut ? Math.min(K.flattenCt, cut - 5) : K.flattenCt, noEntryCt = cut ? Math.min(K.noEntryCt, cut - 15) : K.noEntryCt;
   return { o, h, l, c, ms, ct, tr, atr, eF, eS, line, sigLine, hist, cross, sig, sk, lots: K.contracts,
-           atrHist, atrSum, atrCnt, volRel, weakOk, moving, enter };
+           atrHist, atrSum, atrCnt, volRel, weakOk, moving, enter, flatCt, noEntryCt };
 }
 
 // ── the order a signal arms, in the live price convention ─────────────────
@@ -199,7 +208,7 @@ function stepOrders(S0, B, prevB, i, K) {
   const ev = {};
   const s2 = prevB ? prevB.sig : 0;                      // every cross exits and cancels...
   const go = !!(prevB && prevB.enter);                   // ...only a qualifying one places an order
-  const flatNow = B.ct >= K.flattenCt || B.ct < K.startCt;
+  const flatNow = B.ct >= B.flatCt || B.ct < K.startCt;
   const book = (xp, why, exact) => {
     const d = S.pos, slip = K.research ? K.slip : 0;
     const avg = S.fill + d * slip, x = d === 1 ? xp - slip : xp + slip;
@@ -277,7 +286,7 @@ function stepOrders(S0, B, prevB, i, K) {
   }
 
   // 3. a qualifying cross on the previous bar arms a stop-entry (a newer one replaces it)
-  if (S.pos === 0 && s2 !== 0 && go && !flatNow && !blockedOf(S, K) && B.ct < K.noEntryCt) {
+  if (S.pos === 0 && s2 !== 0 && go && !flatNow && !blockedOf(S, K) && B.ct < B.noEntryCt) {
     const a = prevB.atr, lots = prevB.lots;
     let L = null;
     if (!(a > 0)) L = null;
@@ -308,7 +317,7 @@ function stepOrders(S0, B, prevB, i, K) {
 function previewArm(S, B, K) {
   if (B.sig === 0 || !B.enter || S.pos === B.sig || !(B.atr > 0) || blockedOf(S, K)) return null;
   const nct = ctOf(B.ms + K.tfMs);
-  if (nct < K.startCt || nct >= K.noEntryCt || nct >= K.flattenCt) return null;
+  if (nct < K.startCt || nct >= B.noEntryCt || nct >= B.flatCt) return null;
   let day = S.dayReal;
   if (S.pos !== 0) {
     day += (B.c - S.fill) * S.pos * K.pointValue * S.lots - 2 * K.commission * S.lots;

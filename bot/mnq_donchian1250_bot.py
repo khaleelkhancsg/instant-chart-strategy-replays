@@ -497,6 +497,12 @@ class Bot:
             + (f" · in a trade: {'LONG' if s.pos == 1 else 'SHORT'} {s.lots}" if s.pos else "")
             + (" · an entry order is working" if self.entry else ""),
             "trades 08:30-15:06 CT; the day stops at -$300, +$250 or the -$600 limit"])
+        self._early_close_notice(core.trading_day(self.now_ms()))
+        left = core.early_list_days_left(core.trading_day(self.now_ms()))
+        if left < 21:
+            log.warning("the early-close list runs out in %d days: add the new dates to EARLY_CUTOFF", left)
+            self.notify("⚠ Early-close list running out", [f"{left} days left on EARLY_CUTOFF in donchian1250_core.py",
+                        "add the new dates from Topstep's holiday hours page"], "high")
 
     def _pick_account(self) -> None:
         accts = self.api.accounts()
@@ -585,6 +591,15 @@ class Bot:
         return bars[0] if bars else None
 
     # ---------- the session ----------
+    def _early_close_notice(self, tday: int) -> None:
+        cut = core.early_cutoff(tday)
+        if cut is not None:
+            no_entry, flat = core.day_limits(tday)
+            log.warning("early close: no new orders from %s CT, flat at %s, the firm's cutoff is %s",
+                        core.hhmm(no_entry), core.hhmm(flat), core.hhmm(cut))
+            self.notify("⏰ Early close today", [f"no new orders from {core.hhmm(no_entry)} CT, flat at {core.hhmm(flat)}",
+                        f"Topstep's cutoff is {core.hhmm(cut)} CT"])
+
     def _ensure_session(self) -> None:
         """A new trading day: today's fills only; the contract re-checked when flat."""
         td = core.trading_day(self.now_ms())
@@ -592,6 +607,7 @@ class Bot:
             return
         self._summarise(self.session_tday)          # the day before, if its 15:06 never came (early close)
         self.session_tday = td
+        self._early_close_notice(td)
         self.seen = {t["id"]: t for t in self._fetch_trades()}
         if not self.busy_orders():
             old = self.cid
@@ -954,10 +970,10 @@ class Bot:
     def _session_notes(self, T: float) -> None:
         """At a boundary: the summary once the session is over; the heartbeat during it."""
         ct, s = core.ct_minute(T), self.strat
-        if ct >= core.CFG["flat_ct"] and s.cur_tday is not None:
+        if ct >= s.flat_ct and s.cur_tday is not None:
             self._summarise(s.cur_tday)
         hb = self.cfg["heartbeat_min"]
-        if hb and hb > 0 and core.CFG["start_ct"] <= ct < core.CFG["flat_ct"]:
+        if hb and hb > 0 and core.CFG["start_ct"] <= ct < s.flat_ct:
             if self.last_heartbeat is None:
                 self.last_heartbeat = T
             elif T - self.last_heartbeat >= hb * 60_000:
@@ -1214,14 +1230,15 @@ class Bot:
         self._hard_flat()
 
     def _hard_flat(self) -> None:
-        ct = core.ct_minute(self.now_ms())
-        if not (self.cfg["hard_flat_ct"] <= ct < 17 * 60):
+        now = self.now_ms()
+        ct, tday = core.ct_minute(now), core.trading_day(now)
+        hard = core.hard_flat_ct(tday, self.cfg["hard_flat_ct"])
+        if not (hard <= ct < 17 * 60):
             return
         if self.strat.pos != 0 or self.entry is not None or self.legs:
-            log.error("past %02d:%02d CT with an order or a trade live -- closing everything",
-                      self.cfg["hard_flat_ct"] // 60, self.cfg["hard_flat_ct"] % 60)
-            self.notify("🛑 Still live at 15:07 CT -- closing everything", ["the 15:06 flat did not go through",
-                        "Topstep's deadline is 15:10 CT -- check the platform"], "high",
+            log.error("past %s CT with an order or a trade live -- closing everything", core.hhmm(hard))
+            self.notify(f"🛑 Still live at {core.hhmm(hard)} CT -- closing everything", ["the flat did not go through",
+                        f"Topstep's deadline is {core.hhmm(core.early_cutoff(tday) or 15 * 60 + 10)} CT -- check the platform"], "high",
                         key="hard-flat", every_s=120, now=self.clock())
             self._drop_entry("hard flat")
             if self.strat.pos != 0 or self.trade is not None:

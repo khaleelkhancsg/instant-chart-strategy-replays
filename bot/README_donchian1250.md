@@ -56,8 +56,8 @@ The bot pushes to your phone through ntfy, on the topic in `MNQ_NOTIFY_WEBHOOK` 
 
 | Priority | When |
 |---|---|
-| **high** (breaks through) | Something needs you: a stop or target refused, a close that failed (it retries with the stop back on), a position the bot did not open, an order that filled while being cancelled, a gateway error, still live at 15:07, the bot stopping on an error |
-| **default** | What happened: started, filled (stop, target, risk, reward), closed (reason, dollars, day total, and "day done" when a day rule ends it), the session summary at 15:06, a contract roll, stopped by hand |
+| **high** (breaks through) | Something needs you: a stop or target refused, a close that failed (it retries with the stop back on), a position the bot did not open, an order that filled while being cancelled, a gateway error, still live at the hard flat time, the early-close list running out, the bot stopping on an error |
+| **default** | What happened: started, filled (stop, target, risk, reward), closed (reason, dollars, day total, and "day done" when a day rule ends it), the session summary at 15:06, an early close today, a contract roll, stopped by hand |
 | **low** (silent) | An entry order placed; "still running" every 60 minutes during the session (`MNQ_HEARTBEAT_MIN` in `.env`, 0 turns it off) |
 
 That is about three default pushes a day, plus the silent ones. The same alert is not repeated inside its quiet period, and a failed push never stops the bot.
@@ -94,9 +94,30 @@ Orders are placed on the tick grid, rounded so they trigger on exactly the same 
 - a buy stop or sell limit rounds up;
 - a sell stop or buy limit rounds down.
 
+## Early closes
+
+On some holidays CME closes early, and Topstep liquidates anything still open 15 minutes before that close. The bot keeps the gaps it keeps on a normal day, measured from the firm's cutoff:
+
+| | Normal day | Early close |
+|---|---|---|
+| No new orders from | 14:55 | 15 minutes before the cutoff |
+| Flat | 15:06 | the first bar opening from 5 minutes before the cutoff |
+| Hard flat, by the clock | 15:07 | 3 minutes before the cutoff |
+| The firm's deadline | 15:10 | the cutoff |
+
+| Day | Cutoff (CT) | No new orders | Flat |
+|---|---|---|---|
+| Thu Nov 26 2026, Thanksgiving | 11:45 | 11:30 | 11:40 |
+| Fri Nov 27 2026 | 12:00 | 11:45 | 11:56 |
+| Thu Dec 24 2026, Christmas Eve | 12:00 | 11:45 | 11:56 |
+
+- **The list** is `EARLY_CUTOFF` in `donchian1250_core.py`, taken from Topstep's [holiday trading hours](https://help.topstep.com/en/articles/13350348-topstep-holiday-trading-hours). That page says hours can change with the exchange, so check it before each holiday.
+- **Keeping it current:** at start-up the bot warns once fewer than three weeks are left on the list. Add the next year's dates then. A day the market is closed all day needs no entry.
+- **On the day** it pushes "Early close today" with the times, at the start of the session, or at start-up if you start it that morning.
+
 ## How it was verified
 
-`python test_donchian1250_parity.py` runs 33 checks, against a fixture written from the same data and the same engine run as the research:
+`python test_donchian1250_parity.py` runs 38 checks, against a fixture written from the same data and the same engine run as the research:
 
 | Check | Result |
 |---|---|
@@ -107,6 +128,7 @@ Orders are placed on the tick grid, rounded so they trigger on exactly the same 
 | **The bot itself** (its ProjectX client, order handling, fill tracking and P&L) through 2026, against a simulated gateway built to the docs | **128 of 128 trades identical, 71.1%** |
 | The same with orders rounded to the tick grid, as live | the same 128 trades on the same bars for the same reasons; +$28 over 2026; 71.1% |
 | Order path the replay cannot reach | handled: a refused stop, a partial fill, an order filling as it is cancelled, a restart mid-trade, a position the bot did not open |
+| Early closes, replaying real days with a cutoff on the schedule | an open trade goes out at the flat time, a working entry is cancelled, no new orders after the no-entry time, and normal days change by nothing |
 | Phone notifications | a push for every fill and exit (with its dollars and the day's total) and a summary every trading day matching that day's result; nothing sent during tests; same `MNQ_NOTIFY_WEBHOOK` as the signal bot |
 
 The simulated gateway answers the documented endpoints with the documented shapes, so the bot's real HTTP client runs. It fills like the research engine, which is why a faithful bot must reproduce the research's trades exactly. It also checks that the bot:

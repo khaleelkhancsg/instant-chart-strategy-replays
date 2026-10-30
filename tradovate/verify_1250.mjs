@@ -20,7 +20,7 @@
 //   6. what the chart says, on every 2026 bar: each reading printed under an
 //      order and each refusal printed in grey, against this file's research
 //      arrays and the chart lab's own explain() for that bar
-//   7. a session that ends early with a trade open
+//   7. a session that ends early with a trade open, and a scheduled early close
 //   8. every 2026 trade against the chart lab's books (strategies/
 //      donchian_1250.mjs, macd_fade_1250.mjs) on the $1,250 eval
 //
@@ -271,6 +271,46 @@ function liveLines(label, mod, T, extraProps = {}, onBar = null) {
   console.log("        filled the open trade first, or a missing next minute pushed it past 14:55. Those leave a one-candle stub.");
 }
 
+// A scheduled early close. No data has one yet, so a real winter day with a trade
+// open across the flat time is replayed as Thanksgiving 2026 or the day after --
+// the same bars, moved a whole number of weeks, both dates on Central Standard Time
+// -- and against itself unmoved: the same until the no-order time, then out at the
+// flat time, with nothing new after it.
+function earlyClose(label, mod, T, mine) {
+  const DAY = 86400000, dates = { 4: [Date.UTC(2026, 10, 26), 690, 700], 5: [Date.UTC(2026, 10, 27), 705, 715] };
+  const ok = mine.filter((t) => {
+    const d = new Date(T.ts[t.entIdx]), s = dates[d.getUTCDay()];
+    return s && [11, 0, 1].includes(d.getUTCMonth()) && T.tday[t.entIdx] === T.tday[t.exitIdx] && T.ctMin[t.entIdx] < s[1] && T.ctMin[t.exitIdx] > s[2];
+  });
+  let cases = 0, good = 0;
+  const eg = [];
+  for (const t of ok) {
+    const s = dates[new Date(T.ts[t.entIdx]).getUTCDay()], shift = s[0] - T.tday[t.entIdx] * DAY;
+    const i0 = t.entIdx - 12 * 1380 / (T.tfMin || 1), runs = [0, shift].map((dt) => {
+      const calc = new mod.calculator();
+      calc.props = { ...defaults(mod), __research: false };
+      calc.init();
+      const out = [];
+      for (let i = Math.max(0, i0), k = 0; i <= t.exitIdx + 3; i++, k++) {
+        const b = barOf(T, i);
+        out.push({ ct: T.ctMin[i], i, ...calc.map(mkD({ ...b, ts: b.ts + dt }, k), k)._ev });
+      }
+      return out;
+    });
+    const [plain, moved] = runs;
+    const same = moved.every((r, k) => r.i < t.entIdx || r.ct >= s[1] || (r.S.pos === plain[k].S.pos && r.S.fill === plain[k].S.fill));
+    const after = moved.filter((r) => r.i > t.entIdx && r.ct >= s[2] && T.tday[r.i] === T.tday[t.entIdx]);
+    const out = after[0] && after[0].ev.exit && after[0].ev.exit.why === "FLAT" && after.every((r) => r.S.pos === 0 && r.S.armDir === 0);
+    const noArm = moved.every((r) => T.tday[r.i] !== T.tday[t.entIdx] || r.ct < s[1] || !r.ev.arm);
+    if (!after.length || !plain.some((r) => r.i > t.entIdx && r.ct === after[0].ct && r.S.pos !== 0)) continue;   // live, this trade ended sooner
+    cases++;
+    if (same && out && noArm) good++;
+    else if (eg.length < 1) eg.push({ day: new Date(T.ts[t.entIdx]).toISOString().slice(0, 10), same, out: !!out, noArm });
+  }
+  check(label + ": a scheduled early close: nothing new from 15 minutes before the cutoff, out 5 before it", cases > 0 && good === cases,
+        fmt(good) + " of " + fmt(cases) + " real days replayed as Thanksgiving week" + (eg.length ? "; " + JSON.stringify(eg[0]) : ""));
+}
+
 // A forming bar must change nothing (live and research conventions).
 function forming(label, mod, T, from, to) {
   const sub = { length: to - from };
@@ -419,6 +459,7 @@ console.log("A. mnqDonchian1250 -- Donchian 30 + ADX + efficiency + rescue, 10-m
   check("...and the level drawn is the close's breakout, from the bar that set it", W.orders > 0 && W.levelsBad === 0, W.levelsBad + " off");
   check("every refused breakout in 2026 is marked, for the reason the lab gives", W.refused > 0 && W.refusedBad === 0 && W.refusedMissing === 0,
         fmt(W.refused) + " marks (" + (W.refused / M.Y26.length).toFixed(1) + " a session), " + W.refusedBad + " wrong, " + W.refusedMissing + " missing");
+  earlyClose("Donchian", DON, tf, mine);
   forming("Donchian", DON, tf, d0 - 3000, Math.min(nT, d0 + 25000));
 }
 
@@ -515,6 +556,7 @@ console.log("B. mnqMacdFade1250 -- fade WEAK 1-min MACD(12,26,9) crosses in a mo
   check("every 2026 order's readings = the research's and the lab's explanation of that bar", W.orders > 0 && W.ordersBad === 0,
         W.ordersBad + " off of " + fmt(W.orders) + (W.eg ? "; e.g. " + JSON.stringify(W.eg) : ""));
   check("every grey cross in 2026 gives the reason the lab gives", W.skipped > 0 && W.skippedBad === 0, fmt(W.skipped) + " marks, " + W.skippedBad + " wrong");
+  earlyClose("MACD fade", MAC, t1, mine);
   forming("MACD fade", MAC, t1, d0 - 5000, Math.min(n1, d0 + 40000));
 }
 

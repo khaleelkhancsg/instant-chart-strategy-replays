@@ -30,6 +30,8 @@ THE STRATEGY (2-minute bars, clock-aligned)
            after a gap through the stop at that open and before that bar's range.
   day      no new orders once the day is -$300 (breaker), +$250 (profit block)
            or at the -$600 limit. Days roll at 17:00 New York.
+  holidays on an early close (EARLY_CUTOFF), no new order from 15 minutes before
+           the firm's cutoff, flat from 5 before it.
 
 ARITHMETIC: every indicator here repeats src/indicators.mjs operation for
 operation (EMA alpha 2/(n+1) seeded with the first value -- NOT Wilder), and
@@ -75,6 +77,48 @@ CFG = {
     # instrument
     "point_value": 2.0, "tick": 0.25,
 }
+
+# Early closes: Topstep's "close positions by" time (CT minutes) on the days CME
+# closes early, by CME trading day. Anything still open then is liquidated by the
+# firm. From "Topstep Holiday Trading Hours" (help.topstep.com), read 2026-10-30.
+# A normal day stops new orders 15 minutes before its 15:10 deadline, flattens 5
+# before and hard-flattens 3 before; these days keep the same gaps. Add each new
+# year's dates from that page: the bot warns when this list is running out.
+EARLY_CUTOFF = {
+    date(2026, 11, 26): 11 * 60 + 45,      # Thanksgiving
+    date(2026, 11, 27): 12 * 60,           # the day after
+    date(2026, 12, 24): 12 * 60,           # Christmas Eve
+}
+NO_ENTRY_BEFORE_CUTOFF, FLAT_BEFORE_CUTOFF, HARD_FLAT_BEFORE_CUTOFF = 15, 5, 3
+
+
+def hhmm(ct: int) -> str:
+    return f"{ct // 60:02d}:{ct % 60:02d}"
+
+
+def early_cutoff(tday: Optional[int]) -> Optional[int]:
+    """The firm's cutoff on this trading day (a CT minute), or None on a normal day."""
+    return None if tday is None else EARLY_CUTOFF.get(date(1970, 1, 1) + timedelta(days=tday))
+
+
+def day_limits(tday: Optional[int], cfg: dict = CFG) -> Tuple[int, int]:
+    """(no new order from, flat from) on this trading day, as CT minutes."""
+    cut = early_cutoff(tday)
+    if cut is None:
+        return cfg["no_entry_ct"], cfg["flat_ct"]
+    return min(cfg["no_entry_ct"], cut - NO_ENTRY_BEFORE_CUTOFF), min(cfg["flat_ct"], cut - FLAT_BEFORE_CUTOFF)
+
+
+def hard_flat_ct(tday: Optional[int], normal: int) -> int:
+    """From this CT minute any position is closed, whatever the bar feed says."""
+    cut = early_cutoff(tday)
+    return normal if cut is None else min(normal, cut - HARD_FLAT_BEFORE_CUTOFF)
+
+
+def early_list_days_left(tday: int) -> int:
+    """Trading days' worth of calendar left on EARLY_CUTOFF, from this trading day."""
+    return (max(EARLY_CUTOFF) - (date(1970, 1, 1) + timedelta(days=tday))).days
+
 
 _F32 = struct.Struct("<f")
 
@@ -380,6 +424,7 @@ class Strategy:
         self.cur_tday = None
         self.day_real = 0.0
         self.cap_hit = False
+        self.no_entry_ct, self.flat_ct = cfg["no_entry_ct"], cfg["flat_ct"]     # today's: an early close moves them
         # the bar in progress
         self.cur = -1
         self.cur_open = math.nan
@@ -401,7 +446,7 @@ class Strategy:
         return "breaker"
 
     def flat_now(self, ct: int) -> bool:
-        return ct >= self.k["flat_ct"] or ct < self.k["start_ct"]
+        return ct >= self.flat_ct or ct < self.k["start_ct"]
 
     def armed(self) -> bool:
         return self.pos == 0 and self.arm_dir != 0
@@ -423,6 +468,7 @@ class Strategy:
         self.cur, self.cur_open, self.cur_ct, self.no_arm = i, o, ct, False
         if tday != self.cur_tday:
             self.cur_tday, self.day_real, self.cap_hit = tday, 0.0, False
+        self.no_entry_ct, self.flat_ct = day_limits(tday, k)
         s2 = self.info[i - 1].sig if i >= 1 else 0
         flat = self.flat_now(ct)
         acts: List[Action] = []
@@ -495,7 +541,7 @@ class Strategy:
         k, i = self.k, len(self.info)
         if i >= 1 and i == self.cur and not self.no_arm and self.pos == 0:
             s2 = self.info[i - 1].sig
-            if s2 != 0 and not self.flat_now(self.cur_ct) and not self.blocked() and self.cur_ct < k["no_entry_ct"]:
+            if s2 != 0 and not self.flat_now(self.cur_ct) and not self.blocked() and self.cur_ct < self.no_entry_ct:
                 sb = self.info[i - 1]
                 a = sb.atr
                 if a > 0:

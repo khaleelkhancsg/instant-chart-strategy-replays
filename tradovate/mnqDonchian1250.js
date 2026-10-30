@@ -33,8 +33,10 @@
  *   exits     the bracket; out at the next open if the trade has not been 1 ATR
  *             in profit by the 20th bar after entry (40 minutes); an opposite
  *             signal (which also cancels a resting stop-entry); flat at 15:06 CT
- *             (the first bar opening at or after 15:05), or at the last close of
- *             a session that ends early. The 40-minute exit and the opposite signal are decided on a closed
+ *             (the first bar opening at or after 15:05). On a scheduled early
+ *             close (EARLY below): no new order from 15 minutes before Topstep's
+ *             cutoff, flat from 5 before it. A session that ends early without
+ *             being on that list: out at its last close. The 40-minute exit and the opposite signal are decided on a closed
  *             bar and happen at the next open -- before that bar can touch the
  *             stop or target; only a gap through the stop at the open is first
  *   day       stop for the day once it is -$300 (breaker), +$250 (profit block)
@@ -113,6 +115,11 @@ const CFG = {
   dayLossLimit: 600, breaker: 300, profitBlock: 250,
   pointValue: 2, commission: 0.75, slip: 0.25, tick: 0.25, tfMs: 120000,
 };
+
+// Early closes: Topstep's close-positions-by time (CT minutes) by session, as the
+// bot has them (EARLY_CUTOFF in bot/donchian1250_core.py). Add each year's dates.
+const EARLY = [["2026-11-26", 705], ["2026-11-27", 720], ["2026-12-24", 720]]
+  .reduce((m, e) => { m[Date.parse(e[0]) / 86400000] = e[1]; return m; }, {});
 
 // ── time: UTC -> America/Chicago with US DST rules, no Intl dependency ───
 function nthSunday(y, m, n) {
@@ -200,9 +207,11 @@ function barState(bars, i, prev, o, h, l, c, ms, K) {
   if (ms - bkt * bMs === bMs - K.tfMs) { close10(c); hLast = bkt; }
   const htf = Number.isFinite(hF) ? Math.sign(hF - hS) || 0 : 0;
   const enter = sig !== 0 && (!K.emaFilter || htf === sig);
+  const cut = EARLY[sk];                                     // today's times: an early close moves them
+  const flatCt = cut ? Math.min(K.flattenCt, cut - 5) : K.flattenCt, noEntryCt = cut ? Math.min(K.noEntryCt, cut - 15) : K.noEntryCt;
   return { o, h, l, c, ms, ct, tr, atr, trX, pdmX, ndmX, adx, path, eff, dh, dl, dhAt, dlAt, side,
            raw, lastRaw: raw ? i : lastRaw, inWin, effOk, plain, tF, tS, trend, settled, rescued, sig,
-           sk, hist, rHi, rLo, adrPts, used, lots, bkt, hF, hS, hLast, htf, enter };
+           sk, hist, rHi, rLo, adrPts, used, lots, bkt, hF, hS, hLast, htf, enter, flatCt, noEntryCt };
 }
 
 // ── the order a signal arms, in the live price convention ─────────────────
@@ -236,7 +245,7 @@ function stepOrders(S0, B, prevB, i, K) {
   const S = Object.assign({}, S0);
   const ev = {};
   const s2 = prevB ? prevB.sig : 0;
-  const flatNow = B.ct >= K.flattenCt || B.ct < K.startCt;
+  const flatNow = B.ct >= B.flatCt || B.ct < K.startCt;
   const book = (xp, why, exact) => {
     const d = S.pos, slip = K.research ? K.slip : 0;
     const avg = S.fill + d * slip, x = d === 1 ? xp - slip : xp + slip;
@@ -325,7 +334,7 @@ function stepOrders(S0, B, prevB, i, K) {
 
   // 3. the previous bar's signal arms a stop-entry (a newer one replaces it) --
   // if the 10-minute EMA filter lets it through
-  if (S.pos === 0 && s2 !== 0 && prevB.enter && !flatNow && !blockedOf(S, K) && B.ct < K.noEntryCt) {
+  if (S.pos === 0 && s2 !== 0 && prevB.enter && !flatNow && !blockedOf(S, K) && B.ct < B.noEntryCt) {
     const a = prevB.atr, lots = prevB.lots;
     let L = null;
     if (!(a > 0)) L = null;
@@ -355,7 +364,7 @@ function stepOrders(S0, B, prevB, i, K) {
 function previewArm(S, B, K) {
   if (B.sig === 0 || !B.enter || S.pos === B.sig || !(B.atr > 0) || blockedOf(S, K)) return null;
   const nct = ctOf(B.ms + K.tfMs);
-  if (nct < K.startCt || nct >= K.noEntryCt || nct >= K.flattenCt) return null;
+  if (nct < K.startCt || nct >= B.noEntryCt || nct >= B.flatCt) return null;
   let day = S.dayReal;
   if (S.pos !== 0) {
     day += (B.c - S.fill) * S.pos * K.pointValue * S.lots - 2 * K.commission * S.lots;

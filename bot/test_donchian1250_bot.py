@@ -29,7 +29,7 @@ import json
 import math
 import tempfile
 from collections import Counter, deque
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
@@ -614,6 +614,72 @@ def scenario_tests(rows, meta, theirs, check, events):
     check("a position the bot did not open (a manual trade) is found and closed within minutes, its dollars counted",
           bool(noon) and bool(within) and fake.qty == 0 and abs(b.strat.day_real - day) < 1e-6 and alerted,
           f"closed {(closes[0]['ms'] - noon['ms']) / 60000:.0f} min later" if closes and noon else "not closed")
+
+    # f) an early close, on days the fixture has: a replay with the day on the schedule
+    def early(tday, cut, **kw):
+        d = date(1970, 1, 1) + timedelta(days=tday)
+        core.EARLY_CUTOFF[d] = cut
+        try:
+            return replay(rows, tday, tday, **kw)
+        finally:
+            del core.EARLY_CUTOFF[d]
+
+    def on_day(ev, tday, kind):
+        return [e for e in ev if e["kind"] == kind and core.trading_day(e["ms"]) == tday]
+
+    # a trade still open at the flat time goes out there, ten minutes clear of the cutoff
+    t = next(x for x in theirs if x["xTs"] - x["entTs"] >= 12 * core.BUCKET_MS)
+    flat_ts = t["entTs"] + 9 * core.BUCKET_MS
+    cut = core.ct_minute(flat_ts) + core.FLAT_BEFORE_CUTOFF
+    b, fake = early(t["tday"], cut)
+    exits = on_day(b.all_events, t["tday"], "exit")
+    pushed = [n[0] for n in b.all_sent]
+    check("an early close: a trade still open goes out at the open of the first bar from 5 minutes before the cutoff",
+          len(exits) == 1 and exits[0]["why"] == "FLAT" and exits[0]["bucket"] == flat_ts and fake.qty == 0
+          and not any(o["status"] == 1 for o in fake.orders.values()),
+          f"out at {core.hhmm(core.ct_minute(exits[0]['bucket']))} for a {core.hhmm(cut)} cutoff" if exits else "no exit")
+    check("an early close: the phone is told at the start of the day, and the session summary still comes",
+          any(p.startswith("⏰ Early close today") for p in pushed) and any(p.startswith("📊 Session done") for p in pushed),
+          str([p for p in pushed if p.startswith(("⏰", "📊"))]))
+
+    # no new order from 15 minutes before the cutoff
+    o0 = next(e for e in events if e["kind"] == "order")
+    d0 = core.trading_day(o0["ms"])
+    arm_ct = core.ct_minute(math.floor(o0["ms"] / core.BUCKET_MS) * core.BUCKET_MS) - 2      # the bar that set it up
+    b, fake = early(d0, arm_ct + core.NO_ENTRY_BEFORE_CUTOFF)
+    orders = on_day(b.all_events, d0, "order")
+    check("an early close: no new order from 15 minutes before the cutoff", not orders and fake.qty == 0 and not fake.trades,
+          f"{len(orders)} orders that day")
+
+    # a resting entry is cancelled at the flat time
+    rest = None
+    fills = [e for e in events if e["kind"] == "fill"]
+    for e in (x for x in events if x["kind"] == "order"):
+        q = math.floor(e["ms"] / core.BUCKET_MS) * core.BUCKET_MS
+        if not any(q <= f["ms"] < q + 8 * core.BUCKET_MS for f in fills) and core.ct_minute(q) >= 9 * 60:
+            rest = q
+            break
+    if rest is not None:
+        d2, flat2 = core.trading_day(rest), rest + 6 * core.BUCKET_MS
+        cut2 = core.ct_minute(flat2) + core.FLAT_BEFORE_CUTOFF
+        b, fake = early(d2, cut2)
+        placed = on_day(b.all_events, d2, "order")
+        check("an early close: a working entry is cancelled at the flat time and never fills",
+              len(placed) >= 1 and all(o["status"] != 1 for o in fake.orders.values()) and fake.qty == 0
+              and not on_day(b.all_events, d2, "fill"),
+              f"{len(placed)} placed, {len(on_day(b.all_events, d2, 'fill'))} filled, for a {core.hhmm(cut2)} cutoff")
+    else:
+        print("  (skipped: no entry in the replayed span rested long enough)")
+
+    # the schedule itself
+    thu, fri, eve = date(2026, 11, 26), date(2026, 11, 27), date(2026, 12, 24)
+    n = lambda d: (d - date(1970, 1, 1)).days
+    check("the early-close schedule: Topstep's 2026 cutoffs, and every other day unchanged",
+          core.day_limits(n(thu)) == (690, 700) and core.hard_flat_ct(n(thu), 907) == 702
+          and core.day_limits(n(fri)) == (705, 715) and core.hard_flat_ct(n(fri), 907) == 717
+          and core.day_limits(n(eve)) == (705, 715) and (thu.weekday(), fri.weekday(), eve.weekday()) == (3, 4, 3)
+          and core.day_limits(n(date(2026, 11, 25))) == (895, 905) and core.hard_flat_ct(n(date(2026, 11, 25)), 907) == 907
+          and core.day_limits(None) == (895, 905))
 
 
 def notifier_tests(check):
