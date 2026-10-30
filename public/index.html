@@ -67,23 +67,6 @@
         <span class="winrange" id="winRange"></span>
       </div>
 
-      <div class="tfpick" title="How the candles are DRAWN. It does not re-run anything — the trades on screen stay the same. To change the bars the strategy actually computes on, and with them the indicators and the signals, use 'Signal timeframe' in the sidebar.">
-        <label for="chartTf">Candles</label>
-        <select id="chartTf">
-          <option value="1">1 min</option>
-          <option value="2">2 min</option>
-          <option value="3">3 min</option>
-          <option value="5">5 min</option>
-          <option value="10">10 min</option>
-          <option value="15">15 min</option>
-          <option value="30">30 min</option>
-          <option value="60">1 hour</option>
-          <option value="1440">1 day</option>
-        </select>
-      </div>
-
-      <button id="sigToggle" class="sigtoggle" aria-pressed="false" title="Mark every signal bar the strategy produced: ◆ entered, ◇ an order that never filled, × refused (with the reason on hover), · already in a position. Click one, or any trade, for what triggered it.">Signals</button>
-
       <div class="housechip" id="houseChip"></div>
 
       <div class="verdict" id="verdict"><span class="badge open">—</span></div>
@@ -96,12 +79,44 @@
     <div id="navWrap">
       <canvas id="nav"></canvas>
       <div class="navbar-foot">
-        <div class="navspan" id="navSpan" title="What the strip above covers">
+        <div class="seg" id="navSpan" title="What the strip above covers">
           <button data-span="2026">2026</button><button data-span="all">All</button>
         </div>
         <span id="navSummary"></span>
-        <button id="runSweep" class="primary">Run full sweep</button>
+        <button id="runSweep" class="mini" title="Sweeps run by themselves when a setting changes. This forces one.">↻ Sweep</button>
       </div>
+    </div>
+
+    <div id="chartBar">
+      <div class="seg" id="zoomPick" role="group" aria-label="Zoom">
+        <button data-zoom="day" title="One trading day, 08:15 to 15:15 CT (1)">Day</button>
+        <button data-zoom="week" title="Five trading days (2)">Week</button>
+        <button data-zoom="window" title="The whole window (3)">Window</button>
+      </div>
+      <div class="seg">
+        <button id="pagePrev" title="Back along the chart: a day, a week, or a screen ( [ )">‹</button>
+        <button id="pageNext" title="On along the chart: a day, a week, or a screen ( ] )">›</button>
+      </div>
+
+      <div class="tfpick" title="How the candles are DRAWN. It does not re-run anything — the trades on screen stay the same. Auto picks the size that fits the zoom. To change the bars the strategy actually computes on, and with them the indicators and the signals, use 'Signal timeframe' in Settings.">
+        <label for="chartTf">Candles</label>
+        <select id="chartTf">
+          <option value="0">Auto</option>
+          <option value="1">1 min</option>
+          <option value="2">2 min</option>
+          <option value="3">3 min</option>
+          <option value="5">5 min</option>
+          <option value="10">10 min</option>
+          <option value="15">15 min</option>
+          <option value="30">30 min</option>
+          <option value="60">1 hour</option>
+          <option value="120">2 hours</option>
+          <option value="240">4 hours</option>
+          <option value="1440">1 day</option>
+        </select>
+      </div>
+
+      <button id="sigToggle" class="sigtoggle" aria-pressed="false" title="Mark every signal bar the strategy produced: ◆ entered, ◇ an order that never filled, × refused (with the reason on hover), · already in a position. Click one, or any trade, for what triggered it.">Signals</button>
     </div>
 
     <div id="chartWrap"><div id="whyCard" class="whycard hidden" role="dialog" aria-label="What triggered this entry"></div></div>

@@ -4,7 +4,8 @@
 // draws: the page itself is checked by opening it.
 
 import { loadBars } from "../src/data.mjs";
-import { ctWall, fmtCt, lowerBound, upperBound, nthSmallest, wilson, rateOver, houseRates, runRecord, pairRuns, compareRuns, flips, linkSettings, linkDiff } from "../public/ui.mjs";
+import { ctWall, fmtCt, lowerBound, upperBound, nthSmallest, wilson, rateOver, houseRates, runRecord, pairRuns, compareRuns, flips, linkSettings, linkDiff,
+        logPosition, logValue, LOG_TRACK, autoCandle, CANDLE_SIZES, sessionView, stepDays } from "../public/ui.mjs";
 
 let pass = 0, fail = 0;
 const failures = [];
@@ -146,6 +147,75 @@ t("a link's settings leave out its date and view, and two links diff by key", ()
   eq(linkDiff("#s=a&d=2026-01-02&x.contracts=4&r.windowDays=20", "#s=a&d=2026-03-09&x.contracts=6&p.fast=9"),
      [{ key: "x.contracts", a: "4", b: "6" }, { key: "r.windowDays", a: "20", b: null }, { key: "p.fast", a: null, b: "9" }]);
   eq(linkDiff("#s=a&d=1", "#s=a&d=2"), []);
+});
+
+console.log("\nsliders and the view");
+console.log("--------------------");
+const STOP = { min: 0.25, max: 1000, step: 0.25 };
+t("the stop's log track puts the useful values in the middle of the slider", () => {
+  const at = (v) => logPosition(v, STOP) / LOG_TRACK;
+  if (!(at(2) > 0.2 && at(2) < 0.3 && at(20) > 0.45 && at(20) < 0.6)) throw new Error(`${at(2)} ${at(20)}`);
+  eq([logPosition(0.25, STOP), logPosition(1000, STOP)], [0, LOG_TRACK]);
+});
+t("every position gives a value in range, on a step, rising along the track", () => {
+  let last = -Infinity;
+  for (let p = 0; p <= LOG_TRACK; p++) {
+    const v = logValue(p, STOP);
+    if (v < STOP.min || v > STOP.max) throw new Error(`${p} -> ${v}`);
+    if (v < last) throw new Error(`fell at ${p}`);
+    if (v < 20 && !Number.isInteger(v / STOP.step)) throw new Error(`off the step: ${v}`);
+    last = v;
+  }
+  eq([logValue(0, STOP), logValue(LOG_TRACK, STOP)], [0.25, 1000]);
+});
+t("a value survives the slider: where it sits gives it back, or a neighbour", () => {
+  for (const v of [0.5, 1, 2, 3, 5, 8, 12]) {
+    const back = logValue(logPosition(v, STOP), STOP);
+    if (Math.abs(back - v) > 0.25 + 1e-9) throw new Error(`${v} -> ${back}`);
+  }
+});
+t("auto candles get wider as the view does, and each is at least the width asked for", () => {
+  eq(autoCandle(1022 / 30000), 120);     // a 30-day window: 2-hour candles
+  eq(autoCandle(1022 / 420), 2);         // one morning-to-close day: 2-minute candles
+  eq(autoCandle(10), 1);
+  eq(autoCandle(1e-6), 1440);            // past the largest, the largest
+  for (const px of [0.01, 0.05, 0.2, 1, 3]) {
+    const m = autoCandle(px);
+    if (m * px < 4 && m !== CANDLE_SIZES.at(-1)) throw new Error(`${m} at ${px}`);
+    const k = CANDLE_SIZES.indexOf(m);
+    if (k > 0 && CANDLE_SIZES[k - 1] * px >= 4) throw new Error(`${m} is not the smallest at ${px}`);
+  }
+});
+// Three trading days of 1-minute bars, the evening session then the day.
+const fake = (() => {
+  const tday = [], ctMin = [];
+  for (const td of [100, 101, 102]) {
+    for (let m = 1020; m < 1440; m += 30) { tday.push(td); ctMin.push(m); }  // 17:00 on the evening before
+    for (let m = 0; m < 960; m += 30) { tday.push(td); ctMin.push(m); }      // to 16:00
+  }
+  return { tday: Int32Array.from(tday), ctMin: Int16Array.from(ctMin) };
+})();
+t("a day's view runs from its morning to its close, not from the evening before", () => {
+  const [a, e] = sessionView(fake, fake.tday.indexOf(101));
+  eq([fake.tday[a], fake.ctMin[a], fake.tday[e - 1], fake.ctMin[e - 1]], [101, 510, 101, 900]);
+});
+t("a week's view ends on the last day it can reach", () => {
+  const [a, e] = sessionView(fake, 0, 5);
+  eq([fake.tday[a], fake.tday[e - 1], fake.ctMin[e - 1]], [100, 102, 900]);
+  const [b, f] = sessionView(fake, 0, 2);
+  eq([fake.tday[b], fake.tday[f - 1]], [100, 101]);
+});
+t("a day with no bars in those hours shows what it has", () => {
+  const short = { tday: Int32Array.from([7, 7, 7]), ctMin: Int16Array.from([1020, 1050, 1080]) };
+  eq(sessionView(short, 1), [0, 3]);
+});
+t("stepping days moves whole trading days and stops at the ends", () => {
+  const i = fake.tday.indexOf(100);
+  eq(fake.tday[stepDays(fake, i, 1)], 101);
+  eq(fake.tday[stepDays(fake, i, 2)], 102);
+  eq(fake.tday[stepDays(fake, i, 9)], 102);
+  eq(fake.tday[stepDays(fake, fake.tday.indexOf(102), -1)], 101);
+  eq(fake.tday[stepDays(fake, i, -3)], 100);
 });
 
 console.log(`\n${"=".repeat(64)}\n  ${pass} passed, ${fail} failed`);

@@ -16,7 +16,7 @@ import { windowSpan, DEFAULT_TAIL_MIN } from "/src/window.mjs";
 import { EVALS, EVAL_IDS, DEFAULT_EVAL, evalBase, evalKeys } from "/src/evals.mjs";
 import { STUDIES, STUDY_TFS, resolveStudy, studyLabel, isGating, gateLabel, computeStudy } from "/src/studies.mjs";
 import { describeEntry, describeExit, eventText, explainLines, num as fmtNum, px as fmtPx } from "/src/explain.mjs";
-import { Y2026, wilson, houseRates, runRecord, compareRuns, flips, linkSettings, linkDiff, logPosition, logValue, LOG_TRACK } from "/ui.mjs";
+import { Y2026, wilson, houseRates, runRecord, compareRuns, flips, linkSettings, linkDiff, logPosition, logValue, LOG_TRACK, sessionView, stepDays } from "/ui.mjs";
 import { loadIndicator, defaultProps, plotters, audit, formingProblems, Problems } from "/tradovate/mock/runtime.mjs";
 
 // The 1-minute x-position a resampled bar should be drawn at: the middle of the
@@ -258,7 +258,8 @@ const S = {
   sweepTimer: 0,
   lastSweepKey: "",
   failedSweepKey: "", // settings the last sweep failed on, so they are not retried for ever
-  chartTf: 1,         // the candle size picked in the top bar
+  chartTf: 0,         // the candle size picked in the toolbar, 0 for Auto
+  zoom: "window",     // the view picked in the toolbar: day, week or window
   tab: null,          // the sidebar's open tab
   changedOnly: false, // Settings shows only what differs from the defaults
   run: null,          // the current settings' finished run (public/ui.mjs runRecord)
@@ -813,16 +814,7 @@ function tvOverlays() {
 }
 
 // The window's first day, 08:15-15:15 CT: what an indicator is looked at on.
-function tvDayView() {
-  const b = S.blob, td = b.tday[Math.min(S.winStartLocal, b.count - 1)];
-  const inDay = (i) => i < b.count && b.tday[i] === td && b.ctMin[i] >= 495 && b.ctMin[i] <= 915;
-  let a = S.winStartLocal;
-  while (a < b.count && !inDay(a)) a++;
-  if (a >= b.count) return null;
-  let e = a;
-  while (inDay(e + 1)) e++;
-  return [a, e + 1];
-}
+const tvDayView = () => (S.blob.count ? sessionView(S.blob, S.winStartLocal, 1) : null);
 function tvShowDay() {
   const v = tvFocused() ? tvDayView() : null;
   if (v) S.chart.zoomTo(v[0], v[1]);
@@ -1732,8 +1724,37 @@ function paintChart(res, replay) {
     resolveX: !focus && (replay.passMs ?? replay.failMs) != null
       ? indexAtOrAfter(blob.ts, replay.passMs ?? replay.failMs) : null,
     title: focus ? `MNQ · ${S.tv.map((x) => x.name).join(" + ")}` : `MNQ · ${S.strategyDesc.name}`,
-    initialView: (focus && tvDayView()) || [S.winStartLocal, Math.min(blob.count, S.winEndLocal + 1)],
+    initialView: (focus && tvDayView()) || presetView(S.winStartLocal),
   });
+}
+
+// ──────────────────────────── the zoom presets ────────────────────────────
+// A day, five trading days, or the window. The choice holds as the window moves, so
+// the arrows walk through a day at a time; [ and ] walk the view within the bars.
+const PRESET_DAYS = { day: 1, week: 5 };
+function presetView(i) {
+  const days = PRESET_DAYS[S.zoom];
+  return days && S.blob.count ? sessionView(S.blob, i, days) : [S.winStartLocal, Math.min(S.blob.count, S.winEndLocal + 1)];
+}
+function paintZoom() {
+  for (const b of $("zoomPick").querySelectorAll("button")) b.classList.toggle("on", b.dataset.zoom === S.zoom);
+}
+function setZoom(mode) {
+  S.zoom = mode;
+  try { localStorage.setItem("mnq.zoom", mode); } catch { /* private mode */ }
+  paintZoom();
+  const c = S.chart, whole = c.i1 - c.i0 >= (S.winEndLocal - S.winStartLocal) * 0.9;
+  // from the selected trade if there is one, then wherever the view is looking
+  const tf = lastResult && lastResult.res.tf, k = S.why && tf ? indexAtOrAfter(tf.ts, S.why.ts) : -1;
+  const at = k >= 0 && k < tf.ts.length ? tf.srcFirst[k] : whole ? S.winStartLocal : Math.floor((c.i0 + c.i1) / 2);
+  const v = presetView(at);
+  c.zoomTo(v[0], v[1]);
+}
+function pageView(dir) {
+  const c = S.chart, days = PRESET_DAYS[S.zoom];
+  if (!days) { const w = c.i1 - c.i0; c.zoomTo(c.i0 + dir * w, c.i1 + dir * w); return; }
+  const v = sessionView(S.blob, stepDays(S.blob, Math.ceil(c.i0), dir * days), days);
+  c.zoomTo(v[0], v[1]);
 }
 
 // Redraw without re-running anything: a study's colour or visibility changed.
@@ -1957,7 +1978,7 @@ function chartSnapshot(appliedId, applyError) {
                                       ...(isGating(st) ? { gateText: gateLabel(st.type, st.gate, st.params) } : {}), ...(st.hidden ? { hidden: true } : {}) })),
     tradovate: { chartOnly: S.tvFocus, indicators: S.tv.map((ind, k) => ({ ...tvConfig()[k], problems: ind.problems || [] })) },
     window: { start: isoMin(S.windowStart), tradingDay: $("startDate").value, end: isoMin(S.windowStart + S.rules.windowDays * DAY) },
-    view: cb && cb.count ? { from: isoMin(cb.ts[Math.max(0, Math.floor(c.i0))]), to: isoMin(cb.ts[Math.min(cb.count - 1, Math.ceil(c.i1) - 1)]), candleMin: c.tfMin } : null,
+    view: cb && cb.count ? { from: isoMin(cb.ts[Math.max(0, Math.floor(c.i0))]), to: isoMin(cb.ts[Math.min(cb.count - 1, Math.ceil(c.i1) - 1)]), candleMin: c.candleMin(), zoom: S.zoom } : null,
     result: rp ? { outcome: rp.outcome, net: Math.round(st.netPnl), trades: st.trades, skipped: st.skipped, winRate: +st.winRate.toFixed(1),
                    bestDay: Math.round(st.bestDay), profitNeeded: Math.round(st.profitNeeded),
                    closestToBreach: st.minCushion == null ? null : Math.round(st.minCushion), resolvedAt: isoMin(rp.passMs ?? rp.failMs) } : null,
@@ -2313,14 +2334,20 @@ async function boot() {
   // same trades whatever size the candles are drawn at. Remembered between
   // visits because it is a preference, not part of a result.
   const tfSel = $("chartTf");
-  S.chartTf = Number(localStorage.getItem("mnq.chartTf")) || 1;
+  try { S.chartTf = Number(localStorage.getItem("mnq.candles")) || 0; } catch { /* private mode */ }
   tfSel.value = String(S.chartTf);
   S.chart.setTimeframe(S.chartTf);
   tfSel.addEventListener("change", () => {
-    S.chartTf = Number(tfSel.value) || 1;
-    try { localStorage.setItem("mnq.chartTf", String(S.chartTf)); } catch { /* private mode */ }
+    S.chartTf = Number(tfSel.value) || 0;
+    try { localStorage.setItem("mnq.candles", String(S.chartTf)); } catch { /* private mode */ }
     S.chart.setTimeframe(S.chartTf);
+    queuePostState();
   });
+  try { const z = localStorage.getItem("mnq.zoom"); if (z === "day" || z === "week") S.zoom = z; } catch { /* private mode */ }
+  paintZoom();
+  $("zoomPick").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) setZoom(b.dataset.zoom); });
+  $("pagePrev").onclick = () => pageView(-1);
+  $("pageNext").onclick = () => pageView(1);
   $("chartWrap").addEventListener("mousemove", (e) => {
     if (e.target.closest("#whyCard")) { $("tooltip").classList.add("hidden"); return; }   // the card is not the chart
     tradeTooltip(window._hoverTrade, e);
@@ -2417,6 +2444,11 @@ async function boot() {
     if (e.key === "ArrowLeft") { stepWindow(e.shiftKey ? -7 : -1); e.preventDefault(); }
     else if (e.key === "ArrowRight") { stepWindow(e.shiftKey ? 7 : 1); e.preventDefault(); }
     else if (e.key === "r") S.chart.resetView();
+    else if (e.key === "1") setZoom("day");
+    else if (e.key === "2") setZoom("week");
+    else if (e.key === "3") setZoom("window");
+    else if (e.key === "[") pageView(-1);
+    else if (e.key === "]") pageView(1);
     else if (e.key === "b" && !e.ctrlKey && !e.metaKey && !e.altKey && S.run && !S.sweepStale) pinRun(S.run);
     else if (e.key === "e" && !e.ctrlKey && !e.metaKey && !e.altKey) switchEval(EVAL_IDS[(EVAL_IDS.indexOf(S.eval) + 1) % EVAL_IDS.length]);
   });

@@ -7,7 +7,7 @@
 // the classic way these things end up feeling sluggish.
 
 import { graphicsPrims, plotPrims, paintPrim, overlaps, fontOf } from "/tradovate/mock/draw.mjs";
-import { fmtCt, lowerBound, upperBound, nthSmallest, Y2026 } from "/ui.mjs";
+import { fmtCt, lowerBound, upperBound, nthSmallest, Y2026, autoCandle } from "/ui.mjs";
 
 const CSS = {
   bg: "#0b0f14",
@@ -45,7 +45,7 @@ const fmtPx = (v) => v.toFixed(2);
 // An indicator reading: prices to the tick, small numbers to 3 significant figures.
 const fmtVal = (v) => (Math.abs(v) >= 1000 ? v.toFixed(2) : Math.abs(v) >= 10 ? v.toFixed(1) : String(+v.toPrecision(3)));
 
-const TF_NAME = { 1: "1m", 5: "5m", 10: "10m", 15: "15m", 30: "30m", 60: "1h", 1440: "1d" };
+const TF_NAME = { 1: "1m", 60: "1h", 120: "2h", 240: "4h", 1440: "1d" };
 // Says what the candles ARE, and flags the case where the requested size could
 // not be drawn -- silently showing a different aggregation than the one picked
 // is the sort of thing that gets read off a chart and quoted later.
@@ -53,12 +53,12 @@ const TF_NAME = { 1: "1m", 5: "5m", 10: "10m", 15: "15m", 30: "30m", 60: "1h", 1
 // has to say so. Drawing 15-minute candles under a MACD still computed on
 // 2-minute bars looks exactly like an indicator that failed to follow the
 // dropdown, so whenever the two diverge the label names both.
-function tfNote(want, applied, signalTf) {
+function tfNote(want, applied, signalTf, auto) {
   const sig = signalTf > 1 ? signalTf : 0;
   let s = "";
-  if (want && want !== 1) {
+  if (want && (want !== 1 || auto)) {
     const nm = TF_NAME[want] || want + "m";
-    s = applied === want ? "  ·  " + nm + " candles"
+    s = applied === want ? "  ·  " + nm + " candles" + (auto ? " (auto)" : "")
                          : "  ·  " + nm + " too dense here — zoom in";
   }
   // Only worth saying when they actually differ; when they match, the candle
@@ -258,15 +258,24 @@ export class ChartView {
   // Candle aggregation for DISPLAY only. It does not touch the strategy, which
   // keeps computing on its own timeframe — you can watch a 1-minute book on
   // hourly candles and the entries stay exactly where they were.
+  // 0 is Auto: the size that fits the zoom.
   setTimeframe(min) {
-    this.tfMin = Math.max(1, Math.round(min) || 1);
+    this.tfMin = Math.max(0, Math.round(min) || 0);
     this.requestDraw();
   }
 
+  // The candles as they are drawn right now.
+  candleMin() {
+    return this.tfMin || autoCandle(this.plotW / Math.max(1, this.i1 - this.i0));
+  }
+
+  // Back to the view the data opened on: the window, not the warm-up behind it,
+  // which for a book that holds overnight is all of history.
   resetView() {
     if (!this.data) return;
-    this.i0 = 0;
-    this.i1 = this.data.bars.count;
+    const iv = this.data.initialView, n = this.data.bars.count;
+    this.i0 = iv ? Math.max(0, iv[0]) : 0;
+    this.i1 = iv ? Math.min(n, iv[1]) : n;
     this.requestDraw();
   }
 
@@ -415,7 +424,7 @@ export class ChartView {
     if (n <= 0) return null;
 
     const maxCols = Math.max(1, Math.min(n, Math.floor(this.plotW / 2)));
-    const tf = this.tfMin || 1;
+    const tf = this.candleMin();
     // A drawing budget, not the 2px rule. Honouring the chosen timeframe
     // matters more than candle width — a sub-pixel candle still aggregates the
     // right bars, and the alternative is silently showing something else.
@@ -460,7 +469,7 @@ export class ChartView {
       o[k] = bars.open[a]; h[k] = hi; l[k] = lo; c[k] = bars.close[end - 1];
       idx[k] = a; idxEnd[k] = end;
     }
-    return { cols, o, h, l, c, idx, idxEnd, per, s, e };
+    return (this._col = { cols, o, h, l, c, idx, idxEnd, per, s, e });
   }
 
   _priceRange(col) {
@@ -543,7 +552,7 @@ export class ChartView {
 
     const stride = (this.data.tfToLocal && this.data.tfToLocal.stride) || 1;
     this._paneLabel(ctx, P,
-                    (this.data.title || "Price") + tfNote(this.tfMin, this.tfApplied, stride),
+                    (this.data.title || "Price") + tfNote(this.candleMin(), this.tfApplied, stride, !this.tfMin),
                     "price");
   }
 
@@ -1472,8 +1481,12 @@ export class ChartView {
     if (my >= P.top && my <= P.bottom && this.priceY) {
       const v = this.priceHi - ((my - P.top) / P.height) * (this.priceHi - this.priceLo);
       this._gutter(ctx, my, fmtPx(v));
-      // OHLC readout
-      const txt = `O ${fmtPx(b.open[i])}  H ${fmtPx(b.high[i])}  L ${fmtPx(b.low[i])}  C ${fmtPx(b.close[i])}  V ${b.volume[i]}`;
+      // OHLC readout, of the candle under the pointer rather than the minute in it
+      const col = this._col, k = col ? upperBound(col.idx, i) - 1 : -1, one = k < 0 || i >= col.idxEnd[k];
+      let vol = 0;
+      for (let q = one ? i : col.idx[k], e = one ? i + 1 : col.idxEnd[k]; q < e; q++) vol += b.volume[q];
+      const txt = one ? `O ${fmtPx(b.open[i])}  H ${fmtPx(b.high[i])}  L ${fmtPx(b.low[i])}  C ${fmtPx(b.close[i])}  V ${vol}`
+                      : `O ${fmtPx(col.o[k])}  H ${fmtPx(col.h[k])}  L ${fmtPx(col.l[k])}  C ${fmtPx(col.c[k])}  V ${vol}`;
       ctx.font = "10px ui-monospace, monospace";
       ctx.fillStyle = CSS.textBright;
       ctx.fillText(txt, this.plotL + 4, P.top + 24);
