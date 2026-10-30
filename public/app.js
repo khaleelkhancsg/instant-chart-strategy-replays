@@ -745,8 +745,7 @@ function tvParamDesc(key, spec) {
   return { key, label: key, type: Number.isInteger(step) ? "int" : "float", step, min: r.min ?? 0, max: r.max ?? Math.max(10, Math.abs(s.def) * 4) };
 }
 
-function tvPaintChecks(ind) {
-  const box = document.querySelector(`.tv-checks[data-name="${ind.name}"]`);
+function tvPaintChecks(ind, box = document.querySelector(`.tv-checks[data-name="${ind.name}"]`)) {
   if (!box) return;
   box.innerHTML = "";
   if (!ind.problems || !ind.problems.length) {
@@ -807,7 +806,7 @@ function buildTvCard(ind) {
     body.appendChild(buildParamControl(d, d.bool ? (v ? "on" : "off") : v, (x) => { ind.props[k] = d.bool ? x === "on" : x; saveTv(); recompute(); }));
   }
   card.appendChild(body);
-  tvPaintChecks(ind);
+  tvPaintChecks(ind, body.querySelector(".tv-checks"));
   return card;
 }
 
