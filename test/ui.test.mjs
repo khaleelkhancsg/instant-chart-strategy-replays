@@ -4,7 +4,7 @@
 // draws: the page itself is checked by opening it.
 
 import { loadBars } from "../src/data.mjs";
-import { ctWall, fmtCt, lowerBound, upperBound, nthSmallest, wilson, rateOver, houseRates, Y2026, APR_2026 } from "../public/ui.mjs";
+import { ctWall, fmtCt, lowerBound, upperBound, nthSmallest, wilson, rateOver, houseRates, runRecord, pairRuns, compareRuns, flips, linkSettings, linkDiff } from "../public/ui.mjs";
 
 let pass = 0, fail = 0;
 const failures = [];
@@ -96,6 +96,56 @@ t("the interval counts one sample per window length, and stays inside 0-100", ()
   eq(wilson(0.5, 0), null);
   const [a, b] = wilson(1, 2);
   if (!(a >= 0 && b === 100)) throw new Error(`${a}-${b}`);
+});
+
+console.log("\nruns and the baseline");
+console.log("---------------------");
+// A run from a string of outcomes, one letter per day from the first of January.
+const first = Date.parse("2026-01-01T22:03:00Z"), DAY = 86400000;
+const NAMES = { P: "PASS", F: "FAIL", O: "IN_PROGRESS" };
+const runOf = (letters, over = {}) => runRecord({
+  windows: [...letters].map((c, k) => ({ startMs: first + k * DAY, outcome: NAMES[c] })),
+  summary: { passRate: 1, failRate: 2, medianDaysToPass: 9 }, stats: { n: 10, pnl: 123.6, profitFactor: Infinity },
+}, { key: letters, strategy: "x", name: "X", eval: "1250", windowDays: 30, hash: "#s=x&d=2026-01-05", ...over });
+
+t("a run keeps one letter per window, and survives being stored", () => {
+  const r = JSON.parse(JSON.stringify(runOf("PFOP")));
+  eq(r.outcomes, "PFOP");
+  eq([r.first, r.net, r.pf, r.y2026.n], [first, 124, null, 4]);
+  eq(r.y2026.rate, 50);
+});
+t("two runs pair date by date: gained and lost are counted, not netted", () => {
+  const p = pairRuns(runOf("PPFF"), runOf("PFPF"));
+  eq([p.n, p.gained, p.lost, p.rateBase, p.rateNow, p.change], [4, 1, 1, 50, 50, 0]);
+});
+t("a run that ran out of time is not a pass, and is gained like a breach is", () => {
+  const p = pairRuns(runOf("OF"), runOf("PP"));
+  eq([p.gained, p.lost, p.rateBase], [2, 0, 0]);
+});
+t("a period counts only the windows that start in it", () => {
+  const p = pairRuns(runOf("PPPP"), runOf("FFFF"), first + DAY, first + 3 * DAY);
+  eq([p.n, p.lost], [2, 2]);
+  eq(pairRuns(runOf("P"), runOf("F"), first + 9 * DAY, Infinity), null);
+});
+t("runs of different lengths pair over what they share; a different grid does not pair", () => {
+  eq(pairRuns(runOf("PPP"), runOf("FF")).n, 2);
+  eq(pairRuns(runOf("P"), { ...runOf("P"), first: first + DAY }), null);
+  eq(flips(runOf("P"), { ...runOf("F"), first: first + DAY }), []);
+});
+t("the comparison has 2026 first, and says when the rules are not the same", () => {
+  const c = compareRuns(runOf("PF"), runOf("FP", { eval: "3000", windowDays: 20 }));
+  eq(c.rows.map((r) => r.label), ["2026", "Jan–Mar", "Apr–Jul", "All history"]);
+  eq([c.sameEval, c.sameWindow], [false, false]);
+  eq(compareRuns(runOf("P"), runOf("P")).sameEval, true);
+});
+t("the strip's marks are the dates that differ, in order, by which way", () => {
+  eq(flips(runOf("PFPO"), runOf("PPFP")).map((f) => [(f.ms - first) / DAY, f.gained]), [[1, true], [2, false], [3, true]]);
+});
+t("a link's settings leave out its date and view, and two links diff by key", () => {
+  eq([...linkSettings("#s=a&d=2026-01-02&tvf=0&x.contracts=6")], [["s", "a"], ["x.contracts", "6"]]);
+  eq(linkDiff("#s=a&d=2026-01-02&x.contracts=4&r.windowDays=20", "#s=a&d=2026-03-09&x.contracts=6&p.fast=9"),
+     [{ key: "x.contracts", a: "4", b: "6" }, { key: "r.windowDays", a: "20", b: null }, { key: "p.fast", a: null, b: "9" }]);
+  eq(linkDiff("#s=a&d=1", "#s=a&d=2"), []);
 });
 
 console.log(`\n${"=".repeat(64)}\n  ${pass} passed, ${fail} failed`);

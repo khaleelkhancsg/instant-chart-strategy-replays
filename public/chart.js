@@ -1565,6 +1565,7 @@ export class Navigator {
     this.range = null;
     this.cursorMs = null;
     this.span = "2026";   // what the strip covers: "2026" or "all"
+    this.flips = null;    // start dates this run and the baseline disagree on
 
     canvas.addEventListener("click", (e) => {
       if (!this.range) return;
@@ -1585,6 +1586,11 @@ export class Navigator {
     this.windows = windows;
     this.range = range;
     this.cursorMs = cursorMs;
+    this.draw();
+  }
+
+  setFlips(list) {
+    this.flips = list;
     this.draw();
   }
 
@@ -1624,6 +1630,14 @@ export class Navigator {
         : win.outcome === "FAIL" ? "rgba(239,83,80,0.75)"
         : "rgba(90,107,125,0.45)";
       ctx.fillRect(px, 6, bw, h - 22);
+    }
+
+    // A tick over each date the baseline and this run disagree on: green passes
+    // now and did not, red passed and no longer does.
+    for (const f of this.flips || []) {
+      if (f.ms < t0 || f.ms >= t1) continue;
+      ctx.fillStyle = f.gained ? "#5fe0a0" : "#ff7a78";
+      ctx.fillRect(x(f.ms), 1, bw, 4);
     }
 
     // Year ticks, or months across a single year

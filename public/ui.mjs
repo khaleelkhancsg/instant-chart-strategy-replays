@@ -81,3 +81,79 @@ export const houseRates = (windows, windowDays) => ({
   q1: rateOver(windows, Y2026, APR_2026, windowDays),
   q2: rateOver(windows, APR_2026, Infinity, windowDays),
 });
+
+// ── runs and the baseline ────────────────────────────────────────────────
+const DAY = 86400000, LETTER = { PASS: "P", FAIL: "F" };
+
+// A sweep kept small enough to store. One letter per window, in the sweep's order,
+// is the whole result, and all it takes to pair it with another run date by date.
+export function runRecord(sweep, meta) {
+  const w = sweep.windows, h = houseRates(w, meta.windowDays);
+  const brief = (r) => (r ? { rate: r.rate, failRate: r.failRate, n: r.n, ci: r.ci } : null);
+  return {
+    ...meta, at: Date.now(),
+    first: w.length ? w[0].startMs : 0, outcomes: w.map((x) => LETTER[x.outcome] || "O").join(""),
+    y2026: brief(h.y2026), q1: brief(h.q1), q2: brief(h.q2),
+    all: sweep.summary.passRate, allFail: sweep.summary.failRate, medianDays: sweep.summary.medianDaysToPass,
+    trades: sweep.stats.n, net: Math.round(sweep.stats.pnl),
+    pf: Number.isFinite(sweep.stats.profitFactor) ? sweep.stats.profitFactor : null,
+  };
+}
+
+// The same start dates under two runs, over the windows starting in [lo, hi): how
+// many passed under each, and how many only one of them passed.
+export function pairRuns(base, now, lo = -Infinity, hi = Infinity) {
+  if (base.first !== now.first) return null;
+  const count = Math.min(base.outcomes.length, now.outcomes.length);
+  let n = 0, passBase = 0, passNow = 0, gained = 0, lost = 0;
+  for (let k = 0; k < count; k++) {
+    const ms = base.first + k * DAY;
+    if (ms < lo || ms >= hi) continue;
+    const a = base.outcomes[k] === "P", b = now.outcomes[k] === "P";
+    n++;
+    if (a) passBase++;
+    if (b) passNow++;
+    if (b && !a) gained++;
+    else if (a && !b) lost++;
+  }
+  if (!n) return null;
+  const rateBase = (passBase / n) * 100, rateNow = (passNow / n) * 100;
+  return { n, gained, lost, rateBase, rateNow, change: rateNow - rateBase };
+}
+
+export const COMPARE_PERIODS = [["2026", Y2026, Infinity], ["Jan–Mar", Y2026, APR_2026], ["Apr–Jul", APR_2026, Infinity], ["All history", -Infinity, Infinity]];
+
+export function compareRuns(base, now) {
+  return {
+    rows: COMPARE_PERIODS.map(([label, lo, hi]) => ({ label, pair: pairRuns(base, now, lo, hi) })),
+    sameEval: base.eval === now.eval, sameWindow: base.windowDays === now.windowDays,
+  };
+}
+
+// The start dates the two runs disagree on, for the navigator.
+export function flips(base, now) {
+  if (base.first !== now.first) return [];
+  const out = [], count = Math.min(base.outcomes.length, now.outcomes.length);
+  for (let k = 0; k < count; k++) {
+    const a = base.outcomes[k] === "P", b = now.outcomes[k] === "P";
+    if (a !== b) out.push({ ms: base.first + k * DAY, gained: b });
+  }
+  return out;
+}
+
+// The settings a chart link carries, by key. Its date and which view it shows are
+// not settings: a run does not change with the window on screen.
+const NOT_SETTINGS = new Set(["d", "tvf"]);
+export function linkSettings(hash) {
+  const out = new Map();
+  for (const [k, v] of new URLSearchParams(String(hash).replace(/^#/, ""))) if (!NOT_SETTINGS.has(k)) out.set(k, v);
+  return out;
+}
+// What differs between two links; null for a setting one of them leaves at its default.
+export function linkDiff(hashA, hashB) {
+  const a = linkSettings(hashA), b = linkSettings(hashB), out = [];
+  for (const k of new Set([...a.keys(), ...b.keys()])) {
+    if (a.get(k) !== b.get(k)) out.push({ key: k, a: a.get(k) ?? null, b: b.get(k) ?? null });
+  }
+  return out;
+}

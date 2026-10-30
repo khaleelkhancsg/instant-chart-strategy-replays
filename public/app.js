@@ -16,7 +16,7 @@ import { windowSpan, DEFAULT_TAIL_MIN } from "/src/window.mjs";
 import { EVALS, EVAL_IDS, DEFAULT_EVAL, evalBase, evalKeys } from "/src/evals.mjs";
 import { STUDIES, STUDY_TFS, resolveStudy, studyLabel, isGating, gateLabel, computeStudy } from "/src/studies.mjs";
 import { describeEntry, describeExit, eventText, explainLines, num as fmtNum, px as fmtPx } from "/src/explain.mjs";
-import { Y2026, wilson, houseRates } from "/ui.mjs";
+import { Y2026, wilson, houseRates, runRecord, compareRuns, flips, linkSettings, linkDiff } from "/ui.mjs";
 import { loadIndicator, defaultProps, plotters, audit, formingProblems, Problems } from "/tradovate/mock/runtime.mjs";
 
 // The 1-minute x-position a resampled bar should be drawn at: the middle of the
@@ -259,6 +259,10 @@ const S = {
   lastSweepKey: "",
   failedSweepKey: "", // settings the last sweep failed on, so they are not retried for ever
   chartTf: 1,         // the candle size picked in the top bar
+  run: null,          // the current settings' finished run (public/ui.mjs runRecord)
+  runs: [],           // recent runs, newest first
+  baseline: null,     // the run pinned to compare against
+  booted: false,
 };
 
 // ───────────────────────── binary window parsing ─────────────────────────
@@ -405,6 +409,11 @@ function renderSidebar() {
   gSweep.body.innerHTML = `<div id="sweepPanel"></div>`;
   host.appendChild(gSweep);
 
+  // What this run gained on the pinned one, and the runs before it.
+  const gRuns = buildGroup("Compare runs");
+  gRuns.body.innerHTML = `<div id="runsPanel"></div>`;
+  host.appendChild(gRuns);
+
   const gBreak = buildGroup("P&L by hour and weekday", true);
   gBreak.body.innerHTML = `<div id="breakPanel"></div>`;
   host.appendChild(gBreak);
@@ -464,6 +473,7 @@ function renderSidebar() {
   paintFundedStats();
   paintBreakdown();
   paintEdge();
+  paintRuns();
   if (lastResult) paintTrades(lastResult.replay);
 }
 
@@ -1218,6 +1228,133 @@ function paintFundedStats() {
   `;
 }
 
+// ───────────────────── runs, and the baseline they compare to ─────────────────────
+// Every finished sweep is kept as a small record, here in this browser, so a change
+// can be read against what came before it instead of from memory. Pin one and each
+// later run shows as a difference from it, date by date: the windows it gained and
+// the ones it lost, which a pass rate alone hides.
+const RUNS_MAX = 40;
+function loadRuns() {
+  try {
+    S.runs = JSON.parse(localStorage.getItem("mnq.runs") || "[]");
+    S.baseline = JSON.parse(localStorage.getItem("mnq.baseline") || "null");
+  } catch { /* private mode, or an older format */ }
+}
+function saveRuns() {
+  try {
+    localStorage.setItem("mnq.runs", JSON.stringify(S.runs));
+    localStorage.setItem("mnq.baseline", JSON.stringify(S.baseline));
+  } catch { /* private mode, or full: the page works without them */ }
+}
+function recordRun(r, key) {
+  S.run = runRecord(r, { key, strategy: S.strategyDesc.id, name: S.strategyDesc.name, eval: r.eval, windowDays: S.rules.windowDays, hash: urlHash() });
+  S.runs = [S.run, ...S.runs.filter((x) => x.key !== key)].slice(0, RUNS_MAX);
+  saveRuns();
+}
+function pinRun(run) {
+  S.baseline = run;
+  saveRuns();
+  paintRuns();
+  paintHouse();
+  toast(run ? "Pinned as the baseline" : "Baseline cleared");
+}
+
+// One setting of a link, in the sidebar's words.
+const URL_NAME = { p: "params", x: "exec", r: "rules", f: "filter", u: "funded" };
+function settingName(key) {
+  if (key === "s") return "Strategy";
+  if (key === "e") return "Evaluation";
+  if (key === "st") return "Indicators";
+  if (key === "tv") return "Tradovate indicators";
+  const k = key.slice(key.indexOf(".") + 1), own = S.strategyDesc && (S.strategyDesc.params || []).find((d) => d.key === k);
+  return own ? own.label : SETTING_LABEL.get(k) || k;
+}
+function settingValue(key, v) {
+  if (v != null) return key === "st" ? v.split("~").length : key === "tv" ? v.split("~").map((x) => x.split("!")[0]).join(", ") : v;
+  // left out of the link: the strategy's own default, when it is the one on screen
+  const dot = key.indexOf("."), group = dot > 0 ? URL_NAME[key.slice(0, dot)] : null;
+  const d = group ? baseConfig()[group][key.slice(dot + 1)] : undefined;
+  return d === undefined ? "default" : d;
+}
+// What a run set away from the strategy's defaults.
+function changesText(run) {
+  const list = [...linkSettings(run.hash)].filter(([k]) => k !== "s" && k !== "e").map(([k, v]) => `${settingName(k)} ${settingValue(k, v)}`);
+  return list.length ? list.join(" · ") : "its defaults";
+}
+const signed = (v, dp = 1) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(dp)}`;
+const clockOf = (ms) => new Date(ms).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+const dayOf = (ms) => new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+const whenOf = (ms) => (Date.now() - ms < 86400000 ? clockOf(ms) : dayOf(ms));
+
+function compareHtml(base, now) {
+  const c = compareRuns(base, now), diff = linkDiff(base.hash, now.hash);
+  const cell = (v) => (v == null ? "—" : v.toFixed(1));
+  const rows = c.rows.map(({ label, pair: p }) => {
+    if (!p) return `<div class="cmp-row"><span>${label}</span><span>—</span><span>—</span><span>—</span><span></span></div>`;
+    return `<div class="cmp-row"><span>${label}</span><span>${cell(p.rateBase)}</span><span>${cell(p.rateNow)}</span>` +
+           `<span class="${p.change > 0 ? "pos" : p.change < 0 ? "neg" : ""}">${signed(p.change)}</span>` +
+           `<span title="Windows that pass now and did not, and the reverse, of ${p.n}"><b class="pos">+${p.gained}</b> <b class="neg">−${p.lost}</b></span></div>`;
+  }).join("");
+  const money = (v) => (v == null ? "—" : fmtUsd(v));
+  const extra = [
+    ["2026 breached", base.y2026 && base.y2026.failRate.toFixed(1) + "%", now.y2026 && now.y2026.failRate.toFixed(1) + "%"],
+    ["Trades, all history", base.trades.toLocaleString(), now.trades.toLocaleString()],
+    ["Net P&L, all history", money(base.net), money(now.net)],
+    ["Profit factor", base.pf == null ? "∞" : base.pf.toFixed(2), now.pf == null ? "∞" : now.pf.toFixed(2)],
+  ].map(([k, a, b]) => `<div class="cmp-more"><span>${k}</span><span>${a ?? "—"}</span><span>${b ?? "—"}</span></div>`).join("");
+  const shown = diff.filter((d) => d.key !== "s" && d.key !== "e");
+  const what = base.strategy !== now.strategy ? `A different strategy: ${esc(base.name)}`
+    : shown.length ? shown.map((d) => `${esc(settingName(d.key))} ${esc(settingValue(d.key, d.a))} → ${esc(settingValue(d.key, d.b))}`).join(" · ")
+    : c.sameEval ? "Same settings" : "Same settings, another evaluation";
+  const warn = [
+    !c.sameEval ? `The baseline is on the ${EVALS[base.eval].label}, so these are different rules.` : "",
+    !c.sameWindow ? `The baseline used ${base.windowDays}-day windows, not ${now.windowDays}.` : "",
+  ].filter(Boolean).map((t) => `<div class="cmp-warn">${t}</div>`).join("");
+  return `<div class="${S.sweepStale ? "stale" : ""}">
+    <div class="cmp-what">${what}</div>${warn}
+    <div class="cmp-row head"><span>Pass %</span><span>Base</span><span>Now</span><span>Change</span><span>Windows</span></div>
+    ${rows}${extra}
+    <div class="sweep-foot">${EVALS[now.eval].label}, calendar windows. 2026 holds about ${now.y2026 ? (now.y2026.n / now.windowDays).toFixed(1) : "5"} independent periods, so a gap under 10 points can be noise: judge it in both halves.</div>
+  </div>`;
+}
+
+function paintRuns() {
+  const host = $("runsPanel");
+  if (!host) return;
+  const base = S.baseline, now = S.run;
+  let html = "";
+  if (base) {
+    html += `<div class="cmp-base"><span>Baseline ${base.y2026 ? base.y2026.rate.toFixed(1) + "%" : ""} · ${esc(base.strategy)} · ${whenOf(base.at)}</span>` +
+            `<button class="mini" data-act="restore-base" title="Go back to the baseline's settings">Open</button>` +
+            `<button class="mini" data-act="unpin" title="Stop comparing">✕</button></div>`;
+    if (now) html += base.key === now.key ? `<div class="sweep-empty">This run is the baseline. Change a setting to compare.</div>` : compareHtml(base, now);
+  } else {
+    html += `<div class="sweep-empty">Pin a run, then every change shows as a difference from it, with the windows it gained and lost.</div>`;
+  }
+  if (now && (!base || base.key !== now.key)) html += `<button class="mini cmp-pin" data-act="pin" ${S.sweepStale ? "disabled" : ""} title="Keep this run to compare against (B)">Pin this run as the baseline</button>`;
+  if (S.runs.length) {
+    html += `<div class="sweep-label">Recent runs</div><div class="runlist">` + S.runs.map((r, k) =>
+      `<div class="runrow${now && r.key === now.key ? " on" : ""}" data-i="${k}" title="Open this run's settings">
+        <div class="run-top"><span class="run-t">${whenOf(r.at)}</span><span class="run-s">${esc(r.strategy)}</span>
+          <span class="run-r">${r.y2026 ? r.y2026.rate.toFixed(1) : "—"}</span>
+          <span class="run-q">${r.q1 ? r.q1.rate.toFixed(0) : "—"}·${r.q2 ? r.q2.rate.toFixed(0) : "—"}</span>
+          <button class="st-btn run-pin${base && base.key === r.key ? " on" : ""}" data-act="pin-row" data-i="${k}" title="Pin as the baseline">⚑</button></div>
+        <div class="run-c">${r.eval === "1250" ? "$1,250" : "$3,000"} · ${esc(changesText(r))}</div>
+      </div>`).join("") + `</div><div class="tt-foot"><span>2026 pass, then Jan–Mar · Apr–Jul</span><button class="mini" data-act="clear">Clear</button></div>`;
+  }
+  host.innerHTML = html;
+  host.onclick = (e) => {
+    const b = e.target.closest("[data-act]"), row = e.target.closest(".runrow");
+    const act = b && b.dataset.act;
+    if (act === "pin") pinRun(S.run);
+    else if (act === "unpin") pinRun(null);
+    else if (act === "pin-row") pinRun(S.runs[+b.dataset.i]);
+    else if (act === "restore-base") location.hash = S.baseline.hash;
+    else if (act === "clear") { S.runs = S.run ? [S.run] : []; saveRuns(); paintRuns(); }
+    else if (row) location.hash = S.runs[+row.dataset.i].hash;
+  };
+}
+
 // ───────────────────── all-windows (sweep) panel ─────────────────────
 function median(arr) {
   if (!arr.length) return null;
@@ -1239,14 +1376,20 @@ function paintHouse() {
   }
   const { y2026: h, q1, q2 } = houseRates(sw.windows, S.rules.windowDays), s = sw.summary;
   const n1 = (r) => (r ? r.rate.toFixed(1) : "—");
+  const other = S.baseline && S.run && S.baseline.key !== S.run.key;     // not comparing a run with itself
+  const pair = other ? compareRuns(S.baseline, S.run).rows[0].pair : null;
+  const tone = pair ? (pair.change > 0 ? "pos" : pair.change < 0 ? "neg" : "") : "";
+  S.nav.setFlips(other ? flips(S.baseline, S.run) : null);
   chip.innerHTML = h
     ? `<div class="tstat-k">2026 pass · ${EVALS[sw.eval || S.eval].label.replace(" eval", "")}</div>` +
-      `<div class="tstat-v"><b>${h.rate.toFixed(1)}%</b> <span class="ci">${ciText(h.ci)}</span> <span class="hc-q">${n1(q1)} · ${n1(q2)}</span></div>`
+      `<div class="tstat-v"><b>${h.rate.toFixed(1)}%</b> <span class="ci">${ciText(h.ci)}</span> <span class="hc-q">${n1(q1)} · ${n1(q2)}</span>` +
+      (pair ? ` <span class="hc-d ${tone}" title="Against the pinned baseline">${signed(pair.change)}</span>` : "") + `</div>`
     : `<div class="tstat-k">Pass, all history</div><div class="tstat-v"><b>${s.passRate.toFixed(1)}%</b></div>`;
   chip.title = h ? `Calendar windows that start in 2026: ${h.n}, about ${(h.n / S.rules.windowDays).toFixed(1)} independent periods, so the 95% interval is wide. Then Jan–Mar · Apr–Jul: a result has to hold in both.` : "";
   line.innerHTML =
     `<span class="k">${EVALS[sw.eval || S.eval].label}</span> · ` +
     (h ? `<span class="pass">2026 ${h.rate.toFixed(1)}% pass</span> <span class="k">(${ciText(h.ci)})</span> · Jan–Mar ${n1(q1)} · Apr–Jul ${n1(q2)} · <span class="fail">${h.failRate.toFixed(1)}% breached</span> · ` : "") +
+    (pair ? `<span class="${tone}">${signed(pair.change)} on the baseline, +${pair.gained} −${pair.lost} windows</span> · ` : "") +
     `<span class="k">all history ${s.passRate.toFixed(1)}%${s.medianDaysToPass ? `, median ${s.medianDaysToPass}d to pass` : ""}</span>`;
 }
 
@@ -1635,6 +1778,7 @@ function scheduleSweep() {
   if (S.sweep && sweepKey() !== S.lastSweepKey && !S.sweepStale) {
     S.sweepStale = true;
     paintSweepStats();
+    paintRuns();
   }
   S.sweepTimer = setTimeout(runSweep, 700);
 }
@@ -1664,12 +1808,14 @@ async function runSweep() {
     S.sweep = r;
     // The settings may have moved while it ran, and then this is already old.
     S.sweepStale = sweepKey() !== key;
+    if (!S.sweepStale) recordRun(r, key);
 
     S.nav.set(r.windows, [S.meta.startMs, S.meta.endMs], S.windowStart);
     paintSweepStats();
     paintFundedStats();
     paintBreakdown();
     paintEdge();
+    paintRuns();
   } catch (e) {
     toast(e.message, true);
     S.failedSweepKey = key;
@@ -1732,6 +1878,8 @@ function chartSnapshot(appliedId, applyError) {
     explained: whySnapshot(tr),
     sweep: S.sweep ? { ...S.sweep.summary, eval: S.sweep.eval, stale: !!S.sweepStale, funded: S.sweep.funded || null,
                        ...(S.sweep.edge && S.sweep.edge.length ? { indicatorEdge: S.sweep.edge } : {}) } : null,
+    baseline: S.baseline ? { strategy: S.baseline.strategy, eval: S.baseline.eval, at: new Date(S.baseline.at).toISOString(), settings: changesText(S.baseline),
+                             compared: S.run ? compareRuns(S.baseline, S.run).rows.map(({ label, pair }) => ({ period: label, ...pair })) : null } : null,
   };
 }
 function postState(appliedId, applyError) {
@@ -2011,6 +2159,7 @@ async function selectStrategy(id) {
   // Old sweep belongs to a different strategy — drop it rather than show numbers
   // that no longer describe anything on screen.
   S.sweep = null;
+  S.run = null;
   S.sweepStale = false;
   S.lastSweepKey = "";
   renderSidebar();
@@ -2030,6 +2179,7 @@ async function boot() {
   S.strategyList = await fetch("/api/strategies").then((r) => r.json());
   if (!S.strategyList.length) { toast("No strategies found in strategies/", true); return; }
   S.tvLib = await fetch("/api/tradovate").then((r) => r.json());
+  loadRuns();
 
   const sel = $("strategy");
   sel.innerHTML = "";
@@ -2166,6 +2316,7 @@ async function boot() {
     if (e.key === "ArrowLeft") { stepWindow(e.shiftKey ? -7 : -1); e.preventDefault(); }
     else if (e.key === "ArrowRight") { stepWindow(e.shiftKey ? 7 : 1); e.preventDefault(); }
     else if (e.key === "r") S.chart.resetView();
+    else if (e.key === "b" && !e.ctrlKey && !e.metaKey && !e.altKey && S.run && !S.sweepStale) pinRun(S.run);
     else if (e.key === "e" && !e.ctrlKey && !e.metaKey && !e.altKey) switchEval(EVAL_IDS[(EVAL_IDS.indexOf(S.eval) + 1) % EVAL_IDS.length]);
   });
 }
