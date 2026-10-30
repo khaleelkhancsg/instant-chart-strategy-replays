@@ -18,23 +18,43 @@
       </div>
     </div>
 
-    <div class="field evalfield">
-      <label>Evaluation</label>
-      <div class="evaltabs" id="evalTabs" role="tablist" aria-label="Evaluation"></div>
-      <div class="hint" id="evalDesc"></div>
+    <div class="sidetop">
+      <div class="field evalfield">
+        <div class="evaltabs" id="evalTabs" role="tablist" aria-label="Evaluation"></div>
+      </div>
+
+      <div class="field">
+        <select id="strategy" aria-label="Strategy"></select>
+      </div>
+
+      <div class="sidetabs" id="sideTabs" role="tablist" aria-label="Sidebar">
+        <button role="tab" data-tab="results">Results</button>
+        <button role="tab" data-tab="settings">Settings<span id="changedCount"></span></button>
+        <button role="tab" data-tab="indicators">Indicators<span id="indicatorCount"></span></button>
+      </div>
     </div>
 
-    <div class="field">
-      <label for="strategy">Strategy</label>
-      <select id="strategy"></select>
-      <div class="hint" id="strategyDesc"></div>
-    </div>
+    <div class="sidepanes" id="sidePanes">
+      <div class="sidepane" data-tab="results" id="paneResults"></div>
 
-    <div id="paramGroups"></div>
+      <div class="sidepane" data-tab="settings">
+        <div class="settools">
+          <input type="search" id="setSearch" placeholder="Search settings  ( / )" aria-label="Search settings">
+          <button id="changedOnly" class="ghost" aria-pressed="false" title="Show only what differs from this strategy's defaults">Changed</button>
+        </div>
+        <div class="sweep-empty setnone hidden" id="setNone">Nothing matches.</div>
+        <div id="paneSettings"></div>
+        <div class="setabout">
+          <div class="hint" id="strategyDesc"></div>
+          <div class="hint" id="evalDesc"></div>
+        </div>
+        <div class="sidebar-actions">
+          <button id="reloadStrategies" class="ghost" title="Re-scan the strategies/ folder">Reload strategies</button>
+          <button id="resetParams" class="ghost">Reset defaults</button>
+        </div>
+      </div>
 
-    <div class="sidebar-actions">
-      <button id="reloadStrategies" class="ghost" title="Re-scan the strategies/ folder">Reload strategies</button>
-      <button id="resetParams" class="ghost">Reset defaults</button>
+      <div class="sidepane" data-tab="indicators" id="paneIndicators"></div>
     </div>
   </aside>
 

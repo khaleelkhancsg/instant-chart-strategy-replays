@@ -157,3 +157,62 @@ export function linkDiff(hashA, hashB) {
   }
   return out;
 }
+
+// ── a slider over orders of magnitude ────────────────────────────────────
+// Stop and target run from 0.25 to 1000 (no stop), so on an even track every useful
+// value sits in the first 1%. On a log track the value 2 sits a quarter of the way
+// along. The position is 0-1000; values snap to the setting's step, and more coarsely
+// where the track is too fine to hit one.
+export const LOG_TRACK = 1000;
+export const logPosition = (v, d) => Math.round((Math.log(Math.max(v, d.min) / d.min) / Math.log(d.max / d.min)) * LOG_TRACK);
+export function logValue(pos, d) {
+  if (pos >= LOG_TRACK) return d.max;
+  const v = d.min * Math.pow(d.max / d.min, pos / LOG_TRACK), snap = v >= 200 ? 10 : v >= 20 ? 1 : d.step;
+  return Math.min(d.max, Math.max(d.min, Math.round(v / snap) * snap));
+}
+
+// ── what the chart shows ─────────────────────────────────────────────────
+// Candle sizes in minutes, and Auto's choice among them: the smallest that gives each
+// candle `wanted` pixels at this zoom. It sizes the drawing only, never the signals.
+export const CANDLE_SIZES = [1, 2, 3, 5, 10, 15, 30, 60, 120, 240, 1440];
+export const autoCandle = (pxPerBar, wanted = 4) => CANDLE_SIZES.find((m) => m * pxPerBar >= wanted) ?? CANDLE_SIZES[CANDLE_SIZES.length - 1];
+
+// The bars of one trading day between two Chicago clock times, as [first, end). A day
+// with none in that span (a holiday's short session) gives all of its bars. Trading
+// days only ever rise along the bars, which is what makes the search valid.
+export const RTH_VIEW = [495, 915];    // 08:15-15:15 CT
+function dayBars(bars, td, fromCt, toCt) {
+  const lo = lowerBound(bars.tday, td), hi = upperBound(bars.tday, td);
+  let a = lo;
+  while (a < hi && !(bars.ctMin[a] >= fromCt && bars.ctMin[a] <= toCt)) a++;
+  if (a >= hi) return [lo, hi];
+  let e = a;
+  while (e + 1 < hi && bars.ctMin[e + 1] >= fromCt && bars.ctMin[e + 1] <= toCt) e++;
+  return [a, e + 1];
+}
+
+// `days` trading days starting with the one bar i is in: from the first day's morning
+// to the last one's close, as a view.
+export function sessionView(bars, i, days = 1, [fromCt, toCt] = RTH_VIEW) {
+  const n = bars.tday.length, first = bars.tday[Math.max(0, Math.min(n - 1, i))];
+  let td = first;
+  for (let d = 1; d < days; d++) {
+    const k = upperBound(bars.tday, td);
+    if (k >= n) break;
+    td = bars.tday[k];
+  }
+  return [dayBars(bars, first, fromCt, toCt)[0], dayBars(bars, td, fromCt, toCt)[1]];
+}
+
+// The bar `days` trading days on from bar i, or back with a negative count; where the
+// bars run out it stops at the last day it could reach.
+export function stepDays(bars, i, days) {
+  const n = bars.tday.length;
+  let k = Math.max(0, Math.min(n - 1, i));
+  for (let d = 0; d < Math.abs(days); d++) {
+    const next = days > 0 ? upperBound(bars.tday, bars.tday[k]) : lowerBound(bars.tday, bars.tday[k]) - 1;
+    if (next < 0 || next >= n) break;
+    k = next;
+  }
+  return k;
+}

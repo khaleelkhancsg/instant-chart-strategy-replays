@@ -16,7 +16,7 @@ import { windowSpan, DEFAULT_TAIL_MIN } from "/src/window.mjs";
 import { EVALS, EVAL_IDS, DEFAULT_EVAL, evalBase, evalKeys } from "/src/evals.mjs";
 import { STUDIES, STUDY_TFS, resolveStudy, studyLabel, isGating, gateLabel, computeStudy } from "/src/studies.mjs";
 import { describeEntry, describeExit, eventText, explainLines, num as fmtNum, px as fmtPx } from "/src/explain.mjs";
-import { Y2026, wilson, houseRates, runRecord, compareRuns, flips, linkSettings, linkDiff } from "/ui.mjs";
+import { Y2026, wilson, houseRates, runRecord, compareRuns, flips, linkSettings, linkDiff, logPosition, logValue, LOG_TRACK } from "/ui.mjs";
 import { loadIndicator, defaultProps, plotters, audit, formingProblems, Problems } from "/tradovate/mock/runtime.mjs";
 
 // The 1-minute x-position a resampled bar should be drawn at: the middle of the
@@ -52,11 +52,11 @@ const EXEC_PARAMS = [
     hint: "Up to 20 MNQ. Capped by 'Max contracts' below." },
   { key: "maxContracts", label: "Max contracts (firm cap)", type: "int", min: 1, max: 20, step: 1, default: 20,
     hint: "The account's per-position limit. Bounds both fixed and risk sizing." },
-  { key: "slAtrMult", label: "Stop (× ATR)", type: "float", min: 0.25, max: 1000, step: 0.25, default: 2,
+  { key: "slAtrMult", label: "Stop (× ATR)", type: "float", log: true, min: 0.25, max: 1000, step: 0.25, default: 2,
     hint: "Strategies that exit on their own signals ship with 1000 (no stop)." },
   { key: "tpMode", label: "Target set by", type: "select", default: "atr",
     options: [["atr", "ATR multiple"], ["rr", "Reward : risk (× the stop)"]] },
-  { key: "tpAtrMult", label: "Target (× ATR)", type: "float", min: 0.25, max: 1000, step: 0.25, default: 12,
+  { key: "tpAtrMult", label: "Target (× ATR)", type: "float", log: true, min: 0.25, max: 1000, step: 0.25, default: 12,
     hint: "1000 = no target, so the strategy's own exit decides." },
   { key: "tpRR", label: "Target (× stop, R:R mode)", type: "float", min: 0.1, max: 30, step: 0.1, default: 1.2 },
   { key: "tpMaxUsd", label: "Target at most $ on the position (0 = off)", type: "int", min: 0, max: 10000, step: 25, default: 0,
@@ -259,6 +259,8 @@ const S = {
   lastSweepKey: "",
   failedSweepKey: "", // settings the last sweep failed on, so they are not retried for ever
   chartTf: 1,         // the candle size picked in the top bar
+  tab: null,          // the sidebar's open tab
+  changedOnly: false, // Settings shows only what differs from the defaults
   run: null,          // the current settings' finished run (public/ui.mjs runRecord)
   runs: [],           // recent runs, newest first
   baseline: null,     // the run pinned to compare against
@@ -285,15 +287,39 @@ function parseWindowBlob(ab) {
 }
 
 // ─────────────────────────── sidebar rendering ───────────────────────────
-function buildParamControl(d, value, onChange) {
+// Minutes-of-day, shown as HH:MM so the control reads like the rule it encodes.
+const hhmm = (v) => `${String(Math.floor(v / 60)).padStart(2, "0")}:${String(v % 60).padStart(2, "0")}`;
+
+// `base`, when given, is what the setting starts from: a change from it is marked,
+// and the ↺ beside the label goes back to it.
+function buildParamControl(d, value, onChange, base) {
   const wrap = document.createElement("div");
   wrap.className = "param";
+  wrap.dataset.find = `${d.label} ${d.key} ${d.hint || ""}`.toLowerCase();
 
   const head = document.createElement("div");
   head.className = "param-head";
   const lab = document.createElement("label");
   lab.textContent = d.label;
   head.appendChild(lab);
+
+  let show = () => {};     // put a value on the control
+  const changed = (v) => {
+    onChange(v);
+    if (base === undefined) return;
+    wrap.classList.toggle("changed", v !== base);
+    paintChanged();
+  };
+  if (base !== undefined) {
+    wrap.classList.toggle("changed", value !== base);
+    const text = d.options ? (d.options.find(([v]) => v === base) || [0, base])[1] : d.type === "time" ? hhmm(base) : base;
+    const back = document.createElement("button");
+    back.className = "param-back";
+    back.textContent = "↺";
+    back.title = `Back to the default: ${text}`;
+    back.onclick = () => { show(base); changed(base); };
+    head.appendChild(back);
+  }
 
   if (d.type === "select") {
     wrap.appendChild(head);
@@ -304,11 +330,10 @@ function buildParamControl(d, value, onChange) {
       if (v === value) o.selected = true;
       sel.appendChild(o);
     }
-    sel.addEventListener("change", () => onChange(sel.value));
+    sel.addEventListener("change", () => changed(sel.value));
+    show = (v) => { sel.value = v; };
     wrap.appendChild(sel);
   } else if (d.type === "time") {
-    // Minutes-of-day, shown as HH:MM so the control reads like the rule it encodes.
-    const hhmm = (v) => `${String(Math.floor(v / 60)).padStart(2, "0")}:${String(v % 60).padStart(2, "0")}`;
     const val = document.createElement("span");
     val.className = "param-val";
     val.style.width = "62px";
@@ -320,17 +345,19 @@ function buildParamControl(d, value, onChange) {
     rng.type = "range";
     rng.min = d.min; rng.max = d.max; rng.step = d.step; rng.value = value;
     wrap.appendChild(rng);
+    show = (v) => { rng.value = v; val.textContent = hhmm(v); };
     rng.addEventListener("input", () => {
       const v = Number(rng.value);
       val.textContent = hhmm(v);
-      onChange(v);
+      changed(v);
     });
   } else if (d.type === "text") {
     wrap.appendChild(head);
     const box = document.createElement("input");
     box.type = "text";
     box.value = value ?? "";
-    box.addEventListener("change", () => onChange(box.value));
+    box.addEventListener("change", () => changed(box.value));
+    show = (v) => { box.value = v ?? ""; };
     wrap.appendChild(box);
   } else {
     const num = document.createElement("input");
@@ -343,18 +370,22 @@ function buildParamControl(d, value, onChange) {
 
     const rng = document.createElement("input");
     rng.type = "range";
-    rng.min = d.min; rng.max = d.max; rng.step = d.step; rng.value = value;
+    if (d.log) { rng.min = 0; rng.max = LOG_TRACK; rng.step = 1; }
+    else { rng.min = d.min; rng.max = d.max; rng.step = d.step; }
+    const track = (v) => (d.log ? logPosition(v, d) : v);
+    rng.value = track(value);
     wrap.appendChild(rng);
 
+    show = (v) => { rng.value = track(v); num.value = v; };
     const emit = (raw) => {
       let v = Number(raw);
       if (!Number.isFinite(v)) return;
       v = Math.min(d.max, Math.max(d.min, v));
       if (d.type === "int") v = Math.round(v);
-      rng.value = v; num.value = v;
-      onChange(v);
+      show(v);
+      changed(v);
     };
-    rng.addEventListener("input", () => emit(rng.value));
+    rng.addEventListener("input", () => emit(d.log ? logValue(Number(rng.value), d) : rng.value));
     num.addEventListener("change", () => emit(num.value));
   }
 
@@ -374,7 +405,7 @@ function buildGroup(title, collapsed = false) {
   g.className = "group" + ((title in FOLDED ? FOLDED[title] : collapsed) ? " collapsed" : "");
   const head = document.createElement("div");
   head.className = "group-head";
-  head.innerHTML = `<span class="group-title">${title}</span><span class="group-caret">▼</span>`;
+  head.innerHTML = `<span class="group-title">${title}</span><span class="group-changed"></span><span class="group-caret">▼</span>`;
   head.addEventListener("click", () => {
     FOLDED[title] = g.classList.toggle("collapsed");
     try { localStorage.setItem("mnq.folded", JSON.stringify(FOLDED)); } catch { /* private mode */ }
@@ -386,22 +417,65 @@ function buildGroup(title, collapsed = false) {
   return g;
 }
 
-function renderSidebar() {
-  const host = $("paramGroups");
-  host.innerHTML = "";
+// The sidebar has three tabs, because results and settings answer different
+// questions: what happened, and what to try next. Results come first. The top bar and
+// the line under the navigator stay in view whichever is open, and they carry the
+// numbers to watch while a setting moves.
+// How many settings differ from the strategy's own, by group and in all.
+function paintChanged() {
+  let total = 0;
+  for (const g of $("paneSettings").querySelectorAll(".group")) {
+    const n = g.querySelectorAll(".param.changed").length;
+    g.querySelector(".group-changed").textContent = n || "";
+    total += n;
+  }
+  $("changedCount").textContent = total ? ` ${total}` : "";
+  if (S.changedOnly) filterSettings();
+}
+const paintIndicatorCount = () => { const n = S.studies.length + S.tv.length; $("indicatorCount").textContent = n ? ` ${n}` : ""; };
 
-  host.appendChild(buildTvGroup());
+// Narrow the settings to what the search names, or to what has changed. A match in a
+// folded group shows while the filter is on; the folding itself is left as it was.
+function filterSettings() {
+  const words = $("setSearch").value.toLowerCase().split(/\s+/).filter(Boolean), pane = $("paneSettings");
+  const on = words.length > 0 || S.changedOnly;
+  let hits = 0;
+  for (const g of pane.querySelectorAll(".group")) {
+    const title = g.querySelector(".group-title").textContent.toLowerCase();
+    let any = 0;
+    for (const p of g.querySelectorAll(".param")) {
+      const found = words.every((w) => title.includes(w) || p.dataset.find.includes(w));
+      const show = found && (!S.changedOnly || p.classList.contains("changed"));
+      p.classList.toggle("nomatch", !show);
+      if (show) any++;
+    }
+    g.classList.toggle("nomatch", on && !any);
+    hits += any;
+  }
+  pane.classList.toggle("filtering", on);
+  $("setNone").classList.toggle("hidden", !on || hits > 0);
+  $("setNone").textContent = S.changedOnly && !words.length ? "Nothing changed: these are the strategy's defaults." : "Nothing matches.";
+}
+
+const sideScroll = {};    // each tab keeps its place
+function showTab(tab) {
+  const panes = $("sidePanes");
+  if (S.tab) sideScroll[S.tab] = panes.scrollTop;
+  S.tab = tab;
+  for (const b of $("sideTabs").querySelectorAll("button")) { const on = b.dataset.tab === tab; b.classList.toggle("on", on); b.setAttribute("aria-selected", String(on)); }
+  for (const p of panes.querySelectorAll(".sidepane")) p.classList.toggle("on", p.dataset.tab === tab);
+  panes.scrollTop = sideScroll[tab] || 0;
+  try { localStorage.setItem("mnq.tab", tab); } catch { /* private mode */ }
+}
+
+function renderSidebar() {
+  const host = $("paneResults"), settings = $("paneSettings"), indicators = $("paneIndicators"), base = baseConfig();
+  host.innerHTML = ""; settings.innerHTML = ""; indicators.innerHTML = "";
 
   // Live results first — it is what you watch while dragging a slider.
   const gStats = buildGroup("This window");
   gStats.body.innerHTML = `<div class="statgrid" id="statGrid"></div>`;
   host.appendChild(gStats);
-
-  // Every signal in the window, taken or blocked by a rule: click one to zoom to it.
-  const gTrades = buildGroup("Trades in this window", true);
-  gTrades.querySelector(".group-title").insertAdjacentHTML("beforeend", `<span id="tradeCount"></span>`);
-  gTrades.body.innerHTML = `<div id="tradeTable"></div>`;
-  host.appendChild(gTrades);
 
   // …and the same view across every window in the dataset. One window is an
   // anecdote; this panel is the distribution the anecdote was drawn from.
@@ -413,6 +487,12 @@ function renderSidebar() {
   const gRuns = buildGroup("Compare runs");
   gRuns.body.innerHTML = `<div id="runsPanel"></div>`;
   host.appendChild(gRuns);
+
+  // Every signal in the window, taken or blocked by a rule: click one to zoom to it.
+  const gTrades = buildGroup("Trades in this window", true);
+  gTrades.querySelector(".group-title").insertAdjacentHTML("beforeend", `<span id="tradeCount"></span>`);
+  gTrades.body.innerHTML = `<div id="tradeTable"></div>`;
+  host.appendChild(gTrades);
 
   const gBreak = buildGroup("P&L by hour and weekday", true);
   gBreak.body.innerHTML = `<div id="breakPanel"></div>`;
@@ -441,33 +521,40 @@ function renderSidebar() {
       S.params[d.key] = v;
       // A longer lookback can need more history than the window loaded.
       onParamsChanged(d.key === "timeframeMin" || warmupGrew());
-    }));
+    }, base.params[d.key] ?? d.default));
   }
-  host.appendChild(sig);
+  settings.appendChild(sig);
 
-  host.appendChild(buildStudiesGroup());
+  indicators.appendChild(buildStudiesGroup());
+  indicators.appendChild(buildTvGroup());
 
   // One control per descriptor, bound to a config object. A `bool` descriptor
   // shows on/off but stores a boolean; a key the object lacks shows its default.
-  const bind = (group, descs, obj, after = () => onParamsChanged()) => {
+  const bind = (group, descs, obj, baseObj, after = () => onParamsChanged()) => {
+    const shown = (o, d) => {
+      const raw = o[d.key] ?? (d.bool ? d.default === "on" : d.default);
+      return d.bool ? (raw ? "on" : "off") : raw;
+    };
     for (const d of descs) {
-      const raw = obj[d.key] ?? (d.bool ? d.default === "on" : d.default);
-      group.body.appendChild(buildParamControl(d, d.bool ? (raw ? "on" : "off") : raw, (v) => {
+      group.body.appendChild(buildParamControl(d, shown(obj, d), (v) => {
         obj[d.key] = d.bool ? v === "on" : v;
         after(d);
-      }));
+      }, shown(baseObj, d)));
     }
-    host.appendChild(group);
+    settings.appendChild(group);
   };
-  bind(buildGroup("Execution & costs"), EXEC_PARAMS, S.exec);
-  bind(buildGroup("Order model & intrabar"), ORDER_PARAMS, S.exec, () => onParamsChanged(warmupGrew()));
+  bind(buildGroup("Execution & costs"), EXEC_PARAMS, S.exec, base.exec);
+  bind(buildGroup("Order model & intrabar"), ORDER_PARAMS, S.exec, base.exec, () => onParamsChanged(warmupGrew()));
   // An active filter, or a longer filter period, can need more warm-up.
-  bind(buildGroup("Signal filters", true), FILTER_PARAMS, S.filter, () => onParamsChanged(warmupGrew()));
+  bind(buildGroup("Signal filters", true), FILTER_PARAMS, S.filter, base.filter, () => onParamsChanged(warmupGrew()));
   // Allowing overnight holds needs a longer warm-up (src/window.mjs).
-  bind(buildGroup("Session rules"), SESSION_PARAMS, S.exec, () => onParamsChanged(warmupGrew()));
-  bind(buildGroup("Combine rules"), RULES_PARAMS, S.rules,
+  bind(buildGroup("Session rules"), SESSION_PARAMS, S.exec, base.exec, () => onParamsChanged(warmupGrew()));
+  bind(buildGroup("Combine rules"), RULES_PARAMS, S.rules, base.rules,
        (d) => (d.key === "windowDays" ? loadWindow(S.windowStart) : onParamsChanged()));
-  bind(buildGroup("Funded stage rules", true), FUNDED_PARAMS, S.funded);
+  bind(buildGroup("Funded stage rules", true), FUNDED_PARAMS, S.funded, base.funded);
+  paintChanged();
+  filterSettings();
+  paintIndicatorCount();
 
   paintSweepStats();
   paintFundedStats();
@@ -508,6 +595,7 @@ function studiesChanged() {
   const n = S.studies.length, g = S.studies.filter(isGating).length;
   const badge = $("studyCount");
   if (badge) badge.textContent = n ? ` · ${n}${g ? ` (${g} gating)` : ""}` : "";
+  paintIndicatorCount();
   onParamsChanged(warmupGrew());
 }
 
@@ -2190,6 +2278,18 @@ async function boot() {
   }
   sel.addEventListener("change", () => selectStrategy(sel.value));
 
+  let tab = "results";
+  try { tab = localStorage.getItem("mnq.tab") || tab; } catch { /* private mode */ }
+  showTab($("sideTabs").querySelector(`[data-tab="${tab}"]`) ? tab : "results");
+  $("sideTabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) showTab(b.dataset.tab); });
+  $("setSearch").addEventListener("input", filterSettings);
+  $("changedOnly").onclick = (e) => {
+    S.changedOnly = !S.changedOnly;
+    e.currentTarget.classList.toggle("on", S.changedOnly);
+    e.currentTarget.setAttribute("aria-pressed", String(S.changedOnly));
+    filterSettings();
+  };
+
   S.chart = new ChartView($("chartWrap"));
   S.chart.onHoverTrade = (t) => { window._hoverTrade = t; if (!t) tradeTooltip(null); queuePostState(); };
   S.chart.onHoverSignal = (sg) => { if (!sg && !window._hoverTrade) tradeTooltip(null); };
@@ -2313,6 +2413,7 @@ async function boot() {
   window.addEventListener("keydown", (e) => {
     if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
     if (e.key === "Escape" && S.why) { selectWhy(null); return; }
+    if (e.key === "/") { showTab("settings"); $("setSearch").focus(); e.preventDefault(); return; }
     if (e.key === "ArrowLeft") { stepWindow(e.shiftKey ? -7 : -1); e.preventDefault(); }
     else if (e.key === "ArrowRight") { stepWindow(e.shiftKey ? 7 : 1); e.preventDefault(); }
     else if (e.key === "r") S.chart.resetView();
