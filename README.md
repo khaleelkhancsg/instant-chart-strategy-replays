@@ -785,7 +785,8 @@ is compared with shifted copies of itself and with 100 placebo markets, where th
 are flipped at random so nothing a level could use is left.
 
 - **As levels:** of 430 tests, 19 reached p < 0.05, where chance alone gives about 22. None
-  passes the bar, and what came closest did not hold on the forward bars, Sep 11 - Oct 26.
+  passes the bar. The nearest, round 25s at R 12%, stayed positive on the forward bars, Sep 11 -
+  Oct 26, but that is about $6 a touch per contract, and only 2 of its 45 definitions clear zero.
 - **As sayings:** none of 33 beats noise, among them the 80% rule, gap fills, stop runs and
   VWAP reversion. A gap under 10% of the ADR fills 95% of the time, and 94% on noise.
 - **As filters:** none of 247 gates improves either $1,250 book in both halves by both methods.
