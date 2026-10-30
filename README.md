@@ -138,16 +138,17 @@ re-sweeps automatically ~700ms after you stop changing parameters.
 
 ### Indicators beside the strategy
 
-**Indicators** in the sidebar adds any of 23 studies to the chart, each on a
+**Indicators** in the sidebar adds any of 53 studies to the chart, each on a
 timeframe of your choice. They are drawn on the price pane or in a pane of their
 own, with their values under the crosshair:
 
 | Group | Studies |
 |---|---|
-| Price | EMA, SMA, EMA cross (fast / slow), VWAP (session or RTH, with σ bands), Supertrend |
-| Bands & levels | Bollinger, Keltner, Donchian, prior day & overnight levels, opening range |
-| Oscillators | RSI, Stochastic, MACD, CCI, rate of change, z-score |
-| Regime & volatility | ADX / DMI, ATR, efficiency ratio, choppiness, relative volume, ADR used, ATR vs its session average |
+| Price | EMA, SMA, EMA cross (fast / slow), VWAP (session, RTH, week or month, with σ bands), Supertrend, Hull MA, Kaufman adaptive MA, volume-weighted MA, Ichimoku cloud, Parabolic SAR, Chandelier exit, Heikin-Ashi trend |
+| Bands & levels | Bollinger, Keltner, Donchian, prior day & overnight levels, opening range, linear regression channel |
+| Levels | Volume or TPO profile (POC, VAH, VAL), developing or prior, of the session, RTH, week or month; composite profile and volume nodes; naked POCs; floor, Camarilla and Fibonacci pivots; week and month levels; the developing range; Monday's range; initial balance and extensions; Asia, London and pre-market ranges; session, week and month opens; ADR projections; swing highs and lows; VWAP from the last swings; high-volume bar levels |
+| Oscillators | RSI, Stochastic, MACD, CCI, rate of change, z-score, money flow index, Williams %R, Aroon, Chaikin money flow, on-balance volume, estimated volume delta |
+| Regime & volatility | ADX / DMI, ATR, efficiency ratio, choppiness, relative volume, ADR used, ATR vs its session average, Vortex, squeeze |
 
 Each study does two jobs:
 - **It reports.** The **Indicator edge** panel splits every trade of the full run
@@ -774,6 +775,24 @@ forces one. A sweep that lands after the settings have moved is marked as old, a
 the next one starts on its own.
 
 Times on the chart are Chicago time.
+
+### Do levels work?
+
+`research/levels_*.mjs` tests 215 levels, fixed and developing, on 2026: prior-day, overnight,
+week and month levels, volume profiles, pivots, session opens, Monday's range, the
+initial balance, VWAPs, ADR targets, and the lines this project's strategies read. Each
+is compared with shifted copies of itself and with 100 placebo markets, where the bars
+are flipped at random so nothing a level could use is left.
+
+- **As levels:** of 430 tests, 19 reached p < 0.05, where chance alone gives about 22. None
+  passes the bar, and what came closest did not hold on the forward bars, Sep 11 - Oct 26.
+- **As sayings:** none of 33 beats noise, among them the 80% rule, gap fills, stop runs and
+  VWAP reversion. A gap under 10% of the ADR fills 95% of the time, and 94% on noise.
+- **As filters:** none of 247 gates improves either $1,250 book in both halves by both methods.
+- **As trades:** none of 2,978 rules beats `donchian_1250` in both halves.
+
+The sample can see about 7 points of bounce rate on a group of levels, so a smaller effect
+may exist. It would be too small to trade alone. The new studies remain useful for looking at the chart.
 
 ### Panels and links
 

@@ -107,10 +107,10 @@ rule logic into a script: that is a second engine, and it drifts.
 
 ## Tests
 
-- `npm run check`: test.mjs (425), audit, legacy parity (15), MCP end to end (19),
+- `npm run check`: test.mjs (445), audit, legacy parity (15), MCP end to end (19),
   chart link (10), the indicator mock (90, `npm run test:mock`), the page's arithmetic
-  (30, `npm run test:ui`), the $1,250 Tradovate indicators (41, `npm run
-  verify:tradovate`, about 2 minutes).
+  (30, `npm run test:ui`), the level study's engine (19, `npm run test:levels`), the
+  $1,250 Tradovate indicators (41, `npm run verify:tradovate`, about 2 minutes).
 - `FUZZ_SEED=<n> FUZZ_SCALE=<k> node test.mjs`: the randomised invariants.
 - `PARITY_SEED`, `PARITY_SCALE`: the same for test/legacy_parity.mjs.
 
@@ -232,10 +232,32 @@ Nothing external is involved: no API, and no page outside the chart.
 - Add an entry to `STUDIES` in `src/studies.mjs`: name, group, pane, kind (`price`,
   `trend`, `band`, `osc`, `level`), params, warm-up, gates, levels, and a causal
   `compute(bars, params)`.
+- Price levels are built in `src/levels.mjs`: `out[i]` may use bars up to i only. A
+  band can return `mid`, which is what reads 0.5, as a profile's POC does.
 - test.mjs section 14 then checks it for lookahead and live = sweep
   automatically.
 - A new kind of computation (not built on `src/indicators.mjs`) also gets a naive
   reference test there, as VWAP and the day levels have.
+
+## Testing a level
+
+`research/lib_levels.mjs` is the level study's engine, run on any line a study draws.
+`levels_catalog.mjs` lists 215 levels and the pools of related ones.
+
+- **In this order:** `levels_placebo.mjs` (10 minutes, others read its results), then
+  `levels_study.mjs`, `levels_stress.mjs`, `levels_theories.mjs`, `levels_gates.mjs`,
+  `levels_books.mjs`. `levels_replicate.mjs` checks the engine against the original study.
+- **Shifted twins are not enough on their own.** They are fair for a fixed level, but a
+  line that depends on the path can fool them: a flipping Supertrend once showed +19.6 on
+  real bars, 45 of 45 definitions and the forward bars agreeing, and +18.6 on placebo
+  markets. `placeboBars` flips each bar at random, so nothing a level could use is left,
+  and each level is judged against its own placebo edges. Run any surprising result
+  through this before believing it.
+- **The bar:** q under 0.10 across everything tested, 40 or more touches, the same sign in
+  both halves, then the forward bars.
+- **A touch is price reaching the level.** A line jumping over price is not one.
+- **The sample's reach:** about 13 points of bounce rate on one level, 7 on a pool.
+- **Result (2026):** no level passes. See `research/levels_stress.mjs` for the figures.
 
 ## Papers
 

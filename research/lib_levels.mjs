@@ -6,7 +6,8 @@
 // moving ones included:
 //
 //   TOUCH    Price closes at least R from the level, then a later bar trades THRU
-//            ticks past it.
+//            ticks past it. A moving level that jumps over price in one step, as a
+//            Supertrend does when it flips, has not been touched: nothing traded there.
 //   BOUNCE   From the touch, price moves R back before it moves R through. A BREAK
 //            is the reverse. Neither within HOLD minutes is unresolved, and left out.
 //            R scales with volatility: a fraction of the mean RTH range of the prior
@@ -118,14 +119,16 @@ export function scanLevel(sample, S, P, off, a, z, R, o, emit) {
     }
     if (!side) return;
     if (want && side !== want) { if (o.chain) return; i++; continue; }
-    // the touch
-    let k = i + 1, p = NaN;
+    // the touch: price comes to the level, from the side it was armed on
+    let k = i + 1, p = NaN, jumped = false;
     for (; k < z; k++) {
       p = (S ? S[k - 1] : P) + off;
       if (!(p === p)) continue;
+      if (side === 1 ? C[k - 1] < p : C[k - 1] > p) { jumped = true; break; }
       if (side === 1 ? L[k] <= p - thru : H[k] >= p + thru) break;
     }
     if (k >= z) return;
+    if (jumped) { i = k; continue; }      // the level went past price: arm again
     // the outcome: R back before R through, in the HOLD minutes after it
     const e = Math.min(k + hold, z);
     let oc = 0, at = e - 1;
@@ -231,6 +234,96 @@ export function edgeOf(ev, ids, nDays, boot, nBoot, keep = null) {
     n: RN, real: real * 100, twin: twin * 100, edge: edge * 100, lo: s[Math.floor(0.025 * m)] * 100, hi: s[Math.floor(0.975 * m)] * 100,
     p: Math.max(1 / m, (2 * Math.min(below, above)) / m), evReal: nR ? evR / nR : 0, evTwin: nT ? evT / nT : 0, boReal: nR ? boR / nR : 0, boTwin: nT ? boT / nT : 0,
   };
+}
+
+// The same edge, like for like. A level can be touched from one side far more than
+// its twins are: the prior day's high is nearly always met from below, while a twin
+// moved either way meets price from both. In a rising year resistance breaks more
+// often than support whatever the level is, so a plain comparison blames the level
+// for the market's drift. Here real and twin touches are compared inside strata of
+// side and time of day, and the differences weighted by the real touches.
+const BUCKET = (ct) => (ct < 570 ? 0 : ct < 660 ? 1 : ct < 780 ? 2 : 3);    // to 09:30, 11:00, 13:00, and after
+const STRATA = 8, stratumOf = (ev, i) => (ev.side[i] === 1 ? 0 : 4) + BUCKET(ev.ct[i]);
+export function matchedEdgeOf(ev, ids, nDays, boot, nBoot, keep = null) {
+  const key = (d, s) => d * STRATA + s, size = nDays * STRATA;
+  const rb = new Float64Array(size), rn = new Float64Array(size), tb = new Float64Array(size), tn = new Float64Array(size);
+  for (const i of ids) {
+    if (ev.oc[i] === 0 || (keep && !keep(i))) continue;
+    const k = key(ev.day[i], stratumOf(ev, i));
+    if (ev.real[i]) { rn[k]++; if (ev.oc[i] === 1) rb[k]++; } else { tn[k]++; if (ev.oc[i] === 1) tb[k]++; }
+  }
+  const a = new Float64Array(STRATA), b = new Float64Array(STRATA), c = new Float64Array(STRATA), e = new Float64Array(STRATA);
+  const score = () => {
+    let w = 0, x = 0;
+    for (let s = 0; s < STRATA; s++) if (b[s] && e[s]) { x += b[s] * (a[s] / b[s] - c[s] / e[s]); w += b[s]; }
+    return w ? [x / w, w] : [NaN, 0];
+  };
+  for (let d = 0; d < nDays; d++) for (let s = 0; s < STRATA; s++) { const k = key(d, s); a[s] += rb[k]; b[s] += rn[k]; c[s] += tb[k]; e[s] += tn[k]; }
+  const [edge, n] = score();
+  if (!n) return null;
+  const bs = new Float64Array(nBoot);
+  let m = 0, below = 0, above = 0;
+  for (let q = 0; q < nBoot; q++) {
+    a.fill(0); b.fill(0); c.fill(0); e.fill(0);
+    const off = q * nDays;
+    for (let j = 0; j < nDays; j++) {
+      const d = boot[off + j];
+      for (let s = 0; s < STRATA; s++) { const k = key(d, s); a[s] += rb[k]; b[s] += rn[k]; c[s] += tb[k]; e[s] += tn[k]; }
+    }
+    const [x, w] = score();
+    if (!w) continue;
+    bs[m++] = x;
+    if (x <= 0) below++;
+    if (x >= 0) above++;
+  }
+  const sorted = bs.subarray(0, m).sort();
+  return { n, edge: edge * 100, lo: sorted[Math.floor(0.025 * m)] * 100, hi: sorted[Math.floor(0.975 * m)] * 100, p: Math.max(1 / m, (2 * Math.min(below, above)) / m) };
+}
+
+// The matched edge alone, for the placebo paths, which need no interval of their own.
+export function quickEdge(ev, ids) {
+  const a = new Float64Array(STRATA), b = new Float64Array(STRATA), c = new Float64Array(STRATA), e = new Float64Array(STRATA);
+  for (const i of ids) {
+    if (ev.oc[i] === 0) continue;
+    const s = stratumOf(ev, i);
+    if (ev.real[i]) { b[s]++; if (ev.oc[i] === 1) a[s]++; } else { e[s]++; if (ev.oc[i] === 1) c[s]++; }
+  }
+  let w = 0, x = 0;
+  for (let s = 0; s < STRATA; s++) if (b[s] && e[s]) { x += b[s] * (a[s] / b[s] - c[s] / e[s]); w += b[s]; }
+  return w ? { edge: (100 * x) / w, n: w } : null;
+}
+
+// Each bar moved from the last close by its own open-to-X distances, up-for-down at
+// random. Volatility, volume, the time of day and every bar's size stay as they were,
+// and each bar's move no longer depends on the last, so nothing a level could exploit
+// is left. What the level test reports on these paths is the test, not the market.
+export function placeboBars(b, seed) {
+  const r = mulberry32(seed), n = b.close.length;
+  const open = new Float32Array(n), high = new Float32Array(n), low = new Float32Array(n), close = new Float32Array(n);
+  let last = b.open[0];
+  for (let i = 0; i < n; i++) {
+    const s = r() < 0.5 ? 1 : -1, ref = i ? b.close[i - 1] : b.open[0], o = last + s * (b.open[i] - ref);
+    const up = b.high[i] - b.open[i], dn = b.open[i] - b.low[i], c = b.close[i] - b.open[i];
+    open[i] = o; high[i] = o + (s > 0 ? up : dn); low[i] = o - (s > 0 ? dn : up); close[i] = o + s * c;
+    last = close[i];
+  }
+  return { ...b, open, high, low, close };
+}
+
+// A two-sided p from a z score (Abramowitz and Stegun 26.2.17).
+export function zToP(z) {
+  const x = Math.abs(z), t = 1 / (1 + 0.2316419 * x), d = 0.3989423 * Math.exp((-x * x) / 2);
+  const tail = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+  return Math.min(1, 2 * tail);
+}
+
+// A real edge against its level's placebo edges: what is left once the method's own
+// bias on that level is taken out, and how far that sits outside the noise. The p
+// counted here is the higher of this one and the day-resampled one from the real bars.
+export function calibrate(edge, pl) {
+  if (!pl || !(pl.sd > 0) || pl.paths < 10) return null;
+  const adj = edge - pl.mean, z = adj / pl.sd;
+  return { adj, z, pPlacebo: zToP(z), bias: pl.mean };
 }
 
 // Benjamini-Hochberg: the q-value of each p in a list.
