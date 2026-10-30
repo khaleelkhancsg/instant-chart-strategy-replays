@@ -5,8 +5,10 @@
  * loss, $600 daily loss limit, 50% consistency. On 2026 data (honest fills,
  * realistic costs) this setup passed 71.1% of 21-day windows (Jan-Mar 74.3%,
  * Apr-Jul 75.1%), against 61.3% without its 10-minute EMA filter --
- * research/donchian_ema_age_2026.mjs in the backtesting project. There is no
- * bot for this account yet: these are the rules a bot would run.
+ * research/donchian_ema_age_2026.mjs in the backtesting project. Forward, on
+ * TopstepX bars after that data ends (Sep 10 - Oct 26 2026): 23 trades, +$2,532,
+ * all 17 calendar windows passed. bot/mnq_donchian1250_bot.py trades these rules;
+ * this indicator draws them on the chart.
  *
  * THE SETUP
  *   signal    2-min close outside the PREVIOUS 30 bars' high/low, ADX(14) >= 25,
@@ -30,8 +32,9 @@
  *             always the stop: ~75 points); target 1.75 x ATR from the signal close
  *   exits     the bracket; out at the next open if the trade has not been 1 ATR
  *             in profit by the 20th bar after entry (40 minutes); an opposite
- *             signal (which also cancels a resting stop-entry); flat at 15:04 CT.
- *             The 40-minute exit and the opposite signal are decided on a closed
+ *             signal (which also cancels a resting stop-entry); flat at 15:06 CT
+ *             (the first bar opening at or after 15:05), or at the last close of
+ *             a session that ends early. The 40-minute exit and the opposite signal are decided on a closed
  *             bar and happen at the next open -- before that bar can touch the
  *             stop or target; only a gap through the stop at the open is first
  *   day       stop for the day once it is -$300 (breaker), +$250 (profit block)
@@ -47,12 +50,25 @@
  *                          · cancels sell stop (one resting the other way is
  *                          cancelled at the next open), · flip (reverses an
  *                          open trade). ▲ · closes trade: exits the open trade,
- *                          no new order. A bare ▲ places nothing (already in
- *                          that trade, or too late). Not drawn once the day
- *                          is done
+ *                          no new order. ▲ · in trade / ▲ · too late places
+ *                          nothing. Not drawn once the day is done
+ *   ADX 39 · eff 0.53 ...  under an order: why it fired (showWhy). The readings
+ *                          the rules used -- ADX (25 or more), efficiency (0.5
+ *                          or more; "+ trend" when the slow trend rescued it),
+ *                          the 10-minute EMA direction, and the share of its
+ *                          usual range the day has covered. Rounded DOWN, so a
+ *                          reading never prints on the wrong side of its rule
+ *   30-bar high 29120.50   the level the close broke (showWhy): a short line
+ *                          from the bar that set it to the signal bar
+ *   × ADX 21 · eff 0.42    grey: a close outside the channel that is NOT a
+ *                          signal, and the reading that refused it: ADX under
+ *                          25, or efficiency under 0.5 ("vs trend": 0.45-0.5
+ *                          with the slow trend against). First bar of a run
+ *                          outside the channel only; nothing else happens
  *   ▲ vs 10m trend         grey: a breakout against the 10-minute EMA trend,
  *                          not traded (it can still close a trade or cancel an
- *                          order; showSkipped off hides the rest)
+ *                          order). showSkipped off hides the grey marks that
+ *                          do neither
  *   blue / purple lines    the 10-minute EMA 9 and 21 (showEma)
  *   gold / red / green     stop-entry, stop, target -- starting ON the signal
  *                          candle, with price tags there; "· day limit" when
@@ -67,7 +83,8 @@
  *
  * The day rules are modelled from THIS indicator's own trades, so it assumes
  * the account trades nothing else. Verified in Node against the research engine
- * on every trade -- tradovate/verify_1250.mjs in the backtesting project.
+ * on every trade, and every reading it prints against the chart lab's own
+ * explanation of that bar -- tradovate/verify_1250.mjs in the backtesting project.
  */
 
 const predef = require("./tools/predef");
@@ -87,7 +104,7 @@ const CFG = {
   rescueMin: 0.45, trendFast: 125, trendSlow: 500, trendMinBars: 1500,
   startCt: 510, endCt: 900,        // signal bars opening 08:30 <= t < 15:00 CT; also the RTH range window
   noEntryCt: 895,                  // no new order at/after 14:55 CT
-  flattenCt: 904,                  // force flat 15:04 CT
+  flattenCt: 905,                  // force flat on the first bar opening at/after 15:05 CT: 15:06 here
   trigAtr: 0.15, armBars: 10,      // stop-entry offset and window
   slAtr: 5, tpAtr: 1.75,           // bracket, anchored to the signal close
   contracts: 4, lateContracts: 2, lateRangeAdr: 0.9, adrSessions: 10,
@@ -136,14 +153,17 @@ function barState(bars, i, prev, o, h, l, c, ms, K) {
   let path = prev ? prev.path + Math.abs(c - prev.c) : 0;
   if (i > K.effPeriod) path -= Math.abs(bars[i - K.effPeriod].c - bars[i - K.effPeriod - 1].c);
   const eff = i >= K.effPeriod ? (path === 0 ? 0 : Math.abs(c - bars[i - K.effPeriod].c) / path) : NaN;
-  let dh = NaN, dl = NaN;
+  let dh = NaN, dl = NaN, dhAt = -1, dlAt = -1;                 // the channel, and the latest bars that set it
   if (i >= K.period) {
     dh = -Infinity; dl = Infinity;
-    for (let j = i - K.period; j < i; j++) { if (bars[j].h > dh) dh = bars[j].h; if (bars[j].l < dl) dl = bars[j].l; }
+    for (let j = i - K.period; j < i; j++) {
+      if (bars[j].h >= dh) { dh = bars[j].h; dhAt = j; }
+      if (bars[j].l <= dl) { dl = bars[j].l; dlAt = j; }
+    }
   }
+  const side = i >= K.period ? (c > dh ? 1 : c < dl ? -1 : 0) : 0;   // which side of the channel this close is
   const lastRaw = prev ? prev.lastRaw : -1e9;
-  let raw = 0;
-  if (i >= K.period && !(i - lastRaw < K.cooldownBars) && !(adx < K.adxMin)) { if (c > dh) raw = 1; else if (c < dl) raw = -1; }
+  const raw = side !== 0 && !(i - lastRaw < K.cooldownBars) && !(adx < K.adxMin) ? side : 0;
   const ct = ctOf(ms);
   const inWin = K.startCt <= ct && ct < K.endCt;
   const effOk = !(K.effMin > 0) || (Number.isFinite(eff) && eff >= K.effMin);
@@ -180,8 +200,8 @@ function barState(bars, i, prev, o, h, l, c, ms, K) {
   if (ms - bkt * bMs === bMs - K.tfMs) { close10(c); hLast = bkt; }
   const htf = Number.isFinite(hF) ? Math.sign(hF - hS) || 0 : 0;
   const enter = sig !== 0 && (!K.emaFilter || htf === sig);
-  return { o, h, l, c, ms, ct, tr, atr, trX, pdmX, ndmX, adx, path, eff, dh, dl,
-           raw, lastRaw: raw ? i : lastRaw, plain, tF, tS, trend, settled, rescued, sig,
+  return { o, h, l, c, ms, ct, tr, atr, trX, pdmX, ndmX, adx, path, eff, dh, dl, dhAt, dlAt, side,
+           raw, lastRaw: raw ? i : lastRaw, inWin, effOk, plain, tF, tS, trend, settled, rescued, sig,
            sk, hist, rHi, rLo, adrPts, used, lots, bkt, hF, hS, hLast, htf, enter };
 }
 
@@ -217,7 +237,6 @@ function stepOrders(S0, B, prevB, i, K) {
   const ev = {};
   const s2 = prevB ? prevB.sig : 0;
   const flatNow = B.ct >= K.flattenCt || B.ct < K.startCt;
-  if (!prevB || B.sk !== prevB.sk) { S.dayReal = 0; S.capHit = false; }      // a new session
   const book = (xp, why, exact) => {
     const d = S.pos, slip = K.research ? K.slip : 0;
     const avg = S.fill + d * slip, x = d === 1 ? xp - slip : xp + slip;
@@ -228,6 +247,13 @@ function stepOrders(S0, B, prevB, i, K) {
     if (blockedOf(S, K)) ev.dayDone = { reason: blockReason(S, K), day: S.dayReal };
     S.pos = 0;
   };
+  // A new session. A trade still open came through a session that ended before
+  // the flat time: it is out at that session's last close, on that day's books.
+  // (The research ran these to the next open, on the next day's books.)
+  if (!prevB || B.sk !== prevB.sk) {
+    if (prevB && S.pos !== 0 && !K.research) { book(prevB.c, "FLAT"); ev.exit.early = true; }
+    S.dayReal = 0; S.capHit = false;
+  }
 
   // 1. a parked or working stop-entry. A signal the other way cancels it at
   // this open, before it can fill.
@@ -338,6 +364,22 @@ function previewArm(S, B, K) {
   return armLevels(B, B.sig, K, day);
 }
 
+// ── what fired, and what refused, in the readings the rules used ─────────
+// Rounded down, so a reading never prints on the wrong side of its rule.
+const down = (v, dp) => { const m = Math.pow(10, dp); return (Math.floor(v * m) / m).toFixed(dp); };
+function readings(B, K) {
+  const r = ["ADX " + down(B.adx, 0), "eff " + down(B.eff, 2) + (B.rescued ? " + trend" : "")];
+  if (K.emaFilter) r.push(K.emaTf + "m " + (B.htf === 1 ? "up" : B.htf === -1 ? "down" : "flat"));
+  if (B.used > 0) r.push("range " + down(100 * B.used, 0) + "%");
+  return r.join(" · ");
+}
+function refusal(B, K) {
+  const r = [];
+  if (B.adx < K.adxMin) r.push("ADX " + down(B.adx, 0));
+  if (!B.effOk) r.push("eff " + down(B.eff, 2) + (B.raw !== 0 && B.eff >= K.rescueMin ? (B.settled ? " vs trend" : ", no trend yet") : ""));
+  return "× " + r.join(" · ");
+}
+
 const usd = (v) => (v >= 0 ? "+$" : "-$") + String(Math.round(Math.abs(v))).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 const COL = { up: "#26a65b", dn: "#d1566e", gold: "#e0c341", time: "#e0893a", grey: "#9aa4b2", day: "#c9a0ff" };
 const num = (v, d) => (v !== undefined && v !== null && v !== "" && Number.isFinite(Number(v)) ? Number(v) : d);
@@ -359,7 +401,6 @@ class mnqDonchian1250 {
       emaSlow: Math.max(1, num(P.emaSlow, CFG.emaSlow)),
       research: !!P.__research,
     });
-    if (K.research) K.flattenCt = 905;
     const idx = typeof i === "number" ? i : d.index();
     const t = d.timestamp();
     let ms = t instanceof Date ? t.getTime() : Number(t);
@@ -378,8 +419,10 @@ class mnqDonchian1250 {
 
     const out = {};
     const items = [];
-    const text = (key, x, y, str, fill, align, size, bold) => items.push({
-      tag: "Text", key: key + idx, point: { x, y: du(y) }, text: str,
+    // dy: pixels below (+) or above (-) the price
+    const text = (key, x, y, str, fill, align, size, bold, dy) => items.push({
+      tag: "Text", key: key + idx, text: str,
+      point: { x, y: dy && op && px ? op(du(y), dy > 0 ? "+" : "-", px(Math.abs(dy))) : du(y) },
       style: { fontSize: size || 11, fontWeight: bold ? "bold" : "normal", fill }, textAlignment: align || "centerMiddle" });
     if (idx >= 20 && B.minGap !== K.tfMs) {
       if (B.ct === K.startCt || idx === 20) text("tf", du(idx), B.h, "mnqDonchian1250 needs a 2-MINUTE chart", COL.gold, "centerMiddle", 13, true);
@@ -406,7 +449,7 @@ class mnqDonchian1250 {
 
     if (P.showMarkers !== false) {
       const off = Math.max(B.atr * 0.35, K.tick * 4);
-      const labels = P.showLineLabels !== false;
+      const labels = P.showLineLabels !== false, why = P.showWhy !== false;
       // once the day is done, its later signals are not drawn
       if (B.sig !== 0 && !B.enter && !blockedOf(S, K)) {
         // a breakout against the 10-minute trend: no order, but it still exits and cancels
@@ -420,21 +463,35 @@ class mnqDonchian1250 {
       } else if (B.sig !== 0 && (pre || !blockedOf(S, K))) {
         const long = B.sig === 1;
         const mark = B.rescued ? (long ? "△" : "▽") : (long ? "▲" : "▼");
+        const col = long ? COL.up : COL.dn, y = long ? B.l - off : B.h + off;
         let str = mark;
         if (pre) {
-          const why = [];
-          if (B.rescued) why.push("trend");
-          if (pre.lots < K.contracts) why.push("range " + Math.round(100 * B.used) + "%");
-          if (S.pos === -B.sig) why.push("flip");
-          else if (S.armDir !== 0) why.push(S.armDir === B.sig ? "moves stop if unfilled" : "cancels " + (S.armDir === 1 ? "buy" : "sell") + " stop");
-          str = mark + " " + (long ? "BUY " : "SELL ") + pre.lots + (why.length ? " · " + why.join(" · ") : "");
+          const q = [];
+          if (B.rescued) q.push("trend");
+          if (pre.lots < K.contracts) q.push("range " + Math.round(100 * B.used) + "%");
+          if (S.pos === -B.sig) q.push("flip");
+          else if (S.armDir !== 0) q.push(S.armDir === B.sig ? "moves stop if unfilled" : "cancels " + (S.armDir === 1 ? "buy" : "sell") + " stop");
+          str = mark + " " + (long ? "BUY " : "SELL ") + pre.lots + (q.length ? " · " + q.join(" · ") : "");
         } else if (S.pos === -B.sig) str = mark + " · closes trade";
-        text("s", du(idx), long ? B.l - off : B.h + off, str, long ? COL.up : COL.dn, "centerMiddle", 13, true);
+        else str = mark + " · " + (S.pos === B.sig ? "in trade" : "too late");
+        text("s", du(idx), y, str, col, "centerMiddle", 13, true);
+        if (pre && why) {
+          text("w", du(idx), y, readings(B, K), col, "centerMiddle", 10, false, long ? 15 : -15);
+          // the level the close broke, from the bar that set it to the signal bar
+          const lvl = long ? B.dh : B.dl, at = long ? B.dhAt : B.dlAt;
+          items.push({ tag: "LineSegments", key: "lvl" + idx, lineStyle: { lineWidth: 2, color: col },
+                       lines: [{ tag: "Line", a: { x: du(at), y: du(lvl) }, b: { x: du(idx), y: du(lvl) }, infiniteStart: false, infiniteEnd: false }] });
+          text("ll", xAt(at, -4), lvl, K.period + "-bar " + (long ? "high " : "low ") + lvl.toFixed(2), col, "rightMiddle", 9, false, long ? 6 : -6);
+        }
         if (pre && labels) {
           text("lt", xAt(idx, -6), pre.px, (long ? "BUY STOP " : "SELL STOP ") + pre.px.toFixed(2), COL.gold, "rightMiddle", 10);
           text("ls", xAt(idx, -6), pre.sl, "SL " + pre.sl.toFixed(2) + (pre.capped ? " · day limit" : ""), COL.dn, "rightMiddle", 10);
           text("lp", xAt(idx, -6), pre.tp, "TP " + pre.tp.toFixed(2), COL.up, "rightMiddle", 10);
         }
+      } else if (B.sig === 0 && B.side !== 0 && B.inWin && P.showSkipped !== false && S.pos !== B.side &&
+                 !blockedOf(S, K) && !(prev && prev.side === B.side)) {
+        // a close outside the channel the gates refused: it does nothing, this says why
+        text("r", du(idx), B.side === 1 ? B.l - off : B.h + off, refusal(B, K), COL.grey, "centerMiddle", 9, false);
       }
       if (ev.fill) {
         const f = ev.fill;
@@ -444,9 +501,9 @@ class mnqDonchian1250 {
       }
       if (ev.exit) {
         const x = ev.exit;
-        const name = x.why === "TIME" ? "TIME " + (2 * K.timeExitBars) + "m" : x.why;
+        const name = x.why === "TIME" ? "TIME " + (2 * K.timeExitBars) + "m" : x.early ? "FLAT early close" : x.why;
         const fill = x.why === "TP" ? COL.up : x.why === "SL" ? COL.dn : x.why === "TIME" ? COL.time : COL.grey;
-        text("x", xAt(idx, 8), x.px, name + " " + usd(x.pnl) + (x.capped ? " · day limit" : ""), fill, "leftMiddle", 11, true);
+        text("x", xAt(x.early ? idx - 1 : idx, 8), x.px, name + " " + usd(x.pnl) + (x.capped ? " · day limit" : ""), fill, "leftMiddle", 11, true);
       }
       if (ev.dayDone) {
         const y = ev.exit ? ev.exit.px : B.c;
@@ -478,6 +535,7 @@ module.exports = {
     showTrend: predef.paramSpecs.bool(true),
     showEma: predef.paramSpecs.bool(true),
     showMarkers: predef.paramSpecs.bool(true),
+    showWhy: predef.paramSpecs.bool(true),
     showSkipped: predef.paramSpecs.bool(true),
     showLineLabels: predef.paramSpecs.bool(true),
     showCheckpoint: predef.paramSpecs.bool(true),

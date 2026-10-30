@@ -7,7 +7,12 @@
  * Apr-Jul 73.8%), against 58.6% for fading every cross --
  * research/macd_optimize_2026.mjs in the backtesting project.
  *
- * WHY IT WORKS (research/macd_anatomy_2026.mjs)
+ * NOT HOLDING UP. Forward, on TopstepX bars after that data ends (Sep 10 - Oct 26
+ * 2026), it lost: 56 trades, -$2,160, 17.6% of calendar windows passed, below its
+ * coin-flip twin. Treat the 2026 figures as a regime, not an edge. On these rules
+ * mnqDonchian1250.js alone did better, and held forward.
+ *
+ * WHY IT WORKED (research/macd_anatomy_2026.mjs)
  *   A fade is paid for absorbing a burst of one-sided orders, and that pays
  *   most when the market is moving: fades in a quiet market lose, and the
  *   first fade of the day carries most of the edge. A cross that RESUMES the
@@ -35,8 +40,8 @@
  *   exits     the next cross -- weak or strong, moving or not -- closes the
  *             trade at the next open, before that bar can touch the stop or
  *             target (and places the next fade if that cross qualifies); the
- *             bracket; flat 15:05 CT. Every cross also cancels a resting order
- *             the other way
+ *             bracket; flat 15:05 CT, or at the last close of a session that
+ *             ends early. Every cross also cancels a resting order the other way
  *   day       stop for the day once it is -$200 (breaker), +$250 (profit block)
  *             or at the -$600 limit. The +$250 block is what keeps every day
  *             under the $625 the consistency rule allows at a $1,250 pass.
@@ -46,12 +51,20 @@
  *                          down). Qualifiers: · flip (reverses the open trade),
  *                          · cancels sell stop (the resting order the other way
  *                          is cancelled at the next open)
+ *   cross up · line -0.83  under an order: why it fired (showWhy). The cross it
+ *   · ATR 1.19×            fades, the MACD line (on the fade's side of zero: a
+ *                          bounce against the short-term trend), and the ATR as
+ *                          a multiple of its 10-session average (1 or more: the
+ *                          market is moving)
  *   ▲ strong / ▼ quiet     grey: a cross that is NOT faded -- it resumes the
  *                          short-term trend, or the market is quieter than
- *                          normal. It still closes an open trade (· closes
- *                          trade) and cancels a resting order the other way.
- *                          showSkipped off hides the ones that do neither
+ *                          normal -- with the reading that refused it (· line
+ *                          +0.83, · ATR 0.87×; showWhy). It still closes an open
+ *                          trade (· closes trade) and cancels a resting order
+ *                          the other way. showSkipped off hides the ones that
+ *                          do neither
  *   ▲ · closes trade       a qualifying cross too late in the day: it only exits
+ *   ▲ · too late           a qualifying cross after 14:55: nothing to exit, no order
  *   gold / red / green     stop-entry, stop, target -- starting ON the signal
  *                          candle, with price tags there; "· day limit" when
  *                          the $600 line sets the stop
@@ -68,7 +81,8 @@
  * until it has them it lets every weak cross through. Add Tradovate's own MACD
  * (12, 26, 9) in a pane below to see the crosses. The day rules are modelled
  * from THIS indicator's own trades, so it assumes the account trades nothing
- * else. Verified in Node against the research engine on every trade --
+ * else. Verified in Node against the research engine on every trade, and every
+ * reading it prints against the chart lab's own explanation of that bar --
  * tradovate/verify_1250.mjs in the backtesting project.
  */
 
@@ -186,7 +200,6 @@ function stepOrders(S0, B, prevB, i, K) {
   const s2 = prevB ? prevB.sig : 0;                      // every cross exits and cancels...
   const go = !!(prevB && prevB.enter);                   // ...only a qualifying one places an order
   const flatNow = B.ct >= K.flattenCt || B.ct < K.startCt;
-  if (!prevB || B.sk !== prevB.sk) { S.dayReal = 0; S.capHit = false; }      // a new session
   const book = (xp, why, exact) => {
     const d = S.pos, slip = K.research ? K.slip : 0;
     const avg = S.fill + d * slip, x = d === 1 ? xp - slip : xp + slip;
@@ -197,6 +210,13 @@ function stepOrders(S0, B, prevB, i, K) {
     if (blockedOf(S, K)) ev.dayDone = { reason: blockReason(S, K), day: S.dayReal };
     S.pos = 0;
   };
+  // A new session. A trade still open came through a session that ended before
+  // the flat time: it is out at that session's last close, on that day's books.
+  // (The research ran these to the next open, on the next day's books.)
+  if (!prevB || B.sk !== prevB.sk) {
+    if (prevB && S.pos !== 0 && !K.research) { book(prevB.c, "FLAT"); ev.exit.early = true; }
+    S.dayReal = 0; S.capHit = false;
+  }
 
   // 1. a parked or working stop-entry. A cross the other way cancels it at
   // this open, before it can fill.
@@ -297,6 +317,24 @@ function previewArm(S, B, K) {
   return armLevels(B, B.sig, K, day);
 }
 
+// ── what decided a cross, in the readings the rules used ─────────────────
+// The ATR ratio is rounded down, so it never prints on the wrong side of its rule.
+const down = (v, dp) => { const m = Math.pow(10, dp); return (Math.floor(v * m) / m).toFixed(dp); };
+const lineTxt = (B) => "line " + (B.line >= 0 ? "+" : "") + B.line.toFixed(2);
+const volTxt = (B) => (Number.isFinite(B.volRel) ? "ATR " + down(B.volRel, 2) + "×" : "no ATR average yet");
+function readings(B, K) {
+  const r = ["cross " + (B.sig === 1 ? "down" : "up")];
+  if (K.onlyWeak) r.push(lineTxt(B));
+  if (K.minVolRatio > 0) r.push(volTxt(B));
+  return r.join(" · ");
+}
+function refusal(B) {
+  const r = [];
+  if (!B.weakOk) r.push(lineTxt(B));
+  if (!B.moving) r.push(volTxt(B));
+  return r.join(" · ");
+}
+
 const usd = (v) => (v >= 0 ? "+$" : "-$") + String(Math.round(Math.abs(v))).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 const COL = { up: "#26a65b", dn: "#d1566e", gold: "#e0c341", grey: "#9aa4b2", day: "#c9a0ff" };
 const num = (v, d) => (v !== undefined && v !== null && v !== "" && Number.isFinite(Number(v)) ? Number(v) : d);
@@ -333,8 +371,10 @@ class mnqMacdFade1250 {
 
     const out = {};
     const items = [];
-    const text = (key, x, y, str, fill, align, size, bold) => items.push({
-      tag: "Text", key: key + idx, point: { x, y: du(y) }, text: str,
+    // dy: pixels below (+) or above (-) the price
+    const text = (key, x, y, str, fill, align, size, bold, dy) => items.push({
+      tag: "Text", key: key + idx, text: str,
+      point: { x, y: dy && op && px ? op(du(y), dy > 0 ? "+" : "-", px(Math.abs(dy))) : du(y) },
       style: { fontSize: size || 11, fontWeight: bold ? "bold" : "normal", fill }, textAlignment: align || "centerMiddle" });
     if (idx >= 20 && B.minGap !== K.tfMs) {
       if (B.ct === K.startCt || idx === 20) text("tf", du(idx), B.h, "mnqMacdFade1250 needs a 1-MINUTE chart", COL.gold, "centerMiddle", 13, true);
@@ -351,7 +391,7 @@ class mnqMacdFade1250 {
 
     if (P.showMarkers !== false) {
       const off = Math.max(B.atr * 0.6, K.tick * 4);
-      const labels = P.showLineLabels !== false;
+      const labels = P.showLineLabels !== false, why = P.showWhy !== false;
       // once the day is done, its later signals are not drawn
       if (B.sig !== 0 && (pre || !blockedOf(S, K))) {
         const long = B.sig === 1;
@@ -361,10 +401,11 @@ class mnqMacdFade1250 {
         const cancels = S.pos === 0 && S.armDir !== 0 && S.armDir !== B.sig;
         const cancelTxt = "cancels " + (S.armDir === 1 ? "buy" : "sell") + " stop";
         if (pre) {
-          const why = [];
-          if (closes) why.push("flip");
-          else if (S.armDir !== 0) why.push(S.armDir === B.sig ? "moves stop if unfilled" : cancelTxt);
-          text("s", du(idx), y, mark + " " + (long ? "BUY " : "SELL ") + pre.lots + (why.length ? " · " + why.join(" · ") : ""), long ? COL.up : COL.dn, "centerMiddle", 12, true);
+          const q = [];
+          if (closes) q.push("flip");
+          else if (S.armDir !== 0) q.push(S.armDir === B.sig ? "moves stop if unfilled" : cancelTxt);
+          text("s", du(idx), y, mark + " " + (long ? "BUY " : "SELL ") + pre.lots + (q.length ? " · " + q.join(" · ") : ""), long ? COL.up : COL.dn, "centerMiddle", 12, true);
+          if (why) text("w", du(idx), y, readings(B, K), long ? COL.up : COL.dn, "centerMiddle", 10, false, long ? 14 : -14);
           if (labels) {
             text("lt", xAt(idx, -6), pre.px, (long ? "BUY STOP " : "SELL STOP ") + pre.px.toFixed(2), COL.gold, "rightMiddle", 10);
             text("ls", xAt(idx, -6), pre.sl, "SL " + pre.sl.toFixed(2) + (pre.capped ? " · day limit" : ""), COL.dn, "rightMiddle", 10);
@@ -373,13 +414,14 @@ class mnqMacdFade1250 {
         } else if (!B.enter) {
           // a cross that is not faded: it still exits an open trade and cancels a resting order
           if (P.showSkipped !== false || closes || cancels) {
-            const str = mark + " " + (B.weakOk ? "quiet" : "strong") + (closes ? " · closes trade" : cancels ? " · " + cancelTxt : "");
+            const str = mark + " " + (B.weakOk ? "quiet" : "strong") + (why ? " · " + refusal(B) : "") +
+                        (closes ? " · closes trade" : cancels ? " · " + cancelTxt : "");
             text("s", du(idx), y, str, COL.grey, "centerMiddle", 10, false);
           }
         } else if (closes) {
           text("s", du(idx), y, mark + " · closes trade", long ? COL.up : COL.dn, "centerMiddle", 12, true);
         } else {
-          text("s", du(idx), y, mark, long ? COL.up : COL.dn, "centerMiddle", 12, true);
+          text("s", du(idx), y, mark + " · " + (S.pos === B.sig ? "in trade" : "too late"), long ? COL.up : COL.dn, "centerMiddle", 12, true);
         }
       }
       if (ev.fill) {
@@ -390,7 +432,7 @@ class mnqMacdFade1250 {
       if (ev.exit) {
         const x = ev.exit;
         const fill = x.why === "TP" ? COL.up : x.why === "SL" ? COL.dn : COL.grey;
-        text("x", xAt(idx, 8), x.px, x.why + " " + usd(x.pnl) + (x.capped ? " · day limit" : ""), fill, "leftMiddle", 11, true);
+        text("x", xAt(x.early ? idx - 1 : idx, 8), x.px, (x.early ? "FLAT early close" : x.why) + " " + usd(x.pnl) + (x.capped ? " · day limit" : ""), fill, "leftMiddle", 11, true);
       }
       if (ev.dayDone) {
         const y = ev.exit ? ev.exit.px : B.c;
@@ -416,6 +458,7 @@ module.exports = {
     breaker: predef.paramSpecs.number(200, 50, 0),
     profitBlock: predef.paramSpecs.number(250, 50, 0),
     showMarkers: predef.paramSpecs.bool(true),
+    showWhy: predef.paramSpecs.bool(true),
     showSkipped: predef.paramSpecs.bool(true),
     showLineLabels: predef.paramSpecs.bool(true),
     barTimeIsClose: predef.paramSpecs.bool(false),

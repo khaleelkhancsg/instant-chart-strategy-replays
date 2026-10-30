@@ -626,7 +626,7 @@ happened and one that doesn't.
 ## Verification
 
 ```bash
-npm run check          # test.mjs, audit.mjs, legacy parity, the MCP server, the chart link
+npm run check          # test.mjs, audit.mjs, legacy parity, the MCP server, the chart link, the Tradovate indicators
 npm run verify-rolls   # seam coherence against the incoming contract
 FUZZ_SEED=7 FUZZ_SCALE=3 node test.mjs   # the randomised invariants, harder
 ```

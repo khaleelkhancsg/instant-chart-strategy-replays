@@ -14,7 +14,8 @@
     "test:link": "node test/chart_link.test.mjs",
     "audit": "node audit.mjs",
     "verify-rolls": "node verify_rolls.mjs",
-    "check": "npm test && npm run audit && npm run parity && npm run test:mcp && npm run test:link"
+    "verify:tradovate": "node --max-old-space-size=8192 tradovate/verify_1250.mjs",
+    "check": "npm test && npm run audit && npm run parity && npm run test:mcp && npm run test:link && npm run verify:tradovate"
   },
   "engines": { "node": ">=18" }
 }

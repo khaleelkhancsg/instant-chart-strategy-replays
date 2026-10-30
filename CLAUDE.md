@@ -108,7 +108,8 @@ rule logic into a script: that is a second engine, and it drifts.
 ## Tests
 
 - `npm run check`: test.mjs (425), audit, legacy parity (15), MCP end to end (19),
-  chart link (7).
+  chart link (7), the $1,250 Tradovate indicators (39, `npm run verify:tradovate`,
+  about 2 minutes).
 - `FUZZ_SEED=<n> FUZZ_SCALE=<k> node test.mjs`: the randomised invariants.
 - `PARITY_SEED`, `PARITY_SCALE`: the same for test/legacy_parity.mjs.
 

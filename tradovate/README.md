@@ -1,11 +1,13 @@
 # Tradovate indicators for the live bot
 
-Two custom indicators that draw what `bot/mnq_donchian_bot.py` sees and does, on the chart you trade from.
+Two custom indicators that draw what `bot/mnq_donchian_bot.py` sees and does, on the chart you trade from. Two more below are for the $1,250 evaluation: `mnqDonchian1250.js`, which draws what `bot/mnq_donchian1250_bot.py` does, and `mnqMacdFade1250.js`. Their full guide is in the TradingCustomIndicators repo (`tradovate/README.md`).
 
 | File | Chart | Shows |
 |---|---|---|
 | `mnqDonchianBot.js` | **2-minute** MNQ | Donchian channel, the signals the bot acts on, the stop-entry each one arms, the bracket, fills and exits |
 | `mnqOrbBot.js` | **1-minute** MNQ | The two ORB levels with tap counts, the resting buy/sell stops, stand-down days, the entry with lot size, the bracket and the exit |
+| `mnqDonchian1250.js` | **2-minute** MNQ | The $1,250 Donchian whole, with why: the readings behind each order, the level it broke, and what refused each other close outside the channel |
+| `mnqMacdFade1250.js` | **1-minute** MNQ | The $1,250 MACD fade, with the readings behind each order and what refused each other cross. It lost money forward (Sep–Oct 2026) |
 
 ## Install
 
@@ -49,5 +51,13 @@ runs both files exactly as Tradovate would, with its tool modules stubbed, and c
 - that every order's lines start on its signal candle at exactly the prices the order then rests at;
 - ORB levels and entries on 260 days of `bot/fixture_orb.json`, and all 1,045 entries and exits over seven years against `research/lib_orb.mjs`;
 - the CT clock on all 2.5M bars, and that re-calling `map()` on a still-forming bar changes nothing.
+
+The two $1,250 indicators have their own check, part of `npm run check`:
+
+```
+npm run verify:tradovate
+```
+
+It holds every trade to the research engine over all years and to the chart lab's books on 2026, and every reading and refusal they print on 2026 to the lab's own `explain()` for that bar.
 
 **Not verified:** Tradovate's own API surface (module format, parameter helpers, plot styles, the graphics `Text` item, `d.timestamp()` being the bar open). That was written from knowledge of the API, not checked against Tradovate's examples. The lines use only the most basic parts of it. If the markers cause trouble, turn off `showMarkers`, and the lines still draw.
