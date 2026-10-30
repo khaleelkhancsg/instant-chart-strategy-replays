@@ -6,7 +6,10 @@
 // proves nothing, so the references here are deliberately independent.
 
 import fs from "node:fs";
-import { ema, sma, wma, atr, adx, rsi, donchian, rollingMeanStd, trueRange, efficiencyRatio, rthRangeUsed, rthAtrRatio } from "./src/indicators.mjs";
+import { ema, sma, wma, atr, adx, rsi, donchian, rollingMeanStd, trueRange, efficiencyRatio, rthRangeUsed, rthAtrRatio, vwma, hma, kama, mfi, williamsR, cmf, obv,
+         cvdEstimate, vortex, psar, ichimoku, linreg, chandelier, heikinAshi, squeeze, bollinger, keltner } from "./src/indicators.mjs";
+import { Profile, developingProfile, priorProfile, compositeLevels, nakedPocs, periodLevels, pivotLevels, rangeLevels, firstRange, initialBalance, clockRange,
+         clockOpens, CLOCK_SPANS, adrProjections, swingLevels, swingVwap, volumeShelf, gaussianSmooth, findPeaks, weekOf, periodKey, sessionsOf, adrOf } from "./src/levels.mjs";
 import { buildFilterContext, applyFilters, countSurviving } from "./src/filters.mjs";
 import { replayPortfolio } from "./src/portfolio.mjs";
 import { resample, sliceBars, indexAtOrAfter, indexAtOrBefore } from "./src/resample.mjs";
@@ -2419,6 +2422,331 @@ t("resolveStudy fills defaults, clamps or refuses, and the warm-up grows with th
   if (!(span([resolveStudy({ type: "ema", tf: 60, params: { length: 200 } })]) > span([]))) throw new Error("windowSpan ignores a study's warm-up");
   eq(Object.keys(STUDIES).every((k) => STUDY_TFS.length && STUDIES[k].gates.every((g) => typeof g === "string")), true);
 });
+
+// ══════════════════════════ 14b. LEVELS, AND THE ADDED INDICATORS ═══════════════════════════
+section("14b. Levels and the added indicators against naive recomputation");
+t("the smoothing filter gives scipy's published numbers", () => {
+  arrClose(gaussianSmooth([1, 2, 3, 4, 5], 1), [1.42704095, 2.06782203, 3, 3.93217797, 4.57295905], 1e-7, "sigma 1:");
+  arrClose(gaussianSmooth([1, 2, 3, 4, 5], 4), [2.91948343, 2.95023502, 3, 3.04976498, 3.08051657], 1e-7, "sigma 4:");
+});
+t("peaks: spacing keeps the tallest, prominence is the height above the higher low, a plateau is its middle", () => {
+  const y = [0, 1, 0, 2, 0, 3, 0, 2, 0];
+  eq(findPeaks(y).map((p) => p.i).join(), "1,3,5,7");
+  eq(findPeaks(y, 3).map((p) => p.i).join(), "1,5", "distance 3:");
+  eq(findPeaks(y).map((p) => p.prom).join(), "1,2,3,2");
+  eq(findPeaks(y, 1, 2).map((p) => p.i).join(), "3,5,7", "at least 2 prominent:");
+  eq(findPeaks([0, 2, 2, 2, 0]).map((p) => p.i).join(), "2");
+});
+t("a week runs Monday to Friday, with Sunday evening already in it", () => {
+  const td = (y, m, d) => Math.floor(Date.UTC(y, m - 1, d) / 86400000);
+  eq(weekOf(td(2026, 3, 2)), weekOf(td(2026, 3, 6)), "Monday and Friday:");
+  if (weekOf(td(2026, 3, 9)) !== weekOf(td(2026, 3, 6)) + 1) throw new Error("the next Monday starts the next week");
+});
+t("a profile: spreads evenly, picks the heaviest bin, and walks the value area to the heavier side", () => {
+  const P = new Profile(1);
+  P.add(100, 103.5, 40);         // bins 100-103 at 10 each
+  P.add(102, 102.5, 30);         // bin 102 at 40
+  eq(P.poc(), 102.5);
+  eq(P.total, 70);
+  const [lo, hi] = P.valueArea(0.8);   // 40, then 103 (10, the tie goes up), then 101 -> 60 of 56 needed
+  eq(lo, 101); eq(hi, 103);
+  P.clear(); eq(P.total, 0);
+  P.add(5000, 5001, 8); P.add(2, 3, 8);   // far apart, so the store has to grow
+  eq(P.lo, 2); eq(P.hi, 5001); eq(P.bins().length, 5000);
+});
+if (bars_) {
+  const { bars: B } = bars_;
+  const b = sliceBars(B, B.count - 40000, B.count), n = b.close.length, CT = b.ctMin, TD = b.tday;
+  const rthBar = (i) => CT[i] >= 510 && CT[i] < 900;
+  const week = (i) => Math.floor((TD[i] + 3) / 7), month = (i) => { const d = new Date(TD[i] * DAY); return d.getUTCFullYear() * 12 + d.getUTCMonth(); };
+  const naiveProfile = (idx, bin = 1, time = false, frac = 0.7) => {
+    const m = new Map();
+    let tot = 0;
+    for (const i of idx) {
+      const vol = time ? 1 : b.volume[i];
+      if (!(vol > 0)) continue;
+      const s = Math.floor(b.low[i] / bin), e = Math.floor(b.high[i] / bin);
+      for (let k = s; k <= e; k++) m.set(k, (m.get(k) || 0) + vol / (e - s + 1));
+      tot += vol;
+    }
+    const keys = [...m.keys()].sort((x, y) => x - y), val = (k) => m.get(k) || 0;
+    let pk = keys[0];
+    for (const k of keys) if (m.get(k) > m.get(pk)) pk = k;
+    let lo = pk, hi = pk, acc = m.get(pk);
+    while (acc < frac * tot) {
+      const up = hi < keys[keys.length - 1] ? val(hi + 1) : -1, dn = lo > keys[0] ? val(lo - 1) : -1;
+      if (up < 0 && dn < 0) break;
+      if (up >= dn) { hi++; acc += up; } else { lo--; acc += dn; }
+    }
+    return { poc: (pk + 0.5) * bin, vah: (hi + 0.5) * bin, val: (lo + 0.5) * bin };
+  };
+  const barsWhile = (i, same) => { const out = []; for (let j = i; j >= 0 && same(j); j--) out.unshift(j); return out; };
+  t("a developing profile, of the session, RTH, week and month, equals one rebuilt from scratch at each bar", () => {
+    const cases = [["session", (i) => (j) => TD[j] === TD[i], 211], ["rth", (i) => (j) => TD[j] === TD[i], 211], ["week", (i) => (j) => week(j) === week(i), 701], ["month", (i) => (j) => month(j) === month(i), 2503]];
+    for (const [anchor, same, every] of cases) {
+      const r = developingProfile(b, { anchor }), t2 = developingProfile(b, { anchor, weight: "time", bin: 2.5, valueArea: 0.5 });
+      for (let i = 5; i < n; i += every) {
+        if (anchor === "rth" && !rthBar(i)) { if (!Number.isNaN(r.poc[i])) throw new Error(`RTH profile drawn at ${CT[i]} CT`); continue; }
+        let idx = barsWhile(i, same(i));
+        if (anchor === "rth") idx = idx.filter(rthBar);
+        const x = naiveProfile(idx);
+        close(r.poc[i], x.poc, 1e-9, `${anchor} POC at ${i}:`); close(r.vah[i], x.vah, 1e-9, `${anchor} VAH at ${i}:`); close(r.val[i], x.val, 1e-9, `${anchor} VAL at ${i}:`);
+        const y = naiveProfile(idx, 2.5, true, 0.5);
+        close(t2.poc[i], y.poc, 1e-9, `${anchor} TPO POC at ${i}:`); close(t2.vah[i], y.vah, 1e-9, `${anchor} TPO VAH at ${i}:`);
+      }
+    }
+  });
+  t("a prior profile holds the last finished period's final reading, and only from when it has finished", () => {
+    const rth = priorProfile(b, { anchor: "rth" }), wk = priorProfile(b, { anchor: "week" });
+    for (let i = 3000; i < n; i += 397) {
+      // the last RTH session complete by bar i
+      const today = TD[i], doneToday = !rthBar(i) && CT[i] >= 900 && CT[i] < 1020;
+      let j = i;
+      while (j >= 0 && (TD[j] === today && !doneToday)) j--;
+      while (j >= 0 && !rthBar(j)) j--;
+      if (j >= 0) {
+        const idx = barsWhile(j, (q) => TD[q] === TD[j]).filter(rthBar), x = naiveProfile(idx);
+        if (Number.isFinite(rth.poc[i])) { close(rth.poc[i], x.poc, 1e-9, `prior RTH POC at ${i}:`); close(rth.val[i], x.val, 1e-9, `prior RTH VAL at ${i}:`); }
+      }
+      let w = i;
+      while (w >= 0 && week(w) === week(i)) w--;
+      if (w >= 0 && Number.isFinite(wk.poc[i])) close(wk.poc[i], naiveProfile(barsWhile(w, (q) => week(q) === week(w))).poc, 1e-9, `prior week POC at ${i}:`);
+    }
+    eq(Number.isNaN(priorProfile(b, { anchor: "month" }).poc[5]), true, "nothing finished yet:");
+  });
+  t("the composite profile is built from whole earlier sessions only", () => {
+    const S = sessionsOf(b), adr = adrOf(S), r = compositeLevels(b, { sessions: 5 });
+    for (const k of [20, 41, 57]) {
+      if (k >= S.length) continue;
+      const idx = [];
+      for (let q = k - 5; q < k; q++) for (let i = S[q].a; i < S[q].z; i++) idx.push(i);
+      const P = new Profile(1);
+      for (const i of idx) P.add(b.low[i], b.high[i], b.volume[i]);
+      const sm = gaussianSmooth(P.bins(), Math.max(1, 0.015 * adr[k]));
+      let best = 0;
+      for (let q = 0; q < sm.length; q++) if (sm[q] > sm[best]) best = q;
+      close(r.poc[S[k].a + 3], P.price(P.lo + best), 1e-9, `composite POC of session ${k}:`);
+      eq(r.poc[S[k].a], r.poc[S[k].z - 1], "held all session:");
+      // nothing from the session itself: later bars of it change nothing
+      const cut = sliceBars(b, 0, S[k].a + 50), q2 = compositeLevels(cut, { sessions: 5 });
+      close(q2.poc[S[k].a + 3], r.poc[S[k].a + 3], 1e-9, "with the session cut short:");
+      for (let q = 0; q < 4; q++) if (!(Number.isNaN(r.hvn[q][S[k].a]) && Number.isNaN(q2.hvn[q][S[k].a]))) close(q2.hvn[q][S[k].a], r.hvn[q][S[k].a], 1e-9, "its nodes too:");
+    }
+  });
+  t("naked POCs are the nearest finished RTH POCs nothing has traded through, and go at their age limit", () => {
+    const S = sessionsOf(b), age = 6, r = nakedPocs(b, { maxAge: age });
+    const pocs = S.map((s, k) => (s.rthA >= 0 ? { p: naiveProfile(Array.from({ length: s.rthZ - s.rthA }, (_, q) => s.rthA + q)).poc, end: s.rthZ, k } : null)).filter(Boolean);
+    const sessionAt = new Int32Array(n);
+    S.forEach((s, k) => sessionAt.fill(k, s.a, s.z));
+    for (let i = 20000; i < n; i += 433) {
+      let up = Infinity, dn = -Infinity;
+      for (const q of pocs) {
+        if (q.end > i || sessionAt[i] - q.k > age) continue;
+        let hit = false;
+        for (let j = q.end; j <= i && !hit; j++) hit = b.low[j] <= q.p && b.high[j] >= q.p;
+        if (hit) continue;
+        if (q.p > b.close[i] && q.p < up) up = q.p;
+        if (q.p < b.close[i] && q.p > dn) dn = q.p;
+      }
+      if (up < Infinity) close(r.above[i], up, 1e-9, `above at ${i}:`); else eq(Number.isNaN(r.above[i]), true, `none above at ${i}:`);
+      if (dn > -Infinity) close(r.below[i], dn, 1e-9, `below at ${i}:`); else eq(Number.isNaN(r.below[i]), true, `none below at ${i}:`);
+    }
+  });
+  t("week and month levels, the range so far, and Monday's range match a plain recount", () => {
+    const wk = periodLevels(b, { period: "week" }), mo = periodLevels(b, { period: "month" }), rg = rangeLevels(b, { period: "day" }), rw = rangeLevels(b, { period: "week" }), fr = firstRange(b, { period: "week", sessions: 1 });
+    for (let i = 8000; i < n; i += 173) {
+      const idx = barsWhile(i, (j) => week(j) === week(i));
+      let h = -Infinity, l = Infinity;
+      for (const j of idx) { h = Math.max(h, b.high[j]); l = Math.min(l, b.low[j]); }
+      close(wk.high[i], h, 1e-9, "week high:"); close(wk.low[i], l, 1e-9, "week low:"); close(wk.open[i], b.open[idx[0]], 1e-9, "week open:");
+      close(rw.high[i], h, 1e-9, "range high:"); close(rw.mid[i], (h + l) / 2, 1e-9, "range middle:"); close(rw.f62[i], l + 0.618 * (h - l), 1e-9, "61.8%:");
+      const before = idx[0] - 1, pw = barsWhile(before, (j) => week(j) === week(before));
+      let ph = -Infinity, pl = Infinity;
+      for (const j of pw) { ph = Math.max(ph, b.high[j]); pl = Math.min(pl, b.low[j]); }
+      if (pw[0] > 0) { close(wk.pHigh[i], ph, 1e-9, "prior week high:"); close(wk.pLow[i], pl, 1e-9, "prior week low:"); close(wk.pClose[i], b.close[before], 1e-9, "prior week close:"); }
+      close(mo.open[i], b.open[barsWhile(i, (j) => month(j) === month(i))[0]], 1e-9, "month open:");
+      // Monday: the week's first session, shown only from the next one
+      const firstDay = TD[idx[0]], mon = idx.filter((j) => TD[j] === firstDay);
+      if (TD[i] === firstDay) eq(Number.isNaN(fr.hi[i]), true, "Monday's range is not known on Monday:");
+      else { close(fr.hi[i], Math.max(...mon.map((j) => b.high[j])), 1e-9, "Monday's high:"); close(fr.lo[i], Math.min(...mon.map((j) => b.low[j])), 1e-9, "Monday's low:"); }
+      if (rthBar(i)) { const today = barsWhile(i, (j) => TD[j] === TD[i]).filter(rthBar); close(rg.high[i], Math.max(...today.map((j) => b.high[j])), 1e-9, "today's high:"); }
+      else if (CT[i] < 510 || CT[i] >= 900) eq(Number.isNaN(rg.high[i]), true, "the day's range is RTH only:");
+    }
+  });
+  t("pivots follow their formulas from the prior session's RTH", () => {
+    const fl = pivotLevels(b, { style: "floor" }), cam = pivotLevels(b, { style: "camarilla" }), fib = pivotLevels(b, { style: "fib" }), S = sessionsOf(b);
+    for (let k = 3; k < S.length; k += 4) {
+      const s = S[k], p = S[k - 1];
+      if (s.rthA < 0 || p.rthA < 0) continue;
+      const i = s.rthA + 20, H = p.hi, L = p.lo, C = p.close, P = (H + L + C) / 3, r = H - L;
+      close(fl.P[i], P, 1e-9, "P:"); close(fl.R1[i], 2 * P - L, 1e-9, "R1:"); close(fl.S1[i], 2 * P - H, 1e-9, "S1:");
+      close(fl.R2[i], P + r, 1e-9, "R2:"); close(fl.S2[i], P - r, 1e-9, "S2:"); close(fl.R3[i], H + 2 * (P - L), 1e-9, "R3:"); close(fl.S3[i], L - 2 * (H - P), 1e-9, "S3:");
+      close(cam.H3[i], C + (r * 1.1) / 4, 1e-9, "H3:"); close(cam.L4[i], C - (r * 1.1) / 2, 1e-9, "L4:");
+      close(fib.R2[i], P + 0.618 * r, 1e-9, "fib R2:"); close(fib.S1[i], P - 0.382 * r, 1e-9, "fib S1:");
+    }
+  });
+  t("the initial balance, clock spans and opens wait for their span, and read only their own bars", () => {
+    const ib = initialBalance(b, { minutes: 60 }), ld = clockRange(b, { span: "london" }), asia = clockRange(b, { span: "asia" }), op = clockOpens(b), S = sessionsOf(b);
+    for (const s of S.slice(2, -1)) {
+      if (s.rthA < 0) continue;
+      const idx = Array.from({ length: s.z - s.a }, (_, q) => s.a + q), span = (from, to) => idx.filter((j) => { const c = CT[j]; return from < to ? c >= from && c < to : c >= from || c < to; });
+      const inIb = span(510, 570), tail = idx[idx.length - 1];
+      if (inIb.length) {
+        const at = idx.find((j) => CT[j] >= 570 && CT[j] < 900);
+        if (at !== undefined) {
+          const h = Math.max(...inIb.map((j) => b.high[j])), l = Math.min(...inIb.map((j) => b.low[j]));
+          close(ib.hi[at], h, 1e-9, "IB high:"); close(ib.lo[at], l, 1e-9, "IB low:"); close(ib.up[1][at], h + (h - l), 1e-9, "IB +1:"); close(ib.dn[3][at], l - 2 * (h - l), 1e-9, "IB -2:");
+          eq(Number.isNaN(ib.hi[inIb[inIb.length - 1]]), true, "unknown until it ends:");
+        }
+      }
+      for (const [r, S2] of [[ld, CLOCK_SPANS.london], [asia, CLOCK_SPANS.asia]]) {
+        const inside = span(S2.from, S2.to);
+        if (!inside.length) continue;
+        eq(Number.isNaN(r.hi[inside[inside.length - 1]]), true, "unknown inside its span:");
+        const after = inside[inside.length - 1] + 1;
+        if (after <= tail) close(r.hi[after], Math.max(...inside.map((j) => b.high[j])), 1e-9, "span high:");
+      }
+      close(op.rth[s.rthA], b.open[s.rthA], 1e-9, "RTH open:"); close(op.session[tail], b.open[s.a], 1e-9, "session open:");
+      const mid = idx.find((j) => CT[j] >= 1380 || (CT[j] < 900 && CT[j] >= 0 && j > s.a && CT[j - 1] > CT[j]));
+      if (mid !== undefined) close(op.midnight[tail], b.open[mid], 1e-9, "midnight open:");
+    }
+  });
+  t("ADR projections sit a day's average range from the open, and from today's extremes", () => {
+    const r = adrProjections(b, { days: 10, mult: 1 }), S = sessionsOf(b);
+    for (let k = 12; k < S.length; k += 3) {
+      const s = S[k];
+      if (s.rthA < 0) continue;
+      let sum = 0, c = 0;
+      for (let q = k - 10; q < k; q++) if (S[q].rthA >= 0) { sum += S[q].hi - S[q].lo; c++; }
+      const a = sum / c, i = s.rthA + 40;
+      if (i >= s.rthZ) continue;
+      let h = -Infinity, l = Infinity;
+      for (let j = s.rthA; j <= i; j++) { h = Math.max(h, b.high[j]); l = Math.min(l, b.low[j]); }
+      close(r.up[i], b.open[s.rthA] + a, 1e-9, "open + ADR:"); close(r.dn2[i], b.open[s.rthA] - a / 2, 1e-9, "open - half:");
+      close(r.lowUp[i], l + a, 1e-9, "low + ADR:"); close(r.highDn[i], h - a, 1e-9, "high - ADR:");
+    }
+  });
+  t("a swing shows only once it is confirmed, and matches a literal scan; so does the VWAP from it, and the volume shelf", () => {
+    const [left, right] = [4, 3], s = swingLevels(b, { left, right }), v = swingVwap(b, { left, right }), shelf = volumeShelf(b, { length: 30, mult: 3 });
+    const isHigh = (j) => { for (let q = j - left; q < j; q++) if (b.high[q] >= b.high[j]) return false; for (let q = j + 1; q <= j + right; q++) if (b.high[q] > b.high[j]) return false; return true; };
+    const isLow = (j) => { for (let q = j - left; q < j; q++) if (b.low[q] <= b.low[j]) return false; for (let q = j + 1; q <= j + right; q++) if (b.low[q] < b.low[j]) return false; return true; };
+    for (let i = 500; i < n; i += 619) {
+      let jh = -1, jl = -1;
+      for (let j = i - right; j >= left && (jh < 0 || jl < 0); j--) { if (jh < 0 && isHigh(j)) jh = j; if (jl < 0 && isLow(j)) jl = j; }
+      close(s.high[i], b.high[jh], 1e-9, `swing high at ${i}:`); close(s.low[i], b.low[jl], 1e-9, `swing low at ${i}:`);
+      let pv = 0, vv = 0;
+      for (let j = jh; j <= i; j++) { pv += ((b.high[j] + b.low[j] + b.close[j]) / 3) * b.volume[j]; vv += b.volume[j]; }
+      close(v.up[i], pv / vv, 1e-5, `VWAP from the swing high at ${i}:`);
+      let q = i;
+      for (; q >= 30; q--) { let a = 0; for (let j = q - 30; j < q; j++) a += b.volume[j]; if (b.volume[q] >= (3 * a) / 30) break; }
+      if (q >= 30) close(shelf[i], (b.high[q] + b.low[q]) / 2, 1e-9, `shelf at ${i}:`);
+    }
+  });
+  t("week and month VWAP reset where the period does, and match a plain sum", () => {
+    const w = STUDIES.vwap.compute(b, { anchor: "week", bands: 0 }), m = STUDIES.vwap.compute(b, { anchor: "month", bands: 0 });
+    for (let i = 500; i < n; i += 977) {
+      for (const [r, same] of [[w, (j) => week(j) === week(i)], [m, (j) => month(j) === month(i)]]) {
+        let pv = 0, vv = 0;
+        for (let j = i; j >= 0 && same(j); j--) { pv += ((b.high[j] + b.low[j] + b.close[j]) / 3) * b.volume[j]; vv += b.volume[j]; }
+        close(r.line[i], pv / vv, 1e-5, `anchored VWAP at ${i}:`);
+      }
+    }
+  });
+  t("the band reading is 0.5 at a profile's POC, not halfway up the value area", () => {
+    const st = resolveStudy({ type: "vprofile", tf: 1, params: { anchor: "rth" } }), sig = resample(b, 2), r = studyOnSignal(b, sig, st), map = closedIndexMap(sig, b);
+    const p = developingProfile(b, st.params);
+    let seen = 0;
+    for (let k = 0; k < sig.ts.length; k += 3) {
+      const j = map[k], lo = p.val[j], hi = p.vah[j], m = p.poc[j], c = sig.close[k];
+      if (!(j >= 0 && Number.isFinite(m) && hi > lo && m > lo && m < hi)) continue;
+      seen++;
+      if ((r.v[k] > 0.5) !== (c > m) && c !== m) throw new Error("the 0.5 line is not the POC");
+      if (c <= lo && !(r.v[k] <= 0)) throw new Error("under the VAL should read under 0");
+      if (c >= hi && !(r.v[k] >= 1)) throw new Error("over the VAH should read over 1");
+    }
+    if (seen < 100) throw new Error("too few readings");
+  });
+}
+{
+  // the added indicators, on bars of noise, against plain window sums
+  const b = synthBars(1500), { open: O, high: H, low: L, close: C, volume: V } = b, n = C.length;
+  const win = (i, p, f) => { let s = 0; for (let j = i - p + 1; j <= i; j++) s += f(j); return s; };
+  const hh = (i, p) => { let x = -Infinity; for (let j = i - p + 1; j <= i; j++) x = Math.max(x, H[j]); return x; };
+  const ll = (i, p) => { let x = Infinity; for (let j = i - p + 1; j <= i; j++) x = Math.min(x, L[j]); return x; };
+  t("VWMA, Williams %R, Chaikin money flow and the money flow index match window sums", () => {
+    const p = 14, a = vwma(C, V, p), w = williamsR(H, L, C, p), c = cmf(H, L, C, V, p), m = mfi(H, L, C, V, p), tp = (j) => (H[j] + L[j] + C[j]) / 3;
+    for (let i = p + 1; i < n; i += 7) {
+      close(a[i], win(i, p, (j) => C[j] * V[j]) / win(i, p, (j) => V[j]), 1e-6, "VWMA:");
+      close(w[i], (-100 * (hh(i, p) - C[i])) / (hh(i, p) - ll(i, p)), 1e-9, "%R:");
+      const mfv = (j) => (H[j] > L[j] ? (((C[j] - L[j]) - (H[j] - C[j])) / (H[j] - L[j])) * V[j] : 0);
+      close(c[i], win(i, p, mfv) / win(i, p, (j) => V[j]), 1e-6, "CMF:");
+      const pos = win(i, p, (j) => (tp(j) > tp(j - 1) ? tp(j) * V[j] : 0)), neg = win(i, p, (j) => (tp(j) < tp(j - 1) ? tp(j) * V[j] : 0));
+      close(m[i], (100 * pos) / (pos + neg), 1e-6, "MFI:");
+    }
+  });
+  t("OBV, estimated delta, vortex, the Hull average and the regression line match their definitions", () => {
+    const o = obv(C, V);
+    for (let i = 1; i < n; i += 13) { let s = 0; for (let j = 1; j <= i; j++) s += C[j] > C[j - 1] ? V[j] : C[j] < C[j - 1] ? -V[j] : 0; close(o[i], s, 1e-6, "OBV:"); }
+    const d = cvdEstimate(b);
+    for (let i = 100; i < n; i += 97) {
+      let s = 0;
+      for (let j = i; j >= 0 && b.tday[j] === b.tday[i]; j--) if (H[j] > L[j]) s += (((C[j] - L[j]) - (H[j] - C[j])) / (H[j] - L[j])) * V[j];
+      close(d[i], s, 1e-5, "delta:");
+    }
+    const p = 14, v = vortex(H, L, C, p), tr = trueRange(H, L, C);
+    for (let i = p + 1; i < n; i += 11) {
+      close(v.plus[i], win(i, p, (j) => Math.abs(H[j] - L[j - 1])) / win(i, p, (j) => tr[j]), 1e-9, "VI+:");
+      close(v.minus[i], win(i, p, (j) => Math.abs(L[j] - H[j - 1])) / win(i, p, (j) => tr[j]), 1e-9, "VI-:");
+    }
+    const h = hma(C, 16), half = wma(C, 8), full = wma(C, 16), diff = Float64Array.from(C, (_, i) => 2 * half[i] - full[i]), want = wma(diff, 4);
+    arrClose(Array.from(h).slice(40), Array.from(want).slice(40), 1e-9, "HMA:");
+    const r = linreg(C, 20);
+    for (let i = 19; i < n; i += 17) {
+      let sx = 0, sy = 0, sxy = 0, sxx = 0;
+      for (let q = 0; q < 20; q++) { const y = C[i - 19 + q]; sx += q; sy += y; sxy += q * y; sxx += q * q; }
+      const m = (20 * sxy - sx * sy) / (20 * sxx - sx * sx), a = (sy - m * sx) / 20;
+      close(r.slope[i], m, 1e-9, "slope:"); close(r.mid[i], a + 19 * m, 1e-6, "the line at the newest bar:");
+      let sse = 0;
+      for (let q = 0; q < 20; q++) sse += (C[i - 19 + q] - a - m * q) ** 2;
+      close(r.err[i], Math.sqrt(sse / 18), 1e-6, "standard error:");
+    }
+  });
+  t("Parabolic SAR, hand-traced through a rise and a flip", () => {
+    const hi = [10, 11, 12, 13, 14, 14.5], lo = [9, 10, 11, 12, 13, 9], r = psar(hi, lo, 0.02, 0.2);
+    close(r.sar[1], 9, 1e-9, "held at the prior lows:"); close(r.sar[3], 9.18, 1e-9); close(r.sar[4], 9.4856, 1e-9);
+    eq(r.dir[4], 1);
+    close(r.sar[5], 14, 1e-9, "a flip restarts it at the extreme:"); eq(r.dir[5], -1);
+  });
+  t("Ichimoku's cloud is drawn from values a base length old, Chandelier, Heikin-Ashi and the squeeze follow their formulas", () => {
+    const [a, k, s] = [9, 26, 52], r = ichimoku(H, L, C, a, k, s), mid = (i, p) => (hh(i, p) + ll(i, p)) / 2;
+    for (let i = s + k; i < n; i += 19) {
+      close(r.tenkan[i], mid(i, a), 1e-9, "conversion:"); close(r.kijun[i], mid(i, k), 1e-9, "base:");
+      close(r.spanA[i], (mid(i - k, a) + mid(i - k, k)) / 2, 1e-9, "span A:"); close(r.spanB[i], mid(i - k, s), 1e-9, "span B:");
+      eq(r.dir[i], C[i] > Math.max(r.spanA[i], r.spanB[i]) ? 1 : C[i] < Math.min(r.spanA[i], r.spanB[i]) ? -1 : 0, "side of the cloud:");
+    }
+    const c = chandelier(H, L, C, 22, 3), at = atr(H, L, C, 22);
+    for (let i = 30; i < n; i += 23) { close(c.long[i], hh(i, 22) - 3 * at[i], 1e-9, "long stop:"); close(c.short[i], ll(i, 22) + 3 * at[i], 1e-9, "short stop:"); }
+    const ha = heikinAshi(O, H, L, C);
+    let po = (O[0] + C[0]) / 2, pc = (O[0] + H[0] + L[0] + C[0]) / 4;
+    for (let i = 1; i < 200; i++) {
+      const o = (po + pc) / 2, cl = (O[i] + H[i] + L[i] + C[i]) / 4;
+      close(ha.open[i], o, 1e-9, "HA open:"); close(ha.close[i], cl, 1e-9, "HA close:");
+      po = o; pc = cl;
+    }
+    const q = squeeze(H, L, C, 20, 2, 1.5), bb = bollinger(C, 20, 2), kc = keltner(H, L, C, 20, 1.5, 20);
+    for (let i = 30; i < n; i += 29) {
+      close(q.ratio[i], (bb.upper[i] - bb.lower[i]) / (kc.upper[i] - kc.lower[i]), 1e-9, "width ratio:");
+      close(q.mom[i], C[i] - ((hh(i, 20) + ll(i, 20)) / 2 + bb.mid[i]) / 2, 1e-9, "momentum:");
+    }
+  });
+  t("the adaptive average stays between its inputs, and follows a straight line closely", () => {
+    const k = kama(C, 10);
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i < n; i++) { lo = Math.min(lo, C[i]); hi = Math.max(hi, C[i]); if (Number.isFinite(k[i]) && (k[i] < lo - 1e-9 || k[i] > hi + 1e-9)) throw new Error("left the range of its inputs"); }
+    const line = Float64Array.from({ length: 300 }, (_, i) => 100 + i), kl = kama(line, 10);
+    if (!(Math.abs(kl[299] - line[299]) < 10)) throw new Error(`lagged a perfect trend by ${line[299] - kl[299]}`);
+  });
+}
 
 // ══════════════════════════════ 15. STALE EXIT ══════════════════════════════
 section("15. Stale exit");

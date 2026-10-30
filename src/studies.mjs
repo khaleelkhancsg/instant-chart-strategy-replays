@@ -26,16 +26,21 @@
 //   price  a price level (EMA, SMA, VWAP): the signal bar's close against it.
 //   trend  a direction (EMA cross, Supertrend): +1 / -1.
 //   band   a channel (Bollinger, Keltner, Donchian, the prior day's range, the
-//          opening range): where the signal bar's close sits in it, 0 at the
-//          lower edge and 1 at the upper.
+//          opening range, a value area): where the signal bar's close sits in it,
+//          0 at the lower edge, 1 at the upper, and 0.5 at its middle, which for a
+//          volume profile is the POC, not the halfway point.
 //   osc    an oscillator (RSI, stochastic, MACD, CCI, ...): its value against
 //          its levels.
 //   level  a magnitude with no direction (ADX, ATR, efficiency, choppiness,
 //          relative volume): its value against its levels. ADX also carries the
 //          direction of its +DI / -DI.
 
-import { ema, sma, atr, adx, rsi, macd, stochastic, cci, roc, zscore, efficiencyRatio, choppiness,
-         bollinger, keltner, donchian, supertrend, rthRangeUsed, rthAtrRatio } from "./indicators.mjs";
+import { ema, sma, atr, adx, rsi, macd, stochastic, cci, roc, zscore, efficiencyRatio, choppiness, aroon,
+         bollinger, keltner, donchian, supertrend, rthRangeUsed, rthAtrRatio, vwma, hma, kama, mfi, williamsR, cmf,
+         obv, cvdEstimate, vortex, psar, ichimoku, linreg, chandelier, heikinAshi, squeeze } from "./indicators.mjs";
+import { periodKey, developingProfile, priorProfile, compositeLevels, nakedPocs, periodLevels, pivotLevels, rangeLevels,
+         firstRange, initialBalance, IB_EXTENSIONS, clockRange, clockOpens, CLOCK_SPANS, adrProjections, swingLevels,
+         swingVwap, volumeShelf } from "./levels.mjs";
 import { resample } from "./resample.mjs";
 
 const RTH_OPEN = 510, RTH_CLOSE = 900;        // 08:30 and 15:00 CT
@@ -63,16 +68,16 @@ function source(b, s) {
 const sign = (x) => (x > 0 ? 1 : x < 0 ? -1 : 0);
 const nanArr = (n) => new Float64Array(n).fill(NaN);
 
-// Session VWAP, reset at the 17:00 CT session open or, anchored to RTH, at 08:30
-// CT and blank outside 08:30-15:00. Bands are +-k standard deviations of the
-// typical price about it, volume-weighted.
+// VWAP, reset at the 17:00 CT session open, at the start of the week or month, or,
+// anchored to RTH, at 08:30 CT and blank outside 08:30-15:00. Bands are +-k standard
+// deviations of the typical price about it, volume-weighted.
 function vwapStudy(b, p) {
   const n = b.close.length, v = nanArr(n), up = nanArr(n), dn = nanArr(n);
-  const rth = p.anchor === "rth";
-  let pv = 0, vv = 0, pv2 = 0, day = null, on = false;
+  const rth = p.anchor === "rth", key = periodKey(b, rth ? "session" : p.anchor);
+  let pv = 0, vv = 0, pv2 = 0, cur = null, on = false;
   for (let i = 0; i < n; i++) {
     const ct = b.ctMin ? b.ctMin[i] : 0;
-    if (b.tday[i] !== day) { day = b.tday[i]; on = false; if (!rth) { pv = vv = pv2 = 0; on = true; } }
+    if (key[i] !== cur) { cur = key[i]; on = false; if (!rth) { pv = vv = pv2 = 0; on = true; } }
     if (rth) {
       if (!(ct >= RTH_OPEN && ct < RTH_CLOSE)) continue;
       if (!on) { pv = vv = pv2 = 0; on = true; }
@@ -146,6 +151,13 @@ function openingRange(b, p) {
 }
 
 const valueOnly = (name, v, extra = {}) => ({ value: v, lines: [{ name, data: v }], ...extra });
+const select = (key, label, def, options, hint) => ({ key, label, type: "select", default: def, options, ...(hint ? { hint } : {}) });
+
+// Sessions a level anchored to a period needs before the window: enough to reach back
+// past that period's start, and past the whole period before it for a prior reading.
+const anchorSessions = (p) => ({ week: 8, month: 26 }[p.anchor] || 2) + (p.mode === "prior" ? { week: 6, month: 24 }[p.anchor] || 1 : 0);
+const periodSessions = (p) => ({ week: 14, month: 50, quarter: 140 }[p.period] || 3);
+const PERIODS = [["week", "Week"], ["month", "Month"]];
 
 // ── the catalog ──
 // name, group (for the picker), pane, kind, params, label(p), warmup(p) in bars
@@ -183,9 +195,10 @@ export const STUDIES = {
   },
   vwap: {
     name: "VWAP", group: "Price", pane: "price", kind: "price",
-    params: [{ key: "anchor", label: "Resets", type: "select", default: "session", options: [["session", "At the 17:00 CT session open"], ["rth", "At 08:30 CT (RTH only)"]] },
+    params: [{ key: "anchor", label: "Resets", type: "select", default: "session",
+               options: [["session", "At the 17:00 CT session open"], ["rth", "At 08:30 CT (RTH only)"], ["week", "At the start of the week"], ["month", "At the start of the month"]] },
              num("bands", "Bands (± std devs, 0 = off)", 0, 0, 4, 0.5)],
-    label: (p) => `VWAP${p.anchor === "rth" ? " RTH" : ""}`, warmup: () => 0, warmupSessions: () => 2, gates: ["with", "against"],
+    label: (p) => `VWAP${{ rth: " RTH", week: " week", month: " month" }[p.anchor] || ""}`, warmup: () => 0, warmupSessions: anchorSessions, gates: ["with", "against"],
     compute: vwapStudy,
   },
   bollinger: {
@@ -247,6 +260,208 @@ export const STUDIES = {
     hint: "Built from the study's bars that start in the opening span, so a span that is not a multiple of the timeframe takes the whole last bar.",
     compute: openingRange,
   },
+  vprofile: {
+    name: "Volume profile (POC, VAH, VAL)", group: "Levels", pane: "price", kind: "band",
+    params: [select("anchor", "Built from", "session", [["session", "The session, from 17:00 CT"], ["rth", "RTH, from 08:30 CT"], ["week", "The week so far"], ["month", "The month so far"]]),
+             select("mode", "Shows", "developing", [["developing", "It developing, bar by bar"], ["prior", "The last finished one, held"]]),
+             num("valueArea", "Value area", 0.7, 0.5, 0.95, 0.05),
+             num("bin", "Price step (points)", 1, 0.25, 10, 0.25),
+             select("weight", "Weighted by", "volume", [["volume", "Volume"], ["time", "Time at price (TPO)"]])],
+    label: (p) => `${p.weight === "time" ? "TPO" : "VP"} ${p.anchor}${p.mode === "prior" ? " prior" : ""}`, warmup: () => 0, warmupSessions: anchorSessions,
+    gates: BAND_GATES, levels: BAND_LEVELS, terms: { mid: "the POC", hi: "the VAH", lo: "the VAL" },
+    hint: "Each bar's volume is spread evenly over its high-low range, which is close to the real profile on 1-minute bars and coarser on longer ones. Time at price instead counts each bar as one.",
+    compute: (b, p) => {
+      const r = (p.mode === "prior" ? priorProfile : developingProfile)(b, p);
+      return { lo: r.val, hi: r.vah, mid: r.poc, lines: [{ name: "POC", data: r.poc }, { name: "VAH", data: r.vah, dash: [4, 3] }, { name: "VAL", data: r.val, dash: [4, 3] }] };
+    },
+  },
+  vcomposite: {
+    name: "Composite profile and volume nodes", group: "Levels", pane: "price", kind: "band",
+    params: [int("sessions", "Sessions", 5, 2, 60), num("valueArea", "Value area", 0.7, 0.5, 0.95, 0.05), num("bin", "Price step (points)", 1, 0.5, 10, 0.5), int("nodes", "High-volume nodes", 4, 0, 6)],
+    label: (p) => `Composite ${p.sessions}`, warmup: () => 0, warmupSessions: (p) => p.sessions + 14, gates: BAND_GATES, levels: BAND_LEVELS,
+    terms: { mid: "the POC", hi: "the VAH", lo: "the VAL" },
+    hint: "A profile of the sessions before this one, held all session, with its most prominent high-volume nodes.",
+    compute: (b, p) => {
+      const r = compositeLevels(b, p);
+      return { lo: r.val, hi: r.vah, mid: r.poc, lines: [{ name: "POC", data: r.poc }, { name: "VAH", data: r.vah, dash: [4, 3] }, { name: "VAL", data: r.val, dash: [4, 3] },
+                                                          ...r.hvn.map((d, k) => ({ name: `HVN${k + 1}`, data: d, dash: [2, 3], alpha: 0.7 }))] };
+    },
+  },
+  nakedpoc: {
+    name: "Naked POCs", group: "Levels", pane: "price", kind: "band",
+    params: [int("maxAge", "Kept for (sessions)", 20, 2, 60)],
+    label: (p) => `Naked POC ${p.maxAge}`, warmup: () => 0, warmupSessions: (p) => p.maxAge + 3, gates: BAND_GATES, levels: BAND_LEVELS,
+    terms: { mid: "the middle of the two", hi: "the next POC up", lo: "the next POC down" },
+    hint: "The nearest RTH POCs above and below price that nothing has traded through since their session.",
+    compute: (b, p) => { const r = nakedPocs(b, p); return { lo: r.below, hi: r.above, lines: [{ name: "above", data: r.above }, { name: "below", data: r.below }] }; },
+  },
+  pivots: {
+    name: "Pivot points", group: "Levels", pane: "price", kind: "band",
+    params: [select("style", "Style", "floor", [["floor", "Floor"], ["camarilla", "Camarilla"], ["fib", "Fibonacci"]]),
+             select("period", "From the prior", "day", [["day", "Day (RTH)"], ...PERIODS])],
+    label: (p) => `Pivots ${p.style} ${p.period}`, warmup: () => 0, warmupSessions: periodSessions, gates: BAND_GATES, levels: BAND_LEVELS,
+    terms: { mid: "the pivot", hi: "the first level up", lo: "the first level down" },
+    compute: (b, p) => {
+      const r = pivotLevels(b, p), cam = p.style === "camarilla";
+      return { lo: cam ? r.L3 : r.S1, hi: cam ? r.H3 : r.R1, mid: cam ? r.C : r.P,
+               lines: Object.entries(r).map(([name, data]) => ({ name, data, ...(name === "P" || name === "C" ? {} : { dash: [4, 3] }) })) };
+    },
+  },
+  periodlevels: {
+    name: "Week and month levels", group: "Levels", pane: "price", kind: "band",
+    params: [select("period", "Period", "week", [...PERIODS, ["quarter", "Quarter"]])],
+    label: (p) => `${p.period} levels`, warmup: () => 0, warmupSessions: periodSessions, gates: BAND_GATES, levels: BAND_LEVELS,
+    terms: { mid: "the prior period's middle", hi: "the prior period's high", lo: "the prior period's low" },
+    hint: "The last whole period's high, low and close, and this one's open.",
+    compute: (b, p) => {
+      const r = periodLevels(b, p);
+      return { lo: r.pLow, hi: r.pHigh, lines: [{ name: "prior high", data: r.pHigh }, { name: "prior low", data: r.pLow }, { name: "prior close", data: r.pClose, dash: [2, 3] }, { name: "open", data: r.open, dash: [6, 3] }] };
+    },
+  },
+  rangelevels: {
+    name: "Developing range", group: "Levels", pane: "price", kind: "band",
+    params: [select("period", "Range of", "day", [["day", "RTH today"], ...PERIODS])],
+    label: (p) => `Range ${p.period}`, warmup: () => 0, warmupSessions: (p) => ({ week: 8, month: 26 }[p.period] || 2), gates: BAND_GATES, levels: BAND_LEVELS,
+    terms: { mid: "the range's middle", hi: "the high so far", lo: "the low so far" },
+    hint: "The high and low so far, the midpoint and the 38.2% and 61.8% retracements, which move only when a new extreme prints.",
+    compute: (b, p) => {
+      const r = rangeLevels(b, p);
+      return { lo: r.low, hi: r.high, lines: [{ name: "high", data: r.high }, { name: "low", data: r.low }, { name: "50%", data: r.mid, dash: [4, 3] }, { name: "38.2%", data: r.f38, dash: [2, 3], alpha: 0.7 }, { name: "61.8%", data: r.f62, dash: [2, 3], alpha: 0.7 }] };
+    },
+  },
+  firstrange: {
+    name: "First sessions' range", group: "Levels", pane: "price", kind: "band",
+    params: [select("period", "Of the", "week", PERIODS), int("sessions", "First sessions", 1, 1, 5)],
+    label: (p) => `First ${p.sessions} of ${p.period}`, warmup: () => 0, warmupSessions: (p) => (p.period === "month" ? 26 : 8), gates: BAND_GATES, levels: BAND_LEVELS,
+    terms: { mid: "the range's middle", hi: "its high", lo: "its low" },
+    hint: "Monday's high and low by default, held for the rest of the week.",
+    compute: (b, p) => { const r = firstRange(b, p); return { lo: r.lo, hi: r.hi, lines: [{ name: "high", data: r.hi }, { name: "low", data: r.lo }] }; },
+  },
+  initialbalance: {
+    name: "Initial balance and extensions", group: "Levels", pane: "price", kind: "band",
+    params: [int("minutes", "Minutes from 08:30 CT", 60, 5, 180)],
+    label: (p) => `IB ${p.minutes}m`, warmup: () => 0, warmupSessions: () => 2, gates: BAND_GATES, levels: BAND_LEVELS,
+    terms: { mid: "the balance's middle", hi: "the balance's high", lo: "the balance's low" },
+    compute: (b, p) => {
+      const r = initialBalance(b, p);
+      return { lo: r.lo, hi: r.hi, lines: [{ name: "IB high", data: r.hi }, { name: "IB low", data: r.lo }, { name: "mid", data: r.mid, dash: [2, 3], alpha: 0.6 },
+                                            ...IB_EXTENSIONS.flatMap((m, q) => [{ name: `+${m}`, data: r.up[q], dash: [4, 3], alpha: 0.7 }, { name: `−${m}`, data: r.dn[q], dash: [4, 3], alpha: 0.7 }])] };
+    },
+  },
+  clockrange: {
+    name: "Session range (Asia, London, ...)", group: "Levels", pane: "price", kind: "band",
+    params: [select("span", "Span", "london", Object.entries(CLOCK_SPANS).map(([k, s]) => [k, s.label]))],
+    label: (p) => `${p.span} range`, warmup: () => 0, warmupSessions: () => 2, gates: BAND_GATES, levels: BAND_LEVELS,
+    terms: { mid: "the range's middle", hi: "its high", lo: "its low" },
+    hint: "Drawn from when the span ends to the end of the session.",
+    compute: (b, p) => { const r = clockRange(b, p); return { lo: r.lo, hi: r.hi, lines: [{ name: "high", data: r.hi }, { name: "low", data: r.lo }] }; },
+  },
+  opens: {
+    name: "Session, week and month opens", group: "Levels", pane: "price", kind: "price",
+    params: [select("line", "Gate on", "rth", [["rth", "The RTH open"], ["session", "The 17:00 CT open"], ["midnight", "The New York midnight open"], ["week", "The week's open"], ["month", "The month's open"]])],
+    label: (p) => `Opens · ${p.line}`, warmup: () => 0, warmupSessions: () => 26, gates: ["with", "against"],
+    compute: (b, p) => {
+      const r = clockOpens(b);
+      return { line: r[p.line], lines: [{ name: "RTH", data: r.rth }, { name: "17:00", data: r.session, dash: [4, 3] }, { name: "midnight", data: r.midnight, dash: [2, 3] }, { name: "week", data: r.week, dash: [6, 3] }, { name: "month", data: r.month, dash: [6, 3], alpha: 0.7 }] };
+    },
+  },
+  adrproj: {
+    name: "ADR projections", group: "Levels", pane: "price", kind: "band",
+    params: [int("days", "Average over (sessions)", 10, 5, 40), num("mult", "ADRs", 1, 0.25, 3, 0.25)],
+    label: (p) => `ADR ${p.mult}×${p.days}`, warmup: () => 0, warmupSessions: (p) => p.days + 3, gates: BAND_GATES, levels: BAND_LEVELS,
+    terms: { mid: "the open", hi: "the open plus the ADR", lo: "the open minus the ADR" },
+    hint: "From the RTH open, and from today's extremes: the low so far plus the ADR is where an average day would end up.",
+    compute: (b, p) => {
+      const r = adrProjections(b, p);
+      return { lo: r.dn, hi: r.up, lines: [{ name: "+ADR", data: r.up }, { name: "+½", data: r.up2, dash: [2, 3] }, { name: "−½", data: r.dn2, dash: [2, 3] }, { name: "−ADR", data: r.dn }, { name: "low+ADR", data: r.lowUp, dash: [4, 3], alpha: 0.7 }, { name: "high−ADR", data: r.highDn, dash: [4, 3], alpha: 0.7 }] };
+    },
+  },
+  swings: {
+    name: "Swing highs and lows", group: "Levels", pane: "price", kind: "band",
+    params: [int("left", "Bars before", 5, 1, 60), int("right", "Bars after", 5, 1, 60)],
+    label: (p) => `Swings ${p.left}/${p.right}`, warmup: (p) => 40 * (p.left + p.right), gates: BAND_GATES, levels: BAND_LEVELS,
+    terms: { mid: "the swings' middle", hi: "the last swing high", lo: "the last swing low" },
+    hint: "A swing shows only once the bars after it have closed, so it is drawn late, as it would be live.",
+    compute: (b, p) => {
+      const r = swingLevels(b, p);
+      return { lo: r.low, hi: r.high, lines: [{ name: "swing high", data: r.high }, { name: "swing low", data: r.low }, { name: "prior high", data: r.high2, dash: [2, 3], alpha: 0.6 }, { name: "prior low", data: r.low2, dash: [2, 3], alpha: 0.6 }] };
+    },
+  },
+  swingvwap: {
+    name: "VWAP from the last swings", group: "Levels", pane: "price", kind: "band",
+    params: [int("left", "Bars before", 10, 1, 60), int("right", "Bars after", 10, 1, 60)],
+    label: (p) => `Swing VWAP ${p.left}/${p.right}`, warmup: (p) => 40 * (p.left + p.right), gates: BAND_GATES, levels: BAND_LEVELS,
+    terms: { mid: "the middle", hi: "the VWAP from the swing high", lo: "the VWAP from the swing low" },
+    hint: "Anchored VWAPs from the latest swing high and swing low: what buyers and sellers since each extreme have paid.",
+    compute: (b, p) => { const r = swingVwap(b, p); return { lo: r.dn, hi: r.up, lines: [{ name: "from high", data: r.up }, { name: "from low", data: r.dn }] }; },
+  },
+  volshelf: {
+    name: "High-volume bar level", group: "Levels", pane: "price", kind: "price",
+    params: [int("length", "Average over (bars)", 60, 5, 500), num("mult", "Times the average", 4, 1.5, 20, 0.5)],
+    label: (p) => `Vol shelf ${p.mult}×`, warmup: (p) => p.length + 2, gates: ["with", "against"],
+    hint: "The midpoint of the latest bar with outsized volume, held until the next one.",
+    compute: (b, p) => { const v = volumeShelf(b, p); return { line: v, lines: [{ name: "shelf", data: v }] }; },
+  },
+  hma: {
+    name: "Hull MA", group: "Price", pane: "price", kind: "price",
+    params: [int("length", "Length", 20, 2, 500)],
+    label: (p) => `HMA ${p.length}`, warmup: (p) => 2 * p.length + 4, gates: ["with", "against"],
+    compute: (b, p) => { const v = hma(b.close, p.length); return { line: v, lines: [{ name: `HMA ${p.length}`, data: v }] }; },
+  },
+  kama: {
+    name: "Kaufman adaptive MA", group: "Price", pane: "price", kind: "price",
+    params: [int("length", "Efficiency length", 10, 2, 200), int("fast", "Fast", 2, 1, 20), int("slow", "Slow", 30, 5, 100)],
+    label: (p) => `KAMA ${p.length}`, warmup: (p) => 20 * p.slow, gates: ["with", "against"],
+    compute: (b, p) => { const v = kama(b.close, p.length, p.fast, p.slow); return { line: v, lines: [{ name: `KAMA ${p.length}`, data: v }] }; },
+  },
+  vwma: {
+    name: "Volume-weighted MA", group: "Price", pane: "price", kind: "price",
+    params: [int("length", "Length", 20, 2, 1000)],
+    label: (p) => `VWMA ${p.length}`, warmup: (p) => p.length + 2, gates: ["with", "against"],
+    compute: (b, p) => { const v = vwma(b.close, b.volume, p.length); return { line: v, lines: [{ name: `VWMA ${p.length}`, data: v }] }; },
+  },
+  ichimoku: {
+    name: "Ichimoku cloud", group: "Price", pane: "price", kind: "trend",
+    params: [int("conv", "Conversion", 9, 2, 100), int("base", "Base", 26, 2, 200), int("span", "Span B", 52, 2, 400)],
+    label: (p) => `Ichimoku ${p.conv}/${p.base}/${p.span}`, warmup: (p) => p.base + p.span + 2, gates: ["with", "against"],
+    terms: { with: "Longs above the cloud, shorts below it", against: "Longs below the cloud, shorts above it" },
+    compute: (b, p) => {
+      const r = ichimoku(b.high, b.low, b.close, p.conv, p.base, p.span);
+      return { dir: r.dir, lines: [{ name: "conversion", data: r.tenkan, alpha: 0.7 }, { name: "base", data: r.kijun, alpha: 0.7 }, { name: "span A", data: r.spanA, color: "#26a69a", dash: [4, 3] }, { name: "span B", data: r.spanB, color: "#ef5350", dash: [4, 3] }] };
+    },
+  },
+  psar: {
+    name: "Parabolic SAR", group: "Price", pane: "price", kind: "trend",
+    params: [num("step", "Step", 0.02, 0.005, 0.1, 0.005), num("max", "Maximum", 0.2, 0.05, 0.5, 0.05)],
+    label: (p) => `SAR ${p.step}, ${p.max}`, warmup: () => 1500, gates: ["with", "against"],
+    terms: { with: "Longs while it trails below, shorts while above", against: "Longs while it is above, shorts while below" },
+    compute: (b, p) => { const r = psar(b.high, b.low, p.step, p.max); return { dir: r.dir, lines: [{ name: "SAR", data: r.sar, dash: [1, 3] }] }; },
+  },
+  chandelier: {
+    name: "Chandelier exit", group: "Price", pane: "price", kind: "trend",
+    params: [int("length", "Length", 22, 2, 200), num("mult", "ATR multiple", 3, 0.5, 8, 0.25)],
+    label: (p) => `Chandelier ${p.length}, ${p.mult}`, warmup: (p) => 20 * p.length, gates: ["with", "against"],
+    terms: { with: "Longs in its uptrend, shorts in its downtrend", against: "Longs in its downtrend, shorts in its uptrend" },
+    compute: (b, p) => { const r = chandelier(b.high, b.low, b.close, p.length, p.mult); return { dir: r.dir, lines: [{ name: "long stop", data: r.long, color: "#26a69a" }, { name: "short stop", data: r.short, color: "#ef5350" }] }; },
+  },
+  heikin: {
+    name: "Heikin-Ashi trend", group: "Price", pane: "price", kind: "trend",
+    params: [],
+    label: () => "Heikin-Ashi", warmup: () => 60, gates: ["with", "against"],
+    terms: { with: "Longs on rising candles, shorts on falling", against: "Longs on falling candles, shorts on rising" },
+    compute: (b) => { const r = heikinAshi(b.open, b.high, b.low, b.close); return { dir: r.dir, lines: [{ name: "HA open", data: r.open, dash: [2, 3] }, { name: "HA close", data: r.close }] }; },
+  },
+  linreg: {
+    name: "Linear regression channel", group: "Bands & levels", pane: "price", kind: "band",
+    params: [int("length", "Length", 50, 5, 500), num("mult", "Standard errors", 2, 0.5, 5, 0.25)],
+    label: (p) => `LinReg ${p.length}, ${p.mult}`, warmup: (p) => p.length + 2, gates: BAND_GATES, levels: BAND_LEVELS,
+    terms: { mid: "the fitted line", hi: "the upper band", lo: "the lower band" },
+    compute: (b, p) => {
+      const r = linreg(b.close, p.length), n = r.mid.length, up = nanArr(n), dn = nanArr(n);
+      for (let i = 0; i < n; i++) { up[i] = r.mid[i] + p.mult * r.err[i]; dn[i] = r.mid[i] - p.mult * r.err[i]; }
+      return { lo: dn, hi: up, mid: r.mid, lines: [{ name: "fit", data: r.mid }, { name: "upper", data: up, dash: [4, 3] }, { name: "lower", data: dn, dash: [4, 3] }] };
+    },
+  },
   rsi: {
     name: "RSI", group: "Oscillators", pane: "sub", kind: "osc",
     params: [int("length", "Length", 14, 2, 200), LO(30, 0, 100, 1), HI(70, 0, 100, 1)],
@@ -292,6 +507,87 @@ export const STUDIES = {
     label: (p) => `Z ${p.length}`, warmup: (p) => p.length + 2, gates: OSC_GATES,
     levels: (p) => ({ lo: p.lo, hi: p.hi, mid: 0 }), auto: "sym",
     compute: (b, p) => valueOnly(`Z ${p.length}`, zscore(b.close, p.length)),
+  },
+  mfi: {
+    name: "Money flow index", group: "Oscillators", pane: "sub", kind: "osc",
+    params: [int("length", "Length", 14, 2, 200), LO(20, 0, 100, 1), HI(80, 0, 100, 1)],
+    label: (p) => `MFI ${p.length}`, warmup: (p) => p.length + 2, gates: OSC_GATES,
+    levels: (p) => ({ lo: p.lo, hi: p.hi, mid: 50 }), range: [0, 100],
+    compute: (b, p) => valueOnly(`MFI ${p.length}`, mfi(b.high, b.low, b.close, b.volume, p.length)),
+  },
+  willr: {
+    name: "Williams %R", group: "Oscillators", pane: "sub", kind: "osc",
+    params: [int("length", "Length", 14, 2, 200), LO(-80, -100, 0, 1), HI(-20, -100, 0, 1)],
+    label: (p) => `%R ${p.length}`, warmup: (p) => p.length + 2, gates: OSC_GATES,
+    levels: (p) => ({ lo: p.lo, hi: p.hi, mid: -50 }), range: [-100, 0],
+    compute: (b, p) => valueOnly(`%R ${p.length}`, williamsR(b.high, b.low, b.close, p.length)),
+  },
+  aroon: {
+    name: "Aroon oscillator", group: "Oscillators", pane: "sub", kind: "osc",
+    params: [int("length", "Length", 25, 2, 200), LO(-50, -100, 100, 5), HI(50, -100, 100, 5)],
+    label: (p) => `Aroon ${p.length}`, warmup: (p) => p.length + 2, gates: OSC_GATES,
+    levels: (p) => ({ lo: p.lo, hi: p.hi, mid: 0 }), range: [-100, 100],
+    hint: "How recently the window's high was made against its low: the age of a trend.",
+    compute: (b, p) => valueOnly(`Aroon ${p.length}`, aroon(b.high, b.low, p.length)),
+  },
+  cmf: {
+    name: "Chaikin money flow", group: "Oscillators", pane: "sub", kind: "osc",
+    params: [int("length", "Length", 20, 2, 500), LO(-0.1, -1, 1, 0.01), HI(0.1, -1, 1, 0.01)],
+    label: (p) => `CMF ${p.length}`, warmup: (p) => p.length + 2, gates: OSC_GATES,
+    levels: (p) => ({ lo: p.lo, hi: p.hi, mid: 0 }), range: [-1, 1],
+    compute: (b, p) => valueOnly(`CMF ${p.length}`, cmf(b.high, b.low, b.close, b.volume, p.length)),
+  },
+  obv: {
+    name: "On-balance volume", group: "Oscillators", pane: "sub", kind: "trend",
+    params: [int("length", "Signal EMA", 50, 2, 1000)],
+    label: (p) => `OBV ${p.length}`, warmup: (p) => 10 * p.length, gates: ["with", "against"],
+    terms: { with: "Longs with OBV over its average, shorts under it", against: "Longs with OBV under its average, shorts over it" },
+    compute: (b, p) => {
+      // over its own average: OBV's level depends on where the data starts, this does not
+      const o = obv(b.close, b.volume), e = ema(o, p.length), n = o.length, v = nanArr(n), dir = new Int8Array(n);
+      for (let i = 0; i < n; i++) { v[i] = o[i] - e[i]; dir[i] = sign(v[i]); }
+      return { dir, value: v, lines: [{ name: "OBV − avg", data: v, kind: "hist" }] };
+    },
+    auto: "sym",
+  },
+  cvd: {
+    name: "Volume delta, estimated", group: "Oscillators", pane: "sub", kind: "trend",
+    params: [int("length", "Signal EMA", 30, 2, 500)],
+    label: (p) => `CVD est ${p.length}`, warmup: (p) => 10 * p.length, warmupSessions: () => 2, gates: ["with", "against"],
+    terms: { with: "Longs with delta rising, shorts with it falling", against: "Longs with delta falling, shorts with it rising" },
+    hint: "Each bar's volume signed by where it closed in its range, summed through the session. An estimate: these bars carry no tape.",
+    compute: (b, p) => {
+      const c = cvdEstimate(b), e = ema(c, p.length), n = c.length, dir = new Int8Array(n);
+      for (let i = 0; i < n; i++) dir[i] = sign(c[i] - e[i]);
+      return { dir, value: c, lines: [{ name: "delta", data: c }, { name: "avg", data: e, dash: [4, 3] }] };
+    },
+    auto: "sym",
+  },
+  vortex: {
+    name: "Vortex", group: "Regime & volatility", pane: "sub", kind: "level",
+    params: [int("length", "Length", 14, 2, 200), LO(0.1, 0, 2, 0.05), HI(0.5, 0, 2, 0.05)],
+    label: (p) => `Vortex ${p.length}`, warmup: (p) => p.length + 2, gates: [...LEVEL_GATES, "with", "against"],
+    levels: (p) => ({ lo: p.lo, hi: p.hi }), auto: "minmax",
+    terms: { with: "Longs while VI+ > VI−, shorts while VI− > VI+", against: "Longs while VI− > VI+, shorts while VI+ > VI−" },
+    hint: "Its value is the gap between the two lines: how one-sided the travel has been.",
+    compute: (b, p) => {
+      const r = vortex(b.high, b.low, b.close, p.length), n = r.plus.length, v = nanArr(n), dir = new Int8Array(n);
+      for (let i = 0; i < n; i++) { v[i] = Math.abs(r.plus[i] - r.minus[i]); dir[i] = Number.isFinite(v[i]) ? sign(r.plus[i] - r.minus[i]) : 0; }
+      return { value: v, dir, lines: [{ name: "VI+", data: r.plus, color: "#26a69a" }, { name: "VI−", data: r.minus, color: "#ef5350" }] };
+    },
+  },
+  squeeze: {
+    name: "Squeeze (Bollinger inside Keltner)", group: "Regime & volatility", pane: "sub", kind: "level",
+    params: [int("length", "Length", 20, 5, 200), num("bbMult", "Bollinger std devs", 2, 0.5, 4, 0.25), num("kcMult", "Keltner ATRs", 1.5, 0.5, 4, 0.25), LO(0.8, 0, 3, 0.05), HI(1, 0, 3, 0.05)],
+    label: (p) => `Squeeze ${p.length}`, warmup: (p) => 10 * p.length, gates: [...LEVEL_GATES, "with", "against"],
+    levels: (p) => ({ lo: p.lo, hi: p.hi }), auto: "minmax",
+    terms: { with: "Longs with momentum up, shorts with it down", against: "Longs with momentum down, shorts with it up" },
+    hint: "Bollinger width over Keltner width: under 1 the market is coiled. Its direction is momentum against the range's middle.",
+    compute: (b, p) => {
+      const r = squeeze(b.high, b.low, b.close, p.length, p.bbMult, p.kcMult), n = r.ratio.length, dir = new Int8Array(n);
+      for (let i = 0; i < n; i++) dir[i] = Number.isFinite(r.mom[i]) ? sign(r.mom[i]) : 0;
+      return { value: r.ratio, dir, lines: [{ name: "width ratio", data: r.ratio }] };
+    },
   },
   adx: {
     name: "ADX / DMI", group: "Regime & volatility", pane: "sub", kind: "level",
@@ -516,8 +812,11 @@ export function studyOnSignal(bars1m, sigBars, st) {
       v[k] = x;
       if (Number.isFinite(x)) dir[k] = sign(C[k] - x);
     } else if (S.kind === "band") {
-      const lo = out.lo[j], hi = out.hi[j];
-      if (Number.isFinite(lo) && Number.isFinite(hi) && hi > lo) v[k] = (C[k] - lo) / (hi - lo);
+      const lo = out.lo[j], hi = out.hi[j], m = out.mid ? out.mid[j] : NaN;
+      if (!(Number.isFinite(lo) && Number.isFinite(hi) && hi > lo)) continue;
+      // 0.5 at the band's own middle where it has one strictly inside it
+      if (m > lo && m < hi) v[k] = C[k] < m ? (0.5 * (C[k] - lo)) / (m - lo) : 0.5 + (0.5 * (C[k] - m)) / (hi - m);
+      else v[k] = (C[k] - lo) / (hi - lo);
     } else {
       if (out.value) v[k] = out.value[j];
       if (out.dir) { dir[k] = out.dir[j]; if (!out.value) v[k] = out.dir[j]; }

@@ -454,3 +454,207 @@ export function rthAtrRatio(bars, atrArr, days = 10) {
   }
   return out;
 }
+
+// ── Volume, trend and range indicators added for the studies ─────────────
+// Volume-weighted moving average: an SMA whose bars count by their volume.
+export function vwma(C, V, p = 20) {
+  const n = C.length, out = new Float64Array(n).fill(NaN);
+  let pv = 0, vv = 0;
+  for (let i = 0; i < n; i++) {
+    pv += C[i] * V[i]; vv += V[i];
+    if (i >= p) { pv -= C[i - p] * V[i - p]; vv -= V[i - p]; }
+    if (i >= p - 1 && vv > 0) out[i] = pv / vv;
+  }
+  return out;
+}
+
+// Hull moving average: WMA(2 WMA(n/2) - WMA(n), sqrt n), far less lag than either.
+export function hma(C, p = 20) {
+  const half = wma(C, Math.max(1, Math.round(p / 2))), full = wma(C, p), n = C.length, d = new Float64Array(n);
+  for (let i = 0; i < n; i++) d[i] = 2 * half[i] - full[i];
+  return wma(d, Math.max(1, Math.round(Math.sqrt(p))));
+}
+
+// Kaufman's adaptive average: its speed follows the efficiency ratio, so it runs with
+// a trend and sits still in chop.
+export function kama(C, p = 10, fast = 2, slow = 30) {
+  const n = C.length, out = new Float64Array(n).fill(NaN), er = efficiencyRatio(C, p);
+  const f = 2 / (fast + 1), s = 2 / (slow + 1);
+  let prev = NaN;
+  for (let i = 0; i < n; i++) {
+    if (!Number.isFinite(er[i])) continue;
+    if (Number.isNaN(prev)) prev = C[i];
+    const sc = (er[i] * (f - s) + s) ** 2;
+    prev += sc * (C[i] - prev);
+    out[i] = prev;
+  }
+  return out;
+}
+
+// Money flow index: an RSI of typical price weighted by volume, 0-100.
+export function mfi(H, L, C, V, p = 14) {
+  const n = C.length, out = new Float64Array(n).fill(NaN), up = new Float64Array(n), dn = new Float64Array(n);
+  let prev = NaN, su = 0, sd = 0;
+  for (let i = 0; i < n; i++) {
+    const tp = (H[i] + L[i] + C[i]) / 3, flow = tp * V[i];
+    if (tp > prev) up[i] = flow; else if (tp < prev) dn[i] = flow;
+    prev = tp;
+    su += up[i]; sd += dn[i];
+    if (i >= p) { su -= up[i - p]; sd -= dn[i - p]; }
+    if (i >= p) out[i] = su + sd > 0 ? (100 * su) / (su + sd) : 50;
+  }
+  return out;
+}
+
+// Williams %R: the close's place in the recent range, -100 at the low, 0 at the high.
+export function williamsR(H, L, C, p = 14) {
+  const { high: hh, low: ll } = rollingMinMax(H, L, p), n = C.length, out = new Float64Array(n).fill(NaN);
+  for (let i = 0; i < n; i++) {
+    const r = hh[i] - ll[i];
+    if (Number.isFinite(r)) out[i] = r === 0 ? -50 : (-100 * (hh[i] - C[i])) / r;
+  }
+  return out;
+}
+
+// Chaikin money flow: where bars close in their range, weighted by volume, -1 to 1.
+export function cmf(H, L, C, V, p = 20) {
+  const n = C.length, out = new Float64Array(n).fill(NaN), mfv = new Float64Array(n);
+  let sm = 0, sv = 0;
+  for (let i = 0; i < n; i++) {
+    const r = H[i] - L[i];
+    mfv[i] = r > 0 ? (((C[i] - L[i]) - (H[i] - C[i])) / r) * V[i] : 0;
+    sm += mfv[i]; sv += V[i];
+    if (i >= p) { sm -= mfv[i - p]; sv -= V[i - p]; }
+    if (i >= p - 1) out[i] = sv > 0 ? sm / sv : 0;
+  }
+  return out;
+}
+
+// On-balance volume: a running total of volume, signed by the close's direction.
+export function obv(C, V) {
+  const n = C.length, out = new Float64Array(n);
+  for (let i = 1; i < n; i++) out[i] = out[i - 1] + (C[i] > C[i - 1] ? V[i] : C[i] < C[i - 1] ? -V[i] : 0);
+  return out;
+}
+
+// Estimated volume delta from 1-minute bars, reset each session. There is no tape
+// here, so each bar's volume is signed by where it closed in its range.
+export function cvdEstimate(bars) {
+  const { high: H, low: L, close: C, volume: V, tday: TD } = bars, n = C.length, out = new Float64Array(n);
+  let day = null, sum = 0;
+  for (let i = 0; i < n; i++) {
+    if (TD[i] !== day) { day = TD[i]; sum = 0; }
+    const r = H[i] - L[i];
+    if (r > 0) sum += (((C[i] - L[i]) - (H[i] - C[i])) / r) * V[i];
+    out[i] = sum;
+  }
+  return out;
+}
+
+// Vortex: upward and downward travel over the path taken.
+export function vortex(H, L, C, p = 14) {
+  const n = C.length, plus = new Float64Array(n).fill(NaN), minus = new Float64Array(n).fill(NaN), tr = trueRange(H, L, C);
+  const vp = new Float64Array(n), vm = new Float64Array(n);
+  let sp = 0, sm = 0, st = 0;
+  for (let i = 1; i < n; i++) {
+    vp[i] = Math.abs(H[i] - L[i - 1]); vm[i] = Math.abs(L[i] - H[i - 1]);
+    sp += vp[i]; sm += vm[i]; st += tr[i];
+    if (i > p) { sp -= vp[i - p]; sm -= vm[i - p]; st -= tr[i - p]; }
+    if (i >= p && st > 0) { plus[i] = sp / st; minus[i] = sm / st; }
+  }
+  return { plus, minus };
+}
+
+// Parabolic SAR. Starts long; whatever it started from washes out at the flips.
+export function psar(H, L, step = 0.02, max = 0.2) {
+  const n = H.length, sar = new Float64Array(n).fill(NaN), dir = new Int8Array(n);
+  if (n < 2) return { sar, dir };
+  let up = true, af = step, ep = H[0], s = L[0];
+  for (let i = 1; i < n; i++) {
+    s += af * (ep - s);
+    if (up) {
+      s = Math.min(s, L[i - 1], i > 1 ? L[i - 2] : L[i - 1]);
+      if (L[i] < s) { up = false; s = ep; ep = L[i]; af = step; }
+      else if (H[i] > ep) { ep = H[i]; af = Math.min(max, af + step); }
+    } else {
+      s = Math.max(s, H[i - 1], i > 1 ? H[i - 2] : H[i - 1]);
+      if (H[i] > s) { up = true; s = ep; ep = H[i]; af = step; }
+      else if (L[i] < ep) { ep = L[i]; af = Math.min(max, af + step); }
+    }
+    sar[i] = s; dir[i] = up ? 1 : -1;
+  }
+  return { sar, dir };
+}
+
+// Ichimoku: conversion and base lines, and the cloud as it stands over bar i, drawn
+// from values `base` bars old, so nothing here looks ahead. dir is the close against
+// the cloud: above +1, below -1, inside 0.
+export function ichimoku(H, L, C, conv = 9, base = 26, span = 52) {
+  const n = C.length;
+  const mid = (p) => { const r = rollingMinMax(H, L, p), o = new Float64Array(n); for (let i = 0; i < n; i++) o[i] = (r.high[i] + r.low[i]) / 2; return o; };
+  const t = mid(conv), k = mid(base), s = mid(span);
+  const a = new Float64Array(n).fill(NaN), b = new Float64Array(n).fill(NaN), dir = new Int8Array(n);
+  for (let i = base; i < n; i++) {
+    a[i] = (t[i - base] + k[i - base]) / 2;
+    b[i] = s[i - base];
+    if (Number.isFinite(a[i]) && Number.isFinite(b[i])) dir[i] = C[i] > Math.max(a[i], b[i]) ? 1 : C[i] < Math.min(a[i], b[i]) ? -1 : 0;
+  }
+  return { tenkan: t, kijun: k, spanA: a, spanB: b, dir };
+}
+
+// A least-squares line through the last p closes: its value at the newest bar, its
+// slope per bar, and the standard error of the fit. Worked out from each window, not
+// rolled, so float error cannot build up over millions of bars.
+export function linreg(C, p = 50) {
+  const n = C.length, mid = new Float64Array(n).fill(NaN), slope = new Float64Array(n).fill(NaN), err = new Float64Array(n).fill(NaN);
+  const xm = (p - 1) / 2, sxx = (p * (p * p - 1)) / 12;
+  for (let i = p - 1; i < n; i++) {
+    let sy = 0, sxy = 0;
+    for (let q = 0; q < p; q++) { const y = C[i - p + 1 + q]; sy += y; sxy += (q - xm) * y; }
+    const my = sy / p, m = sxy / sxx;
+    let sse = 0;
+    for (let q = 0; q < p; q++) { const e = C[i - p + 1 + q] - my - m * (q - xm); sse += e * e; }
+    slope[i] = m; mid[i] = my + m * xm; err[i] = Math.sqrt(sse / Math.max(1, p - 2));
+  }
+  return { mid, slope, err };
+}
+
+// Chandelier exit: a stop `mult` ATRs off the highest high (or lowest low) of p bars.
+// dir flips when the close crosses the stop on its side.
+export function chandelier(H, L, C, p = 22, mult = 3) {
+  const n = C.length, { high: hh, low: ll } = rollingMinMax(H, L, p), a = atr(H, L, C, p);
+  const long = new Float64Array(n).fill(NaN), short = new Float64Array(n).fill(NaN), dir = new Int8Array(n);
+  let d = 0;
+  for (let i = 0; i < n; i++) {
+    if (!Number.isFinite(hh[i])) continue;
+    long[i] = hh[i] - mult * a[i]; short[i] = ll[i] + mult * a[i];
+    if (C[i] > short[i]) d = 1; else if (C[i] < long[i]) d = -1;
+    dir[i] = d;
+  }
+  return { long, short, dir };
+}
+
+// Heikin-Ashi: smoothed candles, whose colour is the trend.
+export function heikinAshi(O, H, L, C) {
+  const n = C.length, open = new Float64Array(n), close = new Float64Array(n), dir = new Int8Array(n);
+  let po = NaN, pc = NaN;
+  for (let i = 0; i < n; i++) {
+    const c = (O[i] + H[i] + L[i] + C[i]) / 4, o = i === 0 ? (O[0] + C[0]) / 2 : (po + pc) / 2;
+    open[i] = o; close[i] = c; dir[i] = c > o ? 1 : c < o ? -1 : 0;
+    po = o; pc = c;
+  }
+  return { open, close, dir };
+}
+
+// The squeeze: Bollinger width over Keltner width, under 1 while the bands sit inside
+// the channel, and momentum as the close against the middle of the p-bar range and mean.
+export function squeeze(H, L, C, p = 20, bbMult = 2, kcMult = 1.5) {
+  const n = C.length, bb = bollinger(C, p, bbMult), kc = keltner(H, L, C, p, kcMult, p), { high: hh, low: ll } = rollingMinMax(H, L, p);
+  const ratio = new Float64Array(n).fill(NaN), mom = new Float64Array(n).fill(NaN);
+  for (let i = 0; i < n; i++) {
+    const w = kc.upper[i] - kc.lower[i];
+    if (Number.isFinite(bb.upper[i]) && w > 0) ratio[i] = (bb.upper[i] - bb.lower[i]) / w;
+    if (Number.isFinite(hh[i]) && Number.isFinite(bb.mid[i])) mom[i] = C[i] - ((hh[i] + ll[i]) / 2 + bb.mid[i]) / 2;
+  }
+  return { ratio, mom };
+}
