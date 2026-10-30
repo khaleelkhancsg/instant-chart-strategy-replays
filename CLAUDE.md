@@ -148,6 +148,10 @@ rule logic into a script: that is a second engine, and it drifts.
   takes up to 0.8 s and happens on a pause, not on every step. That cost is the price
   of matching the sweep. A slow Tradovate indicator gets the same treatment.
 - Data: `node prepare.mjs` builds the binary cache in `data/` once.
+- **TopstepX keeps 1- and 5-minute bars for only 60 days.** `python bot/pull_topstepx_raw.py`
+  saves them raw, per contract, to `data/raw/topstepx/` (git-ignored). Run it at least that
+  often. Never re-run `bot/export_topstepx_bin.py` over `data/topstepx_1m.bin`: its first
+  days have rolled off the API, and that file is what the forward tests read.
 - Strategy table for the README: `node --max-old-space-size=8192
   research/strategy_table.mjs`. The README's other figures come from
   `research/readme_figures.mjs`.

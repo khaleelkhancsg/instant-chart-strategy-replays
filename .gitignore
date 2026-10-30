@@ -3,6 +3,9 @@
 data/*.bin
 data/*.meta.json
 
+# Raw bars saved from the TopstepX API: market data, local only
+data/raw/
+
 node_modules/
 
 # Local-only editor/tooling state
