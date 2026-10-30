@@ -27,8 +27,8 @@
 //
 // RESULT (2026; calendar windows, the chart's sweep):
 //   MECHANICS  donchian_1250 ($1,250) runs P x64, F x35, P x55, with a few stray
-//     fails in March. All 35 (starts Mar 17 - Apr 20) breached on 4 days, 94% on
-//     two: Apr 21 (20) and Mar 31 (13), each a single -$600 trade at the
+//     fails in March. All 37 failed windows breached on 4 days, 95% on two: Apr
+//     21 (20) and Mar 31 (15), each a single -$600 trade at the
 //     platform's line. A window shares 29 of its 30 days with the next, so every
 //     window still short of the target on such a day fails on it. Beyond that:
 //     the same 137 days in random order give ~12 pass / not-pass runs, the real
