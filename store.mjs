@@ -17,7 +17,9 @@ import { openStore, addFile, buildOne, statusOf, compareSources, backup } from "
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const config = JSON.parse(fs.readFileSync(path.join(HERE, "store.config.json"), "utf8"));
 const home = (p) => (p.startsWith("~") ? path.join(os.homedir(), p.slice(1)) : p);
-const dbFile = path.resolve(HERE, config.database), backupDir = home(config.backups.dir);
+// The backup folder as set on the page, which stays on this computer, or the project's default.
+const local = (() => { try { return JSON.parse(fs.readFileSync(path.join(HERE, "data", "store.settings.json"), "utf8")); } catch { return {}; } })();
+const dbFile = path.resolve(HERE, config.database), backupDir = home(local.backupDir || config.backups.dir);
 const [cmd, ...argv] = process.argv.slice(2);
 const flag = (name) => { const i = argv.indexOf(name); if (i < 0) return undefined; const [, v] = argv.splice(i, 2); return v; };
 const log = (m) => process.stdout.write(`${m}\n`);
@@ -31,11 +33,11 @@ function add() {
   const db = openStore(dbFile);
   for (const f of argv) report(addFile(db, f, { source, minutes }));
   db.close();
-  log("Then: npm run data:build");
+  if (process.stdout.isTTY) log("Then: npm run data:build");
 }
 
 function pull() {
-  const r = spawnSync("python", [path.join("bot", "pull_topstepx_raw.py")], { cwd: HERE, stdio: "inherit" });
+  const r = spawnSync("python", ["-u", path.join("bot", "pull_topstepx_raw.py")], { cwd: HERE, stdio: "inherit" });
   const db = openStore(dbFile);
   for (const f of ["mnq_ohlcv-1m.csv", "mnq_ohlcv-5m.csv"]) report(addFile(db, path.join(HERE, "data", "raw", "topstepx", f), { source: "topstepx" }));
   db.close();
@@ -56,8 +58,20 @@ function build() {
   if (refused) process.exitCode = 1;
 }
 
+// The folder a cloud copy would go in, offered on the page when this computer has OneDrive.
+function cloudFolder() {
+  const d = process.env.OneDrive || path.join(os.homedir(), "OneDrive");
+  return fs.existsSync(d) ? path.join(d, "MNQ store backups") : null;
+}
+
 function status() {
-  const db = openStore(dbFile, { readOnly: true }), s = statusOf(db, config, { backupDir });
+  const db = openStore(dbFile, { readOnly: true }), s = statusOf(db, config, { backupDir, repo: HERE });
+  if (argv.includes("--json")) {
+    const compare = compareSources(db, "databento", "topstepx");
+    db.close();
+    log(JSON.stringify({ ...s, compare, database: dbFile, megabytes: Math.round(fs.statSync(dbFile).size / 1048576), backupDir, cloudFolder: cloudFolder(), now: Date.now() }));
+    return;
+  }
   log(`Store: ${dbFile} (${(fs.statSync(dbFile).size / 1048576).toFixed(0)} MB), ${s.imports} files added`);
   for (const r of s.sources) log(`  ${r.source.padEnd(10)} ${String(r.minutes).padStart(2)}m  ${num(r.rows).padStart(10)} bars  ${String(r.contracts).padStart(2)} contracts  ${minute(r.first)} to ${minute(r.last)} UTC`);
   log(s.conflicts ? `Conflicts: ${num(s.conflicts)} rows differ from what is stored` : "Conflicts: none");

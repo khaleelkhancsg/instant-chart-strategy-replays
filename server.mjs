@@ -12,7 +12,10 @@
 
 import http from "node:http";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
+import { spawn } from "node:child_process";
+import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
 
 import { loadBars, packBars } from "./src/data.mjs";
@@ -24,6 +27,7 @@ import { indexAtOrAfter } from "./src/resample.mjs";
 import { evalBase, evalOf } from "./src/evals.mjs";
 import { resolveStudies, gateKey, studyOnSignal, studyEdge } from "./src/studies.mjs";
 import { listIndicators, loadTools, readIndicator } from "./tradovate/mock/library.mjs";
+import { Jobs, fromThisMachine, csvName } from "./src/datajobs.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 5178;
@@ -116,6 +120,53 @@ function applyToChart(res, body) {
   });
   const msg = `event: apply\ndata: ${JSON.stringify({ ...body, id })}\n\n`;
   for (const p of pages) p.write(msg);
+}
+
+// ─────────────────────────── the data panel ───────────────────────────
+// The page's buttons run the same store.mjs a terminal does, as a process of its own.
+const storeProcess = (args) => spawn(process.execPath, ["--disable-warning=ExperimentalWarning", "--max-old-space-size=8192", path.join(HERE, "store.mjs"), ...args], { cwd: HERE });
+const jobs = new Jobs(storeProcess);
+const BUTTONS = { pull: "Pull TopstepX bars", build: "Rebuild the binaries", backup: "Back up" };
+
+function storeStatus() {
+  return new Promise((resolve) => {
+    const child = storeProcess(["status", "--json"]);
+    let out = "", err = "";
+    child.stdout.on("data", (d) => { out += d; });
+    child.stderr.on("data", (d) => { err += d; });
+    child.on("error", (e) => resolve({ error: e.message }));
+    child.on("close", (code) => {
+      if (code === 0) { try { return resolve(JSON.parse(out)); } catch (e) { return resolve({ error: e.message }); } }
+      resolve(/No store at/.test(err) ? { empty: true } : { error: err.trim() || `status exited ${code}` });
+    });
+  });
+}
+
+// A CSV from the page, kept under data/raw/uploads, then added like any other. It goes to a
+// .part file first, so a dropped upload leaves nothing that looks whole.
+async function receiveCsv(req, res, url) {
+  const source = url.searchParams.get("source"), minutes = Number(url.searchParams.get("minutes"));
+  let name;
+  try { name = csvName(url.searchParams.get("name")); } catch (e) { req.resume(); return sendJson(res, 400, { error: e.message }); }
+  if (!["databento", "topstepx"].includes(source) || ![1, 5].includes(minutes)) { req.resume(); return sendJson(res, 400, { error: "Choose the source and the bar size" }); }
+  if (jobs.busy) { req.resume(); return sendJson(res, 409, { error: `${jobs.job.label} is still running` }); }
+  const dir = path.join(HERE, "data", "raw", "uploads"), size = Number(req.headers["content-length"]);
+  fs.mkdirSync(dir, { recursive: true });
+  let file = path.join(dir, name);
+  for (let k = 2; fs.existsSync(file) && fs.statSync(file).size !== size; k++) file = path.join(dir, name.replace(/(\.csv)$/i, `-${k}$1`));
+  const part = `${file}.part`;
+  try { await pipeline(req, fs.createWriteStream(part)); }
+  catch (e) { fs.rmSync(part, { force: true }); return res.destroyed ? undefined : sendJson(res, 400, { error: `The upload stopped: ${e.message}` }); }
+  fs.renameSync(part, file);
+  return sendJson(res, 202, jobs.start(`Add ${name}`, ["add", file, "--source", source, "--minutes", String(minutes)]));
+}
+
+function setBackupFolder(res, dir) {
+  const d = String(dir || "").trim(), full = d.startsWith("~") ? path.join(os.homedir(), d.slice(1)) : d;
+  if (!path.isAbsolute(full)) return sendJson(res, 400, { error: "Give the whole path of a folder" });
+  fs.mkdirSync(full, { recursive: true });
+  fs.writeFileSync(path.join(HERE, "data", "store.settings.json"), JSON.stringify({ backupDir: full }, null, 2));
+  return sendJson(res, 200, { backupDir: full });
 }
 
 // ─────────────────────────────── http ───────────────────────────────
@@ -314,6 +365,22 @@ const server = http.createServer(async (req, res) => {
         edge,
         ...sweep,
       });
+    }
+
+    // ── the data panel ──
+    if (p.startsWith("/api/data/")) {
+      if (!fromThisMachine(req, PORT)) { req.resume(); return sendJson(res, 403, { error: "The data panel only works on the computer the lab runs on" }); }
+      if (p === "/api/data/status") return sendJson(res, 200, await storeStatus());
+      if (p === "/api/data/job") return sendJson(res, 200, jobs.job || {});
+      if (req.method === "POST" && p === "/api/data/upload") return await receiveCsv(req, res, url);
+      if (req.method === "POST" && p === "/api/data/backup-folder") return setBackupFolder(res, (await readBody(req)).dir);
+      if (req.method === "POST" && p === "/api/data/run") {
+        const { command } = await readBody(req);
+        if (!BUTTONS[command]) return sendJson(res, 400, { error: `No command called ${command}` });
+        if (jobs.busy) return sendJson(res, 409, { error: `${jobs.job.label} is still running` });
+        return sendJson(res, 202, jobs.start(BUTTONS[command], [command]));
+      }
+      return sendJson(res, 404, { error: "Not found" });
     }
 
     // ── the chart link ──

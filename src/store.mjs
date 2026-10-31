@@ -18,7 +18,7 @@ import crypto from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import { SymbolTable, parseCsv, buildSeries, holesOf, nyTradingDay } from "./series.mjs";
 
-const DAY = 86400000;
+const DAY = 86400000, HOUR = 3600000;
 export const TOPSTEPX_DAYS = 60;           // how far back TopstepX serves 1- and 5-minute bars
 
 const SCHEMA = `
@@ -44,6 +44,8 @@ export function openStore(file, { readOnly = false } = {}) {
   if (!readOnly) db.exec(`PRAGMA page_size = 8192; PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; ${SCHEMA}`);
   return db;
 }
+
+const stopOf = (build) => (build.before ? Date.parse(`${build.before}T00:00:00Z`) : Number.MAX_SAFE_INTEGER);
 
 const idOf = (db, table, col, value) => {
   const r = db.prepare(`SELECT id FROM ${table} WHERE ${col} = ?`).get(value);
@@ -99,7 +101,7 @@ const sourceIds = (db, names) => names.map((n) => db.prepare("SELECT id FROM sou
 export function readRows(db, build) {
   const names = [];
   for (const c of db.prepare("SELECT id, symbol FROM contracts").all()) names[c.id] = c.symbol;
-  const src = sourceIds(db, build.sources), con = rootIds(db, build.root), before = build.before ? Date.parse(`${build.before}T00:00:00Z`) : Number.MAX_SAFE_INTEGER;
+  const src = sourceIds(db, build.sources), con = rootIds(db, build.root), before = stopOf(build);
   if (!src.length || !con.length) throw new Error(`Nothing in the store for ${build.root} from ${build.sources.join(", ")}`);
   const where = `minutes = 1 AND source IN (${src.join()}) AND contract IN (${con.join()}) AND ts < ?`, rank = `CASE source ${src.map((s, k) => `WHEN ${s} THEN ${k}`).join(" ")} END`;
   const cap = db.prepare(`SELECT count(*) AS n FROM bars WHERE ${where}`).get(before).n;
@@ -135,18 +137,36 @@ export function buildOne(db, name, build, { repo = ".", force = false, log = () 
 
 // The sessions a set of sources covers, from which hours have bars, and the gaps in them.
 export function coverage(db, build) {
-  const src = sourceIds(db, build.sources), con = rootIds(db, build.root);
-  if (!src.length || !con.length) return { sessions: 0, holes: [] };
-  const hours = db.prepare(`SELECT DISTINCT ts / 3600000 AS h FROM bars WHERE minutes = 1 AND source IN (${src.join()}) AND contract IN (${con.join()})`).all();
-  const days = [...new Set(hours.map((r) => nyTradingDay(r.h * 3600000)))].sort((a, b) => a - b);
+  const src = sourceIds(db, build.sources), con = rootIds(db, build.root), stop = stopOf(build), seen = new Set();
+  // One read a session, not one a bar. A session ends at 21:00 UTC in summer and 22:00 in winter,
+  // so it hops to 21:00, which can pass no session, and on by the hour from there.
+  const next = db.prepare("SELECT min(ts) AS t FROM bars WHERE source = ? AND contract = ? AND minutes = 1 AND ts >= ?");
+  for (const s of src) for (const c of con) {
+    for (let t = next.get(s, c, 0).t; t != null && t < stop;) {
+      const d = nyTradingDay(t);
+      seen.add(d);
+      t = next.get(s, c, Math.max(d * DAY + 21 * HOUR, (Math.floor(t / HOUR) + 1) * HOUR)).t;
+    }
+  }
+  const days = [...seen].sort((a, b) => a - b);
   return { sessions: days.length, holes: holesOf(days) };
 }
 
+// What is held for each source and bar size. It follows the primary key, so it needs no sort.
+function heldBars(db) {
+  const names = Object.fromEntries(db.prepare("SELECT id, name FROM sources").all().map((s) => [s.id, s.name])), held = new Map();
+  for (const r of db.prepare("SELECT source, contract, minutes, count(*) AS rows, min(ts) AS first, max(ts) AS last FROM bars GROUP BY source, contract, minutes").iterate()) {
+    const key = r.source * 1000 + r.minutes, h = held.get(key);
+    if (!h) { held.set(key, { source: names[r.source], minutes: r.minutes, rows: r.rows, contracts: 1, first: r.first, last: r.last }); continue; }
+    h.rows += r.rows; h.contracts++; h.first = Math.min(h.first, r.first); h.last = Math.max(h.last, r.last);
+  }
+  return [...held.keys()].sort((a, b) => a - b).map((k) => held.get(k));
+}
+
 // Everything `status` prints.
-export function statusOf(db, config, { now = Date.now(), backupDir } = {}) {
-  const sources = db.prepare(`SELECT s.name AS source, b.minutes, count(*) AS rows, count(DISTINCT b.contract) AS contracts, min(b.ts) AS first, max(b.ts) AS last
-                              FROM bars b JOIN sources s ON s.id = b.source GROUP BY s.name, b.minutes ORDER BY s.id, b.minutes`).all();
-  const conflicts = db.prepare("SELECT count(*) AS n FROM conflicts").get().n, imports = db.prepare("SELECT count(*) AS n, max(at) AS last FROM imports").get();
+export function statusOf(db, config, { now = Date.now(), backupDir, repo = "." } = {}) {
+  const sources = heldBars(db);
+  const conflicts = db.prepare("SELECT count(*) AS n FROM conflicts").get().n, imports = db.prepare("SELECT count(*) AS n, max(CASE WHEN added > 0 THEN at END) AS last FROM imports").get();
   const tsx = sources.find((s) => s.source === "topstepx" && s.minutes === 1), oldest = tsx ? now - TOPSTEPX_DAYS * DAY : null;
   const onlyHere = tsx ? db.prepare("SELECT count(*) AS n FROM bars WHERE source = (SELECT id FROM sources WHERE name = 'topstepx') AND minutes = 1 AND ts < ?").get(oldest).n : 0;
   let backup = null;
@@ -154,17 +174,22 @@ export function statusOf(db, config, { now = Date.now(), backupDir } = {}) {
     const f = fs.readdirSync(backupDir).filter((x) => /^store_\d{4}-\d{2}-\d{2}\.db$/.test(x)).sort().pop();
     if (f) { const st = fs.statSync(path.join(backupDir, f)); backup = { file: f, at: st.mtimeMs, behind: st.mtimeMs < imports.last }; }
   }
-  return { sources, conflicts, imports: imports.n, pullBy: tsx ? tsx.last + TOPSTEPX_DAYS * DAY : null, onlyHere, backup, builds: Object.entries(config.builds).map(([name, b]) => ({ name, ...coverage(db, b) })) };
+  const builds = Object.entries(config.builds).map(([name, b]) => {
+    const f = path.resolve(repo, b.out), at = fs.existsSync(f) ? fs.statSync(f).mtimeMs : null;
+    return { name, out: b.out, frozen: !!b.frozen, builtAt: at, stale: !b.frozen && (at === null || at < imports.last), ...coverage(db, b) };
+  });
+  return { sources, conflicts, imports: imports.n, lastAdded: imports.last, pullBy: tsx ? tsx.last + TOPSTEPX_DAYS * DAY : null, onlyHere, backup, builds };
 }
 
 // Minute by minute, where two sources both have a contract: how often they agree exactly.
+// It walks b and looks each minute up in a, so b should be the smaller.
 export function compareSources(db, a, b) {
   const [x, y] = sourceIds(db, [a, b]);
   if (!x || !y) return [];
   return db.prepare(`SELECT c.symbol, count(*) AS both, sum(p.o = q.o AND p.h = q.h AND p.l = q.l AND p.c = q.c) AS samePrices, sum(p.v = q.v) AS sameVolume,
                             max(max(abs(p.o - q.o), abs(p.h - q.h), abs(p.l - q.l), abs(p.c - q.c))) AS worst
-                     FROM bars p JOIN bars q ON q.source = ${y} AND q.contract = p.contract AND q.minutes = p.minutes AND q.ts = p.ts JOIN contracts c ON c.id = p.contract
-                     WHERE p.source = ${x} AND p.minutes = 1 GROUP BY c.symbol ORDER BY min(p.ts)`).all();
+                     FROM bars q CROSS JOIN bars p ON p.source = ${x} AND p.contract = q.contract AND p.minutes = q.minutes AND p.ts = q.ts JOIN contracts c ON c.id = p.contract
+                     WHERE q.source = ${y} AND q.minutes = 1 GROUP BY c.symbol ORDER BY min(p.ts)`).all();
 }
 
 // A consistent copy, checked, and only the newest few kept.

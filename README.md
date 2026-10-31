@@ -579,6 +579,22 @@ npm run data:backup                     # a checked copy, the newest 3 kept
 
 These need Node 22.5 or later, for its built-in SQLite. The chart and the engine do not.
 
+**The ⚙ Data button** beside the chart's title does the same from the page. It says what needs
+doing, worst first, then gives a button for the pull, adding a CSV, the rebuild and a backup, and
+shows the output as they run.
+
+- **Each runs as its own process,** one at a time, so the chart stays live through a rebuild. A
+  reload or a closed panel loses nothing: the panel picks the running command back up.
+- **It answers only the computer the lab runs on,** and only the lab's own pages. The server
+  listens on the whole network, and these routes read and write files.
+- **A CSV added there keeps a copy** in `data/raw/uploads`. A compressed Databento download
+  needs unzipping first.
+- **The backup folder** is set there too, and kept in `data/store.settings.json`, which stays on
+  this computer. If this computer has OneDrive, a button offers it, which is what takes a backup
+  off this disk.
+- **`--force` has no button.** Replacing the frozen file means re-measuring what was published
+  on it, so that stays a deliberate command.
+
 - **Nothing is spliced in the store.** Each row is one source's bar for one contract and
   minute, on that contract's real prices, so a new roll or a change of rule needs no
   re-download. Adding the same file twice does nothing.
@@ -593,7 +609,7 @@ These need Node 22.5 or later, for its built-in SQLite. The chart and the engine
     wins. Its meta lists any gap: it holds a hole from Jul 15 to Aug 27 until those bars arrive.
 - **TopstepX keeps 1- and 5-minute bars for 60 days,** so `data:status` shows the date to pull
   by, and how many bars now exist only here. The store is the only copy of those, so back it
-  up. `store.config.json` says where: the default is beside the CSVs on the same disk.
+  up. The default folder is in `store.config.json`, beside the CSVs on the same disk.
 - **Two sources are compared minute by minute** in `data:status` wherever they overlap.
 
 `src/series.mjs` is the one build, used by the store and by `prepare.mjs`, which still takes CSVs

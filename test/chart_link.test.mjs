@@ -127,6 +127,20 @@ await t("once the page closes, the state is no longer offered as current", async
   eq((await fetch(`${BASE}/api/chart/state`)).status, 404);
 });
 
+await t("the data panel reads the store, and refuses anything that is not its own page", async () => {
+  const s = await fetch(`${BASE}/api/data/status`).then((r) => r.json());
+  if (!s.sources && !s.empty) throw new Error(`status: ${JSON.stringify(s).slice(0, 120)}`);
+  const run = (body, headers = {}) => fetch(`${BASE}/api/data/run`, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) });
+  eq((await run({ command: "backup" }, { origin: "https://example.com" })).status, 403, "another web page:");
+  eq((await run({ command: "rm -rf" })).status, 400, "an unknown command:");
+  const up = (q) => fetch(`${BASE}/api/data/upload?${q}`, { method: "POST", body: "x" });
+  eq((await up("name=bot.env&source=databento&minutes=1")).status, 400, "not a CSV:");
+  eq((await up("name=a.csv&source=elsewhere&minutes=1")).status, 400, "an unknown source:");
+  eq((await fetch(`${BASE}/api/data/backup-folder`, { method: "POST", body: JSON.stringify({ dir: "relative/folder" }) })).status, 400, "a folder that is not a whole path:");
+  const j = await fetch(`${BASE}/api/data/job`).then((r) => r.json());
+  eq(j.id, undefined, "nothing ran:");
+});
+
 server.kill();
 console.log(`\n${"=".repeat(64)}\n  ${pass} passed, ${fail} failed`);
 if (fail) { console.log("\nFailures:"); for (const f of failures) console.log("  - " + f); console.log("\nserver log:\n" + log.slice(-1500)); }

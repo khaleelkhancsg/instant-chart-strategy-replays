@@ -16,6 +16,7 @@
         <div class="brand-name">MNQ Chart Lab</div>
         <div class="brand-sub" id="datasetInfo">loading…</div>
       </div>
+      <button id="dataBtn" class="databtn" title="Pull, add, rebuild and back up the data" aria-haspopup="dialog">⚙ Data</button>
     </div>
 
     <div class="sidetop">
@@ -133,6 +134,34 @@
     <input type="search" id="stratSearch" placeholder="Search strategies" aria-label="Search strategies">
     <div class="pk-cols" id="stratCols"></div>
     <div class="pk-list" id="stratList" role="listbox"></div>
+  </div>
+
+  <div id="dataPanel" class="keyshelp hidden" role="dialog" aria-label="Data">
+    <div class="dp-card">
+      <div class="dp-head"><span class="kh-title">Data</span><span class="dp-busy" id="dpBusy"></span><button id="dataClose" class="mini" aria-label="Close">✕</button></div>
+      <div class="dp-notes" id="dpNotes"></div>
+      <table class="dp-table" id="dpSources"></table>
+      <div class="hint" id="dpCompare"></div>
+      <div class="dp-row"><button id="dpPull">Pull TopstepX bars</button><span>Saves the latest 1- and 5-minute bars into the store. Read-only: it places nothing.</span></div>
+      <div class="dp-row"><button id="dpAdd">Add a CSV…</button><span>Adds a file from this computer, such as a Databento download. Bars already held are skipped.</span></div>
+      <input type="file" id="dpFile" accept=".csv" class="hidden" aria-label="Choose a CSV">
+      <div class="dp-add hidden" id="dpAddForm">
+        <div id="dpFileName"></div>
+        <label>Source <select id="dpSource"><option value="databento">Databento</option><option value="topstepx">TopstepX</option></select></label>
+        <label>Bars <select id="dpMinutes"><option value="1">1-minute</option><option value="5">5-minute</option></select></label>
+        <button id="dpAddGo">Add to the store</button><button id="dpAddCancel">Cancel</button>
+      </div>
+      <div class="dp-row"><button id="dpBuild">Rebuild the binaries</button><span>Rebuilds the beta file from the store. The main file is only checked: it stays frozen, so no published figure moves.</span></div>
+      <div class="dp-row"><button id="dpBackup">Back up now</button><span>Makes a checked copy of the store and keeps the newest 3.</span></div>
+      <div class="dp-folder">
+        <label for="dpFolder">Backup folder</label>
+        <input id="dpFolder" spellcheck="false">
+        <button id="dpFolderSave">Save</button>
+        <button id="dpCloud" class="hidden" title="Your OneDrive folder syncs to Microsoft's cloud, so the backup survives this disk failing">Use OneDrive</button>
+      </div>
+      <pre class="dp-log" id="dpLog" aria-live="polite"></pre>
+      <div class="hint" id="dpWhere"></div>
+    </div>
   </div>
 
   <div id="keysHelp" class="keyshelp hidden" role="dialog" aria-label="Keyboard shortcuts">

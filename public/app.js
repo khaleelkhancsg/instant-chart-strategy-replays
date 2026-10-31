@@ -7,6 +7,7 @@
 // the network is the one-off window blob and the (debounced) 5-year sweep.
 
 import { ChartView, Navigator, fmtUsd } from "/chart.js";
+import { initDataPanel } from "/datapanel.js";
 import { runStrategy } from "/src/run.mjs";
 import { replayWindow, DEFAULT_RULES } from "/src/challenge.mjs";
 import { DEFAULT_EXEC } from "/src/engine.mjs";
@@ -2510,6 +2511,7 @@ async function boot() {
     loadWindow(S.windowStart);
   };
 
+  initDataPanel();
   const help = $("keysHelp"), toggleHelp = () => help.classList.toggle("hidden");
   $("keysBtn").onclick = toggleHelp;
   help.onclick = toggleHelp;

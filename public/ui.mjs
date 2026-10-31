@@ -16,6 +16,36 @@ export function fmtCt(ms, ctMin) {
   return `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())} ${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}`;
 }
 
+// ── the data panel ───────────────────────────────────────────────────────
+// What a file probably is, from its name. The panel shows the guess and it can be changed.
+export function guessCsv(name) {
+  const m = /ohlcv-(\d+)m/i.exec(name);
+  return { source: /topstepx|mnq_ohlcv/i.test(name) ? "topstepx" : "databento", minutes: m && Number(m[1]) === 5 ? 5 : 1 };
+}
+export const fmtBytes = (n) => (n >= 1073741824 ? `${(n / 1073741824).toFixed(1)} GB` : n >= 1048576 ? `${Math.round(n / 1048576)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+
+// What the store's status means for the person looking at it, worst first.
+export function dataNotes(s, now) {
+  if (s.error) return [{ level: "bad", text: s.error }];
+  if (s.empty) return [{ level: "warn", text: "No store yet. Add a CSV to start one." }];
+  const notes = [], day = (ms) => new Date(ms).toISOString().slice(0, 10), put = (level, text) => notes.push({ level, text }), n = (x) => x.toLocaleString("en-US");
+  if (s.pullBy != null) {
+    const left = Math.floor((s.pullBy - now) / 86400000);
+    if (left < 0) put("bad", `TopstepX bars have been rolling off for ${-left} days. Pull now, then the missing days can only come from Databento.`);
+    else put(left <= 7 ? "bad" : left <= 21 ? "warn" : "ok", `Pull TopstepX bars by ${day(s.pullBy)}, ${left} days from now, or they start rolling off before they are saved.`);
+  }
+  if (!s.backup) put("bad", `No backup yet.${s.onlyHere ? ` ${n(s.onlyHere)} bars exist only in this store.` : ""}`);
+  else if (s.backup.behind) put("warn", `The last backup, ${day(s.backup.at)}, is older than the latest data.`);
+  else put("ok", `Backed up ${day(s.backup.at)}.${s.onlyHere ? ` ${n(s.onlyHere)} bars exist only in this store and its backups.` : ""}`);
+  for (const b of s.builds || []) {
+    if (b.stale) put("warn", `New bars are in the store. Rebuild the binaries to use them in ${b.name}.`);
+    for (const h of b.holes || []) put("warn", `The ${b.name} file has a gap from ${h.after} to ${h.before}, ${h.missing} weekdays.`);
+  }
+  if (s.conflicts) put("warn", `${n(s.conflicts)} bars differ from what is stored. The stored bars were kept.`);
+  const rank = { bad: 0, warn: 1, ok: 2 };
+  return notes.sort((a, b) => rank[a.level] - rank[b.level]);
+}
+
 // ── sorted arrays ────────────────────────────────────────────────────────
 // First index holding a value >= v, and first holding a value > v.
 export function lowerBound(xs, v) {

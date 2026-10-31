@@ -5,7 +5,7 @@
 
 import fs from "node:fs";
 import { loadBars } from "../src/data.mjs";
-import { ctWall, fmtCt, lowerBound, upperBound, nthSmallest, wilson, rateOver, houseRates, runRecord, pairRuns, compareRuns, flips, linkSettings, linkDiff,
+import { dataNotes, guessCsv, fmtBytes, ctWall, fmtCt, lowerBound, upperBound, nthSmallest, wilson, rateOver, houseRates, runRecord, pairRuns, compareRuns, flips, linkSettings, linkDiff,
         logPosition, logValue, LOG_TRACK, autoCandle, CANDLE_SIZES, sessionView, stepDays, familyOf, bookRate, pickerRows } from "../public/ui.mjs";
 
 let pass = 0, fail = 0;
@@ -236,6 +236,30 @@ t("the rate shown includes a tick of slippage, and halves show only when they ar
   eq(bookRate(row, "1250"), { rate: 40, q1: 60, q2: 30 });
   eq(bookRate(row, "3000"), null);
   eq(bookRate(undefined, "1250"), null);
+});
+t("the data panel says what needs doing, worst first", () => {
+  const now = Date.UTC(2026, 9, 31), day = 86400000, base = { pullBy: now + 59 * day, backup: { at: now, behind: false }, onlyHere: 5000, conflicts: 0, builds: [{ name: "main", holes: [] }] };
+  const levels = (s) => dataNotes({ ...base, ...s }, now).map((x) => x.level);
+  eq(levels({}), ["ok", "ok"]);
+  eq(levels({ pullBy: now + 20 * day }), ["warn", "ok"], "three weeks left:");
+  eq(levels({ pullBy: now + 7 * day }), ["bad", "ok"], "a week left:");
+  eq(levels({ pullBy: now - 3 * day })[0], "bad");
+  if (!/rolling off for 3 days/.test(dataNotes({ ...base, pullBy: now - 3 * day }, now)[0].text)) throw new Error("it should say how long");
+  eq(levels({ backup: null }), ["bad", "ok"], "no backup:");
+  if (!/5,000 bars exist only/.test(dataNotes({ ...base, backup: null }, now)[0].text)) throw new Error("it should say what is at risk");
+  eq(levels({ backup: { at: now, behind: true } }), ["warn", "ok"], "an old backup:");
+  eq(levels({ conflicts: 2 }), ["warn", "ok", "ok"]);
+  eq(levels({ builds: [{ name: "beta", stale: true, holes: [{ after: "2026-07-15", before: "2026-08-28", missing: 31 }] }] }), ["warn", "warn", "ok", "ok"]);
+  eq(dataNotes({ empty: true }, now)[0].text, "No store yet. Add a CSV to start one.");
+  eq(dataNotes({ error: "boom" }, now), [{ level: "bad", text: "boom" }]);
+  eq(dataNotes({ ...base, pullBy: null }, now).length, 1, "nothing from TopstepX yet:");
+});
+t("a CSV's source and bar size are guessed from its name", () => {
+  eq(guessCsv("glbx-mdp3-20260715-20261030.ohlcv-1m.csv"), { source: "databento", minutes: 1 });
+  eq(guessCsv("mnq_ohlcv-5m.csv"), { source: "topstepx", minutes: 5 });
+  eq(guessCsv("topstepx bars.csv"), { source: "topstepx", minutes: 1 });
+  eq(guessCsv("bars.csv"), { source: "databento", minutes: 1 });
+  eq([fmtBytes(2048), fmtBytes(333 * 1048576), fmtBytes(1.5 * 1073741824)], ["2 KB", "333 MB", "1.5 GB"]);
 });
 t("the list runs best first in each family, on the evaluation in force", () => {
   const groups = pickerRows(books, table.rows, "1250", new Set());

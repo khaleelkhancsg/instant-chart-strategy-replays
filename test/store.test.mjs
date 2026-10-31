@@ -7,7 +7,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { openStore, addFile, readRows, buildOne, coverage, statusOf, compareSources, backup, sourceOf, minutesOf, TOPSTEPX_DAYS } from "../src/store.mjs";
-import { SymbolTable, parseCsv, mergeFiles, buildSeries, holesOf } from "../src/series.mjs";
+import { SymbolTable, parseCsv, mergeFiles, buildSeries, holesOf, nyTradingDay } from "../src/series.mjs";
+import { spawn } from "node:child_process";
+import { Jobs, fromThisMachine, csvName } from "../src/datajobs.mjs";
 
 let pass = 0, fail = 0;
 const failures = [];
@@ -111,11 +113,29 @@ t("gaps: one missing weekday is a holiday, two are bars we do not have", () => {
   const f = csv("late.ohlcv-1m.csv", [[Date.UTC(2026, 9, 12, 14), 25000, 25001, 24999, 25000, 10, "MNQZ6"]]);
   addFile(db, f, { source: "databento" });
   eq(coverage(db, MAIN).holes.length, 1, "seen from the store:");
+  eq(coverage(db, { ...MAIN, before: "2026-09-16" }).holes, [], "and not past where a build stops:");
+});
+t("a session count hops the store, and passes no session on the way", () => {
+  const c = openStore(P("hops.db")), at = (y, m, d, h, mi = 0) => Date.UTC(y, m - 1, d, h, mi);
+  const summer = [at(2026, 7, 6, 13), at(2026, 7, 6, 20, 59), at(2026, 7, 6, 21), at(2026, 7, 6, 22), at(2026, 7, 7, 20, 59), at(2026, 7, 7, 21)];
+  const winter = [at(2026, 12, 7, 14), at(2026, 12, 7, 21, 59), at(2026, 12, 7, 22), at(2026, 12, 8, 21, 30), at(2026, 12, 8, 22, 30)];
+  const held = [...summer, ...winter];
+  addFile(c, csv("hops.ohlcv-1m.csv", held.map((x) => [x, 100, 101, 99, 100, 5, "MNQZ6"])), { source: "databento" });
+  const days = new Set(held.map((x) => nyTradingDay(x)));
+  eq(coverage(c, MAIN).sessions, days.size, "every bar read:");
+  eq(days.size, 6);
+  eq(coverage(c, { ...MAIN, before: "2026-08-01" }).sessions, 3, "summer alone:");
+  c.close();
 });
 t("status names the deadline and what only we hold", () => {
   const now = Date.UTC(2026, 11, 15), s = statusOf(db, { builds: { main: MAIN } }, { now });
   eq(s.pullBy, Date.UTC(2026, 8, 25, 14, 30) + TOPSTEPX_DAYS * DAY);
   eq(s.onlyHere, 2); eq(s.conflicts, 1); eq(s.builds[0].holes.length, 1);
+});
+t("a file that adds nothing is not new data", () => {
+  const was = statusOf(db, { builds: {} }).lastAdded;
+  eq(addFile(db, csv("again.ohlcv-1m.csv", rowsFor().slice(0, 2)), { source: "databento" }).added, 0);
+  eq(statusOf(db, { builds: {} }).lastAdded, was);
 });
 t("a backup is a checked copy, and only the newest are kept", () => {
   const to = P("backups"), day = (d) => new Date(Date.UTC(2026, 10, d));
@@ -129,6 +149,44 @@ t("a file's source and bar size are read from its name, or it stops", () => {
   eq(sourceOf("x/glbx-mdp3-2026.ohlcv-1m.csv"), "databento"); eq(sourceOf("data/raw/topstepx/mnq.csv"), "topstepx"); eq(sourceOf("mystery.csv", "databento"), "databento");
   eq(minutesOf("mnq_ohlcv-5m.csv"), 5); eq(minutesOf("mystery.csv", "1"), 1);
   for (const fn of [() => sourceOf("mystery.csv"), () => minutesOf("mystery.csv")]) { let threw = false; try { fn(); } catch { threw = true; } eq(threw, true); }
+});
+
+t("the page's commands answer only this computer and its own pages", () => {
+  const ask = (ip, host, origin) => fromThisMachine({ socket: { remoteAddress: ip }, headers: { host, ...(origin ? { origin } : {}) } }, 5178);
+  eq(ask("127.0.0.1", "localhost:5178"), true, "a tool here:");
+  eq(ask("::1", "127.0.0.1:5178", "http://localhost:5178"), true, "the page:");
+  eq(ask("::ffff:127.0.0.1", "localhost:5178", "http://127.0.0.1:5178"), true, "the page, by address:");
+  eq(ask("192.168.1.20", "192.168.1.5:5178"), false, "another machine on the network:");
+  eq(ask("192.168.1.20", "localhost:5178", "http://localhost:5178"), false, "another machine saying it is local:");
+  eq(ask("127.0.0.1", "evil.example:5178"), false, "a site pointing its name here:");
+  eq(ask("127.0.0.1", "localhost:5178", "https://evil.example"), false, "another web page:");
+  eq(ask("127.0.0.1", "localhost:5178", "http://localhost:9999"), false, "another port:");
+  eq(ask("127.0.0.1", "localhost:5178", "null"), false, "a sandboxed page:");
+});
+t("an uploaded name becomes a plain file name, and only a CSV", () => {
+  eq(csvName("glbx-mdp3-2026.ohlcv-1m.csv"), "glbx-mdp3-2026.ohlcv-1m.csv");
+  eq(csvName("C:\\Users\\me\\bars.csv"), "bars.csv"); eq(csvName("../../bars.csv"), "bars.csv"); eq(csvName("my bars (1).csv"), "my_bars__1_.csv");
+  for (const bad of ["../../bot/.env", "bars.zip", "bars.csv.zst", ".csv", "..csv", "", null]) { let threw = false; try { csvName(bad); } catch { threw = true; } eq(threw, true, `${bad}:`); }
+});
+
+// A command as the server runs one: its own process, its output kept, one at a time.
+const jobs = new Jobs((args) => spawn(process.execPath, ["-e", args[0]])), done = async () => { while (jobs.busy) await new Promise((r) => setTimeout(r, 20)); };
+const first = jobs.start("first", ["console.log('one'); console.error('two'); process.stdout.write('three')"]);
+let refused = null;
+try { jobs.start("second", ["0"]); } catch (e) { refused = e; }
+await done();
+const firstLines = first.lines.slice().sort();
+const broke = jobs.start("broke", ["console.log('half'); process.exit(3)"]);
+await done();
+const none = new Jobs(() => spawn("no-such-program-here")), lost = none.start("lost", []);
+while (none.busy) await new Promise((r) => setTimeout(r, 20));
+t("one command runs at a time, and its output and exit are kept", () => {
+  eq(refused && refused.busy, true, "a second while one runs:");
+  eq(firstLines, ["one", "three", "two"], "both streams, and a last line with no newline:");
+  eq([first.running, first.exit, first.id], [false, 0, 1]);
+  eq([broke.exit, broke.lines, broke.id], [3, ["half"], 2], "a failure:");
+  eq(lost.exit, 1, "a program that is not there:");
+  eq(jobs.job.id, 2, "the latest is kept:");
 });
 
 db.close();
