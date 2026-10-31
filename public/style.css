@@ -92,7 +92,6 @@ html, body {
 .dp-folder input { min-width: 0; padding: 4px 6px; font-family: var(--mono); font-size: 11px; color: var(--text); background: var(--panel); border: 1px solid var(--line-2); border-radius: 3px; }
 .dp-log { margin: 0; min-height: 70px; max-height: 190px; overflow: auto; padding: 8px; font-family: var(--mono); font-size: 11px; line-height: 1.45; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; }
 .dp-log:empty { display: none; }
-button:disabled { opacity: .45; cursor: default; border-color: var(--line); color: inherit; }
 @media (max-width: 620px) { .dp-row { grid-template-columns: 1fr; gap: 3px; } .dp-folder { grid-template-columns: 1fr 1fr; } .dp-folder label, .dp-folder input { grid-column: 1 / -1; } .dp-table td, .dp-table th { white-space: normal; } }
 .keysbtn { margin-left: auto; padding: 1px 8px; font-size: 11px; color: var(--muted); }
 .sidetoggle { display: none; padding: 3px 8px; }

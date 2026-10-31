@@ -24,8 +24,8 @@ const [cmd, ...argv] = process.argv.slice(2);
 const flag = (name) => { const i = argv.indexOf(name); if (i < 0) return undefined; const [, v] = argv.splice(i, 2); return v; };
 const log = (m) => process.stdout.write(`${m}\n`);
 const day = (ms) => new Date(ms).toISOString().slice(0, 10), minute = (ms) => new Date(ms).toISOString().slice(0, 16).replace("T", " ");
-const num = (n) => n.toLocaleString("en-US");
-const report = (r) => log(r.skipped ? `  ${path.basename(r.file)}: already in the store` : `  ${path.basename(r.file)}: ${num(r.rows)} rows, ${num(r.added)} new, ${num(r.same)} already held${r.differ ? `, ${num(r.differ)} DIFFER from what is stored (kept as stored, see the conflicts table)` : ""}`);
+const num = (n) => n.toLocaleString("en-US"), plural = (n, word) => `${num(n)} ${word}${n === 1 ? "" : "s"}`;
+const report = (r) => log(r.skipped ? `  ${path.basename(r.file)}: already in the store` : `  ${path.basename(r.file)}: ${plural(r.rows, "row")}, ${num(r.added)} new, ${num(r.same)} already held${r.differ ? `, ${num(r.differ)} DIFFER from what is stored (kept as stored, see the conflicts table)` : ""}${r.unread ? `, ${plural(r.unread, "row")} could not be read` : ""}`);
 
 function add() {
   const source = flag("--source"), minutes = flag("--minutes");
@@ -37,7 +37,8 @@ function add() {
 }
 
 function pull() {
-  const r = spawnSync("python", ["-u", path.join("bot", "pull_topstepx_raw.py")], { cwd: HERE, stdio: "inherit" });
+  const r = spawnSync("python", ["-u", path.join("bot", "pull_topstepx_raw.py")], { cwd: HERE, stdio: "inherit", windowsHide: true });
+  if (r.error) throw new Error(`Python did not start: ${r.error.message}`);
   const db = openStore(dbFile);
   for (const f of ["mnq_ohlcv-1m.csv", "mnq_ohlcv-5m.csv"]) report(addFile(db, path.join(HERE, "data", "raw", "topstepx", f), { source: "topstepx" }));
   db.close();
@@ -79,7 +80,7 @@ function status() {
   if (s.pullBy) {
     const left = Math.floor((s.pullBy - Date.now()) / 86400000);
     log(`TopstepX: pull by ${day(s.pullBy)} (${left} days) or bars start rolling off before they are saved`);
-    log(`  ${num(s.onlyHere)} bars have already rolled off the API, so this store and its backups are the only copies`);
+    if (s.rolledOff) log(`  ${plural(s.rolledOff, "bar")} ${s.rolledOff === 1 ? "has" : "have"} rolled off TopstepX and cannot be pulled again`);
   }
   log(s.backup ? `Backup: ${s.backup.file}${s.backup.behind ? ", older than the latest data" : ", up to date"}` : "Backup: none yet. npm run data:backup");
   for (const r of compareSources(db, "databento", "topstepx")) log(`Databento against TopstepX, ${r.symbol}: ${num(r.both)} minutes in both, ${(100 * r.samePrices / r.both).toFixed(1)}% same prices, ${(100 * r.sameVolume / r.both).toFixed(1)}% same volume, worst ${r.worst} points`);
@@ -94,6 +95,6 @@ function save() {
 
 const COMMANDS = { add, pull, status, build, backup: save };
 try {
-  if (!COMMANDS[cmd]) throw new Error(`Commands: ${Object.keys(COMMANDS).join(", ")}`);
+  if (!Object.hasOwn(COMMANDS, cmd ?? "")) throw new Error(`Commands: ${Object.keys(COMMANDS).join(", ")}`);
   COMMANDS[cmd]();
 } catch (e) { console.error(e.message); process.exitCode = 1; }

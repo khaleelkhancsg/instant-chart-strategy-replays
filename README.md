@@ -587,8 +587,8 @@ shows the output as they run.
   reload or a closed panel loses nothing: the panel picks the running command back up.
 - **It answers only the computer the lab runs on,** and only the lab's own pages. The server
   listens on the whole network, and these routes read and write files.
-- **A CSV added there keeps a copy** in `data/raw/uploads`. A compressed Databento download
-  needs unzipping first.
+- **A CSV added there keeps a copy** in `data/raw/uploads`, and one the store refuses keeps
+  none. A compressed Databento download needs unzipping first.
 - **The backup folder** is set there too, and kept in `data/store.settings.json`, which stays on
   this computer. If this computer has OneDrive, a button offers it, which is what takes a backup
   off this disk.
@@ -600,6 +600,10 @@ shows the output as they run.
   re-download. Adding the same file twice does nothing.
 - **A stored bar is never replaced.** If a later file disagrees, the bar stays and the
   disagreement goes in the `conflicts` table, and `data:add` says so.
+- **A file has to prove what it says before a row goes in,** because nothing can take it back
+  out. It needs a symbol column, bars on whole multiples of the size it claims, and prices that
+  make sense. From 20 rows its spacing has to match that size too, so 5-minute bars cannot go
+  in as 1-minute ones. All 6.5 million rows of the real files pass.
 - **Two binaries,** set in `store.config.json`:
   - `main`, `data/mnq_1m.bin`, is Databento only and frozen at Jul 14 2026. Every published
     figure was measured on it, and the default periods run to the end of the data, so new
@@ -608,8 +612,9 @@ shows the output as they run.
   - `beta`, `data/mnq_1m_beta.bin`, adds TopstepX. Where sources share a minute, Databento
     wins. Its meta lists any gap: it holds a hole from Jul 15 to Aug 27 until those bars arrive.
 - **TopstepX keeps 1- and 5-minute bars for 60 days,** so `data:status` shows the date to pull
-  by, and how many bars now exist only here. The store is the only copy of those, so back it
-  up. The default folder is in `store.config.json`, beside the CSVs on the same disk.
+  by, and how many bars have rolled off and cannot be pulled again. This computer holds the only
+  copies of those, in the store and the raw CSVs, so back them up. The default folder is in
+  `store.config.json`, on that same disk, so it takes a copy somewhere else to protect them.
 - **Two sources are compared minute by minute** in `data:status` wherever they overlap.
 
 `src/series.mjs` is the one build, used by the store and by `prepare.mjs`, which still takes CSVs
@@ -675,7 +680,7 @@ happened and one that doesn't.
 ## Verification
 
 ```bash
-npm run check          # test.mjs, audit.mjs, legacy parity, the MCP server, the chart link, the indicator mock, the Tradovate indicators
+npm run check          # test.mjs, audit.mjs, legacy parity, the MCP server, the chart link, the indicator mock, the page's arithmetic, the level study, the raw store, the Data panel, the TopstepX pull, the Tradovate indicators
 npm run verify-rolls   # seam coherence against the incoming contract
 FUZZ_SEED=7 FUZZ_SCALE=3 node test.mjs   # the randomised invariants, harder
 ```

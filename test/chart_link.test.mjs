@@ -6,6 +6,7 @@
 // no page is open.
 
 import { spawn } from "node:child_process";
+import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -133,12 +134,41 @@ await t("the data panel reads the store, and refuses anything that is not its ow
   const run = (body, headers = {}) => fetch(`${BASE}/api/data/run`, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) });
   eq((await run({ command: "backup" }, { origin: "https://example.com" })).status, 403, "another web page:");
   eq((await run({ command: "rm -rf" })).status, 400, "an unknown command:");
+  eq((await run({ command: "constructor" })).status, 400, "a name every object has:");
   const up = (q) => fetch(`${BASE}/api/data/upload?${q}`, { method: "POST", body: "x" });
   eq((await up("name=bot.env&source=databento&minutes=1")).status, 400, "not a CSV:");
   eq((await up("name=a.csv&source=elsewhere&minutes=1")).status, 400, "an unknown source:");
   eq((await fetch(`${BASE}/api/data/backup-folder`, { method: "POST", body: JSON.stringify({ dir: "relative/folder" }) })).status, 400, "a folder that is not a whole path:");
   const j = await fetch(`${BASE}/api/data/job`).then((r) => r.json());
   eq(j.id, undefined, "nothing ran:");
+});
+
+// One such request used to stop the whole server, for anyone who could reach it on the network.
+await t("a malformed request gets an answer, and the server keeps running", async () => {
+  const raw = (text) => new Promise((resolve) => {
+    const c = net.connect(PORT, "127.0.0.1");
+    let out = "";
+    c.on("connect", () => c.write(text));
+    c.on("data", (d) => { out += d; });
+    c.on("close", () => resolve(out.split("\r\n")[0]));
+    c.on("error", () => resolve(out.split("\r\n")[0]));
+  });
+  const close = "Connection: close\r\n\r\n";
+  const cases = {
+    "a path of two slashes": [`GET // HTTP/1.1\r\nHost: localhost\r\n${close}`, /^HTTP\/1\.1 400/],
+    "an empty Host": [`GET /api/meta HTTP/1.1\r\nHost: \r\n${close}`, /^HTTP\/1\.1 200/],
+    "a Host with a space": [`GET /api/meta HTTP/1.1\r\nHost: a b\r\n${close}`, /^HTTP\/1\.1 200/],
+    "a Host of one bracket": [`GET /api/meta HTTP/1.1\r\nHost: [\r\n${close}`, /^HTTP\/1\.1 200/],
+    "a broken percent escape": [`GET /%E0%A4%A HTTP/1.1\r\nHost: localhost\r\n${close}`, /^HTTP\/1\.1 500/],
+    "no Host, on HTTP/1.0": ["GET /api/meta HTTP/1.0\r\n\r\n", /^HTTP\/1\.1 200/],
+    "not HTTP at all": ["hello\r\n\r\n", /^HTTP\/1\.1 400/],
+    "the data panel, with a broken Host": [`GET /api/data/status HTTP/1.1\r\nHost: [\r\n${close}`, /^HTTP\/1\.1 403/],
+  };
+  for (const [name, [text, want]] of Object.entries(cases)) {
+    const line = await raw(text);
+    if (!want.test(line)) throw new Error(`${name}: ${line || "no answer"}`);
+    eq((await fetch(`${BASE}/api/meta`)).status, 200, `still up after ${name}:`);
+  }
 });
 
 server.kill();

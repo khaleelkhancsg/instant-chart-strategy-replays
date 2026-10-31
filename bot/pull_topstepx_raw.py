@@ -19,6 +19,8 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import httpx
+
 import mnq_donchian1250_bot as bm
 
 DAY = 86_400_000
@@ -94,7 +96,11 @@ def main():
     a = ap.parse_args()
     bm.log.setLevel(logging.WARNING)
     api = bm.make_api()
-    api.login()
+    try:
+        api.login()
+    except (bm.GatewayError, httpx.HTTPError) as e:
+        print(f"Could not log in, so nothing was pulled: {e}")
+        return 1
     now = datetime.now(timezone.utc)
     end = now.timestamp() * 1000
     start = end - (KEPT_DAYS + 2) * DAY

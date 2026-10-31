@@ -108,15 +108,19 @@ rule logic into a script: that is a second engine, and it drifts.
 ## Tests
 
 - `npm run check`: test.mjs (467), audit, legacy parity (15), MCP end to end (19),
-  chart link (11), the indicator mock (90, `npm run test:mock`), the page's arithmetic
-  (32, `npm run test:ui`), the level study's engine (22, `npm run test:levels`), the raw
-  store (17, `npm run test:store`), the $1,250 Tradovate indicators (41, `npm run verify:tradovate`, about 2 minutes).
+  chart link (12), the indicator mock (90, `npm run test:mock`), the page's arithmetic
+  (36, `npm run test:ui`), the level study's engine (22, `npm run test:levels`), the raw
+  store (36, `npm run test:store`), the Data panel's routes (21, `npm run test:data`), the
+  TopstepX pull (44, `npm run test:pull`), the $1,250 Tradovate indicators (41, `npm run verify:tradovate`, about 2 minutes).
 - `FUZZ_SEED=<n> FUZZ_SCALE=<k> node test.mjs`: the randomised invariants.
 - `PARITY_SEED`, `PARITY_SCALE`: the same for test/legacy_parity.mjs.
 
 ## The chart
 
 - `node server.mjs` serves http://localhost:5178; the preview config is "chart-lab".
+- **What a request says can never stop the server.** It listens on the whole network, and
+  an async handler that throws ends the process. So the URL is parsed against a fixed base, never
+  the request's `Host`, and everything else a request controls stays inside the handler's `try`.
 - **Restart the server after editing `src/` or `strategies/`.** Node loads them
   once, while the page fetches the new files. Until then the page's window and
   the server's sweep run different code and disagree.
@@ -158,12 +162,17 @@ rule logic into a script: that is a second engine, and it drifts.
     it yet: the chart and tools have no switch, and sweeps do not skip windows across a gap.
   - **TopstepX keeps 1- and 5-minute bars for only 60 days.** `npm run data:pull` saves them, and
     `data:status` gives the date to pull by.
-  - **The ⚙ Data panel** (`public/datapanel.js`, `/api/data/*`) runs that same `store.mjs` as a
-    process of its own, one at a time (`src/datajobs.mjs`), so a rebuild never holds up the chart.
-    What the status means is `dataNotes` in `ui.mjs`, and its backup folder is in
-    `data/store.settings.json`, git-ignored.
+  - **The ⚙ Data panel** (`public/datapanel.js`, `src/datajobs.mjs`) runs that same `store.mjs` as
+    a process of its own, one at a time, so a rebuild never holds up the chart. What the status
+    means is in `ui.mjs` (`dataNotes`, `heldRows`, `compareText`, `jobText`), and its backup folder
+    is in `data/store.settings.json`, git-ignored.
   - **Every `/api/data/` route stays behind `fromThisMachine`.** They read and write files, and
     the server listens on every interface. `--force` has no button, on purpose.
+  - **Test the panel on a copy.** `test/data_routes.test.mjs` runs the real routes and the real
+    `store.mjs` on a temporary folder, and `dataRoutes` takes `here` and `run` for that. Nothing
+    but `bot/test_pull_topstepx_raw.py`'s fake gateway stands in for the API.
+  - **`fileProblem` refuses a file before a row goes in,** because nothing can take one back out.
+    Add to it, not to the build, when a new kind of bad file turns up.
   - **Keep a status read under a second.** It runs each time the panel opens, so it hops the
     primary key (`coverage`, `heldBars`) rather than reading every bar.
   - `data/topstepx_1m.bin` is what the forward tests read, as saved on Oct 27, and nothing

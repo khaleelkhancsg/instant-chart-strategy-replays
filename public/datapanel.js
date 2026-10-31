@@ -1,35 +1,36 @@
 // The Data panel: the store's commands as buttons. The server runs them (src/datajobs.mjs) and
 // the page shows what they say. What the status means is worked out in ui.mjs.
 
-import { dataNotes, guessCsv, fmtBytes } from "/ui.mjs";
+import { dataNotes, heldRows, compareText, jobText, guessCsv, fmtBytes } from "/ui.mjs";
 
 const $ = (id) => document.getElementById(id);
-const num = (n) => Number(n).toLocaleString("en-US");
-const minute = (ms) => new Date(ms).toISOString().slice(0, 16).replace("T", " ");
 const post = (url, body) => fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then(async (r) => ({ ok: r.ok, code: r.status, ...(await r.json()) })).catch((e) => ({ ok: false, error: e.message }));
+const cell = (tag, text, className = "") => Object.assign(document.createElement(tag), { textContent: text, className });
+const HEADS = ["Source", "Bars", "Held", "Contracts", "From (UTC)", "To (UTC)"], RIGHT = [2, 3];
+const row = (tag, cells) => { const tr = document.createElement("tr"); tr.append(...cells.map((c, k) => cell(tag, c, RIGHT.includes(k) ? "r" : ""))); return tr; };
 
 export function initDataPanel() {
-  const panel = $("dataPanel"), buttons = ["dpPull", "dpAdd", "dpBuild", "dpBackup", "dpAddGo"].map($);
-  let status = null, following = false, file = null;
+  const panel = $("dataPanel"), buttons = ["dpPull", "dpAdd", "dpBuild", "dpBackup", "dpAddGo", "dpAddCancel"].map($);
+  let status = null, following = false, file = null, reads = 0;
   const isOpen = () => !panel.classList.contains("hidden");
   const busy = (on) => { for (const b of buttons) b.disabled = on; $("dpBusy").textContent = on ? "Working…" : ""; };
   const log = (text) => { const el = $("dpLog"); el.textContent = text; el.scrollTop = el.scrollHeight; };
 
   function render(s) {
     status = s;
-    const notes = dataNotes(s, Date.now());
-    $("dpNotes").replaceChildren(...notes.map((n) => Object.assign(document.createElement("div"), { className: `dp-note ${n.level}`, textContent: n.text })));
-    const rows = s.sources || [];
-    $("dpSources").innerHTML = rows.length ? `<tr><th>Source</th><th>Bars</th><th class="r">Held</th><th class="r">Contracts</th><th>From (UTC)</th><th>To (UTC)</th></tr>` +
-      rows.map((r) => `<tr><td>${r.source}</td><td>${r.minutes}-minute</td><td class="r">${num(r.rows)}</td><td class="r">${r.contracts}</td><td>${minute(r.first)}</td><td>${minute(r.last)}</td></tr>`).join("") : "";
-    $("dpCompare").textContent = (s.compare || []).map((c) => `${c.symbol}: ${num(c.both)} minutes in both sources, ${(100 * c.samePrices / c.both).toFixed(1)}% same prices, ${(100 * c.sameVolume / c.both).toFixed(1)}% same volume, worst ${c.worst} points`).join("  ·  ");
-    $("dpWhere").textContent = s.database ? `${s.database}, ${num(s.megabytes)} MB` : "";
+    $("dpNotes").replaceChildren(...dataNotes(s, Date.now()).map((n) => cell("div", n.text, `dp-note ${n.level}`)));
+    const rows = heldRows(s.sources || []);
+    $("dpSources").replaceChildren(...(rows.length ? [row("th", HEADS), ...rows.map((r) => row("td", r))] : []));
+    $("dpCompare").textContent = compareText(s.compare || []);
+    $("dpWhere").textContent = s.database ? `${s.database}, ${Number(s.megabytes).toLocaleString("en-US")} MB` : "";
     if (document.activeElement !== $("dpFolder")) $("dpFolder").value = s.backupDir || "";
     $("dpCloud").classList.toggle("hidden", !s.cloudFolder || s.cloudFolder === s.backupDir);
   }
+  // Only the latest read is shown: an older one could land last and show what is no longer true.
   async function refresh() {
-    if (!status) $("dpNotes").innerHTML = `<div class="dp-note">Reading the store…</div>`;
-    render(await fetch("/api/data/status").then((r) => r.json()).catch((e) => ({ error: e.message })));
+    if (!status) $("dpNotes").replaceChildren(cell("div", "Reading the store…", "dp-note"));
+    const mine = ++reads, s = await fetch("/api/data/status").then((r) => r.json()).catch((e) => ({ error: e.message }));
+    if (mine === reads) render(s);
   }
 
   // While a command runs its output comes in here, and the panel can close and reopen meanwhile.
@@ -37,12 +38,14 @@ export function initDataPanel() {
     if (following) return;
     following = true;
     busy(true);
-    let job;
-    do {
-      job = await fetch("/api/data/job").then((r) => r.json()).catch(() => ({ running: false, lines: ["Lost touch with the server."], exit: 1 }));
-      if (job.id) log(`${job.lines.join("\n")}${job.running ? "" : `\n\n${job.label}: ${job.exit === 0 ? "done" : "stopped with an error"}, ${((job.endedAt - job.startedAt) / 1000).toFixed(1)} s`}`);
-      if (job.running) await new Promise((r) => setTimeout(r, 400));
-    } while (job.running);
+    for (;;) {
+      const job = await fetch("/api/data/job").then((r) => r.json()).catch(() => null);
+      if (!job) { log("Lost touch with the server, so the end of this command was not seen."); break; }
+      if (!job.id) { log("The server restarted, so the end of this command was not seen."); break; }
+      log(jobText(job));
+      if (!job.running) break;
+      await new Promise((r) => setTimeout(r, 400));
+    }
     following = false;
     busy(false);
     if (isOpen()) await refresh();
@@ -84,7 +87,11 @@ export function initDataPanel() {
     if (r.ok) { $("dpFolder").value = r.backupDir; await refresh(); }
   }
 
-  function open() { panel.classList.remove("hidden"); refresh(); fetch("/api/data/job").then((r) => r.json()).then((j) => { if (j.running) follow(); else if (j.id && !$("dpLog").textContent) log(j.lines.join("\n")); }).catch(() => {}); }
+  function open() {
+    panel.classList.remove("hidden");
+    refresh();
+    fetch("/api/data/job").then((r) => r.json()).then((j) => { if (j.running) follow(); else if (!$("dpLog").textContent) log(jobText(j)); }).catch(() => {});
+  }
   const close = () => panel.classList.add("hidden");
 
   $("dataBtn").onclick = open;

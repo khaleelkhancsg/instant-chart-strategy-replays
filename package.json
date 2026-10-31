@@ -24,7 +24,9 @@
     "test:ui": "node --max-old-space-size=4096 test/ui.test.mjs",
     "test:levels": "node --max-old-space-size=4096 test/levels.test.mjs",
     "test:store": "node --disable-warning=ExperimentalWarning test/store.test.mjs",
-    "check": "npm test && npm run audit && npm run parity && npm run test:mcp && npm run test:link && npm run test:mock && npm run test:ui && npm run test:levels && npm run test:store && npm run verify:tradovate"
+    "test:data": "node --disable-warning=ExperimentalWarning test/data_routes.test.mjs",
+    "test:pull": "python bot/test_pull_topstepx_raw.py",
+    "check": "npm test && npm run audit && npm run parity && npm run test:mcp && npm run test:link && npm run test:mock && npm run test:ui && npm run test:levels && npm run test:store && npm run test:data && npm run test:pull && npm run verify:tradovate"
   },
   "engines": { "node": ">=18" }
 }

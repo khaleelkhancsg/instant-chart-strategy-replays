@@ -5,7 +5,7 @@
 
 import fs from "node:fs";
 import { loadBars } from "../src/data.mjs";
-import { dataNotes, guessCsv, fmtBytes, ctWall, fmtCt, lowerBound, upperBound, nthSmallest, wilson, rateOver, houseRates, runRecord, pairRuns, compareRuns, flips, linkSettings, linkDiff,
+import { dataNotes, heldRows, compareText, jobText, guessCsv, fmtBytes, ctWall, fmtCt, lowerBound, upperBound, nthSmallest, wilson, rateOver, houseRates, runRecord, pairRuns, compareRuns, flips, linkSettings, linkDiff,
         logPosition, logValue, LOG_TRACK, autoCandle, CANDLE_SIZES, sessionView, stepDays, familyOf, bookRate, pickerRows } from "../public/ui.mjs";
 
 let pass = 0, fail = 0;
@@ -238,7 +238,7 @@ t("the rate shown includes a tick of slippage, and halves show only when they ar
   eq(bookRate(undefined, "1250"), null);
 });
 t("the data panel says what needs doing, worst first", () => {
-  const now = Date.UTC(2026, 9, 31), day = 86400000, base = { pullBy: now + 59 * day, backup: { at: now, behind: false }, onlyHere: 5000, conflicts: 0, builds: [{ name: "main", holes: [] }] };
+  const now = Date.UTC(2026, 9, 31), day = 86400000, base = { pullBy: now + 59 * day, backup: { at: now, behind: false }, rolledOff: 5000, conflicts: 0, builds: [{ name: "main", holes: [] }] };
   const levels = (s) => dataNotes({ ...base, ...s }, now).map((x) => x.level);
   eq(levels({}), ["ok", "ok"]);
   eq(levels({ pullBy: now + 20 * day }), ["warn", "ok"], "three weeks left:");
@@ -246,7 +246,7 @@ t("the data panel says what needs doing, worst first", () => {
   eq(levels({ pullBy: now - 3 * day })[0], "bad");
   if (!/rolling off for 3 days/.test(dataNotes({ ...base, pullBy: now - 3 * day }, now)[0].text)) throw new Error("it should say how long");
   eq(levels({ backup: null }), ["bad", "ok"], "no backup:");
-  if (!/5,000 bars exist only/.test(dataNotes({ ...base, backup: null }, now)[0].text)) throw new Error("it should say what is at risk");
+  if (!/5,000 bars have rolled off TopstepX and cannot be pulled again/.test(dataNotes({ ...base, backup: null }, now)[0].text)) throw new Error("it should say what is at risk");
   eq(levels({ backup: { at: now, behind: true } }), ["warn", "ok"], "an old backup:");
   eq(levels({ conflicts: 2 }), ["warn", "ok", "ok"]);
   eq(levels({ builds: [{ name: "beta", stale: true, holes: [{ after: "2026-07-15", before: "2026-08-28", missing: 31 }] }] }), ["warn", "warn", "ok", "ok"]);
@@ -254,11 +254,49 @@ t("the data panel says what needs doing, worst first", () => {
   eq(dataNotes({ error: "boom" }, now), [{ level: "bad", text: "boom" }]);
   eq(dataNotes({ ...base, pullBy: null }, now).length, 1, "nothing from TopstepX yet:");
 });
+t("the data panel's deadline turns on the exact day", () => {
+  const now = Date.UTC(2026, 9, 31, 12), day = 86400000, base = { backup: { at: now, behind: false }, conflicts: 0, builds: [] };
+  const note = (left) => dataNotes({ ...base, pullBy: now + left * day }, now).find((n) => /Pull|rolling/.test(n.text));
+  eq([22, 21, 8, 7, 1, 0, 0.5].map((d) => note(d).level), ["ok", "warn", "warn", "bad", "bad", "bad", "bad"]);
+  eq(note(21).text, "Pull TopstepX bars by 2026-11-21, 21 days from now, or they start rolling off before they are saved.");
+  eq(note(1).text, "Pull TopstepX bars by 2026-11-01, 1 day from now, or they start rolling off before they are saved.");
+  eq(note(0.5).text, "Pull TopstepX bars today, or they start rolling off before they are saved.", "under a day left:");
+  eq(note(-1).text, "TopstepX bars have been rolling off for 1 day. Pull now, then the missing days can only come from Databento.");
+  eq(note(-0.5).level, "bad", "just past it:");
+});
+t("the data panel counts one of a thing as one", () => {
+  const now = Date.UTC(2026, 9, 31), s = { pullBy: null, backup: { at: now, behind: false }, rolledOff: 1, conflicts: 1, builds: [{ name: "beta", holes: [{ after: "a", before: "b", missing: 1 }] }] };
+  eq(dataNotes(s, now).map((n) => n.text), ["The beta file has a gap from a to b, 1 weekday.", "1 bar differs from what is stored. The stored bars were kept.", "Backed up 2026-10-31. 1 bar has rolled off TopstepX and cannot be pulled again."]);
+});
+t("the data panel leaves out what does not apply", () => {
+  const now = Date.UTC(2026, 9, 31);
+  eq(dataNotes({ pullBy: null, backup: { at: now, behind: false }, rolledOff: 0, conflicts: 0, builds: [] }, now), [{ level: "ok", text: "Backed up 2026-10-31." }]);
+  eq(dataNotes({ pullBy: null, backup: null, rolledOff: 0, conflicts: 0 }, now), [{ level: "bad", text: "No backup yet." }], "no builds listed:");
+  eq(dataNotes({ error: "boom", empty: true }, now).length, 1, "an error comes first:");
+  const order = dataNotes({ pullBy: now + 3 * 86400000, backup: { at: now, behind: true }, rolledOff: 0, conflicts: 0, builds: [{ name: "beta", stale: true, holes: [] }] }, now).map((n) => n.level);
+  eq(order, ["bad", "warn", "warn"], "worst first:");
+});
+t("the data panel's table, comparison and command output read as words", () => {
+  eq(heldRows([{ source: "databento", minutes: 1, rows: 3784340, contracts: 33, first: Date.UTC(2019, 4, 5, 22, 3), last: Date.UTC(2026, 6, 14, 23, 59) }]),
+     [["databento", "1-minute", "3,784,340", "33", "2019-05-05 22:03", "2026-07-14 23:59"]]);
+  eq(heldRows([]), []);
+  eq(compareText([]), "", "nothing overlaps yet:");
+  eq(compareText([{ symbol: "MNQZ6", both: 1000, samePrices: 985, sameVolume: 1000, worst: 1.75 }, { symbol: "MNQU6", both: 1, samePrices: 1, sameVolume: 0, worst: 0 }]),
+     "MNQZ6: 1,000 minutes in both sources, 98.5% same prices, 100.0% same volume, worst 1.75 points  ·  MNQU6: 1 minute in both sources, 100.0% same prices, 0.0% same volume, worst 0 points");
+  eq(jobText({}), "", "nothing has run:");
+  eq(jobText({ id: 1, label: "Back up", running: true, lines: ["one", "two"] }), "one\ntwo", "running, no ending yet:");
+  eq(jobText({ id: 1, label: "Back up", running: false, exit: 0, lines: ["one"], startedAt: 1000, endedAt: 2600 }), "one\n\nBack up: done, 1.6 s");
+  eq(jobText({ id: 1, label: "Back up", running: false, exit: 3, lines: [], startedAt: 0, endedAt: 50 }), "Back up: stopped with an error, 0.1 s", "no output at all:");
+});
 t("a CSV's source and bar size are guessed from its name", () => {
   eq(guessCsv("glbx-mdp3-20260715-20261030.ohlcv-1m.csv"), { source: "databento", minutes: 1 });
   eq(guessCsv("mnq_ohlcv-5m.csv"), { source: "topstepx", minutes: 5 });
   eq(guessCsv("topstepx bars.csv"), { source: "topstepx", minutes: 1 });
   eq(guessCsv("bars.csv"), { source: "databento", minutes: 1 });
+  eq(guessCsv("GLBX-MDP3.OHLCV-5M.CSV"), { source: "databento", minutes: 5 });
+  eq(guessCsv("mnq_ohlcv-1m_aug28-31.csv"), { source: "topstepx", minutes: 1 });
+  eq(guessCsv("ohlcv-15m.csv").minutes, 1, "a size the panel does not offer:");
+  eq([fmtBytes(0), fmtBytes(1023), fmtBytes(1048575), fmtBytes(1073741823)], ["1 KB", "1 KB", "1024 KB", "1024 MB"], "the edges of each unit:");
   eq([fmtBytes(2048), fmtBytes(333 * 1048576), fmtBytes(1.5 * 1073741824)], ["2 KB", "333 MB", "1.5 GB"]);
 });
 t("the list runs best first in each family, on the evaluation in force", () => {

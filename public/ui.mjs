@@ -22,28 +22,44 @@ export function guessCsv(name) {
   const m = /ohlcv-(\d+)m/i.exec(name);
   return { source: /topstepx|mnq_ohlcv/i.test(name) ? "topstepx" : "databento", minutes: m && Number(m[1]) === 5 ? 5 : 1 };
 }
+const plural = (n, word) => `${n.toLocaleString("en-US")} ${word}${n === 1 ? "" : "s"}`;
+const utcMinute = (ms) => new Date(ms).toISOString().slice(0, 16).replace("T", " ");
 export const fmtBytes = (n) => (n >= 1073741824 ? `${(n / 1073741824).toFixed(1)} GB` : n >= 1048576 ? `${Math.round(n / 1048576)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
 // What the store's status means for the person looking at it, worst first.
 export function dataNotes(s, now) {
   if (s.error) return [{ level: "bad", text: s.error }];
   if (s.empty) return [{ level: "warn", text: "No store yet. Add a CSV to start one." }];
-  const notes = [], day = (ms) => new Date(ms).toISOString().slice(0, 10), put = (level, text) => notes.push({ level, text }), n = (x) => x.toLocaleString("en-US");
+  const notes = [], day = (ms) => new Date(ms).toISOString().slice(0, 10), put = (level, text) => notes.push({ level, text }), lost = s.rolledOff ? ` ${plural(s.rolledOff, "bar")} ${s.rolledOff === 1 ? "has" : "have"} rolled off TopstepX and cannot be pulled again.` : "";
   if (s.pullBy != null) {
     const left = Math.floor((s.pullBy - now) / 86400000);
-    if (left < 0) put("bad", `TopstepX bars have been rolling off for ${-left} days. Pull now, then the missing days can only come from Databento.`);
-    else put(left <= 7 ? "bad" : left <= 21 ? "warn" : "ok", `Pull TopstepX bars by ${day(s.pullBy)}, ${left} days from now, or they start rolling off before they are saved.`);
+    if (left < 0) put("bad", `TopstepX bars have been rolling off for ${plural(-left, "day")}. Pull now, then the missing days can only come from Databento.`);
+    else put(left <= 7 ? "bad" : left <= 21 ? "warn" : "ok", `Pull TopstepX bars ${left ? `by ${day(s.pullBy)}, ${plural(left, "day")} from now` : "today"}, or they start rolling off before they are saved.`);
   }
-  if (!s.backup) put("bad", `No backup yet.${s.onlyHere ? ` ${n(s.onlyHere)} bars exist only in this store.` : ""}`);
+  if (!s.backup) put("bad", `No backup yet.${lost}`);
   else if (s.backup.behind) put("warn", `The last backup, ${day(s.backup.at)}, is older than the latest data.`);
-  else put("ok", `Backed up ${day(s.backup.at)}.${s.onlyHere ? ` ${n(s.onlyHere)} bars exist only in this store and its backups.` : ""}`);
+  else put("ok", `Backed up ${day(s.backup.at)}.${lost}`);
   for (const b of s.builds || []) {
     if (b.stale) put("warn", `New bars are in the store. Rebuild the binaries to use them in ${b.name}.`);
-    for (const h of b.holes || []) put("warn", `The ${b.name} file has a gap from ${h.after} to ${h.before}, ${h.missing} weekdays.`);
+    for (const h of b.holes || []) put("warn", `The ${b.name} file has a gap from ${h.after} to ${h.before}, ${plural(h.missing, "weekday")}.`);
   }
-  if (s.conflicts) put("warn", `${n(s.conflicts)} bars differ from what is stored. The stored bars were kept.`);
+  if (s.conflicts) put("warn", `${plural(s.conflicts, "bar")} ${s.conflicts === 1 ? "differs" : "differ"} from what is stored. The stored bars were kept.`);
   const rank = { bad: 0, warn: 1, ok: 2 };
   return notes.sort((a, b) => rank[a.level] - rank[b.level]);
+}
+
+// The table of what is held, as the text of each cell.
+export const heldRows = (sources) => sources.map((r) => [r.source, `${r.minutes}-minute`, r.rows.toLocaleString("en-US"), String(r.contracts), utcMinute(r.first), utcMinute(r.last)]);
+
+// Where two sources overlap, how far they agree.
+export const compareText = (compare) => compare.map((c) => `${c.symbol}: ${plural(c.both, "minute")} in both sources, ${((100 * c.samePrices) / c.both).toFixed(1)}% same prices, ${((100 * c.sameVolume) / c.both).toFixed(1)}% same volume, worst ${c.worst} points`).join("  ·  ");
+
+// What a command has said, and how it ended once it has.
+export function jobText(job) {
+  if (!job.id) return "";
+  const said = job.lines.join("\n");
+  if (job.running) return said;
+  return `${said}${said ? "\n\n" : ""}${job.label}: ${job.exit === 0 ? "done" : "stopped with an error"}, ${((job.endedAt - job.startedAt) / 1000).toFixed(1)} s`;
 }
 
 // ── sorted arrays ────────────────────────────────────────────────────────

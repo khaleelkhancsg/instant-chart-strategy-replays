@@ -231,12 +231,12 @@ export function parseCsv(buf, inPath, syms, log = () => {}) {
   }
 
   log(`  ${n.toLocaleString()} outright rows (${skippedSpread.toLocaleString()} spreads, ${skippedBad} unparseable) in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
-  log(`  ${new Date(ts[0]).toISOString().slice(0, 16)} -> ${new Date(ts[n - 1]).toISOString().slice(0, 16)}`);
+  if (n) log(`  ${new Date(ts[0]).toISOString().slice(0, 16)} -> ${new Date(ts[n - 1]).toISOString().slice(0, 16)}`);
   // The merge below is a linear merge of sorted runs, so a file that is not
   // already timestamp-ordered would silently produce a scrambled series.
   if (outOfOrder) throw new Error(`${inPath}: ${outOfOrder} rows are out of timestamp order; the merge requires sorted input`);
 
-  return { ts, op, hi, lo, cl, vol, sym, n, path: inPath };
+  return { ts, op, hi, lo, cl, vol, sym, n, unread: skippedBad, path: inPath };
 }
 
 // ─────────────────────── merge sorted files, dedupe ───────────────────────

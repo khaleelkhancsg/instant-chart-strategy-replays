@@ -18,8 +18,11 @@ import crypto from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import { SymbolTable, parseCsv, buildSeries, holesOf, nyTradingDay } from "./series.mjs";
 
-const DAY = 86400000, HOUR = 3600000;
+const DAY = 86400000, HOUR = 3600000, MINUTE = 60000;
 export const TOPSTEPX_DAYS = 60;           // how far back TopstepX serves 1- and 5-minute bars
+export const SOURCES = ["databento", "topstepx"];
+const PROVES_BAR_SIZE = 20;                // rows before their spacing says what size they are
+const PRICE_LIMIT = 1e6;                   // past any real price, and short of raw fixed-point ones
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS sources(id INTEGER PRIMARY KEY, name TEXT UNIQUE NOT NULL);
@@ -54,16 +57,37 @@ const idOf = (db, table, col, value) => {
 
 // What a file holds, from its name unless told. A guess that could be wrong stops the import.
 export function sourceOf(file, given) {
+  if (given && !SOURCES.includes(given)) throw new Error(`No source called ${given}: ${SOURCES.join(", ")}`);
   if (given) return given;
   if (/topstepx/i.test(file)) return "topstepx";
   if (/glbx|databento/i.test(file)) return "databento";
   throw new Error(`Cannot tell where ${path.basename(file)} came from: add --source databento or --source topstepx`);
 }
 export function minutesOf(file, given) {
+  if (given && !(Number.isInteger(Number(given)) && Number(given) >= 1)) throw new Error(`A bar size is a whole number of minutes, not ${given}`);
   if (given) return Number(given);
   const m = /ohlcv-(\d+)m/i.exec(path.basename(file));
   if (m) return Number(m[1]);
   throw new Error(`Cannot tell the bar size of ${path.basename(file)}: add --minutes 1`);
+}
+
+// Why a parsed file cannot go in, or null. A stored bar is never replaced and nothing can take a
+// file back out, so whatever can be told from the file is checked before a row is written.
+export function fileProblem(r, size, syms, name) {
+  if (!r.n) return `${name} holds no bars`;
+  if (!syms.names.length) return `${name} has no symbol column, so its bars cannot be told apart by contract`;
+  let step = 0, broken = 0, first = -1;
+  for (let i = 0; i < r.n; i++) {
+    let a = i ? r.ts[i] - r.ts[i - 1] : 0, b = step;
+    while (b) { const m = a % b; a = b; b = m; }
+    step = a;
+    const o = r.op[i], h = r.hi[i], l = r.lo[i], c = r.cl[i];
+    if (!(l > 0 && h < PRICE_LIMIT && o >= l && o <= h && c >= l && c <= h)) { broken++; if (first < 0) first = i; }
+  }
+  if (r.ts[0] % (size * MINUTE) || (step && step % (size * MINUTE))) return `${name} does not sit on whole ${size}-minute bars`;
+  if (r.n >= PROVES_BAR_SIZE && step > size * MINUTE) return `${name} looks like ${step / MINUTE}-minute bars, not ${size}-minute`;
+  if (broken) return `${name} has ${broken.toLocaleString("en-US")} bar${broken === 1 ? "" : "s"} with impossible prices, the first at ${new Date(r.ts[first]).toISOString().slice(0, 16).replace("T", " ")} UTC`;
+  return null;
 }
 
 // One CSV into the store, in one transaction. The same file twice is a no-op.
@@ -71,11 +95,13 @@ export function addFile(db, file, { source, minutes, log = () => {} } = {}) {
   const name = sourceOf(file, source), size = minutesOf(file, minutes), sid = idOf(db, "sources", "name", name);
   const buf = fs.readFileSync(file), sha = crypto.createHash("sha256").update(buf).digest("hex");
   if (db.prepare("SELECT 1 FROM imports WHERE source = ? AND sha256 = ?").get(sid, sha)) return { file, source: name, minutes: size, skipped: true, rows: 0, added: 0, same: 0, differ: 0 };
-  const syms = new SymbolTable(), r = parseCsv(buf, path.basename(file), syms, log), ids = syms.names.map((s) => idOf(db, "contracts", "symbol", s));
+  const syms = new SymbolTable(), r = parseCsv(buf, path.basename(file), syms, log), problem = fileProblem(r, size, syms, path.basename(file));
+  if (problem) throw new Error(`${problem}. Nothing was added.`);
+  const ids = syms.names.map((s) => idOf(db, "contracts", "symbol", s));
   const ins = db.prepare("INSERT INTO bars VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING");
   const get = db.prepare("SELECT o, h, l, c, v FROM bars WHERE source = ? AND contract = ? AND minutes = ? AND ts = ?");
   const clash = db.prepare("INSERT OR IGNORE INTO conflicts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-  const at = Date.now(), res = { file, source: name, minutes: size, rows: r.n, added: 0, same: 0, differ: 0 };
+  const at = Date.now(), res = { file, source: name, minutes: size, rows: r.n, unread: r.unread, added: 0, same: 0, differ: 0 };
   db.exec("BEGIN IMMEDIATE");
   try {
     const imp = Number(db.prepare("INSERT INTO imports(source, file, sha256, minutes, rows, added, same, differ, first_ts, last_ts, at) VALUES (?, ?, ?, ?, ?, 0, 0, 0, ?, ?, ?)")
@@ -131,7 +157,9 @@ export function buildOne(db, name, build, { repo = ".", force = false, log = () 
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(`${file}.tmp`, out);
   fs.renameSync(`${file}.tmp`, file);
-  fs.writeFileSync(file.replace(/\.bin$/, ".meta.json"), JSON.stringify({ build: name, source: files[files.length - 1], sources: files, sourceOrder: build.sources, before: build.before || null, ...meta }, null, 2));
+  const metaFile = file.replace(/\.bin$/, ".meta.json");
+  fs.writeFileSync(`${metaFile}.tmp`, JSON.stringify({ build: name, source: files[files.length - 1], sources: files, sourceOrder: build.sources, before: build.before || null, ...meta }, null, 2));
+  fs.renameSync(`${metaFile}.tmp`, metaFile);
   return { ...res, state: "written" };
 }
 
@@ -168,7 +196,7 @@ export function statusOf(db, config, { now = Date.now(), backupDir, repo = "." }
   const sources = heldBars(db);
   const conflicts = db.prepare("SELECT count(*) AS n FROM conflicts").get().n, imports = db.prepare("SELECT count(*) AS n, max(CASE WHEN added > 0 THEN at END) AS last FROM imports").get();
   const tsx = sources.find((s) => s.source === "topstepx" && s.minutes === 1), oldest = tsx ? now - TOPSTEPX_DAYS * DAY : null;
-  const onlyHere = tsx ? db.prepare("SELECT count(*) AS n FROM bars WHERE source = (SELECT id FROM sources WHERE name = 'topstepx') AND minutes = 1 AND ts < ?").get(oldest).n : 0;
+  const rolledOff = tsx ? db.prepare("SELECT count(*) AS n FROM bars WHERE source = (SELECT id FROM sources WHERE name = 'topstepx') AND minutes = 1 AND ts < ?").get(oldest).n : 0;
   let backup = null;
   if (backupDir && fs.existsSync(backupDir)) {
     const f = fs.readdirSync(backupDir).filter((x) => /^store_\d{4}-\d{2}-\d{2}\.db$/.test(x)).sort().pop();
@@ -178,7 +206,7 @@ export function statusOf(db, config, { now = Date.now(), backupDir, repo = "." }
     const f = path.resolve(repo, b.out), at = fs.existsSync(f) ? fs.statSync(f).mtimeMs : null;
     return { name, out: b.out, frozen: !!b.frozen, builtAt: at, stale: !b.frozen && (at === null || at < imports.last), ...coverage(db, b) };
   });
-  return { sources, conflicts, imports: imports.n, lastAdded: imports.last, pullBy: tsx ? tsx.last + TOPSTEPX_DAYS * DAY : null, onlyHere, backup, builds };
+  return { sources, conflicts, imports: imports.n, lastAdded: imports.last, pullBy: tsx ? tsx.last + TOPSTEPX_DAYS * DAY : null, rolledOff, backup, builds };
 }
 
 // Minute by minute, where two sources both have a contract: how often they agree exactly.
