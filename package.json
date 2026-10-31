@@ -5,7 +5,11 @@
   "type": "module",
   "description": "Visual 30-day combine backtester for MNQ 1-minute data — canvas charts, live parameter tuning, $3,000 and $1,250 prop-firm evaluations, indicator studies that gate entries, and an MCP server for research.",
   "scripts": {
-    "prepare-data": "node prepare.mjs",
+    "data:add": "node --disable-warning=ExperimentalWarning store.mjs add",
+    "data:pull": "node --disable-warning=ExperimentalWarning store.mjs pull",
+    "data:status": "node --disable-warning=ExperimentalWarning store.mjs status",
+    "data:build": "node --disable-warning=ExperimentalWarning --max-old-space-size=8192 store.mjs build",
+    "data:backup": "node --disable-warning=ExperimentalWarning store.mjs backup",
     "start": "node server.mjs",
     "mcp": "node --max-old-space-size=8192 mcp/server.mjs",
     "test": "node --max-old-space-size=8192 test.mjs",
@@ -19,7 +23,8 @@
     "test:mock": "node test/mock.test.mjs",
     "test:ui": "node --max-old-space-size=4096 test/ui.test.mjs",
     "test:levels": "node --max-old-space-size=4096 test/levels.test.mjs",
-    "check": "npm test && npm run audit && npm run parity && npm run test:mcp && npm run test:link && npm run test:mock && npm run test:ui && npm run test:levels && npm run verify:tradovate"
+    "test:store": "node --disable-warning=ExperimentalWarning test/store.test.mjs",
+    "check": "npm test && npm run audit && npm run parity && npm run test:mcp && npm run test:link && npm run test:mock && npm run test:ui && npm run test:levels && npm run test:store && npm run verify:tradovate"
   },
   "engines": { "node": ">=18" }
 }

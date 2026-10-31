@@ -1,0 +1,8 @@
+{
+  "database": "data/store.db",
+  "backups": { "dir": "~/Desktop/Backtesting/MNQ store backups", "keep": 3 },
+  "builds": {
+    "main": { "root": "MNQ", "sources": ["databento"], "before": "2026-07-15", "out": "data/mnq_1m.bin", "frozen": true },
+    "beta": { "root": "MNQ", "sources": ["databento", "topstepx"], "out": "data/mnq_1m_beta.bin" }
+  }
+}

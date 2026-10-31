@@ -6,7 +6,9 @@ prices go to data/raw/topstepx, in the columns prepare.mjs reads, with symbols
 as Databento writes them (MNQZ6). A run adds to what is saved: a bar already
 there is kept, and one the API now reports differently is counted, not replaced.
 
-    python bot/pull_topstepx_raw.py [--out data/raw/topstepx]
+Run it through the store, which adds the files as well:
+
+    npm run data:pull
 """
 import argparse
 import csv
@@ -99,6 +101,7 @@ def main():
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     failed = 0
+    newest = ""
     for minutes in TIMEFRAMES:
         fresh = {}
         for cid, sym in contracts(now):
@@ -110,10 +113,13 @@ def main():
                 continue
             fresh.update({(ts, sym): bar for ts, bar in rows.items()})
             print(f"{cid} {minutes}m: " + (f"{len(rows):,} bars, {min(rows)[:16]} .. {max(rows)[:16]} UTC" if rows else "no bars"))
+        newest = max([newest] + [ts for ts, _ in fresh])
         path = out / f"mnq_ohlcv-{minutes}m.csv"
         total, added, differ = merge(path, fresh)
         print(f"{path.name}: {total:,} bars, {added:,} new" + (f", {differ:,} differ from the API now (kept as saved)" if differ else ""))
-    print(f"Run again by {now + timedelta(days=KEPT_DAYS):%Y-%m-%d}, or bars start rolling off before they are saved.")
+    if newest:
+        by = datetime.strptime(newest[:10], "%Y-%m-%d") + timedelta(days=KEPT_DAYS)
+        print(f"Run again by {by:%Y-%m-%d}, or bars start rolling off before they are saved.")
     return 1 if failed else 0
 
 

@@ -1,10 +1,16 @@
-# Derived data cache — rebuild with `node prepare.mjs`.
-# 54MB of typed arrays generated from a local CSV; no reason to version it.
+# Derived data cache — rebuild with `npm run data:build`.
+# Typed arrays generated from the raw store; no reason to version them.
 data/*.bin
 data/*.meta.json
 
 # Raw bars saved from the TopstepX API: market data, local only
 data/raw/
+
+# The raw bar store and its build leftovers (store.mjs)
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.tmp
 
 node_modules/
 

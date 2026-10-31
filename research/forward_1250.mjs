@@ -2,7 +2,8 @@
 //
 //   node --max-old-space-size=8192 research/forward_1250.mjs [data/topstepx_1m.bin]
 //
-// data/topstepx_1m.bin (bot/export_topstepx_bin.py) holds the bars the bot trades,
+// data/topstepx_1m.bin holds the bars the bot trades, as saved on Oct 27 (a copy is in
+// data/raw/topstepx, and new bars go through the store),
 // from 2026-08-23. Everything before 2026-09-10 is warm-up (13 sessions, so the
 // 10-session ADR and ATR averages are whole); trades and windows start there. No
 // configuration here was chosen on these days: research/combos_1250_new.mjs chose

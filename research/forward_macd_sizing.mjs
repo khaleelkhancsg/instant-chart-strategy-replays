@@ -1,5 +1,5 @@
 // Forward check of the MACD fade ($1,250) and research/full_stop_sizing_macd.mjs on
-// TopstepX's own bars, exported by bot/export_topstepx_bin.py (history from
+// TopstepX's own bars, data/topstepx_1m.bin as saved on Oct 27 (history from
 // 2026-08-23). The signal, volatility gate and engine settings are lib_combo.mjs's
 // and years_2019_2026.mjs's, copied here because lib_combo always loads the lab's
 // 5-year file; run with "five-year" to check the copy: 2026 gives 172 trades,
@@ -9,7 +9,6 @@
 // complete from 2026-09-07 (the default start). --vol-min 5 lets it average the
 // 5-9 sessions it has before then, to cover Sep 1 like the Donchian's check.
 //
-//   python bot/export_topstepx_bin.py
 //   node research/forward_macd_sizing.mjs [bin | five-year] [--from 2026-09-01 --vol-min 5]
 //        [--to YYYY-MM-DD] [--null] [--day YYYY-MM-DD] [--days]
 //

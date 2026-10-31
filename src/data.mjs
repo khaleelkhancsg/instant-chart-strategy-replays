@@ -11,13 +11,13 @@ export function loadBars(binPath = DEFAULT_BIN) {
   if (!fs.existsSync(binPath)) {
     throw new Error(
       `Binary cache not found at ${binPath}\n` +
-      `Build it first:  node prepare.mjs`
+      `Build it first:  npm run data:build`
     );
   }
   const buf = fs.readFileSync(binPath);
-  if (buf.toString("latin1", 0, 4) !== "MNQB") throw new Error("Bad cache magic — rebuild with prepare.mjs");
+  if (buf.toString("latin1", 0, 4) !== "MNQB") throw new Error("Bad cache magic — rebuild with npm run data:build");
   const version = buf.readUInt32LE(4);
-  if (version !== 2) throw new Error(`Cache version ${version} not supported (need 2) — rebuild with: node prepare.mjs`);
+  if (version !== 2) throw new Error(`Cache version ${version} not supported (need 2) — rebuild with: npm run data:build`);
   const n = buf.readUInt32LE(8);
 
   // Views straight onto the file buffer: zero copy, zero parse.

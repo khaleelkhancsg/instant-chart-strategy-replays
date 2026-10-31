@@ -109,8 +109,8 @@ rule logic into a script: that is a second engine, and it drifts.
 
 - `npm run check`: test.mjs (467), audit, legacy parity (15), MCP end to end (19),
   chart link (10), the indicator mock (90, `npm run test:mock`), the page's arithmetic
-  (30, `npm run test:ui`), the level study's engine (22, `npm run test:levels`), the
-  $1,250 Tradovate indicators (41, `npm run verify:tradovate`, about 2 minutes).
+  (30, `npm run test:ui`), the level study's engine (22, `npm run test:levels`), the raw
+  store (12, `npm run test:store`), the $1,250 Tradovate indicators (41, `npm run verify:tradovate`, about 2 minutes).
 - `FUZZ_SEED=<n> FUZZ_SCALE=<k> node test.mjs`: the randomised invariants.
 - `PARITY_SEED`, `PARITY_SCALE`: the same for test/legacy_parity.mjs.
 
@@ -147,11 +147,19 @@ rule logic into a script: that is a second engine, and it drifts.
 - **A book that holds overnight loads all of history** (src/window.mjs), so its re-run
   takes up to 0.8 s and happens on a pause, not on every step. That cost is the price
   of matching the sweep. A slow Tradovate indicator gets the same treatment.
-- Data: `node prepare.mjs` builds the binary cache in `data/` once.
-- **TopstepX keeps 1- and 5-minute bars for only 60 days.** `python bot/pull_topstepx_raw.py`
-  saves them raw, per contract, to `data/raw/topstepx/` (git-ignored). Run it at least that
-  often. Never re-run `bot/export_topstepx_bin.py` over `data/topstepx_1m.bin`: its first
-  days have rolled off the API, and that file is what the forward tests read.
+- **Data lives in the raw store, `data/store.db`, and the engine never reads it.**
+  `store.mjs` and `src/store.mjs` hold it, `src/series.mjs` is the one build, shared with
+  `prepare.mjs`, and `store.config.json` says what gets built. `npm run data:add`, `data:pull`,
+  `data:status`, `data:build`, `data:backup`.
+  - `data/mnq_1m.bin` is frozen: Databento only, to Jul 14 2026. Every published figure was
+    measured on it, and `data:build` refuses a difference without `--force`. Never move its
+    date without re-measuring and saying what moved.
+  - `data/mnq_1m_beta.bin` adds TopstepX, with a hole until Jul 15 - Aug 27 arrives. Nothing reads
+    it yet: the chart and tools have no switch, and sweeps do not skip windows across a gap.
+  - **TopstepX keeps 1- and 5-minute bars for only 60 days.** `npm run data:pull` saves them, and
+    `data:status` gives the date to pull by.
+  - `data/topstepx_1m.bin` is what the forward tests read, as saved on Oct 27, and nothing
+    rebuilds it. `data/topstepx_raw_1m.bin` is the percent study's, built by `prepare.mjs`.
 - Strategy table for the README: `node --max-old-space-size=8192
   research/strategy_table.mjs`. The README's other figures come from
   `research/readme_figures.mjs`.

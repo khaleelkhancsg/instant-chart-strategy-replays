@@ -3,7 +3,6 @@
 // volatility gate (TopstepX keeps ~60 days of 1-minute history, so the window moves).
 // Signal code as forward_macd_sizing.mjs. Each cell: as the engine books it | best case.
 //
-//   python bot/export_topstepx_bin.py
 //   node research/forward_macd_momentum.mjs [bin]
 //
 // RESULT, Sep 11-Oct 26 2026 (32 sessions): everything lost. The fade -$2,742 (21.9%

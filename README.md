@@ -8,8 +8,9 @@ redraw underneath your cursor.
 Built to answer *why* a window passed or died — not just whether it did.
 
 ```bash
-node prepare.mjs      # once: CSV -> binary cache (~3s)
-node server.mjs       # then: http://localhost:5178
+npm run data:add -- your-bars.ohlcv-1m.csv   # once: CSVs into the raw store
+npm run data:build                           # then: the store into the binary
+node server.mjs                              # http://localhost:5178
 ```
 
 ---
@@ -440,8 +441,7 @@ What it shows:
     coin-flip twin.
   - For the $1,250 eval it remains the book to trade, as it ships.
   - The forward sample is small: a dozen overlapping windows. Re-run
-    `node research/forward_1250.mjs` as TopstepX bars accrue
-    (`bot/export_topstepx_bin.py`).
+    `node research/forward_1250.mjs` as TopstepX bars accrue.
 - **The pieces are in the chart.** "ADR used" and "ATR vs its session average" are
   indicator studies now, and each new book's parameters span its whole search. A
   variation can be looked at, gated and swept from the sidebar or the MCP tools.
@@ -565,14 +565,42 @@ stats so it's never invisible.
 
 ## Data pipeline
 
-`prepare.mjs` turns the Databento CSV batches into `data/mnq_1m.bin`:
+Bars live in a raw store, `data/store.db`, and backtests read a binary built from it.
+Reading the whole store takes about 10 seconds and the binary about 25 ms, so the engine
+never touches the store and nothing about a backtest's speed changed.
 
-- **Multiple source files merged.** Databento delivers overlapping batches; list
-  them all and they are combined into one series, deduplicated on
-  (timestamp, symbol) by a linear merge of the sorted runs. Overlapping rows are
-  compared field-by-field and the build **aborts** if any disagree, rather than
-  silently picking a winner. Across the current two files, 2,624,027 overlapping
-  rows agreed exactly.
+```bash
+npm run data:add -- bars.ohlcv-1m.csv   # any CSV with ts_event, OHLCV and symbol columns
+npm run data:pull                       # TopstepX's latest bars, read-only
+npm run data:status                     # what is held, what is missing, what needs doing
+npm run data:build                      # the binaries
+npm run data:backup                     # a checked copy, the newest 3 kept
+```
+
+These need Node 22.5 or later, for its built-in SQLite. The chart and the engine do not.
+
+- **Nothing is spliced in the store.** Each row is one source's bar for one contract and
+  minute, on that contract's real prices, so a new roll or a change of rule needs no
+  re-download. Adding the same file twice does nothing.
+- **A stored bar is never replaced.** If a later file disagrees, the bar stays and the
+  disagreement goes in the `conflicts` table, and `data:add` says so.
+- **Two binaries,** set in `store.config.json`:
+  - `main`, `data/mnq_1m.bin`, is Databento only and frozen at Jul 14 2026. Every published
+    figure was measured on it, and the default periods run to the end of the data, so new
+    bars would move them all and absorb the forward sample. Each build compares it byte for
+    byte and refuses a difference without `--force`. Moving the freeze is one date in the config.
+  - `beta`, `data/mnq_1m_beta.bin`, adds TopstepX. Where sources share a minute, Databento
+    wins. Its meta lists any gap: it holds a hole from Jul 15 to Aug 27 until those bars arrive.
+- **TopstepX keeps 1- and 5-minute bars for 60 days,** so `data:status` shows the date to pull
+  by, and how many bars now exist only here. The store is the only copy of those, so back it
+  up. `store.config.json` says where: the default is beside the CSVs on the same disk.
+- **Two sources are compared minute by minute** in `data:status` wherever they overlap.
+
+`src/series.mjs` is the one build, used by the store and by `prepare.mjs`, which still takes CSVs
+straight to a binary for a one-off file (`--in a.csv --in b.csv --out x.bin`):
+
+- **Multiple source files merged.** Databento delivers overlapping batches, deduplicated on
+  (timestamp, symbol). Across the current two files, 2,624,027 overlapping rows agreed exactly.
 - Parsed straight from a `Buffer` — no giant intermediate string, no per-row objects
 - Calendar-spread rows (`MNQU1-MNQZ1`) dropped
 - Dominant contract per day chosen by volume → single continuous front-month
@@ -582,11 +610,6 @@ stats so it's never invisible.
 
 Result: **2,534,706 bars**, 2019-05-05 → 2026-07-14 — MNQ's entire history, since
 the contract launched in May 2019.
-
-```bash
-node prepare.mjs                       # uses the default source list
-node prepare.mjs --in a.csv --in b.csv # or name them explicitly
-```
 
 > Early MNQ is complete but thin: 2019 averages 1,335 bars/session (the same
 > coverage as today) at **137 contracts/bar versus 1,148 in 2025**. The bars are
