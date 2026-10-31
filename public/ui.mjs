@@ -220,10 +220,10 @@ export function stepDays(bars, i, days) {
 // ── the strategy picker ──────────────────────────────────────────────────
 // A new strategy file lands in the family its id names, or under Other.
 const FAMILIES = [
-  ["Templates", /^tpl_/], ["Donchian", /donchian/], ["Breakouts", /^orb|prior_day|breakout/], ["MACD", /macd/],
+  ["Templates", /^tpl_/], ["Donchian", /donchian/], ["Breakouts", /^orb|prior_day|breakout|noise_area/], ["MACD", /macd/], ["Levels", /^pct_/],
   ["Mean reversion", /fade|zscore|reversion/], ["Trend", /trend|ema|adx|momentum/],
 ];
-const FAMILY_ORDER = ["Donchian", "Breakouts", "Trend", "MACD", "Mean reversion", "Other", "Templates"];
+const FAMILY_ORDER = ["Donchian", "Breakouts", "Trend", "MACD", "Mean reversion", "Levels", "Other", "Templates"];
 export const familyOf = (id) => (FAMILIES.find(([, re]) => re.test(id)) || ["Other"])[0];
 
 // What the measured table says of a book on an evaluation (research/strategy_table.mjs):

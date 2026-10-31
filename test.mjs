@@ -9,7 +9,8 @@ import fs from "node:fs";
 import { ema, sma, wma, atr, adx, rsi, donchian, rollingMeanStd, trueRange, efficiencyRatio, rthRangeUsed, rthAtrRatio, vwma, hma, kama, mfi, williamsR, cmf, obv,
          cvdEstimate, vortex, psar, ichimoku, linreg, chandelier, heikinAshi, squeeze, bollinger, keltner } from "./src/indicators.mjs";
 import { Profile, developingProfile, priorProfile, compositeLevels, nakedPocs, periodLevels, pivotLevels, rangeLevels, firstRange, initialBalance, clockRange,
-         clockOpens, CLOCK_SPANS, adrProjections, swingLevels, swingVwap, volumeShelf, gaussianSmooth, findPeaks, weekOf, periodKey, sessionsOf, adrOf } from "./src/levels.mjs";
+         clockOpens, CLOCK_SPANS, adrProjections, swingLevels, swingVwap, volumeShelf, gaussianSmooth, findPeaks, weekOf, periodKey, sessionsOf, adrOf,
+         rawOffsets, anchorOf, percentLadder, adrLadder, sessionReach, reachLevels, conformalLevels, noiseArea, moveFan } from "./src/levels.mjs";
 import { buildFilterContext, applyFilters, countSurviving } from "./src/filters.mjs";
 import { replayPortfolio } from "./src/portfolio.mjs";
 import { resample, sliceBars, indexAtOrAfter, indexAtOrBefore } from "./src/resample.mjs";
@@ -2749,6 +2750,87 @@ if (bars_) {
 }
 
 // ══════════════════════════════ 15. STALE EXIT ══════════════════════════════
+section("14c. Percent levels against naive recomputation");
+if (bars_) {
+  const { bars: B } = bars_;
+  const b = sliceBars(B, indexAtOrAfter(B.ts, Date.UTC(2026, 0, 2)), B.count), S = sessionsOf(b), n = b.close.length;
+  const lastRthClose = (s) => { let c = NaN; for (let i = s.a; i < s.z; i++) if (b.ctMin[i] >= 510 && b.ctMin[i] < 900) c = b.close[i]; return c; };
+  t("a percentage is of the contract's own price: the offset is the rolls still to come", () => {
+    const off = rawOffsets(b), at = (y, m0, d) => off[indexAtOrAfter(b.ts, Date.UTC(y, m0, d))];
+    eq(at(2026, 1, 2), 503.5, "on MNQH6:"); eq(at(2026, 3, 1), 294.75, "on MNQM6:"); eq(at(2026, 6, 1), 0, "on MNQU6:");
+    eq(rawOffsets({ close: [1, 2], ts: [0, 1] }).join(), "0,0", "no rolls:");
+  });
+  t("the settlement anchor is the last RTH close, from 15:00 CT, and last week's is the settlement that opened the week", () => {
+    const A = anchorOf(b, "settle");
+    for (let k = 2; k < S.length; k += 7) {
+      const s = S[k], p = S[k - 1];
+      if (s.rthA < 0 || p.rthA < 0 || S[k - 2].rthA < 0) continue;
+      close(A[s.rthA], lastRthClose(p), 1e-6, "next day's RTH reads it:");
+      if (p.rthZ - p.rthA > 300) close(A[p.rthZ - 1], lastRthClose(S[k - 2]), 1e-6, "not yet on its own last bar:");
+    }
+    const W = anchorOf(b, "pweek"), wk = periodKey(b, "week");
+    for (let i = 1; i < n; i += 5000) { let j = i; while (j > 0 && wk[j - 1] === wk[i]) j--; if (j > 0) close(W[i], A[j], 1e-9, "held from the week's first bar:"); }
+  });
+  t("a percent ladder and an ADR ladder, by hand", () => {
+    const off = rawOffsets(b), A = anchorOf(b, "settle"), L = percentLadder(b, { step: 0.25, rungs: 4 }), D = adrLadder(b, { mults: [0.5, 1] }), adr = adrOf(S);
+    for (let k = 12; k < S.length; k += 5) {
+      const s = S[k];
+      if (s.rthA < 0) continue;
+      const i = s.rthA + 30, raw = A[i] - off[i];
+      close(L.up[3][i], A[i] + raw * 0.01, 1e-6, "+1%:"); close(L.dn[0][i], A[i] - raw * 0.0025, 1e-6, "-0.25%:");
+      close(D.up[1][i], A[i] + adr[k], 1e-6, "+1 ADR:"); close(D.dn[0][i], A[i] - adr[k] / 2, 1e-6, "-half an ADR:");
+    }
+  });
+  t("a session's reach, and the quantile of the last days' reach, by hand", () => {
+    const R = sessionReach(b), A = anchorOf(b, "settle"), off = rawOffsets(b), L = reachLevels(b, { sessions: 20, q: 0.75, least: 10 });
+    for (let k = 30; k < R.length; k += 6) {
+      const s = R[k];
+      if (s.rthA < 0) continue;
+      const raw = A[s.rthA] - off[s.rthA];
+      close(s.up, (100 * (s.hi - A[s.rthA])) / raw, 1e-6, "reach up:");
+      const v = R.slice(k - 20, k).map((x) => x.up).filter(Number.isFinite).sort((x, y) => x - y);
+      close(L.up[s.rthA], A[s.rthA] + (raw * v[Math.floor(0.75 * v.length)]) / 100, 1e-6, "quantile:");
+    }
+  });
+  t("the self-correcting band: its update by hand, and it settles near what it is aimed at", () => {
+    const R = sessionReach(b), r = conformalLevels(b, { miss: 0.2, gamma: 0.1, sessions: 30, least: 30 });
+    for (let k = 40; k < R.length; k += 9) {
+      const s = R[k];
+      if (s.rthA < 0 || !Number.isFinite(s.adr)) continue;
+      let u = 1;
+      for (let j = k - 30; j < k; j++) if (Number.isFinite(R[j].upAdr)) u += 0.1 * ((R[j].upAdr > u ? 1 : 0) - 0.2);
+      close(r.wUp[s.rthA], u, 1e-9, "replayed:");
+    }
+    const f = conformalLevels(b, { miss: 0.2, gamma: 0.1 }); let miss = 0, c = 0;
+    for (const s of R.slice(30)) { const w = f.wUp[s.rthA]; if (s.rthA >= 0 && Number.isFinite(s.upAdr) && Number.isFinite(w)) { c++; if (s.upAdr > w) miss++; } }
+    if (Math.abs(miss / c - 0.2) > 0.1) throw new Error(`aimed at 20%, broken ${(100 * miss / c).toFixed(0)}%`);
+  });
+  t("the noise area is the mean absolute move from the open at that minute, around the open and settlement", () => {
+    const r = noiseArea(b, { days: 14, mult: 1.5 }), off = rawOffsets(b), A = anchorOf(b, "settle"), R = S.filter((s) => s.rthA >= 0);
+    for (let k = 20; k < R.length; k += 11) {
+      const s = R[k], m = 60, i = s.rthA + m, o = b.open[s.rthA];
+      if (i >= s.rthZ) continue;
+      let sum = 0;
+      for (let q = k - 14; q < k; q++) { const p = R[q], po = b.open[p.rthA]; sum += Math.abs(b.close[p.rthA + m] - po) / (po - off[p.rthA]); }
+      const x = (sum / 14) * 1.5, raw = o - off[s.rthA];
+      close(r.up[i], Math.max(o, A[s.rthA]) + raw * x, 1e-6, "top:"); close(r.dn[i], Math.min(o, A[s.rthA]) - raw * x, 1e-6, "bottom:");
+    }
+  });
+  t("the rank of today's move counts the days it beats at the same minute", () => {
+    const r = moveFan(b, { sessions: 20, step: 1, least: 20 }), off = rawOffsets(b), A = anchorOf(b, "settle"), R = S.filter((s) => s.rthA >= 0 && Number.isFinite(A[s.rthA]));
+    const mv = (s, m) => (100 * (b.close[s.rthA + m] - A[s.rthA])) / (A[s.rthA] - off[s.rthA]);
+    for (let k = 25; k < R.length; k += 9) {
+      const s = R[k], m = 45, past = R.slice(k - 20, k).filter((p) => p.rthA + m < p.rthZ);
+      if (s.rthA + m >= s.rthZ || past.length < 20) continue;
+      close(r.rank[s.rthA + m], (100 * past.filter((p) => mv(p, m) <= mv(s, m)).length) / past.length, 1e-6, "rank:");
+    }
+  });
+  t("the beyond gate: longs over the top only, shorts under the bottom only", () => {
+    const rd = (v) => ({ st: { gate: "beyond" }, S: { kind: "band" }, v: Float64Array.of(v), dir: Int8Array.of(0), levels: { lo: 0, hi: 1, mid: 0.5 } });
+    eq(gatePasses(rd(1.2), 0, 1), true); eq(gatePasses(rd(1.2), 0, -1), false); eq(gatePasses(rd(-0.2), 0, -1), true); eq(gatePasses(rd(0.5), 0, 1), false); eq(gatePasses(rd(NaN), 0, 1), false);
+  });
+}
+
 section("15. Stale exit");
 {
   // Flat bars after a long entry at bar 6's open (100): it never gains, so it

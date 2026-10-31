@@ -138,7 +138,7 @@ re-sweeps automatically ~700ms after you stop changing parameters.
 
 ### Indicators beside the strategy
 
-**Indicators** in the sidebar adds any of 53 studies to the chart, each on a
+**Indicators** in the sidebar adds any of 60 studies to the chart, each on a
 timeframe of your choice. They are drawn on the price pane or in a pane of their
 own, with their values under the crosshair:
 
@@ -147,6 +147,7 @@ own, with their values under the crosshair:
 | Price | EMA, SMA, EMA cross (fast / slow), VWAP (session, RTH, week or month, with σ bands), Supertrend, Hull MA, Kaufman adaptive MA, volume-weighted MA, Ichimoku cloud, Parabolic SAR, Chandelier exit, Heikin-Ashi trend |
 | Bands & levels | Bollinger, Keltner, Donchian, prior day & overnight levels, opening range, linear regression channel |
 | Levels | Volume or TPO profile (POC, VAH, VAL), developing or prior, of the session, RTH, week or month; composite profile and volume nodes; naked POCs; floor, Camarilla and Fibonacci pivots; week and month levels; the developing range; Monday's range; initial balance and extensions; Asia, London and pre-market ranges; session, week and month opens; ADR projections; swing highs and lows; VWAP from the last swings; high-volume bar levels |
+| Percent levels | Percent ladder (from settlement, the open, the week or month, in percent or ADRs), move from an anchor, rank of today's move at this minute, fan of the normal move, noise area, recent reach from settlement, self-correcting band |
 | Oscillators | RSI, Stochastic, MACD, CCI, rate of change, z-score, money flow index, Williams %R, Aroon, Chaikin money flow, on-balance volume, estimated volume delta |
 | Regime & volatility | ADX / DMI, ATR, efficiency ratio, choppiness, relative volume, ADR used, ATR vs its session average, Vortex, squeeze |
 
@@ -246,7 +247,7 @@ differ.
 
 ### Every strategy at its defaults, under the real rules
 
-*Measured 2026-10-27 by `research/strategy_table.mjs`; every number is in
+*Measured 2026-10-31 by `research/strategy_table.mjs`; every number is in
 `research/strategy_table_results.json`.*
 
 How to read the tables:
@@ -290,6 +291,7 @@ The five books built for the $1,250 eval (below) run here with this eval's $1,00
 | `macd_1m_quiet_anticipate`† | 1m | 29,169 | 0.854 | −$12.00 | 10.3% | 27.9% | 35.6 · 18.7 | 20.6% | 18.9% |
 | `trend_vol_adaptive` | 3m | 17,711 | 0.996 | −$0.76 | 5.1% | 20.0% | 14.4 · 26.7 | 19.4% | 22.3% |
 | `macd_5m_anticipate`† | 5m | 22,092 | 0.939 | −$14.91 | 12.6% | 16.4% | 20.0 · 12.0 | 15.8% | 15.1% |
+| `noise_area` | 1m | 2,029 | 1.161 | +$14.92 | 5.7% | 14.5% | 26.7 · 0.0 | 14.5% | 69.7% |
 | `gap_fade` | 5m | 1,572 | 1.002 | +$0.53 | 15.2% | 13.9% | 16.7 · 10.7 | 13.9% | 54.6% |
 | `session_range_fade` | 5m | 2,276 | 0.884 | −$47.94 | 14.1% | 13.3% | 23.3 · 1.3 | 13.3% | 34.6% |
 | `adx_di_trend` | 5m | 25,961 | 0.920 | −$17.51 | 12.2% | 15.2% | 15.6 · 14.7 | 12.7% | 18.0% |
@@ -306,6 +308,7 @@ The five books built for the $1,250 eval (below) run here with this eval's $1,00
 | `zscore_fade` | 5m | 770 | 0.833 | −$87.61 | 2.0% | 0.0% | 0.0 · 0.0 | 0.0% | 11.7% |
 | `macd_1m_flip`† | 1m | 197,173 | 0.870 | −$12.65 | 1.7% | 0.0% | 0.0 · 0.0 | 0.0% | 2.9% |
 | `macd_1m_fade`† | 1m | 197,173 | 0.847 | −$12.30 | 0.3% | 0.6% | 0.0 · 1.3 | 0.0% | 0.0% |
+| `pct_levels` | 1m | 6,242 | 0.959 | −$2.13 | 0.1% | 0.0% | 0.0 · 0.0 | 0.0% | 58.9% |
 
 #### $1,250 eval — $1,250 target · $1,000 trailing drawdown · $600 daily loss limit
 
@@ -323,6 +326,7 @@ block) and the five built for this eval. Every other book trades its $3,000 size
 | `donchian_shipped` (4 lots) | 42.1% | 44.2% | 45.6 · 42.7 | 44.2% | 56.3% |
 | `trend_neutev` | 15.4% | 30.3% | 36.7 · 22.7 | 30.9% | 20.9% |
 | `donchian_eff_rth` | 36.8% | 31.5% | 33.3 · 29.3 | 29.7% | 35.1% |
+| `noise_area` | 18.1% | 30.9% | 51.1 · 6.7 | 29.1% | 48.0% |
 | `momentum_roc` | 20.9% | 24.8% | 14.4 · 37.3 | 24.2% | 25.7% |
 | `tpl_channel` | 20.1% | 26.1% | 31.1 · 20.0 | 24.2% | 24.3% |
 | `macd_angle_v4` | 8.2% | 24.8% | 45.6 · 0.0 | 24.2% | 28.0% |
@@ -343,6 +347,7 @@ block) and the five built for this eval. Every other book trades its $3,000 size
 | `trend_vol_adaptive` | 6.5% | 9.1% | 0.0 · 20.0 | 8.5% | 15.1% |
 | `macd_5m_flip`† | 6.0% | 10.3% | 14.4 · 5.3 | 8.5% | 6.6% |
 | `macd_5m_anticipate`† | 9.1% | 10.3% | 17.8 · 1.3 | 7.9% | 9.1% |
+| `pct_levels` | 4.0% | 10.3% | 12.2 · 8.0 | 6.1% | 42.9% |
 | `macd_1m_anticipate`† | 2.3% | 8.5% | 11.1 · 5.3 | 6.1% | 2.3% |
 | `tpl_oscillator` | 11.2% | 4.8% | 0.0 · 10.7 | 4.8% | 13.4% |
 | `adx_di_trend` | 13.0% | 7.9% | 14.4 · 0.0 | 4.2% | 18.6% |
@@ -794,6 +799,34 @@ are flipped at random so nothing a level could use is left.
 
 The sample can see about 7 points of bounce rate on a group of levels, so a smaller effect
 may exist. It would be too small to trade alone. The new studies remain useful for looking at the chart.
+
+### Do percentages work?
+
+`research/pct_*.mjs` asks the same of percentages, on 2026 and the forward bars, Sep 11 - Oct 30.
+Every figure is of the contract's real price, and every rate is set beside what the same bars do
+on random markets.
+
+- **The ranges are real numbers, and they are what volatility gives.** RTH's median range is
+  1.42%. RTH trades back to settlement on 55% of days, 54% on noise. A day reaches 1% either side on
+  73%, the same as noise, and 2% on 24%, 25% on noise.
+- **From any rung, the next move is a coin flip** (`pct_ladder.mjs`). Of 210 cells, 3 reach
+  p < 0.05, where chance gives 11. Variance ratios sit near 1 from 2 minutes to 2 hours.
+- **As levels:** of 355 tests, 16 reach p < 0.05, where chance gives 18. None passes the bar.
+  Percentages nobody would pick score better than round ones.
+- **Does anyone act there?** (`pct_footprint.mjs`) Volume rises when price touches levels people
+  are known to watch, and not at percentages from settlement. A heavy touch of a session extreme
+  leaned towards a break in 2026 at small reactions, and lost 0.7 points a touch forward
+  (`pct_absorb.mjs`, `pct_heavy.mjs`). That is a lead to re-read on new bars, not a rule.
+- **State a range in ADRs, not percent** (`pct_conformal.mjs`). A band set as a fixed percentage
+  misses its aim twice as far as one set as a multiple of the ADR.
+- **As trades and filters:** none of 1,476 rules beats `donchian_1250` in both halves, and none of
+  215 gates improves it. The closest gate, no entries near settlement, is a cliff, not an effect
+  (`pct_nearmiss.mjs`).
+- **The noise area** (`strategies/noise_area.mjs`) fails as an eval book, 30.9% on the $1,250 eval
+  (calendar, ci 8-69), but made +$5,114 at 2 lots forward, which 2 of 200 coin flips reach
+  (`pct_noise.mjs`). It is the one result to re-read on new bars.
+
+`strategies/pct_levels.mjs` trades any of these levels, so an idea can be tried on the chart.
 
 ### Panels and links
 

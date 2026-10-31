@@ -1849,6 +1849,7 @@ async function loadWindow(startMs, { keepTail = false } = {}) {
   // that holds overnight is 70 MB of bars.
   if (url !== S.blobUrl) {
     S.blob = parseWindowBlob(await fetch(url).then((r) => r.arrayBuffer()));
+    S.blob.rolls = S.meta.meta?.rollovers || [];   // percentages are of each contract's own price
     S.blobUrl = url;
   }
   S.winStartLocal = indexAtOrAfter(S.blob.ts, startMs);

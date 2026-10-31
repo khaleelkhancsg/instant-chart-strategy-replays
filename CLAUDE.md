@@ -107,9 +107,9 @@ rule logic into a script: that is a second engine, and it drifts.
 
 ## Tests
 
-- `npm run check`: test.mjs (445), audit, legacy parity (15), MCP end to end (19),
+- `npm run check`: test.mjs (467), audit, legacy parity (15), MCP end to end (19),
   chart link (10), the indicator mock (90, `npm run test:mock`), the page's arithmetic
-  (30, `npm run test:ui`), the level study's engine (19, `npm run test:levels`), the
+  (30, `npm run test:ui`), the level study's engine (22, `npm run test:levels`), the
   $1,250 Tradovate indicators (41, `npm run verify:tradovate`, about 2 minutes).
 - `FUZZ_SEED=<n> FUZZ_SCALE=<k> node test.mjs`: the randomised invariants.
 - `PARITY_SEED`, `PARITY_SCALE`: the same for test/legacy_parity.mjs.
@@ -262,6 +262,24 @@ Nothing external is involved: no API, and no page outside the chart.
 - **A touch is price reaching the level.** A line jumping over price is not one.
 - **The sample's reach:** about 13 points of bounce rate on one level, 7 on a pool.
 - **Result (2026):** no level passes. See `research/levels_stress.mjs` for the figures.
+
+## Percent levels
+
+`src/levels.mjs` builds them on each contract's real price (`rawOffsets`, from `bars.rolls`),
+and the chart's "Percent levels" group draws them. `strategies/pct_levels.mjs` trades any of
+them, and `strategies/noise_area.mjs` is the published noise-area breakout. `research/pct_*.mjs`
+is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` says how to build it).
+
+- **A placebo path keeps the market's real price.** It has no drift, so it wanders away from
+  the rally that really happened, and the same points then read as a different percentage.
+  `placeboBars` carries `rawOff`, so `rawOffsets` gives the real price on a path. Flipping whole
+  days must leave every day's range alone (`test/levels.test.mjs`). Use it on any percentage.
+- **A rate means nothing without its placebo rate.** Most of what traders quote about ranges and
+  gaps is geometry: `research/lib_pct.mjs` `testRates` sets any rule beside noise.
+- **The footprint test sees what a bounce test cannot** (`research/pct_footprint.mjs`): volume and
+  range at a touch against the level's twins, with the levels people are known to watch as controls.
+- **The odds ladder needs no R and no twins** (`research/pct_ladder.mjs`): from any rung, the next
+  rung up or down is a coin flip on a random walk.
 
 ## Papers
 

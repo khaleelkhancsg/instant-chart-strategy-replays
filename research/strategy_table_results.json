@@ -1,5 +1,5 @@
 {
- "measured": "2026-10-30",
+ "measured": "2026-10-31",
  "data": "2019-05-05 to 2026-07-14",
  "method": "calendar windows (the chart's sweep), flat by 15:05 CT, each strategy's own defaults under the eval",
  "rows": [
@@ -764,6 +764,44 @@
    }
   },
   {
+   "id": "noise_area",
+   "name": "Noise-area breakout (Barbon et al. 2024)",
+   "tf": 1,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 2,
+     "slippageTicks": 0,
+     "trades": 2029,
+     "profitFactor": 1.161,
+     "expectancy": 14.92,
+     "net": 30276,
+     "passAll": 18.1,
+     "pass2026": 30.9,
+     "passJanMar": 51.1,
+     "passAprJul": 6.7,
+     "pass2026OneTick": 29.1,
+     "passAllOneTick": 17.4,
+     "reachPayout": 48
+    },
+    "3000": {
+     "contracts": 2,
+     "slippageTicks": 0,
+     "trades": 2029,
+     "profitFactor": 1.161,
+     "expectancy": 14.92,
+     "net": 30276,
+     "passAll": 5.7,
+     "pass2026": 14.5,
+     "passJanMar": 26.7,
+     "passAprJul": 0,
+     "pass2026OneTick": 14.5,
+     "passAllOneTick": 5.4,
+     "reachPayout": 69.7
+    }
+   }
+  },
+  {
    "id": "orb",
    "name": "Opening Range Breakout (session-anchored)",
    "tf": 5,
@@ -836,6 +874,44 @@
      "pass2026OneTick": 40,
      "passAllOneTick": 4.5,
      "reachPayout": 61.4
+    }
+   }
+  },
+  {
+   "id": "pct_levels",
+   "name": "Percent levels (fade, break, retest, return)",
+   "tf": 1,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 2,
+     "slippageTicks": 0,
+     "trades": 6242,
+     "profitFactor": 0.959,
+     "expectancy": -2.13,
+     "net": -13304,
+     "passAll": 4,
+     "pass2026": 10.3,
+     "passJanMar": 12.2,
+     "passAprJul": 8,
+     "pass2026OneTick": 6.1,
+     "passAllOneTick": 3,
+     "reachPayout": 42.9
+    },
+    "3000": {
+     "contracts": 2,
+     "slippageTicks": 0,
+     "trades": 6242,
+     "profitFactor": 0.959,
+     "expectancy": -2.13,
+     "net": -13304,
+     "passAll": 0.1,
+     "pass2026": 0,
+     "passJanMar": 0,
+     "passAprJul": 0,
+     "pass2026OneTick": 0,
+     "passAllOneTick": 0.1,
+     "reachPayout": 58.9
     }
    }
   },

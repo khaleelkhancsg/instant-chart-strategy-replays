@@ -64,6 +64,7 @@ export function resample(bars, tfMin) {
     srcFirst: srcFirst.subarray(0, count),
     srcLast: srcLast.subarray(0, count),
     tfMin: tf,
+    ...(bars.rolls ? { rolls: bars.rolls } : {}),
   };
 }
 
@@ -81,6 +82,7 @@ export function sliceBars(bars, s, e) {
   if (bars.ctMin) out.ctMin = bars.ctMin.subarray(s, e);
   if (bars.srcFirst) { out.srcFirst = bars.srcFirst.subarray(s, e); out.srcLast = bars.srcLast.subarray(s, e); }
   if (bars.tfMin) out.tfMin = bars.tfMin;
+  if (bars.rolls) out.rolls = bars.rolls;
   return out;
 }
 

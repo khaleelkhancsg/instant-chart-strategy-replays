@@ -45,6 +45,8 @@ export function loadBars(binPath = DEFAULT_BIN) {
   if (fs.existsSync(metaPath)) {
     try { meta = JSON.parse(fs.readFileSync(metaPath, "utf8")); } catch { /* optional */ }
   }
+  // A level set as a percentage needs each contract's own price (src/levels.mjs rawOffsets).
+  bars.rolls = meta.rollovers || [];
   return { bars, meta };
 }
 

@@ -40,7 +40,8 @@ import { ema, sma, atr, adx, rsi, macd, stochastic, cci, roc, zscore, efficiency
          obv, cvdEstimate, vortex, psar, ichimoku, linreg, chandelier, heikinAshi, squeeze } from "./indicators.mjs";
 import { periodKey, developingProfile, priorProfile, compositeLevels, nakedPocs, periodLevels, pivotLevels, rangeLevels,
          firstRange, initialBalance, IB_EXTENSIONS, clockRange, clockOpens, CLOCK_SPANS, adrProjections, swingLevels,
-         swingVwap, volumeShelf } from "./levels.mjs";
+         swingVwap, volumeShelf, PCT_ANCHORS, anchorOf, rawOffsets, percentLadder, adrLadder, reachLevels, conformalLevels,
+         noiseArea, moveFan } from "./levels.mjs";
 import { resample } from "./resample.mjs";
 
 const RTH_OPEN = 510, RTH_CLOSE = 900;        // 08:30 and 15:00 CT
@@ -166,6 +167,7 @@ const PERIODS = [["week", "Week"], ["month", "Month"]];
 // and compute(bars, p).
 const BAND_LEVELS = () => ({ lo: 0, hi: 1, mid: 0.5 });
 const OSC_GATES = ["with", "against", "nochase", "fade", "above", "below", "inside", "outside"];
+const PAST_GATES = ["beyond"];
 const BAND_GATES = ["with", "against", "nochase", "fade", "inside", "outside"];
 const LEVEL_GATES = ["above", "below", "inside", "outside"];
 
@@ -375,6 +377,72 @@ export const STUDIES = {
       const r = adrProjections(b, p);
       return { lo: r.dn, hi: r.up, lines: [{ name: "+ADR", data: r.up }, { name: "+½", data: r.up2, dash: [2, 3] }, { name: "−½", data: r.dn2, dash: [2, 3] }, { name: "−ADR", data: r.dn }, { name: "low+ADR", data: r.lowUp, dash: [4, 3], alpha: 0.7 }, { name: "high−ADR", data: r.highDn, dash: [4, 3], alpha: 0.7 }] };
     },
+  },
+  pctladder: {
+    name: "Percent ladder", group: "Percent levels", pane: "price", kind: "band",
+    params: [select("anchor", "Measured from", "settle", Object.entries(PCT_ANCHORS)), select("unit", "Rungs in", "pct", [["pct", "Percent of price"], ["adr", "ADRs"]]),
+             num("step", "Step", 0.5, 0.05, 5, 0.05), int("rungs", "Rungs each way", 4, 1, 12), int("days", "ADR over (sessions)", 10, 5, 40)],
+    label: (p) => `${p.step}${p.unit === "adr" ? "× ADR" : "%"} ladder · ${p.anchor}`, warmup: () => 0,
+    warmupSessions: (p) => Math.max(p.days + 3, { week: 8, pweek: 9, month: 26, pmonth: 27 }[p.anchor] || 3), gates: [...BAND_GATES, ...PAST_GATES], levels: BAND_LEVELS,
+    terms: { mid: "the anchor", hi: "the first rung up", lo: "the first rung down" },
+    hint: "Rungs either side of an anchor, on each contract's real price. In 2026 no rung behaved differently from a price picked at random (research/pct_study.mjs). A fixed percentage also goes stale: ADRs hold their aim about twice as well (research/pct_conformal.mjs).",
+    compute: (b, p) => {
+      const adr = p.unit === "adr", r = adr ? adrLadder(b, { anchor: p.anchor, days: p.days, mults: Array.from({ length: p.rungs }, (_, k) => p.step * (k + 1)) }) : percentLadder(b, p);
+      const name = (k, s) => `${s}${+(p.step * (k + 1)).toFixed(2)}${adr ? "×" : "%"}`;
+      return { lo: r.dn[0], hi: r.up[0], mid: r.anchor, lines: [{ name: "anchor", data: r.anchor }, ...r.up.map((d, k) => ({ name: name(k, "+"), data: d, dash: [4, 3], alpha: 0.8 })), ...r.dn.map((d, k) => ({ name: name(k, "−"), data: d, dash: [4, 3], alpha: 0.8 }))] };
+    },
+  },
+  pctmove: {
+    name: "Move from an anchor, %", group: "Percent levels", pane: "sub", kind: "osc",
+    params: [select("anchor", "Measured from", "settle", Object.entries(PCT_ANCHORS)), LO(-1, -10, 10, 0.05), HI(1, -10, 10, 0.05)],
+    label: (p) => `% from ${p.anchor}`, warmup: () => 0, warmupSessions: (p) => ({ week: 8, pweek: 9, month: 26, pmonth: 27 }[p.anchor] || 3), gates: [...OSC_GATES, ...PAST_GATES],
+    levels: (p) => ({ lo: p.lo, hi: p.hi, mid: 0 }), auto: "minmax",
+    hint: "The day's percentage change, or the week's or month's, as the contract's real price sees it.",
+    compute: (b, p) => {
+      const A = anchorOf(b, p.anchor), off = rawOffsets(b), n = A.length, v = nanArr(n);
+      for (let i = 0; i < n; i++) v[i] = (100 * (b.close[i] - A[i])) / (A[i] - off[i]);
+      return valueOnly(`% from ${p.anchor}`, v);
+    },
+  },
+  moverank: {
+    name: "Rank of today's move at this minute", group: "Percent levels", pane: "sub", kind: "osc",
+    params: [int("sessions", "Against (sessions)", 60, 20, 120), LO(10, 0, 100, 1), HI(90, 0, 100, 1)],
+    label: (p) => `Move rank ${p.sessions}`, warmup: () => 0, warmupSessions: (p) => p.sessions + 3, gates: [...OSC_GATES, ...PAST_GATES],
+    levels: (p) => ({ lo: p.lo, hi: p.hi, mid: 50 }), range: [0, 100],
+    hint: "Where the move from settlement ranks among recent days at the same minute of RTH: 95 means only 1 day in 20 had gone this far up by now. It knows the clock, as a fixed percentage does not. RTH only.",
+    compute: (b, p) => valueOnly(`Move rank ${p.sessions}`, moveFan(b, p).rank),
+  },
+  movefan: {
+    name: "Fan of the normal move", group: "Percent levels", pane: "price", kind: "band",
+    params: [int("sessions", "Over (sessions)", 60, 20, 120), num("q", "Share of days inside", 0.9, 0.5, 0.99, 0.01)],
+    label: (p) => `Fan ${Math.round(p.q * 100)}%`, warmup: () => 0, warmupSessions: (p) => p.sessions + 3, gates: [...BAND_GATES, ...PAST_GATES], levels: BAND_LEVELS,
+    terms: { mid: "the middle of the fan", hi: "the top of the fan", lo: "the bottom of the fan" },
+    hint: "How far from settlement recent days had got by this minute. It widens through the day, as a move has more time to build. RTH only.",
+    compute: (b, p) => { const r = moveFan(b, p); return { lo: r.dn, hi: r.up, lines: [{ name: "top", data: r.up, dash: [4, 3] }, { name: "bottom", data: r.dn, dash: [4, 3] }] }; },
+  },
+  noisearea: {
+    name: "Noise area", group: "Percent levels", pane: "price", kind: "band",
+    params: [int("days", "Over (sessions)", 14, 5, 60), num("mult", "Multiple", 1, 0.25, 4, 0.25)],
+    label: (p) => `Noise ${p.days}, ${p.mult}`, warmup: () => 0, warmupSessions: (p) => p.days + 3, gates: [...BAND_GATES, ...PAST_GATES], levels: BAND_LEVELS,
+    terms: { mid: "the middle of the noise area", hi: "the top of the noise area", lo: "the bottom of the noise area" },
+    hint: "Barbon, Aziz and Zarattini 2024: the open plus and minus the mean absolute move from the open by this minute over recent days, around the higher and lower of the open and the settlement. RTH only.",
+    compute: (b, p) => { const r = noiseArea(b, p); return { lo: r.dn, hi: r.up, lines: [{ name: "top", data: r.up }, { name: "bottom", data: r.dn }] }; },
+  },
+  reachband: {
+    name: "Recent reach from settlement", group: "Percent levels", pane: "price", kind: "band",
+    params: [int("sessions", "Over (sessions)", 60, 20, 120), num("q", "Quantile", 0.75, 0.1, 0.99, 0.01)],
+    label: (p) => `Reach ${Math.round(p.q * 100)}% of ${p.sessions}`, warmup: () => 0, warmupSessions: (p) => p.sessions + 5, gates: [...BAND_GATES, ...PAST_GATES], levels: BAND_LEVELS,
+    terms: { mid: "the middle of the band", hi: "the reach up", lo: "the reach down" },
+    hint: "How far recent days got above and below their settlement, as a percentage of today's.",
+    compute: (b, p) => { const r = reachLevels(b, p); return { lo: r.dn, hi: r.up, lines: [{ name: "up", data: r.up, dash: [4, 3] }, { name: "down", data: r.dn, dash: [4, 3] }] }; },
+  },
+  conformal: {
+    name: "Self-correcting band", group: "Percent levels", pane: "price", kind: "band",
+    params: [num("miss", "Days to break it", 0.2, 0.02, 0.5, 0.01), num("gamma", "Correction", 0.1, 0.01, 0.5, 0.01), int("sessions", "Over (sessions)", 60, 30, 120), int("days", "ADR over (sessions)", 10, 5, 40)],
+    label: (p) => `Self-correcting ${Math.round(p.miss * 100)}%`, warmup: () => 0, warmupSessions: (p) => p.sessions + p.days + 3, gates: [...BAND_GATES, ...PAST_GATES], levels: BAND_LEVELS,
+    terms: { mid: "the middle of the band", hi: "the top of the band", lo: "the bottom of the band" },
+    hint: "Multiples of the ADR either side of settlement that widen after a day breaks them and narrow after a day does not, so about the set share of days break each side (conformal quantile tracking).",
+    compute: (b, p) => { const r = conformalLevels(b, p); return { lo: r.dn, hi: r.up, lines: [{ name: "top", data: r.up, dash: [4, 3] }, { name: "bottom", data: r.dn, dash: [4, 3] }] }; },
   },
   swings: {
     name: "Swing highs and lows", group: "Levels", pane: "price", kind: "band",
@@ -668,6 +736,7 @@ export function gateLabel(type, mode, p = {}) {
       with: `Longs above ${t.mid}, shorts below`, against: `Longs below ${t.mid}, shorts above`,
       nochase: `Longs only under ${t.hi}, shorts only over ${t.lo}`, fade: `Longs only under ${t.lo}, shorts only over ${t.hi}`,
       inside: `Either side, only between ${t.lo} and ${t.hi}`, outside: `Either side, only beyond ${t.lo} or ${t.hi}`,
+      beyond: `Longs only over ${t.hi}, shorts only under ${t.lo}`,
     }[mode];
   }
   return {
@@ -675,6 +744,7 @@ export function gateLabel(type, mode, p = {}) {
     nochase: `Longs only under ${lv.hi}, shorts only over ${lv.lo}`, fade: `Longs only under ${lv.lo}, shorts only over ${lv.hi}`,
     above: `Either side, only at ${lv.lo} or more`, below: `Either side, only at ${lv.hi} or less`,
     inside: `Either side, only from ${lv.lo} to ${lv.hi}`, outside: `Either side, only under ${lv.lo} or over ${lv.hi}`,
+    beyond: `Longs only over ${lv.hi}, shorts only under ${lv.lo}`,
   }[mode] || mode;
 }
 
@@ -839,6 +909,7 @@ export function gatePasses(r, k, d) {
   switch (mode) {
     case "nochase": return d === 1 ? v < L.hi : v > L.lo;
     case "fade": return d === 1 ? v < L.lo : v > L.hi;
+    case "beyond": return d === 1 ? v > L.hi : v < L.lo;
     case "above": return v >= L.lo;
     case "below": return v <= L.hi;
     case "inside": return v >= L.lo && v <= L.hi;

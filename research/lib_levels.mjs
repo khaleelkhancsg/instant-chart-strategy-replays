@@ -29,7 +29,7 @@
 import { loadBars } from "../src/data.mjs";
 import { sliceBars, indexAtOrAfter } from "../src/resample.mjs";
 import { computeStudy, closedIndexMap, resolveStudy } from "../src/studies.mjs";
-import { sessionsOf, adrOf } from "../src/levels.mjs";
+import { sessionsOf, adrOf, rawOffsets } from "../src/levels.mjs";
 import { ema } from "../src/indicators.mjs";
 import { mulberry32 } from "../src/dayeval.mjs";
 
@@ -86,11 +86,11 @@ export class Events {
     this.n = 0; this.cap = cap;
     for (const [k, T] of Object.entries(Events.COLS)) this[k] = new T(cap);
   }
-  push(tag, day, real, side, oc, pnl, ct, no, prev, speed, withTrend, boPnl) {
+  push(tag, day, real, side, oc, pnl, ct, no, prev, speed, withTrend, boPnl, bar = 0) {
     if (this.n === this.cap) this._grow();
     const i = this.n++;
     this.tag[i] = tag; this.day[i] = day; this.real[i] = real; this.side[i] = side; this.oc[i] = oc;
-    this.pnl[i] = pnl; this.ct[i] = ct; this.no[i] = no; this.prev[i] = prev; this.speed[i] = speed; this.withTrend[i] = withTrend; this.boPnl[i] = boPnl;
+    this.pnl[i] = pnl; this.ct[i] = ct; this.no[i] = no; this.prev[i] = prev; this.speed[i] = speed; this.withTrend[i] = withTrend; this.boPnl[i] = boPnl; this.bar[i] = bar;
   }
   _grow() {
     this.cap *= 2;
@@ -98,7 +98,7 @@ export class Events {
   }
 }
 Events.COLS = { tag: Int16Array, day: Int16Array, real: Int8Array, side: Int8Array, oc: Int8Array, pnl: Float32Array, ct: Int16Array, no: Int8Array,
-                prev: Int8Array, speed: Float32Array, withTrend: Int8Array, boPnl: Float32Array };
+                prev: Int8Array, speed: Float32Array, withTrend: Int8Array, boPnl: Float32Array, bar: Int32Array };
 
 // Every touch of one level over bars [a, z). S is a series, or null with a constant P;
 // `off` moves it (a twin). `prev` on each touch says how the last one on this level
@@ -177,8 +177,8 @@ export function runLevels(sample, levels, { rFrac = 0.05, thru = 1, hold = 60, t
             off = roundTick((r() < 0.5 ? -1 : 1) * (1.5 + 4.5 * r()) * R);
           }
           const o = { thru, hold, chain, maxTouches: lv.maxTouches ?? 4, side: lv.side ?? 0 };
-          scanLevel(sample, tr.S || null, tr.P, off, a, z, R, o, (side, oc, pnl, ct, no, prev, speed, wt, bo) =>
-            ev.push(tag, dayIdx, tw ? 0 : 1, side, oc, pnl, ct, no, prev, speed, wt, bo));
+          scanLevel(sample, tr.S || null, tr.P, off, a, z, R, o, (side, oc, pnl, ct, no, prev, speed, wt, bo, k) =>
+            ev.push(tag, dayIdx, tw ? 0 : 1, side, oc, pnl, ct, no, prev, speed, wt, bo, k));
         }
       });
     });
@@ -280,6 +280,46 @@ export function matchedEdgeOf(ev, ids, nDays, boot, nBoot, keep = null) {
   return { n, edge: edge * 100, lo: sorted[Math.floor(0.025 * m)] * 100, hi: sorted[Math.floor(0.975 * m)] * 100, p: Math.max(1 / m, (2 * Math.min(below, above)) / m) };
 }
 
+// The same comparison for a measurement instead of a bounce: y[i] is any number on event i,
+// and the result is real minus twin, like for like, resampled by day.
+export function matchedMeanOf(ev, ids, y, nDays, boot, nBoot) {
+  const key = (d, s) => d * STRATA + s, size = nDays * STRATA;
+  const rs = new Float64Array(size), rn = new Float64Array(size), ts = new Float64Array(size), tn = new Float64Array(size);
+  for (const i of ids) {
+    const v = y[i];
+    if (!(v === v)) continue;
+    const k = key(ev.day[i], stratumOf(ev, i));
+    if (ev.real[i]) { rn[k]++; rs[k] += v; } else { tn[k]++; ts[k] += v; }
+  }
+  const a = new Float64Array(STRATA), b = new Float64Array(STRATA), c = new Float64Array(STRATA), e = new Float64Array(STRATA);
+  const score = () => {
+    let w = 0, x = 0;
+    for (let s = 0; s < STRATA; s++) if (b[s] && e[s]) { x += b[s] * (a[s] / b[s] - c[s] / e[s]); w += b[s]; }
+    return w ? [x / w, w] : [NaN, 0];
+  };
+  for (let d = 0; d < nDays; d++) for (let s = 0; s < STRATA; s++) { const k = key(d, s); a[s] += rs[k]; b[s] += rn[k]; c[s] += ts[k]; e[s] += tn[k]; }
+  const [mean, n] = score();
+  if (!n) return null;
+  if (!nBoot) return { mean, n };
+  const bs = new Float64Array(nBoot);
+  let m = 0, below = 0, above = 0;
+  for (let q = 0; q < nBoot; q++) {
+    a.fill(0); b.fill(0); c.fill(0); e.fill(0);
+    const off = q * nDays;
+    for (let j = 0; j < nDays; j++) {
+      const d = boot[off + j];
+      for (let s = 0; s < STRATA; s++) { const k = key(d, s); a[s] += rs[k]; b[s] += rn[k]; c[s] += ts[k]; e[s] += tn[k]; }
+    }
+    const [x, w] = score();
+    if (!w) continue;
+    bs[m++] = x;
+    if (x <= 0) below++;
+    if (x >= 0) above++;
+  }
+  const sorted = bs.subarray(0, m).sort();
+  return { n, mean, lo: sorted[Math.floor(0.025 * m)], hi: sorted[Math.floor(0.975 * m)], p: Math.max(1 / m, (2 * Math.min(below, above)) / m) };
+}
+
 // The matched edge alone, for the placebo paths, which need no interval of their own.
 export function quickEdge(ev, ids) {
   const a = new Float64Array(STRATA), b = new Float64Array(STRATA), c = new Float64Array(STRATA), e = new Float64Array(STRATA);
@@ -297,17 +337,28 @@ export function quickEdge(ev, ids) {
 // random. Volatility, volume, the time of day and every bar's size stay as they were,
 // and each bar's move no longer depends on the last, so nothing a level could exploit
 // is left. What the level test reports on these paths is the test, not the market.
-export function placeboBars(b, seed) {
-  const r = mulberry32(seed), n = b.close.length;
+//
+// With `block`, one sign covers each `block` minutes of the clock: all that happens
+// inside a block is kept, and only what connects blocks is lost.
+//
+// A path has no drift, so it wanders away from the price the market really had. rawOff
+// keeps percentages honest: a path's price counts as the contract's real price at that
+// time, so 1% on a path is the same number of points as 1% was on the day. Without it a
+// path sitting below a rally reads the same points as a larger percentage.
+export function placeboBars(b, seed, block = 1) {
+  const r = mulberry32(seed), n = b.close.length, off = rawOffsets(b), rawOff = new Float64Array(n);
   const open = new Float32Array(n), high = new Float32Array(n), low = new Float32Array(n), close = new Float32Array(n);
-  let last = b.open[0];
+  let last = b.open[0], at = null, s = 1;
   for (let i = 0; i < n; i++) {
-    const s = r() < 0.5 ? 1 : -1, ref = i ? b.close[i - 1] : b.open[0], o = last + s * (b.open[i] - ref);
+    if (block <= 1) s = r() < 0.5 ? 1 : -1;
+    else { const k = Math.floor(b.ts[i] / (block * 60000)); if (k !== at) { at = k; s = r() < 0.5 ? 1 : -1; } }
+    const ref = i ? b.close[i - 1] : b.open[0], o = last + s * (b.open[i] - ref);
     const up = b.high[i] - b.open[i], dn = b.open[i] - b.low[i], c = b.close[i] - b.open[i];
     open[i] = o; high[i] = o + (s > 0 ? up : dn); low[i] = o - (s > 0 ? dn : up); close[i] = o + s * c;
     last = close[i];
+    rawOff[i] = close[i] - (b.close[i] - off[i]);
   }
-  return { ...b, open, high, low, close };
+  return { ...b, open, high, low, close, rawOff };
 }
 
 // A two-sided p from a z score (Abramowitz and Stegun 26.2.17).

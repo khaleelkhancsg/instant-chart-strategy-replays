@@ -449,6 +449,170 @@ export function adrProjections(b, { days = 10, mult = 1 } = {}) {
   return { up, up2, dn, dn2, lowUp, highDn };
 }
 
+// ── percentages ──────────────────────────────────────────────────────────
+// How far each bar's back-adjusted price sits above its own contract's, from the data's
+// rolls (bars.rolls). Prices here are shifted at every roll, so a percentage taken from
+// them would be a little off: 1% is worked out on the contract's real price.
+export function rawOffsets(b) {
+  if (b.rawOff) return b.rawOff;
+  const n = b.close.length, out = new Float64Array(n), rolls = b.rolls || [];
+  if (!rolls.length) return out;
+  const R = rolls.slice().sort((x, y) => y.ms - x.ms);
+  let off = 0, q = 0;
+  for (let i = n - 1; i >= 0; i--) {
+    while (q < R.length && R[q].ms > b.ts[i]) off += R[q++].gap;
+    out[i] = off;
+  }
+  return out;
+}
+
+export const PCT_ANCHORS = {
+  settle: "The prior settlement", rth: "The RTH open", session: "The 17:00 CT open", week: "The week's open", month: "The month's open",
+  pweek: "Last week's settlement", pmonth: "Last month's settlement",
+};
+
+// The price a percentage is measured from, as known at each bar. The settlement is the
+// last RTH close (CME's is the VWAP of its final 30 seconds), known from 15:00 CT.
+export function anchorOf(b, anchor = "settle") {
+  if (anchor === "week" || anchor === "month") return periodLevels(b, { period: anchor }).open;
+  if (anchor === "rth" || anchor === "session") return clockOpens(b)[anchor];
+  const n = b.close.length, out = nanArr(n);
+  let last = NaN, close = NaN, inside = false;
+  for (let i = 0; i < n; i++) {
+    if (inRth(b.ctMin[i])) { close = b.close[i]; inside = true; } else if (inside) { last = close; inside = false; }
+    out[i] = last;
+  }
+  if (anchor === "settle") return out;
+  const key = periodKey(b, anchor === "pweek" ? "week" : "month"), held = nanArr(n);
+  let cur = null, v = NaN;
+  for (let i = 0; i < n; i++) {
+    if (key[i] !== cur) { cur = key[i]; v = out[i]; }
+    held[i] = v;
+  }
+  return held;
+}
+
+// Rungs every `step` percent either side of an anchor: up[k] and dn[k] are k + 1 steps away.
+export function percentLadder(b, { anchor = "settle", step = 0.25, rungs = 4 } = {}) {
+  const n = b.close.length, A = anchorOf(b, anchor), off = rawOffsets(b);
+  const up = Array.from({ length: rungs }, () => nanArr(n)), dn = Array.from({ length: rungs }, () => nanArr(n));
+  for (let i = 0; i < n; i++) {
+    const a = A[i];
+    if (!(a === a)) continue;
+    const unit = ((a - off[i]) * step) / 100;
+    for (let k = 0; k < rungs; k++) { up[k][i] = a + unit * (k + 1); dn[k][i] = a - unit * (k + 1); }
+  }
+  return { anchor: A, up, dn };
+}
+
+// Rungs at multiples of the average day instead: the same ladder in units of volatility.
+export function adrLadder(b, { anchor = "settle", days = 10, mults = [0.25, 0.5, 0.75, 1, 1.25, 1.5] } = {}) {
+  const n = b.close.length, A = anchorOf(b, anchor), S = sessionsOf(b), adr = adrOf(S, days), u = nanArr(n);
+  S.forEach((s, k) => u.fill(adr[k], s.a, s.z));
+  const up = mults.map(() => nanArr(n)), dn = mults.map(() => nanArr(n));
+  for (let i = 0; i < n; i++) mults.forEach((m, q) => { up[q][i] = A[i] + m * u[i]; dn[q][i] = A[i] - m * u[i]; });
+  return { anchor: A, up, dn };
+}
+
+// How far each session's RTH reached above and below its settlement: in percent of the
+// contract's price, and in ADRs of the sessions before it. NaN without a settlement.
+export function sessionReach(b, days = 10) {
+  const S = sessionsOf(b), adr = adrOf(S, days), A = anchorOf(b, "settle"), off = rawOffsets(b);
+  return S.map((s, k) => {
+    const r = { ...s, up: NaN, dn: NaN, upAdr: NaN, dnAdr: NaN, adr: adr[k], base: NaN, raw: NaN };
+    if (s.rthA < 0 || !(A[s.rthA] === A[s.rthA])) return r;
+    const base = A[s.rthA], raw = base - off[s.rthA];
+    return { ...r, base, raw, up: (100 * (s.hi - base)) / raw, dn: (100 * (base - s.lo)) / raw, upAdr: (s.hi - base) / adr[k], dnAdr: (base - s.lo) / adr[k] };
+  });
+}
+
+// The quantile `q` of how far the last `sessions` days reached from settlement, as a
+// percentage of today's settlement, held for the session: what a normal day has done lately.
+export function reachLevels(b, { sessions = 60, q = 0.75, least = 20 } = {}) {
+  const n = b.close.length, R = sessionReach(b), A = anchorOf(b, "settle"), off = rawOffsets(b), up = nanArr(n), dn = nanArr(n);
+  const pick = (a) => { const v = a.filter(Number.isFinite).sort((x, y) => x - y); return v.length >= least ? v[Math.min(v.length - 1, Math.floor(q * v.length))] : NaN; };
+  R.forEach((s, k) => {
+    const past = R.slice(Math.max(0, k - sessions), k), u = pick(past.map((x) => x.up)), d = pick(past.map((x) => x.dn));
+    for (let i = s.a; i < s.z; i++) { const raw = A[i] - off[i]; up[i] = A[i] + (raw * u) / 100; dn[i] = A[i] - (raw * d) / 100; }
+  });
+  return { up, dn };
+}
+
+// A band that corrects itself. How far a day reaches from settlement is tracked in ADRs by
+// online quantile tracking (conformal prediction's update, Gibbs and Candes 2021; Angelopoulos
+// et al. 2023): after a day outside the band it widens by `gamma` x (1 - miss), after a day
+// inside it narrows by `gamma` x miss, so about `miss` of days end up outside it whatever
+// the market does, with no model of the market. Each side is tracked alone, over the
+// last `sessions` days from `start`, so a window of bars draws what a full run does.
+export function conformalLevels(b, { miss = 0.2, gamma = 0.1, days = 10, start = 1, sessions = 60, least = 15 } = {}) {
+  const n = b.close.length, R = sessionReach(b, days), A = anchorOf(b, "settle"), up = nanArr(n), dn = nanArr(n), wUp = nanArr(n), wDn = nanArr(n);
+  R.forEach((s, k) => {
+    if (!Number.isFinite(s.adr) || k < least) return;
+    let u = start, d = start;
+    for (let j = Math.max(0, k - sessions); j < k; j++) {
+      const x = R[j];
+      if (Number.isFinite(x.upAdr)) { u += gamma * ((x.upAdr > u ? 1 : 0) - miss); d += gamma * ((x.dnAdr > d ? 1 : 0) - miss); }
+    }
+    for (let i = s.a; i < s.z; i++) { up[i] = A[i] + u * s.adr; dn[i] = A[i] - d * s.adr; wUp[i] = u; wDn[i] = d; }
+  });
+  return { up, dn, wUp, wDn };
+}
+
+// The noise area (Barbon, Aziz and Zarattini 2024): how far price usually is from the open by
+// each minute of RTH, as the mean absolute percentage move at that minute over the last
+// `days` sessions, around the higher and lower of the open and the prior settlement. A
+// session's own minutes never count towards its band.
+export function noiseArea(b, { days = 14, mult = 1 } = {}) {
+  const n = b.close.length, S = sessionsOf(b), A = anchorOf(b, "settle"), off = rawOffsets(b), up = nanArr(n), dn = nanArr(n), sigma = nanArr(n), past = [];
+  for (const s of S) {
+    if (s.rthA < 0) continue;
+    const o = b.open[s.rthA], raw = o - off[s.rthA], len = s.rthZ - s.rthA, d = new Float64Array(len);
+    if (past.length >= days) {
+      const hi = Math.max(o, A[s.rthA]), lo = Math.min(o, A[s.rthA]);
+      for (let m = 0; m < len; m++) {
+        let sum = 0, c = 0;
+        for (const p of past) if (m < p.length) { sum += p[m]; c++; }
+        if (c < days) continue;
+        const x = (sum / c) * mult, i = s.rthA + m;
+        sigma[i] = sum / c; up[i] = hi + raw * x; dn[i] = lo - raw * x;
+      }
+    }
+    for (let m = 0; m < len; m++) d[m] = Math.abs(b.close[s.rthA + m] - o) / raw;
+    past.push(d);
+    if (past.length > days) past.shift();
+  }
+  return { up, dn, sigma };
+}
+
+// Where today's move from settlement ranks among the last `sessions` days at the same minute
+// of RTH, 0 to 100, and the quantile `q` of that distance either way: a fan of what is
+// normal by this time of day. Refreshed every `step` minutes.
+export function moveFan(b, { sessions = 60, q = 0.9, step = 5, least = 20 } = {}) {
+  const n = b.close.length, S = sessionsOf(b), A = anchorOf(b, "settle"), off = rawOffsets(b), rank = nanArr(n), up = nanArr(n), dn = nanArr(n), past = [];
+  for (const s of S) {
+    if (s.rthA < 0 || !(A[s.rthA] === A[s.rthA])) continue;
+    const base = A[s.rthA], raw = base - off[s.rthA], len = s.rthZ - s.rthA, d = new Float64Array(len);
+    for (let m = 0; m < len; m++) d[m] = (100 * (b.close[s.rthA + m] - base)) / raw;
+    let sorted = null, abs = NaN;
+    for (let m = 0; m < len; m++) {
+      if (m % step === 0) {
+        const v = [];
+        for (const p of past) if (m < p.length) v.push(p[m]);
+        sorted = v.length >= least ? v.sort((x, y) => x - y) : null;
+        if (sorted) { const a = sorted.map(Math.abs).sort((x, y) => x - y); abs = a[Math.min(a.length - 1, Math.floor(q * a.length))]; }
+      }
+      if (!sorted) continue;
+      let c = 0;
+      while (c < sorted.length && sorted[c] <= d[m]) c++;
+      const i = s.rthA + m;
+      rank[i] = (100 * c) / sorted.length; up[i] = base + (raw * abs) / 100; dn[i] = base - (raw * abs) / 100;
+    }
+    past.push(d);
+    if (past.length > sessions) past.shift();
+  }
+  return { rank, up, dn };
+}
+
 // ── structure ────────────────────────────────────────────────────────────
 // Pivots: a bar whose high tops the `left` bars before it and is not topped by the
 // `right` bars after it (and the mirror for a low), known `right` bars later.

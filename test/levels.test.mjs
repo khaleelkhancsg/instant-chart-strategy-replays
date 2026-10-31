@@ -4,9 +4,14 @@
 // engine's worst bug: a line that jumps over price must show no edge on a market with
 // nothing in it. Before the fix a 5-minute Supertrend showed +19 on placebo paths and
 // read as the best level in the study.
+//
+// A second of the same kind: flipping whole days changes no day's shape, so it cannot
+// change a day's range in percent. It once did, by 25%, because a path has no drift and
+// sat below the real rally. Real days looked 20% tighter than noise, and were not.
 
 import * as Lab from "../research/lib_levels.mjs";
 import { loadBars } from "../src/data.mjs";
+import { rawOffsets } from "../src/levels.mjs";
 
 let pass = 0, fail = 0;
 const failures = [];
@@ -100,6 +105,16 @@ t("calibrating takes out a level's bias, and needs a real distribution to do it"
   near(c.adj, 6, 1e-9); near(c.z, 2, 1e-9);
   eq(Lab.calibrate(10, { mean: 4, sd: 0, paths: 100 }), null); eq(Lab.calibrate(10, null), null); eq(Lab.calibrate(10, { mean: 4, sd: 3, paths: 3 }), null);
 });
+t("a measurement compares inside strata too, and keeps the bar it was touched on", () => {
+  const ev = new Lab.Events();
+  for (let i = 0; i < 40; i++) ev.push(0, 0, 1, -1, 1, 0, 600, 0, 0, 0, 0, 0, 100 + i);
+  for (let i = 0; i < 40; i++) { ev.push(0, 0, 0, -1, 1, 0, 600, 0, 0, 0, 0, 0, 200); ev.push(0, 0, 0, 1, 1, 0, 600, 0, 0, 0, 0, 0, 300); }
+  eq(ev.bar[3], 103, "the bar:");
+  const y = new Float32Array(ev.n); for (let i = 0; i < ev.n; i++) y[i] = ev.side[i] === -1 ? (ev.real[i] ? 3 : 1) : 50;
+  const ids = Int32Array.from({ length: ev.n }, (_, i) => i), boot = Lab.bootDays(1, 10);
+  near(Lab.matchedMeanOf(ev, ids, y, 1, boot, 0).mean, 2, 1e-9, "only like with like:");
+  near(Lab.matchedMeanOf(ev, ids, y, 1, boot, 10).mean, 2, 1e-9, "with its interval:");
+});
 t("the matched edge compares inside strata, so a mix of sides cannot pass for an edge", () => {
   // Resistance bounces 80% and support 20%, for real levels and twins alike. The real
   // level is all resistance and its twins half each: plainly a +30 edge, matched none.
@@ -121,6 +136,29 @@ t("raw prices: each contract's offset is the rolls still to come", () => {
   eq(Lab.rawOffset(meta, Date.UTC(2026, 6, 1)), 0, "on MNQU6:");
 });
 const sample = Lab.loadSample({ to: Date.UTC(2026, 6, 15) });
+t("flipping whole days keeps every day's range in percent, whatever price the path is at", () => {
+  const range = (b) => {
+    const off = rawOffsets(b), out = [];
+    for (const d of sample.days) {
+      let hi = -Infinity, lo = Infinity;
+      for (let i = d.a; i < d.z; i++) { if (b.high[i] > hi) hi = b.high[i]; if (b.low[i] < lo) lo = b.low[i]; }
+      out.push((100 * (hi - lo)) / (b.close[d.a] - off[d.a]));
+    }
+    return out;
+  };
+  const real = range(sample.b), path = range(Lab.placeboBars(sample.b, 3, 1440));
+  real.forEach((x, i) => near(path[i], x, 0.002, `day ${i}:`));
+});
+t("a placebo path's real price is the market's at that bar, and one sign covers a block", () => {
+  const b = sample.b, p = Lab.placeboBars(b, 5, 30), off = rawOffsets(b), po = rawOffsets(p);
+  for (let i = 0; i < b.close.length; i += 997) near(p.close[i] - po[i], b.close[i] - off[i], 1e-3, "real price:");
+  let same = 0, n = 0;
+  for (let i = 1; i < b.close.length; i += 7) {
+    const c = b.close[i] - b.open[i], d = p.close[i] - p.open[i];
+    if (Math.floor(b.ts[i] / 1800000) === Math.floor(b.ts[i - 1] / 1800000) && c && b.close[i - 1] !== b.open[i - 1]) { n++; if (Math.sign(d / c) === Math.sign((p.close[i - 1] - p.open[i - 1]) / (b.close[i - 1] - b.open[i - 1]))) same++; }
+  }
+  eq(same, n, "bars of a block share a sign:");
+});
 t("a placebo path keeps every bar's size and volume, and is its seed's", () => {
   const a = Lab.placeboBars(sample.b, 1), c = Lab.placeboBars(sample.b, 1), d = Lab.placeboBars(sample.b, 2), b = sample.b;
   for (let i = 0; i < 2000; i += 37) {
