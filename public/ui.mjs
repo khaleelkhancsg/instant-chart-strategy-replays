@@ -136,6 +136,9 @@ export function nthSmallest(a, k) {
 // Results are judged on 2026, and 2026 is split in two so a result has to hold in
 // both halves.
 export const Y2026 = Date.UTC(2026, 0, 1), APR_2026 = Date.UTC(2026, 3, 1);
+// The day after the frozen data ends. Windows that start from it run on bars no book was chosen
+// on, and only the latest data has them, so they are their own period: forward, not 2026's halves.
+export const FORWARD_2026 = Date.UTC(2026, 6, 15);
 
 // An approximate 95% interval for a pass rate (Wilson), in percent. Neighbouring
 // windows share all but a day of their days, so the honest sample is about one
@@ -163,7 +166,8 @@ export function rateOver(windows, lo, hi, windowDays) {
 export const houseRates = (windows, windowDays) => ({
   y2026: rateOver(windows, Y2026, Infinity, windowDays),
   q1: rateOver(windows, Y2026, APR_2026, windowDays),
-  q2: rateOver(windows, APR_2026, Infinity, windowDays),
+  q2: rateOver(windows, APR_2026, FORWARD_2026, windowDays),
+  fwd: rateOver(windows, FORWARD_2026, Infinity, windowDays),
 });
 
 // ── runs and the baseline ────────────────────────────────────────────────
@@ -177,7 +181,7 @@ export function runRecord(sweep, meta) {
   return {
     ...meta, at: Date.now(),
     first: w.length ? w[0].startMs : 0, outcomes: w.map((x) => LETTER[x.outcome] || "O").join(""),
-    y2026: brief(h.y2026), q1: brief(h.q1), q2: brief(h.q2),
+    y2026: brief(h.y2026), q1: brief(h.q1), q2: brief(h.q2), fwd: brief(h.fwd),
     all: sweep.summary.passRate, allFail: sweep.summary.failRate, medianDays: sweep.summary.medianDaysToPass,
     trades: sweep.stats.n, net: Math.round(sweep.stats.pnl),
     pf: Number.isFinite(sweep.stats.profitFactor) ? sweep.stats.profitFactor : null,
@@ -205,11 +209,12 @@ export function pairRuns(base, now, lo = -Infinity, hi = Infinity) {
   return { n, gained, lost, rateBase, rateNow, change: rateNow - rateBase };
 }
 
-export const COMPARE_PERIODS = [["2026", Y2026, Infinity], ["Jan–Mar", Y2026, APR_2026], ["Apr–Jul", APR_2026, Infinity], ["All history", -Infinity, Infinity]];
+export const COMPARE_PERIODS = [["2026", Y2026, Infinity], ["Jan–Mar", Y2026, APR_2026], ["Apr–Jul", APR_2026, FORWARD_2026], ["Since Jul 15", FORWARD_2026, Infinity], ["All history", -Infinity, Infinity]];
 
 export function compareRuns(base, now) {
   return {
-    rows: COMPARE_PERIODS.map(([label, lo, hi]) => ({ label, pair: pairRuns(base, now, lo, hi) })),
+    // The forward period shows only where both runs reach it: the published bars have none.
+    rows: COMPARE_PERIODS.map(([label, lo, hi]) => ({ label, pair: pairRuns(base, now, lo, hi) })).filter((r) => r.pair || r.label !== "Since Jul 15"),
     sameEval: base.eval === now.eval, sameWindow: base.windowDays === now.windowDays,
   };
 }

@@ -19,7 +19,7 @@ import { STUDIES, STUDY_TFS, resolveStudy, studyLabel, isGating, gateLabel, comp
 import { describeEntry, describeExit, eventText, explainLines, num as fmtNum, px as fmtPx } from "/src/explain.mjs";
 import { newsBetween, NEWS_KINDS } from "/src/news.mjs";
 import { newsMarks, newsSpans, newsClock } from "/ui.mjs";
-import { Y2026, wilson, houseRates, runRecord, compareRuns, flips, linkSettings, linkDiff, logPosition, logValue, LOG_TRACK, sessionView, stepDays, pickerRows } from "/ui.mjs";
+import { FORWARD_2026, Y2026, wilson, houseRates, runRecord, compareRuns, flips, linkSettings, linkDiff, logPosition, logValue, LOG_TRACK, sessionView, stepDays, pickerRows } from "/ui.mjs";
 import { loadIndicator, defaultProps, plotters, audit, formingProblems, Problems } from "/tradovate/mock/runtime.mjs";
 
 // The 1-minute x-position a resampled bar should be drawn at: the middle of the
@@ -1355,6 +1355,7 @@ const URL_NAME = { p: "params", x: "exec", r: "rules", f: "filter", u: "funded" 
 function settingName(key, strategyId = S.strategyDesc.id) {
   if (key === "s") return "Strategy";
   if (key === "e") return "Evaluation";
+  if (key === "data") return "Data";
   if (key === "st") return "Indicators";
   if (key === "tv") return "Tradovate indicators";
   const k = key.slice(key.indexOf(".") + 1), desc = S.strategyList.find((s) => s.id === strategyId);
@@ -1466,7 +1467,7 @@ function paintHouse() {
     line.innerHTML = `<span class="k">${S.sweeping ? `sweeping all ${S.rules.windowDays}-day windows…` : "Every start date, coloured by outcome. Click to jump."}</span>`;
     return;
   }
-  const { y2026: h, q1, q2 } = houseRates(sw.windows, S.rules.windowDays), s = sw.summary;
+  const { y2026: h, q1, q2, fwd } = houseRates(sw.windows, S.rules.windowDays), s = sw.summary;
   const n1 = (r) => (r ? r.rate.toFixed(1) : "—");
   const other = S.baseline && S.run && S.baseline.key !== S.run.key;     // not comparing a run with itself
   const pair = other ? compareRuns(S.baseline, S.run).rows[0].pair : null;
@@ -1474,13 +1475,13 @@ function paintHouse() {
   S.nav.setFlips(other ? flips(S.baseline, S.run) : null);
   chip.innerHTML = h
     ? `<div class="tstat-k">2026 pass · ${EVALS[sw.eval || S.eval].label.replace(" eval", "")}</div>` +
-      `<div class="tstat-v"><b>${h.rate.toFixed(1)}%</b> <span class="ci">${ciText(h.ci)}</span> <span class="hc-q">${n1(q1)} · ${n1(q2)}</span>` +
+      `<div class="tstat-v"><b>${h.rate.toFixed(1)}%</b> <span class="ci">${ciText(h.ci)}</span> <span class="hc-q">${n1(q1)} · ${n1(q2)}${fwd ? ` · <span title="Windows from Jul 15: bars no book was chosen on">${n1(fwd)} fwd</span>` : ""}</span>` +
       (pair ? ` <span class="hc-d ${tone}" title="Against the pinned baseline">${signed(pair.change)}</span>` : "") + `</div>`
     : `<div class="tstat-k">Pass, all history</div><div class="tstat-v"><b>${s.passRate.toFixed(1)}%</b></div>`;
-  chip.title = h ? `Calendar windows that start in 2026: ${h.n}, about ${(h.n / S.rules.windowDays).toFixed(1)} independent periods, so the 95% interval is wide. Then Jan–Mar · Apr–Jul: a result has to hold in both.` : "";
+  chip.title = h ? `Calendar windows that start in 2026: ${h.n}, about ${(h.n / S.rules.windowDays).toFixed(1)} independent periods, so the 95% interval is wide. Then Jan–Mar · Apr–Jul: a result has to hold in both.${fwd ? ` Then the windows from Jul 15, on bars no book was chosen on: ${fwd.n} of them, about ${(fwd.n / S.rules.windowDays).toFixed(1)} independent.` : ""}` : "";
   line.innerHTML =
     `<span class="k">${EVALS[sw.eval || S.eval].label}</span> · ` +
-    (h ? `<span class="pass">2026 ${h.rate.toFixed(1)}% pass</span> <span class="k">(${ciText(h.ci)})</span> · Jan–Mar ${n1(q1)} · Apr–Jul ${n1(q2)} · <span class="fail">${h.failRate.toFixed(1)}% breached</span> · ` : "") +
+    (h ? `<span class="pass">2026 ${h.rate.toFixed(1)}% pass</span> <span class="k">(${ciText(h.ci)})</span> · Jan–Mar ${n1(q1)} · Apr–Jul ${n1(q2)}${fwd ? ` · <b>since Jul 15 ${n1(fwd)}</b> <span class="k">(${ciText(fwd.ci)})</span>` : ""} · <span class="fail">${h.failRate.toFixed(1)}% breached</span> · ` : "") +
     (pair ? `<span class="${tone}">${signed(pair.change)} on the baseline, +${pair.gained} −${pair.lost} windows</span> · ` : "") +
     `<span class="k">all history ${s.passRate.toFixed(1)}%${s.medianDaysToPass ? `, median ${s.medianDaysToPass}d to pass` : ""}</span>`;
 }
@@ -1534,7 +1535,7 @@ function paintSweepStats() {
 
   // The house check: 2026 leads, in its two halves, and all history follows.
   const W = S.rules.windowDays;
-  const { y2026: h26, q1, q2 } = houseRates(windows, W);
+  const { y2026: h26, q1, q2, fwd } = houseRates(windows, W);
   const lead = h26 || { n: s.n, rate: s.passRate, failRate: s.failRate, openRate: s.openRate, ci: wilson(s.passRate / 100, s.n / W) };
   const noCost = !(S.exec.slippageTicks > 0);
   const gates = S.studies.filter(isGating).length;
@@ -1563,6 +1564,7 @@ function paintSweepStats() {
     <div class="statgrid" style="margin-top:9px">
       ${statCell("Jan–Mar", q1 ? `${q1.rate.toFixed(1)}% <span class="ci">${ciText(q1.ci)}</span>` : "—")}
       ${statCell("Apr–Jul", q2 ? `${q2.rate.toFixed(1)}% <span class="ci">${ciText(q2.ci)}</span>` : "—")}
+      ${fwd ? statCell("Since Jul 15 (forward)", `${fwd.rate.toFixed(1)}% <span class="ci">${ciText(fwd.ci)}</span>`) : ""}
     </div>
     <div class="yr-note">${h26.n} windows, but only ≈${(h26.n / W).toFixed(1)} independent ${W}-day periods, hence the wide intervals${
       noCost ? `. <span class="warn">No slippage set: live fills pay about a tick a side.</span>` : ""}</div>` : ""}
@@ -1854,7 +1856,7 @@ async function loadWindow(startMs, { keepTail = false } = {}) {
   const warmupMin = Math.max(span.warmupMin, tvWarmupMin()), tailMin = span.tailMin;
   S.loadedWarmupMin = warmupMin;
 
-  const url = `/api/window?start=${startMs}&days=${S.rules.windowDays}&warmupMin=${warmupMin}&tailMin=${tailMin}`;
+  const url = `/api/window?start=${startMs}&days=${S.rules.windowDays}&warmupMin=${warmupMin}&tailMin=${tailMin}&data=${S.data}`;
   // Opening a link asks twice, for the strategy and then its settings, and a book
   // that holds overnight is 70 MB of bars.
   if (url !== S.blobUrl) {
@@ -1895,7 +1897,7 @@ function stepWindow(days) {
 // Colour and visibility are only how a study is drawn.
 const studyConfig = () => S.studies.map(({ id, type, tf, params, gate }) => ({ id, type, tf, params, gate }));
 function sweepKey() {
-  return JSON.stringify([S.strategyDesc.id, S.eval, S.params, S.exec, S.rules, S.funded, S.filter, studyConfig()]);
+  return JSON.stringify([S.data, S.strategyDesc.id, S.eval, S.params, S.exec, S.rules, S.funded, S.filter, studyConfig()]);
 }
 
 function scheduleSweep() {
@@ -1927,7 +1929,7 @@ async function runSweep() {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        strategyId: S.strategyDesc.id, eval: S.eval,
+        strategyId: S.strategyDesc.id, eval: S.eval, data: S.data,
         params: S.params, exec: S.exec, rules: S.rules, funded: S.funded, filter: S.filter,
         studies: studyConfig(),
         stepDays: 1,
@@ -1996,6 +1998,7 @@ function chartSnapshot(appliedId, applyError) {
     appliedId, applyError,
     strategy: S.strategyDesc && S.strategyDesc.id, strategyName: S.strategyDesc && S.strategyDesc.name,
     eval: S.eval,
+    data: S.data, dataEnds: isoMin(S.meta.endMs),
     params: S.params, exec: S.exec, rules: S.rules, filter: S.filter, funded: S.funded,
     studies: S.studies.map((st) => ({ id: st.id, type: st.type, tf: st.tf, params: st.params, gate: st.gate, label: studyLabel(st),
                                       ...(isGating(st) ? { gateText: gateLabel(st.type, st.gate, st.params) } : {}), ...(st.hidden ? { hidden: true } : {}) })),
@@ -2029,6 +2032,7 @@ async function applySettings(m) {
   const startMs = m.date ? Date.parse(m.date + "T00:00:00Z") : S.windowStart;
   if (!Number.isFinite(startMs)) throw new Error(`"${m.date}" is not a date (use YYYY-MM-DD)`);
   if (m.eval != null && !EVALS[String(m.eval)]) throw new Error(`unknown eval "${m.eval}"; one of ${EVAL_IDS.join(", ")}`);
+  if (m.data != null && !DATA_LABEL[m.data]) throw new Error(`no bars called "${m.data}": latest or main`);
   // checked before anything changes, so a bad study leaves the page as it was
   const studies = m.studies == null ? null : adoptStudies(m.studies.map((st) => resolveStudy(st, { strict: !m.fromUrl })));
   const tv = m.tradovate == null ? null : await Promise.all(m.tradovate.map(tvMake));
@@ -2037,6 +2041,7 @@ async function applySettings(m) {
     const bad = Object.keys(obj || {}).filter((k) => !valid.has(k));
     if (bad.length) throw new Error(`unknown ${what} key${bad.length > 1 ? "s" : ""}: ${bad.join(", ")}`);
   };
+  if (m.data != null && m.data !== S.data) await switchData(m.data, { load: false });
   if (m.strategy && m.strategy !== S.strategyDesc.id) await selectStrategy(m.strategy);
   if (m.eval != null) setEval(String(m.eval));
   if (m.reset) Object.assign(S, baseConfig());
@@ -2172,6 +2177,7 @@ function urlHash() {
   const q = new URLSearchParams(), base = baseConfig();
   q.set("s", S.strategyDesc.id);
   q.set("d", $("startDate").value);
+  q.set("data", S.data);
   if (S.eval !== DEFAULT_EVAL) q.set("e", S.eval);
   if (S.studies.length) q.set("st", studiesToUrl(S.studies));
   if (S.tv.length) q.set("tv", tvToUrl(tvConfig()));
@@ -2209,7 +2215,7 @@ function readHash() {
   const q = new URLSearchParams(location.hash.slice(1));
   if (!q.get("s")) return null;
   // A link names its eval and indicators whenever they are not the defaults.
-  const m = { strategy: q.get("s"), date: q.get("d") || null, reset: true, fromUrl: true,
+  const m = { strategy: q.get("s"), date: q.get("d") || null, data: q.get("data") || null, reset: true, fromUrl: true,
               eval: q.get("e") || DEFAULT_EVAL, studies: studiesFromUrl(q.get("st")),
               tradovate: tvFromUrl(q.get("tv")), tvFocus: q.get("tvf") !== "0" };
   for (const name of Object.values(URL_GROUPS)) m[name] = {};
@@ -2392,15 +2398,45 @@ async function selectStrategy(id) {
   await loadWindow(S.windowStart);
 }
 
+// Which bars the page shows: the latest (every bar the store holds) or the frozen file every
+// published figure was measured on. A link names them; otherwise the last choice, and the latest
+// on a first visit.
+const fetchMeta = (name) => fetch(`/api/meta?data=${encodeURIComponent(name)}`).then((r) => r.json());
+const DATA_LABEL = { latest: "Latest bars", main: "Published (to Jul 14)" };
+function paintDataset() {
+  const day = (ms) => new Date(ms).toISOString().slice(0, 10), list = S.meta.datasets || [], sel = $("dataSet");
+  $("datasetInfo").textContent = `${S.meta.bars.toLocaleString()} 1-min bars · ${day(S.meta.startMs)} → ${day(S.meta.endMs)}`;
+  sel.innerHTML = list.map((d) => `<option value="${d.name}">${DATA_LABEL[d.name] || d.name}</option>`).join("");
+  sel.value = S.data;
+  sel.classList.toggle("hidden", list.length < 2);
+}
+async function switchData(name, { load = true } = {}) {
+  if (!DATA_LABEL[name]) throw new Error(`no bars called "${name}": latest or main`);
+  if (name === S.data) return;
+  const meta = await fetchMeta(name);
+  S.meta = meta;
+  S.data = meta.data;
+  try { localStorage.setItem("mnq.data", S.data); } catch { /* private mode */ }
+  paintDataset();
+  // A sweep and a window from the other bars describe nothing on screen.
+  S.sweep = null; S.run = null; S.sweepStale = false; S.lastSweepKey = ""; S.blobUrl = "";
+  const hi = S.meta.endMs - S.rules.windowDays * DAY;
+  S.windowStart = Math.max(S.meta.startMs, Math.min(hi, S.windowStart));
+  if (load) { await loadWindow(S.windowStart); queueHash(); }
+  toast(S.data === "latest" ? `Latest bars, to ${new Date(S.meta.endMs).toISOString().slice(0, 10)}: windows from Jul 15 on are the forward period` : "Published bars, frozen at Jul 14 2026: the figures in the README");
+}
+
 async function boot() {
-  S.meta = await fetch("/api/meta").then((r) => r.json());
+  try { S.data = localStorage.getItem("mnq.data") === "main" ? "main" : "latest"; } catch { S.data = "latest"; }
+  S.meta = await fetchMeta(S.data);
+  S.data = S.meta.data;
   S.exec = { ...S.meta.defaults.exec };
   S.rules = { ...S.meta.defaults.rules };
   S.funded = { ...S.meta.defaults.funded };
   S.filter = { ...NO_FILTER };
 
-  $("datasetInfo").textContent =
-    `${S.meta.bars.toLocaleString()} 1-min bars · ${new Date(S.meta.startMs).toISOString().slice(0, 10)} → ${new Date(S.meta.endMs).toISOString().slice(0, 10)}`;
+  paintDataset();
+  $("dataSet").onchange = (e) => switchData(e.target.value).catch((err) => toast(err.message, true));
 
   S.strategyList = await fetch("/api/strategies").then((r) => r.json());
   if (!S.strategyList.length) { toast("No strategies found in strategies/", true); return; }

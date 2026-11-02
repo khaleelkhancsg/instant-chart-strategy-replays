@@ -15,7 +15,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { loadBars, packBars } from "./src/data.mjs";
+import { loadBars, packBars, DEFAULT_BIN } from "./src/data.mjs";
 import { loadStrategies, describe } from "./src/registry.mjs";
 import { runStrategy } from "./src/run.mjs";
 import { resolveExec, DEFAULT_EXEC } from "./src/engine.mjs";
@@ -30,32 +30,49 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 5178;
 
 // ─────────────────────────────── boot ───────────────────────────────
-console.log("Loading binary cache ...");
-const t0 = Date.now();
-const { bars, meta } = loadBars();
-console.log(`  ${bars.count.toLocaleString()} bars in ${Date.now() - t0}ms  (${meta.start ?? "?"} -> ${meta.end ?? "?"})`);
-
-let strategies = await loadStrategies();
-console.log(`  ${strategies.size} strategies: ${[...strategies.keys()].join(", ") || "(none)"}`);
+// Two sets of bars, picked per request. "main" is data/mnq_1m.bin, frozen at Jul 14 2026: every
+// published figure was measured on it, and the MCP tools read it. "latest" is data/mnq_1m_beta.bin,
+// the store's build with every bar since (store.config.json's "beta"), read again whenever a
+// rebuild has replaced it, so the Data panel's Rebuild shows on the chart's next request.
+const DATA_FILES = { main: DEFAULT_BIN, latest: path.join(HERE, "data", "mnq_1m_beta.bin") };
+const loaded = new Map();
+function dataset(name) {
+  const which = name === "latest" && fs.existsSync(DATA_FILES.latest) ? "latest" : "main";
+  const mtime = fs.statSync(DATA_FILES[which]).mtimeMs, have = loaded.get(which);
+  if (have && have.mtime === mtime) return have;
+  const t = Date.now(), { bars, meta } = loadBars(DATA_FILES[which]);
+  if (have) for (const k of [...runCache.keys()]) if (k.startsWith(`${which}|`)) runCache.delete(k);
+  loaded.set(which, { name: which, bars, meta, mtime });
+  console.log(`  ${which}: ${bars.count.toLocaleString()} bars in ${Date.now() - t}ms  (${meta.start ?? "?"} -> ${meta.end ?? "?"})`);
+  return loaded.get(which);
+}
+const datasetList = () => ["latest", "main"].filter((n) => fs.existsSync(DATA_FILES[n])).map((n) => { const d = dataset(n); return { name: n, endMs: d.bars.ts[d.bars.count - 1] }; });
 
 // Full-history runs are the only slow thing here, so keep the last few.
 const runCache = new Map();
 const RUN_CACHE_MAX = 8;
 
-// Only the studies that gate change the trades, so only they key the cache.
-function cacheKey(strategyId, params, exec, filter, studies) {
-  return JSON.stringify([strategyId, params, exec, filter, gateKey(studies)]);
+console.log("Loading binary cache ...");
+dataset("main");
+dataset("latest");
+
+let strategies = await loadStrategies();
+console.log(`  ${strategies.size} strategies: ${[...strategies.keys()].join(", ") || "(none)"}`);
+
+// Only the studies that gate change the trades, so only they key the cache, after the bars.
+function cacheKey(d, strategyId, params, exec, filter, studies) {
+  return `${d.name}|${JSON.stringify([strategyId, params, exec, filter, gateKey(studies)])}`;
 }
 
-function fullRun(strategyId, params, exec, filter, studies) {
-  const key = cacheKey(strategyId, params, exec, filter, studies);
+function fullRun(d, strategyId, params, exec, filter, studies) {
+  const key = cacheKey(d, strategyId, params, exec, filter, studies);
   const hit = runCache.get(key);
   if (hit) return hit;
 
   const s = strategies.get(strategyId);
   if (!s) throw new Error(`Unknown strategy: ${strategyId}`);
   const t = Date.now();
-  const res = runStrategy(bars, s, params, exec, { filter, studies });
+  const res = runStrategy(d.bars, s, params, exec, { filter, studies });
   res.ms = Date.now() - t;
 
   runCache.set(key, res);
@@ -199,11 +216,14 @@ const server = http.createServer(async (req, res) => {
   try {
     // ── metadata ──
     if (p === "/api/meta") {
+      const d = dataset(url.searchParams.get("data"));
       return sendJson(res, 200, {
-        bars: bars.count,
-        startMs: bars.ts[0],
-        endMs: bars.ts[bars.count - 1],
-        meta,
+        data: d.name,
+        datasets: datasetList(),
+        bars: d.bars.count,
+        startMs: d.bars.ts[0],
+        endMs: d.bars.ts[d.bars.count - 1],
+        meta: d.meta,
         defaults: { exec: DEFAULT_EXEC, rules: DEFAULT_RULES, funded: DEFAULT_FUNDED },
       });
     }
@@ -244,6 +264,7 @@ const server = http.createServer(async (req, res) => {
       const tailMin = Number(url.searchParams.get("tailMin") || 0);
       if (!Number.isFinite(start)) return sendJson(res, 400, { error: "start (epoch ms) required" });
 
+      const { bars } = dataset(url.searchParams.get("data"));
       const s = indexAtOrAfter(bars.ts, start - warmupMin * 60000);
       const e = indexAtOrAfter(bars.ts, start + days * 86400000 + tailMin * 60000);
       return sendBin(res, packBars(bars, s, Math.min(e + 1, bars.count)));
@@ -268,7 +289,8 @@ const server = http.createServer(async (req, res) => {
       const rules = resolveRules({ ...base.rules, ...(body.rules || {}) });
       const filter = { ...base.filter, ...(body.filter || {}) };
 
-      const run = fullRun(body.strategyId, params, exec, filter, studies);
+      const d = dataset(body.data), bars = d.bars;
+      const run = fullRun(d, body.strategyId, params, exec, filter, studies);
       const tSweep = Date.now();
       const sweep = sweepWindows(
         run.trades, bars.ts[0], bars.ts[bars.count - 1], rules,
@@ -307,6 +329,7 @@ const server = http.createServer(async (req, res) => {
       const edge = studies.map((st) => ({ id: st.id ?? null, ...studyEdge(run.trades, studyOnSignal(bars, run.tf, st)) }));
       return sendJson(res, 200, {
         eval: evalOf(body.eval).id,
+        data: d.name,
         stats: run.stats,
         backtestMs: run.ms,
         sweepMs,

@@ -489,6 +489,7 @@ export const TOOLS = [
                        chartOnly: { type: "boolean", description: "With Tradovate indicators on it, show only them, zoomed to the window's first day (the default), or false to show them with the strategy's trades." },
                        funded: { type: "object", description: "Funded-stage settings." },
                        date: { type: "string", description: "Move to the window starting this trading day (YYYY-MM-DD)." },
+                       data: { type: "string", enum: ["latest", "main"], description: "Which bars the chart shows: 'latest' (everything the store holds, to the newest pull; windows from Jul 15 2026 are the forward period) or 'main' (the file frozen at Jul 14 2026 that every published figure, and these tools, use)." },
                        reset: { type: "boolean", description: "Start from the strategy's own defaults (under the eval) rather than the current settings." },
                        sweep: { type: "boolean", description: "Also run the full-history sweep and wait for it." } }),
     async run(a) {

@@ -93,6 +93,13 @@ t("2026 and its halves split at the first of April, and exclude 2025", () => {
   eq(h.y2026.openRate, 25);
 });
 t("no windows in a period is no figure, not a zero", () => eq(rateOver(windows, Date.UTC(2020, 0, 1), Date.UTC(2021, 0, 1), 30), null));
+t("windows from Jul 15 are the forward period, not Apr-Jul's", () => {
+  const more = [...windows, { startMs: day("2026-07-14"), outcome: "FAIL" }, { startMs: day("2026-07-15"), outcome: "PASS" }, { startMs: day("2026-09-30"), outcome: "FAIL" }];
+  const h = houseRates(more, 30);
+  eq([h.q2.n, h.fwd.n, h.fwd.rate], [3, 2, 50], "the last day of the lab's data is still Apr-Jul's:");
+  eq(h.y2026.n, 7, "2026 is all of them:");
+  eq(houseRates(windows, 30).fwd, null, "the published bars have none:");
+});
 t("the interval counts one sample per window length, and stays inside 0-100", () => {
   const [lo, hi] = wilson(0.745, 5.5);
   if (!(lo > 30 && lo < 40 && hi > 90 && hi < 97)) throw new Error(`${lo}-${hi}`);
@@ -140,6 +147,14 @@ t("the comparison has 2026 first, and says when the rules are not the same", () 
   eq(c.rows.map((r) => r.label), ["2026", "Jan–Mar", "Apr–Jul", "All history"]);
   eq([c.sameEval, c.sameWindow], [false, false]);
   eq(compareRuns(runOf("P"), runOf("P")).sameEval, true);
+});
+t("a comparison shows the forward period only where both runs reach it", () => {
+  // one window a day from Jan 1: day 195 is Jul 15
+  const base = runOf("P".repeat(195) + "F".repeat(10)), now = runOf("P".repeat(195) + "PPPPPFFFFF");
+  const rows = compareRuns(base, now).rows, row = (label) => rows.find((r) => r.label === label);
+  eq(rows.map((r) => r.label), ["2026", "Jan–Mar", "Apr–Jul", "Since Jul 15", "All history"]);
+  eq([row("Since Jul 15").pair.n, row("Since Jul 15").pair.change, row("Apr–Jul").pair.change], [10, 50, 0], "the five gained are all after Jul 14:");
+  eq(compareRuns(runOf("P".repeat(195)), runOf("P".repeat(195))).rows.some((r) => r.label === "Since Jul 15"), false, "published bars: no row:");
 });
 t("the strip's marks are the dates that differ, in order, by which way", () => {
   eq(flips(runOf("PFPO"), runOf("PPFP")).map((f) => [(f.ms - first) / DAY, f.gained]), [[1, true], [2, false], [3, true]]);

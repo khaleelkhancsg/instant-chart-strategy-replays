@@ -118,8 +118,8 @@ rule logic into a script: that is a second engine, and it drifts.
 ## Tests
 
 - `npm run check`: test.mjs (467), audit, legacy parity (15), MCP end to end (19),
-  chart link (12), the indicator mock (90, `npm run test:mock`), the page's arithmetic
-  (39, `npm run test:ui`), the level study's engine (22, `npm run test:levels`), the raw
+  chart link (13), the indicator mock (90, `npm run test:mock`), the page's arithmetic
+  (41, `npm run test:ui`), the level study's engine (22, `npm run test:levels`), the raw
   store (36, `npm run test:store`), the Data panel's routes (21, `npm run test:data`), the
   TopstepX pull (44, `npm run test:pull`), red-folder news (17, `npm run test:news`), the $1,250
   Tradovate indicators (41, `npm run verify:tradovate`, about 2 minutes).
@@ -154,6 +154,13 @@ rule logic into a script: that is a second engine, and it drifts.
   (`runRecord`), in localStorage only. A pinned baseline is paired with the current
   run date by date, as the `compare` tool does: the two have been checked equal on
   every period. `chart_state` carries it as `baseline`.
+- **Which bars:** the Data selector under the title picks `latest` (`data/mnq_1m_beta.bin`, the
+  default) or `main` (frozen at Jul 14, the published figures). The server holds both and reads
+  latest again when a rebuild replaces it; every request names one (`?data=` on /api/meta and
+  /api/window, `data` in the sweep's body, `main` when absent), and the link carries it. On
+  latest, `houseRates` gives windows from Jul 15 their own period (`fwd`, "since Jul 15"), and
+  Apr–Jul also counts windows starting Jun 15 – Jul 14 that run into the forward bars, so it reads
+  lower than the published 73.3. `chart_state` reports `data`; `chart_apply` takes it.
 - **Time:** the axis and crosshair read Chicago time, worked out from each bar's
   `ctMin`. `chart_state` and the CSVs stay in UTC.
 - **Frames** are under 7 ms on every strategy at the full window. Keep it so: a frame
@@ -170,8 +177,8 @@ rule logic into a script: that is a second engine, and it drifts.
     measured on it, and `data:build` refuses a difference without `--force`. Never move its
     date without re-measuring and saying what moved.
   - `data/mnq_1m_beta.bin` adds Databento Jul 15 - Sep 11 (`data/raw/databento/`, added Nov 2)
-    and TopstepX after, to Oct 30 with no gap. Nothing reads it yet but the forward scripts: the
-    chart and tools have no switch, and sweeps do not skip windows across a gap.
+    and TopstepX after, to Oct 30 with no gap. The chart reads it through its Data selector; the
+    MCP tools do not, and sweeps do not skip windows across a gap (there is none now).
   - **TopstepX keeps 1- and 5-minute bars for only 60 days.** `npm run data:pull` saves them, and
     `data:status` gives the date to pull by.
   - **The ⚙ Data panel** (`public/datapanel.js`, `src/datajobs.mjs`) runs that same `store.mjs` as

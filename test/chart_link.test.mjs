@@ -143,6 +143,21 @@ await t("the data panel reads the store, and refuses anything that is not its ow
   eq(j.id, undefined, "nothing ran:");
 });
 
+await t("the chart can show the latest bars or the published ones, and says which", async () => {
+  const main = await fetch(`${BASE}/api/meta?data=main`).then((r) => r.json()), latest = await fetch(`${BASE}/api/meta?data=latest`).then((r) => r.json());
+  eq(main.data, "main"); eq(new Date(main.endMs).toISOString().slice(0, 10), "2026-07-14", "the published bars stay frozen:");
+  eq((await fetch(`${BASE}/api/meta`).then((r) => r.json())).data, "main", "no choice is the published bars:");
+  eq((await fetch(`${BASE}/api/meta?data=elsewhere`).then((r) => r.json())).data, "main", "nor is a name it does not know:");
+  if (latest.data === "latest") {
+    eq(latest.endMs > main.endMs, true, "the latest run past Jul 14:");
+    eq(latest.datasets.map((d) => d.name).join(), "latest,main");
+    const at = Date.UTC(2026, 7, 3), win = (data) => fetch(`${BASE}/api/window?start=${at}&days=5&warmupMin=60&data=${data}`).then((r) => r.arrayBuffer());
+    const n = (buf) => new DataView(buf).getUint32(8, true);
+    eq(n(await win("latest")) > 5 * 1000, true, "a window in August has bars on the latest:");
+    eq(n(await win("main")) <= 1, true, "and none on the published:");
+  } else console.log("         (no latest bars here: data/mnq_1m_beta.bin is not built)");
+});
+
 // One such request used to stop the whole server, for anyone who could reach it on the network.
 await t("a malformed request gets an answer, and the server keeps running", async () => {
   const raw = (text) => new Promise((resolve) => {

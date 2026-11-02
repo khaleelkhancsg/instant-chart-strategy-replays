@@ -658,8 +658,15 @@ shows the output as they run.
     figure was measured on it, and the default periods run to the end of the data, so new
     bars would move them all and absorb the forward sample. Each build compares it byte for
     byte and refuses a difference without `--force`. Moving the freeze is one date in the config.
-  - `beta`, `data/mnq_1m_beta.bin`, adds TopstepX. Where sources share a minute, Databento
-    wins. Its meta lists any gap: it holds a hole from Jul 15 to Aug 27 until those bars arrive.
+  - `beta`, `data/mnq_1m_beta.bin`, adds every bar since: Databento to Sep 11 2026, TopstepX
+    after. Where sources share a minute, Databento wins. Its meta lists any gap; since the
+    Jul 15 - Aug 27 file arrived it has none.
+- **The chart shows either.** The selector under its title picks **Latest bars** (the beta file,
+  the default) or **Published (to Jul 14)**, and the link carries the choice. On the latest
+  bars, windows that start from Jul 15 are reported as their own period, **since Jul 15**: bars
+  no book was chosen on. Apr–Jul there also counts the windows that start Jun 15 – Jul 14 and run
+  into those bars, so it reads lower than the published figure. A Rebuild in the Data panel
+  shows on the chart's next request. The MCP tools read the published bars.
 - **TopstepX keeps 1- and 5-minute bars for 60 days,** so `data:status` shows the date to pull
   by, and how many bars have rolled off and cannot be pulled again. This computer holds the only
   copies of those, in the store and the raw CSVs, so back them up. The default folder is in
