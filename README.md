@@ -436,12 +436,27 @@ What it shows:
   - Forward, none made money worth the name. `trend_pullback`'s 72% in early
     2026 was the same opening-pullback pattern as the MACD fade, and it lost
     with it.
-- **Only the Donchian held forward.**
-  - Over the 32 forward days it passed every window and netted 2.6× its
+- **The Donchian held the first forward stretch, and not the longer one.**
+  - Over the 32 days from Sep 10 it passed every window and netted 2.6× its
     coin-flip twin.
-  - For the $1,250 eval it remains the book to trade, as it ships.
-  - The forward sample is small: a dozen overlapping windows. Re-run
-    `node research/forward_1250.mjs` as TopstepX bars accrue.
+  - Since the Jul 15 – Aug 27 Databento bars arrived, everything after the lab's data can
+    be scored: Jul 15 – Oct 30, 77 trading days, Databento to Sep 11 and TopstepX after.
+    Over that it made money but passed no more windows than its coin-flip twin (below). Jul 15
+    – Sep 9 netted −$15 over 43 trades, with August −$1,163; Sep 10 on was its best stretch.
+  - Nothing here beats it on the $1,250 eval, but its edge over a coin flip is not established on
+    the bars after Jul 14. Its 44% forward sits at the bottom of 2026's interval (35–94).
+
+Everything after the lab's data, Jul 15 – Oct 30 (`FORWARD_FROM=2026-07-15 node
+--max-old-space-size=8192 research/forward_1250.mjs data/mnq_1m_beta.bin`). 77 windows that
+overlap almost entirely are about 2.6 independent ones, so each pass rate is ±40 points or so.
+
+| book | trades, net, PF | windows passed (calendar) | its coin-flip twin | twins netting as much |
+|---|---|---|---|---|
+| **`donchian_1250`** | 70, **+$2,584**, 1.24 | 44.2% | 44.9% | 8 of 20 |
+| `macd_fade_1250` | 113, −$1,377, 0.94 | 41.6% | 30.3% | 4 of 20 |
+| `trend_pullback` | 99, −$2,376, 0.88 | 31.2% | 29.8% | 15 of 20 |
+| `orb_trend` | 49, −$1,588, 0.87 | 32.5% | 35.7% | 17 of 20 |
+| `macd_momentum` | 55, +$1,178, 1.08 | 62.3% | 34.2% | 7 of 20 |
 - **The pieces are in the chart.** "ADR used" and "ATR vs its session average" are
   indicator studies now, and each new book's parameters span its whole search. A
   variation can be looked at, gated and swept from the sidebar or the MCP tools.
@@ -901,8 +916,10 @@ on random markets.
   215 gates improves it. The closest gate, no entries near settlement, is a cliff, not an effect
   (`pct_nearmiss.mjs`).
 - **The noise area** (`strategies/noise_area.mjs`) fails as an eval book, 30.9% on the $1,250 eval
-  (calendar, ci 8-69), but made +$5,114 at 2 lots forward, which 2 of 200 coin flips reach
-  (`pct_noise.mjs`). It is the one result to re-read on new bars.
+  (calendar, ci 8-69). It made +$5,114 at 2 lots on Sep 11 – Oct 30, which 2 of 200 coin flips
+  reach (`pct_noise.mjs`), but on the bars nothing had seen, Jul 15 – Sep 10, it made +$847, PF
+  1.15, which 61 of 200 reach. Of its +$5,827 over Jul 15 – Oct 30, $4,246 came in October. Not
+  an edge.
 
 `strategies/pct_levels.mjs` trades any of these levels, so an idea can be tried on the chart.
 

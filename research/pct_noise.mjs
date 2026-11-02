@@ -6,8 +6,12 @@
 // with a forward signal. 2026: +$1,467, PF 1.07, -$4,614 without its 3 best days, months from
 // -$4,063 to +$4,387, and 63 of 200 coin flips reach it. Forward, Sep 11 - Oct 30: +$5,114, PF
 // 3.09, and 2 of 200 coin flips reach it. Its losing runs reached $4,455 in 2026 against
-// a $1,000 eval drawdown, which is why it passes 30.9% ($1,250, calendar, ci 8-69). Worth
-// re-reading on the Jul 15 - Aug 27 bars, which nothing has seen.
+// a $1,000 eval drawdown, which is why it passes 30.9% ($1,250, calendar, ci 8-69).
+//
+// RE-READ (2026-11-02) on the beta file, once the Jul 15 - Aug 27 Databento bars arrived: on the
+// bars nothing had seen, Jul 15 - Sep 10, 44 trades, +$847, PF 1.15, and 61 of 200 coin flips
+// reach it. Jul 15 - Oct 30: +$5,827, PF 1.68, 11 of 200 reach it, but $4,246 of it is October
+// (Jul +$618, Aug +$466, Sep +$496). One good month, not an edge.
 //
 // A book that passes 30% of windows and then makes money on all 36 settings forward needs
 // taking apart before it means anything. The 36 settings are the same few trades, so they

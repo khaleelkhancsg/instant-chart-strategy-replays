@@ -13,6 +13,18 @@
 // overlap almost entirely -- and can only catch a gross failure: a book losing
 // steadily, or doing no better than its coin-flip twin. Per-trade figures carry
 // more information here than the pass rates.
+//
+// RESULT, everything after the lab's data (FORWARD_FROM=2026-07-15, data/mnq_1m_beta.bin; 77
+// trading days, 77 calendar windows, about 2.6 independent; run 2026-11-02):
+//   donchian_1250   70 tr  +$2,584  PF 1.24  cal 44.2%  boot 40.4% | twin cal 44.9%, 8/20 twins net as much
+//                   Jul 15 - Sep 9 -$15 (43 tr; Aug -$1,163), Sep 10 on +$2,599 (27 tr)
+//   macd_fade_1250 113 tr  -$1,377  PF 0.94  cal 41.6%  boot 33.8% | twin cal 30.3%, 4/20
+//   trend_pullback  99 tr  -$2,376  PF 0.88  cal 31.2%             | twin 29.8%, 15/20
+//   orb_trend       49 tr  -$1,588  PF 0.87  cal 32.5%             | twin 35.7%, 17/20
+//   macd_momentum   55 tr  +$1,178  PF 1.08  cal 62.3%             | twin 34.2%, 7/20
+// The Donchian's Sep - Oct run was its best stretch; over the whole forward it passes as often as
+// a coin flip with its timing. From Sep 10 the beta file gives it 27 trades and +$2,599, against
+// the published 23 and +$2,532 here: four more days of bars, and the one build's roll date.
 
 import { loadBars } from "../src/data.mjs";
 import { runStrategy } from "../src/run.mjs";
@@ -22,7 +34,9 @@ import * as L from "../mcp/lab.mjs";
 import { nullCfg } from "./lib_eval1250.mjs";
 
 const FILE = process.argv[2] || "data/topstepx_1m.bin";
-const FROM = Date.UTC(2026, 8, 10), DAY = 86400000;
+// FORWARD_FROM=2026-07-15 with data/mnq_1m_beta.bin scores everything after the lab's data ends:
+// Databento to Sep 11, TopstepX after, no gap since the Jul 15 - Aug 27 file arrived.
+const FROM = process.env.FORWARD_FROM ? Date.parse(`${process.env.FORWARD_FROM}T00:00:00Z`) : Date.UTC(2026, 8, 10), DAY = 86400000;
 const { bars } = loadBars(FILE);
 const last = bars.ts[bars.count - 1];
 console.log(`${FILE}: ${new Date(bars.ts[0]).toISOString().slice(0, 10)} to ${new Date(last).toISOString().slice(0, 10)}; scored from ${new Date(FROM).toISOString().slice(0, 10)}`);

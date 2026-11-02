@@ -169,8 +169,9 @@ rule logic into a script: that is a second engine, and it drifts.
   - `data/mnq_1m.bin` is frozen: Databento only, to Jul 14 2026. Every published figure was
     measured on it, and `data:build` refuses a difference without `--force`. Never move its
     date without re-measuring and saying what moved.
-  - `data/mnq_1m_beta.bin` adds TopstepX, with a hole until Jul 15 - Aug 27 arrives. Nothing reads
-    it yet: the chart and tools have no switch, and sweeps do not skip windows across a gap.
+  - `data/mnq_1m_beta.bin` adds Databento Jul 15 - Sep 11 (`data/raw/databento/`, added Nov 2)
+    and TopstepX after, to Oct 30 with no gap. Nothing reads it yet but the forward scripts: the
+    chart and tools have no switch, and sweeps do not skip windows across a gap.
   - **TopstepX keeps 1- and 5-minute bars for only 60 days.** `npm run data:pull` saves them, and
     `data:status` gives the date to pull by.
   - **The ⚙ Data panel** (`public/datapanel.js`, `src/datajobs.mjs`) runs that same `store.mjs` as
@@ -197,6 +198,9 @@ rule logic into a script: that is a second engine, and it drifts.
 - **`donchian_1250` is the $1,250 bot whole and the book to beat.**
   - 2026: calendar 74.5%, bootstrap 71.1%.
   - Forward, Sep 10 - Oct 26 2026: +$2,532, every window passed.
+  - Forward over everything after the lab's data, Jul 15 - Oct 30 (77 days, the beta file):
+    +$2,584, PF 1.24, but 44.2% of windows (calendar), against its coin-flip twin's 44.9%. Jul 15
+    - Sep 9 netted -$15; August -$1,163. Its edge over a coin flip is not established forward.
 - **`macd_fade_1250` reproduces the research's 67.7% exactly, but lost forward.**
 - **`trend_pullback`, `orb_trend` and `macd_momentum` are the indicator
   combinations.** Each was tuned on 2026, and none held forward. Their headers
@@ -207,8 +211,9 @@ rule logic into a script: that is a second engine, and it drifts.
   - choose by the worse half;
   - check the neighbours;
   - compare with the coin-flip twin (`nullCfg`);
-  - then run `research/forward_1250.mjs` on the TopstepX bars
-    (`data/topstepx_1m.bin`).
+  - then run `research/forward_1250.mjs`: `FORWARD_FROM=2026-07-15` with `data/mnq_1m_beta.bin`
+    scores everything after the lab's data, 77 days nothing was chosen on. With no arguments it
+    reproduces the published Sep 10 - Oct 26 run on `data/topstepx_1m.bin`.
   - Grids go in `research/combos_1250_new.mjs`; single-factor screens of the
     shipped books in `research/combos_1250.mjs`.
 - **A book that wins in 2026 but not in the half-split or forward is selection,
