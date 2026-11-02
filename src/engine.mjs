@@ -23,7 +23,7 @@
 // an opposite signal while in a position closes at this bar's open AND may
 // re-enter on the same bar. A stop/target exit, by contrast, ends the bar.
 
-export const EXIT = { SL: "SL", TP: "TP", FLIP: "FLIP", EOD: "EOD", TIME: "TIME", FLAT: "FLAT", DAYCAP: "DAYCAP", DAYLOSS: "DAYLOSS", SIGNAL: "SIGNAL", TRAIL: "TRAIL", STALE: "STALE" };
+export const EXIT = { SL: "SL", TP: "TP", FLIP: "FLIP", EOD: "EOD", TIME: "TIME", FLAT: "FLAT", DAYCAP: "DAYCAP", DAYLOSS: "DAYLOSS", SIGNAL: "SIGNAL", TRAIL: "TRAIL", STALE: "STALE", NEWS: "NEWS" };
 
 // Intraday-only session rules, in America/Chicago minutes-of-day.
 //
@@ -112,6 +112,14 @@ export const DEFAULT_EXEC = {
   // Optional: stop opening new trades this many minutes before the flatten time.
   // Entering at 3:04 PM only to be flattened at 3:05 pays commission for nothing.
   noEntryMinsBeforeFlat: 0,
+  // RED-FOLDER NEWS (src/news.mjs): stand aside from `newsBeforeMin` minutes ahead of each
+  // high-impact US release to `newsAfterMin` past it. 'noentry' opens nothing in that window
+  // and cancels a working order, but holds an open position; 'flat' also closes one at the
+  // open of the window's first bar, as the flatten deadline does. runStrategy turns the
+  // calendar into `newsMask`, one flag a bar, which is all the engine reads.
+  newsRule: "off",          // 'off' | 'noentry' | 'flat'
+  newsBeforeMin: 5,
+  newsAfterMin: 5,
   // HARD daily profit stop on UNREALISED P&L, in dollars. 0 = off.
   //
   // This is what trading platforms actually enforce, and it is a different thing
@@ -350,6 +358,9 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
   const { sizer, tpFn, exitFn, stopFn, onTrade, haltFn, entryGate, onSignal } = x;
   const entries = x.entries || null;
   const nEntries = entries ? entries.length : 0;
+  const newsOn = x.newsRule === "noentry" || x.newsRule === "flat", newsFlat = x.newsRule === "flat";
+  if (newsOn && !(x.newsMask && x.newsMask.length === n)) throw new Error("exec.newsRule needs exec.newsMask, one flag a bar: runStrategy builds it (src/news.mjs newsWindowMask)");
+  const NM = newsOn ? x.newsMask : null;
 
   const trades = [];
   // The open position. `notional` accumulates price*qty using each tranche's
@@ -477,6 +488,8 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
   // favourable extreme may predate the position.
   function tryAdd(bar) {
     if (pendQty <= 0 || bar > addBy || (limFill && bar === ei)) return;
+    // A red-folder window cancels a resting add, as it does a working entry order.
+    if (NM !== null && NM[bar] === 1) { pendQty = 0; return; }
     const reached = pos === 1 ? H[bar] >= addPx : L[bar] <= addPx;
     if (!reached) return;
     const addSlip = slip + (x.scaleInSlipTicks || 0) * tick;
@@ -577,6 +590,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
     if (entries && x.untilFlat && pos === 0 && ePtr >= nEntries) break;
     const s = sig[i - 1];
     const flatNow = intraday && inFlatWindow(CT[i], x.flattenCt, x.reopenCt);
+    const newsNow = NM !== null && NM[i] === 1;
     if (TD[i] !== curTday) {
       // A session that ended before the flatten time (an early close) never had
       // a bar in the flat window: flatten at its last price, drop any order.
@@ -590,9 +604,9 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
 
     // A working entry order: cancelled, or filled somewhere inside this bar.
     if (pos === 0 && armDir !== 0) {
-      if (flatNow || i > armBy || blocked() || (x.cancelOpposite && s !== 0 && s !== armDir)) {
+      if (flatNow || newsNow || i > armBy || blocked() || (x.cancelOpposite && s !== 0 && s !== armDir)) {
         if (onSignal) {
-          const why = flatNow ? "flat" : i > armBy ? "" : blocked() ? blockWhy() : "opposite";
+          const why = flatNow ? "flat" : newsNow ? "news" : i > armBy ? "" : blocked() ? blockWhy() : "opposite";
           onSignal(armBar - 1, armDir, why ? "cancelled" : "expired", { bar: i, why, px: armPx, limit: armLimit, window: armBy - armBar });
         }
         armDir = 0;
@@ -634,6 +648,12 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       if (flatNow) {
         close_(O[i], EXIT.FLAT, i);
         if (onSignal && s) onSignal(i - 1, s, "refused", { bar: i, why: "flat" });
+        continue;
+      }
+      // So does a red-folder window under the 'flat' rule, at the same open.
+      if (newsNow && newsFlat) {
+        close_(O[i], EXIT.NEWS, i);
+        if (onSignal && s) onSignal(i - 1, s, "refused", { bar: i, why: "news" });
         continue;
       }
 
@@ -711,8 +731,8 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
     }
 
     if (s === 0) continue;
-    if (flatNow || blocked()) {
-      if (onSignal) onSignal(i - 1, s, "refused", flatNow ? { bar: i, why: "flat" } : { bar: i, why: blockWhy(), realised: dayRealised });
+    if (flatNow || newsNow || blocked()) {
+      if (onSignal) onSignal(i - 1, s, "refused", flatNow ? { bar: i, why: "flat" } : newsNow ? { bar: i, why: "news" } : { bar: i, why: blockWhy(), realised: dayRealised });
       continue;
     }
     // A session's signals end with it. The first bar of a new trading day must

@@ -23,6 +23,7 @@ const CSS = {
   skip: "#4a5666",
   lock: "#c9a227",
   session: "#d8b13a",
+  news: "#ff6b6b",
   crosshair: "#5a6b7d",
 };
 
@@ -96,6 +97,8 @@ export class ChartView {
     this.onHoverTrade = null;
     this.hoverSignal = null;     // a signal marker under the pointer (its bar k)
     this.onHoverSignal = null;
+    this.hoverNews = null;       // a red-folder release under the pointer
+    this.onHoverNews = null;
     // A click on a trade, a signal marker, or nothing: ({trade} | {signal} | null)
     this.onClick = null;
     this._raf = 0;
@@ -236,7 +239,7 @@ export class ChartView {
     // What was under the pointer belonged to the old data: forget it, so no
     // tooltip outlives the trades it described.
     if (this.hoverTrade || this.hoverSignal) {
-      this.hoverTrade = null; this.hoverSignal = null;
+      this.hoverTrade = null; this.hoverSignal = null; this.hoverNews = null;
       if (this.onHoverTrade) this.onHoverTrade(null);
       if (this.onHoverSignal) this.onHoverSignal(null);
     }
@@ -544,6 +547,8 @@ export class ChartView {
       for (const ln of st.lines) this._drawOverlayLine(ctx, { ...ln, color: ln.color || st.color, width: 1.3 }, P, y, st.map);
     }
 
+    // Red-folder releases and the windows a news rule stands aside for, under everything else
+    if (this.data.news || this.data.newsSpans) this._drawNews(ctx, P);
     // Every signal the engine saw, when asked for, then the trades over them
     if (this.data.signalMarks) this._drawSignals(ctx, P, y);
     this._drawTrades(ctx, P, y);
@@ -695,6 +700,65 @@ export class ChartView {
       ctx.beginPath(); ctx.moveTo(px, py - r); ctx.lineTo(px + r, py); ctx.lineTo(px, py + r); ctx.lineTo(px - r, py); ctx.closePath();
       if (m.cls === "entry") { ctx.fillStyle = col; ctx.fill(); } else { ctx.strokeStyle = col; ctx.stroke(); }
     }
+  }
+
+  // A dashed line at each release, its names along the top while there is room for them, and the
+  // window the news rule stands aside for shaded. A few dozen a window: cheap at any zoom.
+  _drawNews(ctx, P) {
+    const marks = this.data.news, spans = this.data.newsSpans, span = this.i1 - this.i0;
+    ctx.save();
+    if (spans) {
+      ctx.fillStyle = "rgba(255,107,107,0.09)";
+      for (const s of spans) {
+        if (s.x1 < this.i0 || s.x0 > this.i1) continue;
+        const a = this.x(s.x0), b = this.x(s.x1);
+        ctx.fillRect(a, P.top, Math.max(1, b - a), P.bottom - P.top);
+      }
+    }
+    if (marks) {
+      ctx.strokeStyle = CSS.news;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.globalAlpha = this.hoverNews ? 0.55 : 0.7;
+      ctx.beginPath();
+      for (const m of marks) {
+        if (m.x < this.i0 || m.x > this.i1) continue;
+        const px = Math.round(this.x(m.x)) + 0.5;
+        ctx.moveTo(px, P.top); ctx.lineTo(px, P.bottom);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+      if (span < 12000) {
+        ctx.font = "10px ui-sans-serif, system-ui";
+        ctx.textBaseline = "top";
+        let lastRight = -Infinity;
+        for (const m of marks) {
+          if (m.x < this.i0 || m.x > this.i1) continue;
+          const px = Math.round(this.x(m.x)), w = ctx.measureText(m.label).width + 8;
+          if (px + 2 < lastRight + 4) continue;
+          ctx.fillStyle = m === this.hoverNews ? CSS.news : "rgba(255,107,107,0.85)";
+          // under the pane's title, which runs along its top row
+          ctx.fillRect(px + 2, P.top + 16, w, 14);
+          ctx.fillStyle = "#0b0f14";
+          ctx.fillText(m.label, px + 6, P.top + 18);
+          lastRight = px + 2 + w;
+        }
+      }
+    }
+    ctx.restore();
+  }
+
+  _hitNews(mx, my) {
+    const P = this.panes && this.panes.price, marks = this.data && this.data.news;
+    if (!P || !marks || my < P.top || my > P.bottom) return null;
+    let best = null, bestD = 5;
+    for (const m of marks) {
+      if (m.x < this.i0 || m.x > this.i1) continue;
+      const d = Math.abs(mx - this.x(m.x));
+      if (d < bestD) { bestD = d; best = m; }
+    }
+    return best;
   }
 
   _hitSignal(mx, my) {
@@ -1355,6 +1419,12 @@ export class ChartView {
       if (sg !== this.hoverSignal) {
         this.hoverSignal = sg;
         if (this.onHoverSignal) this.onHoverSignal(sg);
+      }
+      const nw = t || sg ? null : this._hitNews(mx, my);
+      if (nw !== this.hoverNews) {
+        this.hoverNews = nw;
+        this.requestDraw();
+        if (this.onHoverNews) this.onHoverNews(nw);
       }
       el.style.cursor = mx > this.plotR ? "ns-resize" : t || sg ? "pointer" : "crosshair";
       this._drawCrosshair();

@@ -89,6 +89,7 @@ export async function resolveConfig(input = {}) {
   const exec = resolveExec({ ...base.exec, ...(input.legacy ? LEGACY_EXEC : {}), ...(input.exec || {}) });
   const rules = resolveRules({ ...base.rules, ...(input.rules || {}) });
   const filter = { ...base.filter, ...(input.filter || {}) };
+  if (!["off", "noentry", "flat"].includes(exec.newsRule)) throw new UserError(`exec.newsRule is "off", "noentry" (open nothing around red-folder releases) or "flat" (also close what is open); not ${JSON.stringify(exec.newsRule)}`);
   if (exec.sameBarReentry) throw new UserError("exec.sameBarReentry re-enters at an open that came BEFORE the exit -- not a sequence anyone could trade. Leave it false.");
   const warnings = [];
   if (exec.entryType === "stop" && exec.entryRefused === "optimistic") warnings.push("entryRefused 'optimistic' fills stops the platform would refuse: an upper bound, not a result.");

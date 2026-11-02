@@ -62,6 +62,44 @@ export function jobText(job) {
   return `${said}${said ? "\n\n" : ""}${job.label}: ${job.exit === 0 ? "done" : "stopped with an error"}, ${((job.endedAt - job.startedAt) / 1000).toFixed(1)} s`;
 }
 
+// ── red-folder news on the chart ─────────────────────────────────────────
+// Releases ({ t, kind }, from src/news.mjs newsBetween) on a 1-minute axis: one mark a minute,
+// naming all that came out then, at the first bar at or after it, so a release while the market
+// is shut lands on the reopen.
+export function newsMarks(ts, events, kinds) {
+  const out = [];
+  for (const e of events) {
+    if (e.t < ts[0]) continue;
+    const last = out[out.length - 1];
+    if (last && last.t === e.t) { last.kinds.push(e.kind); continue; }
+    const x = lowerBound(ts, e.t);
+    if (x >= ts.length) break;
+    out.push({ t: e.t, x, kinds: [e.kind] });
+  }
+  for (const m of out) m.label = m.kinds.map((k) => (kinds[k] ? kinds[k].short : k)).join(" · ");
+  return out;
+}
+// The windows a news rule stands aside for, merged where they meet, as [x0, x1) on the axis.
+export function newsSpans(ts, events, beforeMin, afterMin) {
+  const out = [], b = Math.max(0, +beforeMin || 0) * 60000, a = Math.max(0, +afterMin || 0) * 60000;
+  if (b + a <= 0) return out;
+  for (const e of events) {
+    const x0 = lowerBound(ts, e.t - b), x1 = lowerBound(ts, e.t + a);
+    if (x1 <= x0) continue;
+    const last = out[out.length - 1];
+    if (last && x0 <= last.x1) last.x1 = Math.max(last.x1, x1); else out.push({ x0, x1 });
+  }
+  return out;
+}
+// A mark's release time on both clocks: Chicago, as the chart reads, and Eastern, as the agencies
+// publish. The offset is the bar's own (ctMin against its UTC minute); Eastern is an hour on.
+export function newsClock(m, ts, ctMin) {
+  let off = ctMin[m.x] - (Math.floor(ts[m.x] / 60000) % 1440);
+  if (off > 720) off -= 1440; else if (off < -720) off += 1440;
+  const ct = (((Math.floor(m.t / 60000) + off) % 1440) + 1440) % 1440, hm = (x) => `${p2(Math.floor(x / 60) % 24)}:${p2(x % 60)}`;
+  return `${hm(ct)} CT · ${hm(ct + 60)} ET`;
+}
+
 // ── sorted arrays ────────────────────────────────────────────────────────
 // First index holding a value >= v, and first holding a value > v.
 export function lowerBound(xs, v) {
@@ -226,7 +264,8 @@ export const autoCandle = (pxPerBar, wanted = 4) => CANDLE_SIZES.find((m) => m *
 // The bars of one trading day between two Chicago clock times, as [first, end). A day
 // with none in that span (a holiday's short session) gives all of its bars. Trading
 // days only ever rise along the bars, which is what makes the search valid.
-export const RTH_VIEW = [495, 915];    // 08:15-15:15 CT
+// From 07:15 CT, so the 8:30 ET releases (07:30 CT) that move the open are in view.
+export const RTH_VIEW = [435, 915];    // 07:15-15:15 CT
 function dayBars(bars, td, fromCt, toCt) {
   const lo = lowerBound(bars.tday, td), hi = upperBound(bars.tday, td);
   let a = lo;

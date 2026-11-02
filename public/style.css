@@ -434,6 +434,7 @@ button:disabled { opacity: .5; cursor: default; }
 /* the signals layer toggle */
 .sigtoggle { padding: 2px 9px; font-size: 11px; letter-spacing: .04em; }
 .sigtoggle.on { background: rgba(240,180,41,.14); border-color: #f0b429; color: #f0b429; }
+.newstoggle.on { background: rgba(255,107,107,.12); border-color: #ff6b6b; color: #ff6b6b; }
 
 /* what triggered the selected entry */
 .whycard {

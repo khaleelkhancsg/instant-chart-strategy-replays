@@ -1,0 +1,143 @@
+# FOMC decisions (statement 2:00 pm ET, press conference 2:30 pm) and minutes (2:00 pm ET).
+# 2021-2027: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm, read 2026-11-02.
+# 2019-2020: https://www.federalreserve.gov/monetarypolicy/fomchistorical2019.htm and ...2020.htm.
+# Unscheduled statements carry their release time from the Fed's press release (monetary20200303a.htm:
+# 10:00 a.m. EST; 20200315a: 5:00 p.m. EDT; 20200323a: 8:00 a.m. EDT) and had no scheduled press conference.
+# Notation votes that were not rate decisions are left out (Oct 2019 reserve purchases, Aug 2020 and Aug 2025
+# strategy statements, 2020 swap lines and repo facility). 2027 dates are the Fed's tentative ones.
+decision 2019-01-30
+minutes 2019-02-20
+decision 2019-03-20 sep
+minutes 2019-04-10
+decision 2019-05-01
+minutes 2019-05-22
+decision 2019-06-19 sep
+minutes 2019-07-10
+decision 2019-07-31
+minutes 2019-08-21
+decision 2019-09-18 sep
+minutes 2019-10-09
+decision 2019-10-30
+minutes 2019-11-20
+decision 2019-12-11 sep
+minutes 2020-01-03
+decision 2020-01-29
+minutes 2020-02-19
+decision-unscheduled 2020-03-03 10:00
+decision-unscheduled 2020-03-15 17:00
+minutes 2020-04-08
+decision-unscheduled 2020-03-23 08:00
+decision 2020-04-29
+minutes 2020-05-20
+decision 2020-06-10 sep
+minutes 2020-07-01
+decision 2020-07-29
+minutes 2020-08-19
+decision 2020-09-16 sep
+minutes 2020-10-07
+decision 2020-11-05
+minutes 2020-11-25
+decision 2020-12-16 sep
+minutes 2021-01-06
+decision 2021-01-27
+minutes 2021-02-17
+decision 2021-03-17 sep
+minutes 2021-04-07
+decision 2021-04-28
+minutes 2021-05-19
+decision 2021-06-16 sep
+minutes 2021-07-07
+decision 2021-07-28
+minutes 2021-08-18
+decision 2021-09-22 sep
+minutes 2021-10-13
+decision 2021-11-03
+minutes 2021-11-24
+decision 2021-12-15 sep
+minutes 2022-01-05
+decision 2022-01-26
+minutes 2022-02-16
+decision 2022-03-16 sep
+minutes 2022-04-06
+decision 2022-05-04
+minutes 2022-05-25
+decision 2022-06-15 sep
+minutes 2022-07-06
+decision 2022-07-27
+minutes 2022-08-17
+decision 2022-09-21 sep
+minutes 2022-10-12
+decision 2022-11-02
+minutes 2022-11-23
+decision 2022-12-14 sep
+minutes 2023-01-04
+decision 2023-02-01
+minutes 2023-02-22
+decision 2023-03-22 sep
+minutes 2023-04-12
+decision 2023-05-03
+minutes 2023-05-24
+decision 2023-06-14 sep
+minutes 2023-07-05
+decision 2023-07-26
+minutes 2023-08-16
+decision 2023-09-20 sep
+minutes 2023-10-11
+decision 2023-11-01
+minutes 2023-11-21
+decision 2023-12-13 sep
+minutes 2024-01-03
+decision 2024-01-31
+minutes 2024-02-21
+decision 2024-03-20 sep
+minutes 2024-04-10
+decision 2024-05-01
+minutes 2024-05-22
+decision 2024-06-12 sep
+minutes 2024-07-03
+decision 2024-07-31
+minutes 2024-08-21
+decision 2024-09-18 sep
+minutes 2024-10-09
+decision 2024-11-07
+minutes 2024-11-26
+decision 2024-12-18 sep
+minutes 2025-01-08
+decision 2025-01-29
+minutes 2025-02-19
+decision 2025-03-19 sep
+minutes 2025-04-09
+decision 2025-05-07
+minutes 2025-05-28
+decision 2025-06-18 sep
+minutes 2025-07-09
+decision 2025-07-30
+minutes 2025-08-20
+decision 2025-09-17 sep
+minutes 2025-10-08
+decision 2025-10-29
+minutes 2025-11-19
+decision 2025-12-10 sep
+minutes 2025-12-30
+decision 2026-01-28
+minutes 2026-02-18
+decision 2026-03-18 sep
+minutes 2026-04-08
+decision 2026-04-29
+minutes 2026-05-20
+decision 2026-06-17 sep
+minutes 2026-07-08
+decision 2026-07-29
+minutes 2026-08-19
+decision 2026-09-16 sep
+minutes 2026-10-07
+decision 2026-10-28
+decision 2026-12-09 sep (no statement yet)
+decision 2027-01-27 (no statement yet)
+decision 2027-03-17 sep (no statement yet)
+decision 2027-04-28 (no statement yet)
+decision 2027-06-09 sep (no statement yet)
+decision 2027-07-28 (no statement yet)
+decision 2027-09-15 sep (no statement yet)
+decision 2027-10-27 (no statement yet)
+decision 2027-12-08 sep (no statement yet)

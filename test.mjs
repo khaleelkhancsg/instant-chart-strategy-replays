@@ -15,6 +15,7 @@ import { buildFilterContext, applyFilters, countSurviving } from "./src/filters.
 import { replayPortfolio } from "./src/portfolio.mjs";
 import { resample, sliceBars, indexAtOrAfter, indexAtOrBefore } from "./src/resample.mjs";
 import { runBrackets, tradeStats, EXIT, resolveExec, LEGACY_EXEC } from "./src/engine.mjs";
+import { newsWindowMask } from "./src/news.mjs";
 import { replayWindow, sweepWindows, simulateFunded, sweepFunded, hasOverlappingTrades, OUTCOME, resolveRules } from "./src/challenge.mjs";
 import { loadBars, packBars } from "./src/data.mjs";
 import { loadStrategies } from "./src/registry.mjs";
@@ -1871,6 +1872,7 @@ function randomExec() {
     dayBreakerUsd: pick([0, 0, 200, 600]), dayProfitBlockUsd: pick([0, 0, 300, 900]), scaleOutFrac: pick([0, 0, 0, 0.5]),
     scaleOutAtr: pick([0.5, 1, 2]), flipOnAnySignal: rnd() < 0.1, capEndsDay: rnd() < 0.85,
     staleBars: pick([0, 0, 0, 5, 20, 60]), staleMfeAtr: pick([0.25, 1, 3]),
+    newsRule: pick(["off", "off", "noentry", "flat"]), newsBeforeMin: pick([0, 2, 5, 15, 30]), newsAfterMin: pick([0, 5, 15, 60]),
   };
 }
 
@@ -1889,10 +1891,11 @@ if (bars_) {
       for (let i = 0; i < n; i++) if (rnd() < dens) sig[i] = rnd() < 0.5 ? 1 : -1;
       const x = randomExec();
       if (rnd() < 0.3) { x.exitSig = new Int8Array(n); for (let i = 0; i < n; i++) if (rnd() < 0.03) x.exitSig[i] = iuni(1, 3); }
+      if (x.newsRule !== "off") x.newsMask = newsWindowMask(tf, x.newsBeforeMin, x.newsAfterMin);
       const cfg = resolveExec(x);
       const { trades } = runBrackets(tf, sig, a, cfg);
       const again = runBrackets(tf, sig, a, cfg).trades;
-      const where = () => `case ${c} (tf ${tfMin}, ${JSON.stringify({ ...x, exitSig: x.exitSig ? "mask" : undefined })})`;
+      const where = () => `case ${c} (tf ${tfMin}, ${JSON.stringify({ ...x, exitSig: x.exitSig ? "mask" : undefined, newsMask: x.newsMask ? "mask" : undefined })})`;
       if (again.length !== trades.length || again.some((t2, k) => t2.pnl !== trades[k].pnl)) throw new Error(`not deterministic: ${where()}`);
       const cap = Math.max(1, Math.trunc(cfg.maxContracts));
       const slip = cfg.slippageTicks * cfg.tickSize;
@@ -1925,6 +1928,10 @@ if (bars_) {
           for (let k = tr.entryIdx; k < tr.exitIdx; k++) if (inFlatCt(tf.ctMin[k], cfg.flattenCt, cfg.reopenCt)) fail("held through the flat window");
           if (inFlatCt(tf.ctMin[tr.entryIdx], cfg.flattenCt, cfg.reopenCt)) fail("entered in the flat window");
         }
+        // red-folder news: nothing opens in a window, and under 'flat' nothing is held into one
+        if (cfg.newsRule !== "off" && x.newsMask[tr.entryIdx]) fail("entered in a news window");
+        if (cfg.newsRule === "flat") for (let k = tr.entryIdx; k < tr.exitIdx; k++) if (x.newsMask[k]) fail("held into a news window");
+        if (tr.reason === "NEWS" && !(cfg.newsRule === "flat" && x.newsMask[tr.exitIdx] && atOpenOf(tr.exitIdx, tr.exitPrice + tr.dir * slip))) fail("a news exit outside a window's first open");
         if (cfg.cooldownAfterStopMins > 0 && lastStop && tr.dir === lastStop.dir && tr.entryTime - lastStop.at < cfg.cooldownAfterStopMins * 60000) fail("re-entered during the stop cooldown");
         if (tr.reason === "SL") lastStop = { dir: tr.dir, at: tr.exitTime };
         const d = tr.tday;
@@ -1974,6 +1981,7 @@ if (bars_) {
       for (let i = 0; i < n; i++) if (rnd() < 0.03) sig[i] = rnd() < 0.5 ? 1 : -1;
       const x = { ...randomExec(), sizingMode: "fixed", dayProfitStopUsd: 0, dayLossStopUsd: 0, dayBreakerUsd: 0, dayProfitBlockUsd: 0,
                   scaleInFrac: 0, commissionModel: "per-contract", maxContracts: 20 };
+      if (x.newsRule !== "off") x.newsMask = newsWindowMask(tf, x.newsBeforeMin, x.newsAfterMin);
       const one = runBrackets(tf, sig, a, { ...x, contracts: 1 }).trades;
       for (const q of [3, 13, 20]) {
         const many = runBrackets(tf, sig, a, { ...x, contracts: q }).trades;

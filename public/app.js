@@ -17,6 +17,8 @@ import { windowSpan, DEFAULT_TAIL_MIN } from "/src/window.mjs";
 import { EVALS, EVAL_IDS, DEFAULT_EVAL, evalBase, evalKeys } from "/src/evals.mjs";
 import { STUDIES, STUDY_TFS, resolveStudy, studyLabel, isGating, gateLabel, computeStudy } from "/src/studies.mjs";
 import { describeEntry, describeExit, eventText, explainLines, num as fmtNum, px as fmtPx } from "/src/explain.mjs";
+import { newsBetween, NEWS_KINDS } from "/src/news.mjs";
+import { newsMarks, newsSpans, newsClock } from "/ui.mjs";
 import { Y2026, wilson, houseRates, runRecord, compareRuns, flips, linkSettings, linkDiff, logPosition, logValue, LOG_TRACK, sessionView, stepDays, pickerRows } from "/ui.mjs";
 import { loadIndicator, defaultProps, plotters, audit, formingProblems, Problems } from "/tradovate/mock/runtime.mjs";
 
@@ -199,6 +201,11 @@ const SESSION_PARAMS = [
   { key: "reopenCt", label: "Resume from (CT)", type: "time", min: 0, max: 1439, step: 5, default: 17 * 60 },
   { key: "noEntryMinsBeforeFlat", label: "No new entries (mins before flat)", type: "int", min: 0, max: 240, step: 5, default: 0,
     hint: "Entering minutes before the deadline pays commission for a trade that cannot develop." },
+  { key: "newsRule", label: "Red-folder news", type: "select", default: "off",
+    options: [["off", "Trade through it"], ["noentry", "No new trades around it"], ["flat", "Flat around it"]],
+    hint: "ForexFactory's red-folder US releases, at the times the agencies published them: the jobs report, CPI, PPI, retail sales, advance GDP, PCE, the FOMC decision, its press conference and minutes. 'No new trades' opens nothing in the window and holds what is open; 'Flat' also closes it at the window's first bar. A bar that touches the window counts, so on 5-minute bars the rule acts up to a bar early." },
+  { key: "newsBeforeMin", label: "News: minutes before", type: "int", min: 0, max: 120, step: 1, default: 5 },
+  { key: "newsAfterMin", label: "News: minutes after", type: "int", min: 0, max: 120, step: 1, default: 5 },
 ];
 
 const RULES_PARAMS = [
@@ -245,6 +252,7 @@ const S = {
   tvLib: null,         // what can be added, and the tools they run on
   tvFocus: true,       // the chart given over to them: no trades, equity or daily panes
   showSignals: false,  // mark every signal bar, entered or not (a view preference)
+  showNews: true,      // mark red-folder releases (a view preference)
   why: null,           // the entry explained: { ts: its signal bar's open time }
   whyFolded: false,    // its card folded to the summary
   windowStart: null,
@@ -1716,6 +1724,7 @@ function paintChart(res, replay) {
     focus,
     why: focus ? null : why,
     signalMarks: !focus && S.showSignals ? signalMarks(res) : null,
+    ...chartNews(blob, focus),
     // Overlays are indexed in signal-timeframe space; stride lets the renderer
     // convert a 1-minute pixel budget into a sane sampling step.
     // Overlay points land at the CENTRE of the bar that produced them, for the
@@ -2221,9 +2230,30 @@ function toast(msg, isErr = false) {
   toastTimer = setTimeout(() => el.classList.add("hidden"), 3500);
 }
 
+// Red-folder releases in the window: the marks, and the news rule's windows when one is set.
+function chartNews(blob, focus) {
+  if (focus || !S.showNews || !blob.count) return { news: null, newsSpans: null };
+  const ev = newsBetween(blob.ts[0], blob.ts[blob.count - 1] + 60000), ts = blob.ts.subarray(0, blob.count);
+  const ruled = S.exec.newsRule === "noentry" || S.exec.newsRule === "flat";
+  return { news: newsMarks(ts, ev, NEWS_KINDS), newsSpans: ruled ? newsSpans(ts, ev, S.exec.newsBeforeMin, S.exec.newsAfterMin) : null };
+}
+
 function tradeTooltip(t, ev) {
   const el = $("tooltip");
   const sg = !t && S.chart && S.chart.hoverSignal;
+  const nw = !t && !sg && S.chart && S.chart.hoverNews;
+  if (nw && ev) {
+    const blob = S.chart.data.bars;
+    el.innerHTML = `<div class="t-head" style="color:#ff6b6b">RED-FOLDER NEWS · ${esc(newsClock(nw, blob.ts, blob.ctMin))}</div>` +
+      nw.kinds.map((k) => `<div class="t-ev">${esc(NEWS_KINDS[k] ? NEWS_KINDS[k].label : k)}</div>`).join("") +
+      (S.exec.newsRule === "noentry" || S.exec.newsRule === "flat"
+        ? `<div class="t-hint">${S.exec.newsRule === "flat" ? "Flat" : "No new trades"} from ${+S.exec.newsBeforeMin || 0} min before to ${+S.exec.newsAfterMin || 0} min after</div>`
+        : `<div class="t-hint">Session rules → Red-folder news to stand aside</div>`);
+    el.classList.remove("hidden");
+    el.style.left = Math.min(window.innerWidth - el.offsetWidth - 8, ev.clientX + 14) + "px";
+    el.style.top = Math.min(window.innerHeight - el.offsetHeight - 8, ev.clientY + 14) + "px";
+    return;
+  }
   if (!t && !sg) { el.classList.add("hidden"); return; }
   const row = (k, v, cls = "") => `<div class="row"><span>${k}</span><span class="${cls}">${v}</span></div>`;
   const res = lastResult && lastResult.res;
@@ -2394,6 +2424,18 @@ async function boot() {
   S.chart = new ChartView($("chartWrap"));
   S.chart.onHoverTrade = (t) => { window._hoverTrade = t; if (!t) tradeTooltip(null); queuePostState(); };
   S.chart.onHoverSignal = (sg) => { if (!sg && !window._hoverTrade) tradeTooltip(null); };
+  S.chart.onHoverNews = (nw) => { if (!nw && !window._hoverTrade && !S.chart.hoverSignal) tradeTooltip(null); };
+  // Red-folder releases on the chart: shown unless turned off, a view preference, kept.
+  try { S.showNews = localStorage.getItem("mnq.news") !== "0"; } catch { S.showNews = true; }
+  const newsBtn = $("newsToggle");
+  const paintNewsBtn = () => { newsBtn.classList.toggle("on", S.showNews); newsBtn.setAttribute("aria-pressed", String(S.showNews)); };
+  paintNewsBtn();
+  newsBtn.onclick = () => {
+    S.showNews = !S.showNews;
+    try { localStorage.setItem("mnq.news", S.showNews ? "1" : "0"); } catch { /* private mode */ }
+    paintNewsBtn();
+    repaint();
+  };
   // A trade or a signal marker clicked: what triggered it (the card has its own close).
   S.chart.onClick = (hit) => { if (hit) selectWhy(hit.trade || hit.signal); };
   S.chart.onTradovateDrawn = tvPaintFit;

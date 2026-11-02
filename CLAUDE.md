@@ -100,6 +100,16 @@ rule logic into a script: that is a second engine, and it drifts.
   `signals`.
 - **Day caps and overnight holds.** `dayLossStopUsd` and `dayProfitStopUsd` measure
   an open position from its fill, so use them with intraday-only books.
+- **Red-folder news** (`newsRule` 'off' | 'noentry' | 'flat', `newsBeforeMin`,
+  `newsAfterMin`). The engine reads only `newsMask`, one flag a bar, which runStrategy builds
+  from `src/news_calendar.mjs` (`src/news.mjs` `newsWindowMask`; `opts.newsEvents` swaps in a
+  placebo calendar). A bar that overlaps a window at all is inside it. 'noentry' refuses entries
+  and cancels working orders and resting adds; 'flat' also closes at the window's first open with
+  reason NEWS. A rule with no mask throws rather than being ignored. test.mjs sections 8 and 12
+  fuzz it: no entry in a window, nothing held into one under 'flat', and live = sweep.
+- **The calendar is built, never edited** (`node research/news_build.mjs` from the official
+  sources in `research/news/`, whose README says where each came from). `test/news.test.mjs`
+  fails when `src/news_calendar.mjs` is not what the sources build.
 - **After any engine change:**
   - run `npm run check` and a few fuzz seeds;
   - re-measure every strategy's defaults;
@@ -109,9 +119,10 @@ rule logic into a script: that is a second engine, and it drifts.
 
 - `npm run check`: test.mjs (467), audit, legacy parity (15), MCP end to end (19),
   chart link (12), the indicator mock (90, `npm run test:mock`), the page's arithmetic
-  (36, `npm run test:ui`), the level study's engine (22, `npm run test:levels`), the raw
+  (39, `npm run test:ui`), the level study's engine (22, `npm run test:levels`), the raw
   store (36, `npm run test:store`), the Data panel's routes (21, `npm run test:data`), the
-  TopstepX pull (44, `npm run test:pull`), the $1,250 Tradovate indicators (41, `npm run verify:tradovate`, about 2 minutes).
+  TopstepX pull (44, `npm run test:pull`), red-folder news (17, `npm run test:news`), the $1,250
+  Tradovate indicators (41, `npm run verify:tradovate`, about 2 minutes).
 - `FUZZ_SEED=<n> FUZZ_SCALE=<k> node test.mjs`: the randomised invariants.
 - `PARITY_SEED`, `PARITY_SCALE`: the same for test/legacy_parity.mjs.
 

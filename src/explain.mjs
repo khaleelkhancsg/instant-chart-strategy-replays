@@ -345,6 +345,7 @@ const REFUSE = {
   lastMinutes: "no new entries in the last minutes before the flatten", cooldown: "cooling off after a stop-out the same way",
   gate: "an indicator study's gate refused the entry", atr: "the ATR was not ready", sizer: "the sizer gave less than one contract",
   size: "the strategy refused the entry (size 0)",
+  news: "the red-folder news window (nothing opens around a scheduled release)",
 };
 export function eventText(e, tf, x = {}) {
   const at = (b) => (b != null && tf.ctMin && b < tf.ctMin.length ? clock(tf.ctMin[b]) : "");
@@ -373,6 +374,7 @@ const EXIT_TEXT = {
   SL: "the stop", TP: "the target", FLIP: "the opposite signal", EOD: "the end of the data", TIME: "the time stop",
   FLAT: "the session's flatten deadline", DAYCAP: "the platform's day profit cap", DAYLOSS: "the platform's day loss limit",
   SIGNAL: "the strategy's exit rule", TRAIL: "the trailing stop", STALE: "the stale exit",
+  NEWS: "the red-folder news window (flat around a scheduled release)",
 };
 // How the trade got in, and its bracket: from its signal's events and the exec.
 export function describeEntry(t, tf, x, events = []) {

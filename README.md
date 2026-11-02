@@ -563,6 +563,40 @@ stats so it's never invisible.
 
 ---
 
+## Red-folder news
+
+The US releases ForexFactory marks red are on the chart, at the times the agencies published
+them, and a rule can stand aside around them.
+
+- **The calendar** (`src/news_calendar.mjs`, 778 releases, 2019 to the end of 2027): the jobs
+  report, CPI, PPI, retail sales, the advance GDP estimate, PCE, the FOMC decision, its press
+  conference and its minutes. Every date and time comes from BLS, Census, BEA and the Fed
+  (`research/news/README.md` says which page), including the shutdowns' cancelled and late
+  releases. ForexFactory only decided which kinds count. Fed Chair speeches, which it also marks
+  red, are not in it: there is no timed record of them.
+- **Checked against the market** (`research/news_check.mjs`): MNQ's range over the five minutes
+  from a release is a median 3.2x the same minutes on the days before, 75% of them at least 2x.
+  The day before each release, at the same minute, gives 1.1x.
+- **On the chart:** a dashed red line at each release, named along the top when zoomed in, its
+  time in CT and ET on hover. The **News** button turns them off. The Day view now opens at 07:15
+  CT, so the 8:30 ET releases are in it.
+- **The rule** (Session rules → Red-folder news): *No new trades around it* opens nothing from the
+  minutes before to the minutes after, and cancels a working order or a resting add, but holds
+  what is open. *Flat around it* also closes an open position at the window's first bar. A bar
+  that touches the window counts, so on 5-minute bars the rule acts up to a bar early. It is off
+  by default, so no published figure moved. The MCP tools take `exec.newsRule`,
+  `newsBeforeMin` and `newsAfterMin`.
+- **On the $1,250 books it changes almost nothing** (`research/news_1250.mjs`, against placebo
+  calendars that stand aside as often on days without news):
+  - Windows of 5 to 30 minutes caught three trades in all of 2026, all losers, and none forward,
+    because the big releases come at 7:30 CT, before either book trades. donchian_1250 goes
+    74.5% to 75.8% (calendar, ci 35-94).
+  - Windows long enough to cover the open after a release, or whole release days, help neither
+    book in both halves, by both methods and forward. The MACD fade's +17.5 points from skipping
+    release days falls apart in its second-half bootstrap and loses $1,045 more forward.
+
+---
+
 ## Data pipeline
 
 Bars live in a raw store, `data/store.db`, and backtests read a binary built from it.
@@ -680,7 +714,7 @@ happened and one that doesn't.
 ## Verification
 
 ```bash
-npm run check          # test.mjs, audit.mjs, legacy parity, the MCP server, the chart link, the indicator mock, the page's arithmetic, the level study, the raw store, the Data panel, the TopstepX pull, the Tradovate indicators
+npm run check          # test.mjs, audit.mjs, legacy parity, the MCP server, the chart link, the indicator mock, the page's arithmetic, the level study, the raw store, the Data panel, the TopstepX pull, red-folder news, the Tradovate indicators
 npm run verify-rolls   # seam coherence against the incoming contract
 FUZZ_SEED=7 FUZZ_SCALE=3 node test.mjs   # the randomised invariants, harder
 ```

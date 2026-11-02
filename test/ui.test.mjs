@@ -5,7 +5,8 @@
 
 import fs from "node:fs";
 import { loadBars } from "../src/data.mjs";
-import { dataNotes, heldRows, compareText, jobText, guessCsv, fmtBytes, ctWall, fmtCt, lowerBound, upperBound, nthSmallest, wilson, rateOver, houseRates, runRecord, pairRuns, compareRuns, flips, linkSettings, linkDiff,
+import { NEWS_KINDS } from "../src/news.mjs";
+import { newsMarks, newsSpans, newsClock, dataNotes, heldRows, compareText, jobText, guessCsv, fmtBytes, ctWall, fmtCt, lowerBound, upperBound, nthSmallest, wilson, rateOver, houseRates, runRecord, pairRuns, compareRuns, flips, linkSettings, linkDiff,
         logPosition, logValue, LOG_TRACK, autoCandle, CANDLE_SIZES, sessionView, stepDays, familyOf, bookRate, pickerRows } from "../public/ui.mjs";
 
 let pass = 0, fail = 0;
@@ -198,7 +199,8 @@ const fake = (() => {
 })();
 t("a day's view runs from its morning to its close, not from the evening before", () => {
   const [a, e] = sessionView(fake, fake.tday.indexOf(101));
-  eq([fake.tday[a], fake.ctMin[a], fake.tday[e - 1], fake.ctMin[e - 1]], [101, 510, 101, 900]);
+  // from 07:15 CT, so the 07:30 bar, which an 8:30 ET release lands on, is the first in view
+  eq([fake.tday[a], fake.ctMin[a], fake.tday[e - 1], fake.ctMin[e - 1]], [101, 450, 101, 900]);
 });
 t("a week's view ends on the last day it can reach", () => {
   const [a, e] = sessionView(fake, 0, 5);
@@ -275,6 +277,28 @@ t("the data panel leaves out what does not apply", () => {
   eq(dataNotes({ error: "boom", empty: true }, now).length, 1, "an error comes first:");
   const order = dataNotes({ pullBy: now + 3 * 86400000, backup: { at: now, behind: true }, rolledOff: 0, conflicts: 0, builds: [{ name: "beta", stale: true, holes: [] }] }, now).map((n) => n.level);
   eq(order, ["bad", "warn", "warn"], "worst first:");
+});
+t("red-folder releases land on the chart's minutes, named together when they share one", () => {
+  const at = (h, m) => Date.UTC(2026, 9, 15, h, m), ts = Float64Array.from({ length: 10 }, (_, i) => at(12, 25) + i * 60000);
+  const ev = [{ t: at(12, 20), kind: "CPI" }, { t: at(12, 30), kind: "PPI" }, { t: at(12, 30), kind: "RETAIL" }, { t: at(12, 40), kind: "NFP" }];
+  eq(newsMarks(ts, ev, NEWS_KINDS), [{ t: at(12, 30), x: 5, kinds: ["PPI", "RETAIL"], label: "PPI · Retail" }], "before and after the bars are left out:");
+  const gap = Float64Array.from([at(12, 0), at(12, 1), at(13, 0)]);
+  eq(newsMarks(gap, [{ t: at(12, 30), kind: "FOMC" }], NEWS_KINDS).map((m) => m.x), [2], "released while shut: on the reopen:");
+});
+t("the windows a news rule stands aside for are merged where they meet", () => {
+  const at = (h, m) => Date.UTC(2026, 9, 15, h, m), ts = Float64Array.from({ length: 60 }, (_, i) => at(12, 0) + i * 60000);
+  eq(newsSpans(ts, [{ t: at(12, 30), kind: "CPI" }], 2, 3), [{ x0: 28, x1: 33 }]);
+  eq(newsSpans(ts, [{ t: at(12, 30), kind: "CPI" }, { t: at(12, 33), kind: "PPI" }], 2, 3), [{ x0: 28, x1: 36 }], "two that touch:");
+  eq(newsSpans(ts, [{ t: at(12, 30), kind: "CPI" }], 0, 0), [], "no window:");
+  eq(newsSpans(ts, [{ t: at(12, 30), kind: "CPI" }], "2", "3"), [{ x0: 28, x1: 33 }], "settings from a link:");
+});
+t("a release's time reads on both clocks, through the clock change", () => {
+  const sum = Date.UTC(2026, 9, 15, 12, 30), win = Date.UTC(2026, 10, 6, 13, 30);
+  // ctMin is each bar's Chicago minute: UTC-5 in October, UTC-6 in November
+  eq(newsClock({ t: sum, x: 0 }, [sum], [7 * 60 + 30]), "07:30 CT · 08:30 ET");
+  eq(newsClock({ t: win, x: 0 }, [win], [7 * 60 + 30]), "07:30 CT · 08:30 ET");
+  eq(newsClock({ t: Date.UTC(2026, 9, 28, 18, 0), x: 0 }, [Date.UTC(2026, 9, 28, 18, 0)], [13 * 60]), "13:00 CT · 14:00 ET");
+  eq(newsClock({ t: Date.UTC(2020, 2, 15, 21, 0), x: 0 }, [Date.UTC(2020, 2, 15, 22, 0)], [17 * 60]), "16:00 CT · 17:00 ET", "a Sunday release, read from the reopen's bar:");
 });
 t("the data panel's table, comparison and command output read as words", () => {
   eq(heldRows([{ source: "databento", minutes: 1, rows: 3784340, contracts: 33, first: Date.UTC(2019, 4, 5, 22, 3), last: Date.UTC(2026, 6, 14, 23, 59) }]),

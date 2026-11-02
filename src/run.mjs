@@ -7,6 +7,7 @@ import { resample } from "./resample.mjs";
 import { runBrackets, tradeStats, resolveExec } from "./engine.mjs";
 import { buildFilterContext, applyFilters, NO_FILTER, filterPeriods } from "./filters.mjs";
 import { buildEntryGate } from "./studies.mjs";
+import { newsWindowMask } from "./news.mjs";
 import { explainSignal } from "./explain.mjs";
 
 // Only pay for the gate indicators when a gate is actually set.
@@ -30,6 +31,8 @@ function filterIsActive(f) {
  *                     not (src/explain.mjs), and the signal the engine saw
  * @param opts.trace   also return `signals`: signal bar -> what the engine did
  *                     with it (the order, a fill, a refusal and its reason)
+ * @param opts.newsEvents  a calendar in place of the red-folder one ([ms, kind], sorted), for
+ *                     a study's placebo; exec.newsRule still decides what is done around them
  */
 export function runStrategy(bars1m, strategy, params, exec, opts = {}) {
   const tfMin = params.timeframeMin ?? strategy.timeframeMin ?? 1;
@@ -54,6 +57,8 @@ export function runStrategy(bars1m, strategy, params, exec, opts = {}) {
   // ...and a size multiplier per signal bar: a fraction late in the day, or 0
   // to refuse an entry while the signal still flips an opposite position.
   if (out.sizeMult) x.sizeMult = out.sizeMult;
+  // Red-folder news: the windows around each release, as one flag a bar of these bars.
+  if (x.newsRule === "noentry" || x.newsRule === "flat") x.newsMask = newsWindowMask(tf, x.newsBeforeMin, x.newsAfterMin, opts.newsEvents);
   // Indicator gates refuse entries only, so they are a hook rather than a mask
   // on the signal: a refused signal still flips an opposite position.
   let studyGated = 0;

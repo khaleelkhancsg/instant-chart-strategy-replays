@@ -1,0 +1,46 @@
+# BEA release schedules for 2025 and 2026: date, time (ET) and title.
+# https://www.bea.gov/news/schedule/full-2025 and https://www.bea.gov/news/schedule/full, read 2026-11-02.
+# A release scheduled here and missing from bea_release_dates.json did not happen (Oct 30 2025, the shutdown).
+2025-01-30 8:30 AM Gross Domestic Product, 4th Quarter and Year 2024 (Advance Estimate)
+2025-01-31 8:30 AM Personal Income and Outlays, December 2024
+2025-02-27 8:30 AM Gross Domestic Product, 4th Quarter and Year 2024 (Second Estimate)
+2025-02-28 8:30 AM Personal Income and Outlays, January 2025
+2025-03-27 8:30 AM Gross Domestic Product, 4th Quarter and Year 2024 (Third Estimate), GDP by Industry, and Corporate Profits
+2025-03-28 8:30 AM Personal Income and Outlays, February 2025
+2025-04-30 10:00 AM Personal Income and Outlays, March 2025
+2025-04-30 8:30 AM Gross Domestic Product, 1st Quarter 2025 (Advance Estimate)
+2025-05-29 8:30 AM Gross Domestic Product (Second Estimate), Corporate Profits (Preliminary Estimate), 1st Quarter 2025
+2025-05-30 8:30 AM Personal Income and Outlays, April 2025
+2025-06-26 8:30 AM Gross Domestic Product, 1st Quarter 2025 (Third Estimate), GDP by Industry, and Corporate Profits (Revised)
+2025-06-27 8:30 AM Personal Income and Outlays, May 2025
+2025-07-30 8:30 AM Gross Domestic Product, 2nd Quarter 2025 (Advance Estimate)
+2025-07-31 8:30 AM Personal Income and Outlays, June 2025
+2025-08-28 8:30 AM Gross Domestic Product, 2nd Quarter 2025 (Second Estimate) and Corporate Profits (Preliminary)
+2025-08-29 8:30 AM Personal Income and Outlays, July 2025
+2025-09-25 8:30 AM Gross Domestic Product, 2nd Quarter 2025 (Third Estimate), GDP by Industry, Corporate Profits (Revised), and Annual Update
+2025-09-26 8:30 AM Personal Income and Outlays, August 2025
+2025-10-30 8:30 AM Gross Domestic Product, 3rd Quarter 2025 (Advance Estimate)
+2025-12-05 10:00 AM Personal Income and Outlays, September 2025
+2025-12-23 8:30 AM Gross Domestic Product, 3rd Quarter 2025 (Initial Estimate) and Corporate Profits (Preliminary)
+2026-01-22 10:00 AM Personal Income and Outlays, October and November 2025
+2026-01-22 8:30 AM Gross Domestic Product, 3rd Quarter 2025 (Updated Estimate), GDP by Industry, and Corporate Profits (Revised)
+2026-02-20 8:30 AM GDP (Advance Estimate), 4th Quarter and Year 2025
+2026-02-20 8:30 AM Personal Income and Outlays, December 2025
+2026-03-13 8:30 AM GDP (Second Estimate), 4th Quarter and Year 2025
+2026-03-13 8:30 AM Personal Income and Outlays, January 2026
+2026-04-09 8:30 AM Personal Income and Outlays, February 2026
+2026-04-30 8:30 AM GDP (Advance Estimate), 1st Quarter 2026
+2026-04-30 8:30 AM Personal Income and Outlays, March 2026
+2026-05-28 8:30 AM GDP (Second Estimate) and Corporate Profits, 1st Quarter 2026
+2026-05-28 8:30 AM Personal Income and Outlays, April 2026
+2026-06-25 8:30 AM Personal Income and Outlays, May 2026
+2026-07-30 8:30 AM GDP (Advance Estimate), 2nd Quarter 2026
+2026-07-30 8:30 AM Personal Income and Outlays, June 2026
+2026-08-26 8:30 AM GDP (Second Estimate) and Corporate Profits, 2nd Quarter 2026
+2026-08-26 8:30 AM Personal Income and Outlays, July 2026
+2026-09-30 8:30 AM Personal Income and Outlays, August 2026
+2026-10-29 8:30 AM GDP (Advance Estimate), 3rd Quarter 2026
+2026-10-29 8:30 AM Personal Income and Outlays, September 2026
+2026-11-25 8:30 AM GDP (Second Estimate) and Corporate Profits, 3rd Quarter 2026
+2026-11-25 8:30 AM Personal Income and Outlays, October 2026
+2026-12-23 8:30 AM Personal Income and Outlays, November 2026
