@@ -35,7 +35,7 @@
 // No edge shown yet: re-run the forward check as data accrues.
 
 import { atr, adx, rthRangeUsed } from "../src/indicators.mjs";
-import { htfEmaTrend } from "../src/studies.mjs";
+import { htfEmaTrend, htfWarmupBars } from "../src/studies.mjs";
 import { chk, trig, verdict, mark, num, px, dayStart, clock, htfTrend, adxAtLeast, COLOR } from "../src/explain.mjs";
 
 const RTH_OPEN = 510;
@@ -46,7 +46,7 @@ export default {
   description: "Opening-range breakout taken only with the higher-timeframe EMA trend, when the opening range has not used up the day's average range, with ADX strength. Close-confirmed breaks, one each way by default. Built for the $1,250 eval; no forward edge shown yet.",
 
   timeframeMin: 1,
-  warmupBars: 400,
+  warmupBars: (p) => Math.max(400, p.trendMode === "off" ? 0 : htfWarmupBars(p.timeframeMin || 1, p.trendTf, p.trendFast, p.trendSlow)),
   warmupSessions: (p) => (Math.trunc(p.adrDays) || 10) + 3,
 
   execDefaults: {

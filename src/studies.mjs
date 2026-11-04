@@ -933,6 +933,15 @@ export function htfEmaTrend(bars, htfMin, fast, slow) {
   }
   return { dir, fast: f, slow: s, tf: htf };
 }
+// The signal bars an htfEmaTrend needs before the first bar it is read on: ten lengths of its
+// slower EMA on the longer bars, and one of them to close, in bars of the signal timeframe. A
+// strategy's warm-up counts its own bars, so it must say so (fuzz-found: donchian_1250's EMA
+// 373 on 51-minute bars needed 3,730 of them, about 190 days, and its warm-up gave 23).
+export function htfWarmupBars(sigTf, htfMin, fast, slow) {
+  const tf = Math.max(1, Math.trunc(sigTf) || 1), htf = Math.max(tf, Math.trunc(htfMin) || tf);
+  const len = Math.max(Math.max(1, Math.trunc(fast) || 9), Math.max(1, Math.trunc(slow) || 21));
+  return Math.ceil(((10 * len + 1) * htf) / tf);
+}
 
 // A study's reading at every signal bar -- what a decision at that bar's close
 // could know. `v` is the value the gate compares (an oscillator's value, a

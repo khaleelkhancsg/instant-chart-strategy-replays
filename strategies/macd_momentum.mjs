@@ -34,7 +34,7 @@
 // crossover is a lagging event); this book does not change it.
 
 import { atr, adx, macd, rthRangeUsed } from "../src/indicators.mjs";
-import { htfEmaTrend } from "../src/studies.mjs";
+import { htfEmaTrend, htfWarmupBars } from "../src/studies.mjs";
 import { chk, trig, verdict, inWindow, num, mark, barClock, htfTrend, adxAtLeast, adrSpark, histSpark } from "../src/explain.mjs";
 
 export default {
@@ -43,7 +43,7 @@ export default {
   description: "Enters once the MACD histogram has grown away from zero N bars in a row (default 2) on the side of the higher-timeframe EMA trend, with room left in the day's range; optionally leaves after N shrinking bars (the 3-bar fade exit, off by default). Built for the $1,250 eval; validated neither in the half-split nor forward.",
 
   timeframeMin: 5,
-  warmupBars: (p) => Math.max(400, 10 * (Math.trunc(p.adxPeriod) || 14)),
+  warmupBars: (p) => Math.max(400, 10 * (Math.trunc(p.adxPeriod) || 14), htfWarmupBars(p.timeframeMin || 5, p.trendTf, p.trendFast, p.trendSlow)),
   warmupSessions: (p) => (Math.trunc(p.adrDays) || 10) + 3,
 
   execDefaults: {

@@ -2272,6 +2272,60 @@ if (bars_) {
       }
     });
   }
+  t(`every strategy computes what the full run does once its declared warm-up has passed (${2 * SCALE} settings each, the ends of the ranges included)`, () => {
+    // A window loads only the warm-up a strategy and its filter declare (src/window.mjs), so
+    // bars that start exactly that far before a cut must give every bar after it the full run's
+    // signal, exit, size, order and bracket, and the filter the same verdict. A slow average
+    // must have forgotten its seed by then, and a value that stands still must not be left to
+    // rounding (fuzz-found: a higher-timeframe EMA counted in the wrong bars; RSIs on unchanged
+    // closes; a stochastic %D sitting exactly on 30). Its own generator, so the other cases stay
+    // what they were.
+    let s3 = (Number(process.env.FUZZ_SEED) || 12345) ^ 0x51a7;
+    const r3 = () => { s3 = (s3 * 1103515245 + 12345) & 0x7fffffff; return s3 / 0x7fffffff; };
+    const one = (a) => a[Math.floor(r3() * a.length)];
+    const KEYS = ["sig", "exitSig", "sizeMult", "atr", "orderPx", "stopPts", "targetPts"], EXACT = new Set(["sig", "exitSig", "sizeMult"]);
+    for (const [id, s] of strategies) {
+      for (let c = 0; c < 2 * SCALE; c++) {
+        // the defaults, then random settings, every other case at the ends of the ranges
+        const p = resolveParams(s, {});
+        if (c > 0) {
+          for (const d of s.params || []) {
+            if (r3() < 0.35) continue;
+            if (d.type === "select") { p[d.key] = one(d.options)[0]; continue; }
+            if (!(d.type === "int" || d.type === "time" || d.type === "float")) continue;
+            const st = d.step || (d.type === "float" ? 0.01 : 1), v = c % 2 === 0 ? (r3() < 0.5 ? d.min : d.max) : d.min + r3() * (d.max - d.min);
+            p[d.key] = Math.round(v / st) * st;
+          }
+          if (r3() < 0.25) p.timeframeMin = one([1, 2, 3, 5, 10, 15]);
+        }
+        const filter = r3() < 0.5 ? null : { ...NO_FILTER, ...(s.filterDefaults || {}), adxMin: one([0, 20, 25]), effMin: one([0, 0.3, 0.5]), volMax: one([0, 1.5]),
+                                             chopMax: one([0, 60]), adxPeriod: one([14, 30, 60]), effPeriod: one([20, 50]), volMaPeriod: one([60, 120]) };
+        const tf = p.timeframeMin || s.timeframeMin || 1, sigF = resample(H, tf), oF = s.compute(sigF, p);
+        const fF = filter ? applyFilters(oF.sig, buildFilterContext(sigF, filter), filter) : null;
+        const warm = windowSpan(s, p, { filter }).warmupMin;
+        for (const day of [40 + Math.floor(r3() * 60), 110 + Math.floor(r3() * 30)]) {
+          const cut = H.ts[0] + day * DAY, si = indexAtOrAfter(H.ts, cut - warm * 60000);
+          if (si === 0) continue;                       // the warm-up reaches back past these bars
+          const sigP = resample(sliceBars(H, si, indexAtOrAfter(H.ts, cut + 15 * DAY)), tf), oP = s.compute(sigP, p);
+          const fP = filter ? applyFilters(oP.sig, buildFilterContext(sigP, filter), filter) : null;
+          const off = indexAtOrAfter(sigF.ts, sigP.ts[0]);
+          for (let q = indexAtOrAfter(sigP.ts, cut); q < sigP.ts.length - 1; q++) {
+            const f = q + off;
+            const at = () => `${id} ${JSON.stringify(p)}${filter ? " with a filter" : ""} on ${tf}m, warm-up ${warm} min, at ${new Date(sigF.ts[f]).toISOString().slice(0, 16)}`;
+            if (sigF.ts[f] !== sigP.ts[q]) throw new Error(`${at()}: the slice's bars are out of step`);
+            for (const k of KEYS) {
+              if (!oF[k] && !oP[k]) continue;
+              const a = oF[k] ? oF[k][f] : undefined, b = oP[k] ? oP[k][q] : undefined;
+              if (same(a, b)) continue;
+              if (!EXACT.has(k) && Math.abs(a - b) <= 1e-6 * Math.max(1, Math.abs(a))) continue;
+              throw new Error(`${at()}: ${k} ${a}, from the warm-up ${b}`);
+            }
+            if (fF && fF[f] !== fP[q]) throw new Error(`${at()}: the filter passes ${fF[f]}, from the warm-up ${fP[q]}`);
+          }
+        }
+      }
+    }
+  });
 }
 
 section("11. Contract cap");

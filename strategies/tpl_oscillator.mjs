@@ -28,7 +28,10 @@ export default {
   description: "RSI, Stochastic or z-score; fade the extreme or follow it; fire on the level or wait for a cross back. A tuning starting point, not a validated strategy.",
 
   timeframeMin: 5,
-  warmupBars: 500,
+  // Twenty periods of an RSI, whose averages move by 1 / period a bar; the
+  // stochastic and the z-score read only their own window.
+  warmupBars: (p) => Math.max(500, p.osc === "rsi" || !p.osc ? 20 * (Math.trunc(p.period) || 14) : 0,
+                              10 * (Math.trunc(p.adxPeriod) || 14), 10 * (Math.trunc(p.atrPeriod) || 14)),
   execDefaults: { slAtrMult: 1.5, tpAtrMult: 3, contracts: 8, sizingMode: "fixed" },
 
   params: [

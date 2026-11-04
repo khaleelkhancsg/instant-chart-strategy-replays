@@ -33,14 +33,16 @@ export default {
 
   timeframeMin: 2,
   // The slowest member sets it: basePeriod x growth^(nSpeeds-1), ten periods of
-  // an EMA (the MACD's slow line plus its signal), or the z-score's whole window
-  // (fuzz-found: 4 speeds growing x2.9 reach 488, a z-score window of 2,440 bars).
+  // an EMA (the MACD's slow line plus its signal), twenty of an RSI, whose
+  // averages move by 1 / period a bar rather than 2 / (period + 1), as the RSI
+  // study counts it, or the z-score's whole window (fuzz-found: 4 speeds growing
+  // x2.9 reach 488, a z-score window of 2,440 bars).
   warmupBars: (p) => {
     const top = Math.max(2, Math.round((p.basePeriod || 4) * Math.pow(p.growth || 1.5, Math.max(0, (Math.trunc(p.nSpeeds) || 1) - 1))));
     const macd = Math.max(top + 1, Math.round(top * (p.macdSlowMult > 1 ? p.macdSlowMult : 2.2))) +
                  Math.max(2, Math.round(top * (p.macdSigMult > 0 ? p.macdSigMult : 0.75)));
     const z = Math.round(top * (p.zLenMult > 0 ? p.zLenMult : 5)) + (Math.trunc(p.slopeBars) || 1);
-    return Math.max(900, 10 * (p.family === "macd" ? macd : top), p.family === "zscore" ? z : 0,
+    return Math.max(900, 10 * (p.family === "macd" ? macd : top), p.family === "zscore" ? z : 0, p.family === "rsi" ? 20 * top : 0,
                     10 * (Math.trunc(p.atrPeriod) || 14), 10 * (Math.trunc(p.adxPeriod) || 14));
   },
   execDefaults: { contracts: 4, sizingMode: "fixed", slAtrMult: 1.5, tpMode: "rr", tpRR: 1.2, flipOnOpposite: false },
@@ -110,10 +112,15 @@ export default {
       members = periods.map((per) => roc(C, per));
     } else if (p.family === "rsi") {
       priceScaled = false;
+      // Centred on zero, and held while the close is unchanged: an RSI stands exactly still
+      // then (both of its averages shrink by the same factor), but computed it moves an ulp
+      // either way, and which way depends on the history before, so a flat member's slope
+      // would be decided by noise (fuzz-found: on an unchanged close the full run's RSI 456
+      // fell 7e-15 and the window's did not, and only one counted six members agreeing).
       members = periods.map((per) => {
         const r = rsi(C, per);
         const out = new Float64Array(n);
-        for (let i = 0; i < n; i++) out[i] = r[i] - 50;   // centre on zero
+        for (let i = 0; i < n; i++) out[i] = i > 0 && C[i] === C[i - 1] ? out[i - 1] : r[i] - 50;
         return out;
       });
     } else {

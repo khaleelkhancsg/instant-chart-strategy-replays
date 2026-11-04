@@ -53,7 +53,7 @@
 // dip was 60.6, and with the RSI turn 57.6.
 
 import { atr, adx, rsi, macd, rthRangeUsed, rthAtrRatio } from "../src/indicators.mjs";
-import { htfEmaTrend } from "../src/studies.mjs";
+import { htfEmaTrend, htfWarmupBars } from "../src/studies.mjs";
 import { chk, trig, verdict, inWindow, num, spark, mark, htfTrend, adxAtLeast, adrSpark, histSpark, COLOR } from "../src/explain.mjs";
 
 const TRIGGERS = [["macdDip", "MACD histogram crosses against the trend (pullback starts)"], ["macdTurn", "MACD histogram crosses back with the trend (pullback ends)"],
@@ -65,7 +65,8 @@ export default {
   description: "Trades with a higher-timeframe EMA trend when a short-term MACD or RSI pullback fires against it, if ADX shows strength and the day has range left (ADR used). Built for the $1,250 eval. Strong in Jan-Jul 2026, but it lost forward (Sep-Oct 2026), as the MACD fade did.",
 
   timeframeMin: 1,
-  warmupBars: (p) => Math.max(400, 10 * (Math.trunc(p.adxPeriod) || 14), 30 * (Math.trunc(p.rsiLen) || 14)),
+  warmupBars: (p) => Math.max(400, 10 * (Math.trunc(p.adxPeriod) || 14), 30 * (Math.trunc(p.rsiLen) || 14),
+                              htfWarmupBars(p.timeframeMin || 1, p.trendTf, p.trendFast, p.trendSlow)),
   warmupSessions: (p) => Math.max(Math.trunc(p.adrDays) || 10, Math.trunc(p.volDays) || 10) + 3,
 
   execDefaults: {

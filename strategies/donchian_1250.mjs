@@ -40,7 +40,7 @@
 
 import shipped from "./donchian_shipped.mjs";
 import { rthRangeUsed } from "../src/indicators.mjs";
-import { htfEmaTrend } from "../src/studies.mjs";
+import { htfEmaTrend, htfWarmupBars } from "../src/studies.mjs";
 import { sized, htfTrend, adrSpark, num } from "../src/explain.mjs";
 
 export default {
@@ -49,6 +49,8 @@ export default {
   name: "MNQ Donchian — $1,250 bot (10m EMA filter, late half size, 40-min exit)",
   description: "The $1,250 Donchian bot whole: donchian_shipped's breakout, only with the 10-min EMA 9/21 trend, half size once the day has used 0.9 of its average range, out after 20 bars without 1 ATR of profit. 4 lots, -$300 / +$250 day blocks, the $600 line.",
 
+  // the breakout's own, and the higher-timeframe EMAs on their longer bars
+  warmupBars: (p) => Math.max(shipped.warmupBars(p), p.htfGate === "off" ? 0 : htfWarmupBars(p.timeframeMin || shipped.timeframeMin, p.htfMin, p.htfFast, p.htfSlow)),
   warmupSessions: (p) => (Math.trunc(p.adrDays) || 10) + 3,
 
   execDefaults: {

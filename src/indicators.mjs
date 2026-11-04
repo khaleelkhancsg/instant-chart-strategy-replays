@@ -333,15 +333,25 @@ export function rollingMinMax(H, L, p) {
 }
 
 // Stochastic oscillator. %K is where price sits inside its recent range.
+// %D, its average, is summed afresh at each bar: %K is not exact in binary, so
+// sma's running sum would carry rounding from every bar before, and a %D that sits
+// exactly on a level read a hair either side of it depending on how much history
+// came first (fuzz-found: an exact 30 read 30.0000000000003 on all of history and
+// 29.99999999999998 in a window, so a crossback through 30 fired in one only).
 export function stochastic(H, L, C, kPeriod = 14, dPeriod = 3) {
   const { high: hh, low: ll } = rollingMinMax(H, L, kPeriod);
   const n = C.length;
-  const k = new Float64Array(n).fill(NaN);
+  const k = new Float64Array(n).fill(NaN), d = new Float64Array(n).fill(NaN);
   for (let i = 0; i < n; i++) {
     const range = hh[i] - ll[i];
     if (Number.isFinite(range)) k[i] = range === 0 ? 50 : ((C[i] - ll[i]) / range) * 100;
   }
-  return { k, d: sma(k, dPeriod) };
+  for (let i = dPeriod - 1; i < n; i++) {
+    let s = 0, ok = true;
+    for (let j = i - dPeriod + 1; j <= i && ok; j++) { if (Number.isFinite(k[j])) s += k[j]; else ok = false; }
+    if (ok) d[i] = s / dPeriod;
+  }
+  return { k, d };
 }
 
 // Keltner channel: an EMA with ATR-scaled bands. Unlike Bollinger it widens with

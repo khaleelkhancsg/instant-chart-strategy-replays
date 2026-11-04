@@ -121,6 +121,11 @@ rule logic into a script: that is a second engine, and it drifts.
 - **The calendar is built, never edited** (`node research/news_build.mjs` from the official
   sources in `research/news/`, whose README says where each came from). `test/news.test.mjs`
   fails when `src/news_calendar.mjs` is not what the sources build.
+- **A strategy's `warmupBars` / `warmupSessions` cover everything `compute()` reads.** That
+  means ten lengths of an EMA and twenty of an RSI, whose averages move 1 / length a bar. A
+  value that stands still exactly must not be left to rounding (an RSI on an unchanged close).
+  test.mjs section 10 starts the bars exactly that far before a cut and wants every output and
+  filter verdict after it to be the full run's; section 14 does the same for studies.
 - **After any engine change:**
   - run `npm run check` and a few fuzz seeds;
   - re-measure every strategy's defaults;
@@ -128,7 +133,7 @@ rule logic into a script: that is a second engine, and it drifts.
 
 ## Tests
 
-- `npm run check`: test.mjs (482), audit, legacy parity (15), MCP end to end (19),
+- `npm run check`: test.mjs (483), audit, legacy parity (15), MCP end to end (19),
   chart link (13), the indicator mock (91, `npm run test:mock`), the page's arithmetic
   (41, `npm run test:ui`), the level study's engine (22, `npm run test:levels`), the raw
   store (36, `npm run test:store`), the Data panel's routes (21, `npm run test:data`), the
