@@ -2459,6 +2459,48 @@ if (bars_) {
       }
     }
   });
+  t(`every study type reads what the full run does once its declared warm-up has passed (${4 * SCALE} settings each, the ends of the ranges included)`, () => {
+    // A window loads only the warm-up its studies declare (src/window.mjs), so bars that start
+    // exactly that far before a cut must give every signal bar after it the full run's reading,
+    // and every gate the same verdict. State held until an event must lapse inside it, and a
+    // running sum must not carry rounding from the bars before (fuzz-found: seed 9001, a
+    // chandelier at length 6 and 6 ATRs kept its side for months). Its own generator, so the
+    // cases the rest of the file draws stay what they were.
+    let s2 = (Number(process.env.FUZZ_SEED) || 12345) ^ 0x2d9e;
+    const r2 = () => { s2 = (s2 * 1103515245 + 12345) & 0x7fffffff; return s2 / 0x7fffffff; };
+    const sigs = new Map(), sigOf = (tf) => sigs.get(tf) || sigs.set(tf, resample(H, tf)).get(tf);
+    for (const type of Object.keys(STUDIES)) {
+      const D = STUDIES[type];
+      for (let c = 0; c < 4 * SCALE; c++) {
+        // the defaults, then random settings, every other case at the ends of the ranges
+        const params = {};
+        if (c > 0) for (const d of D.params) {
+          if (d.type === "select") { params[d.key] = d.options[Math.floor(r2() * d.options.length)][0]; continue; }
+          const x = c % 2 === 0 ? (r2() < 0.5 ? d.min : d.max) : d.min + r2() * ((d.type === "int" ? Math.min(d.max, 120) : d.max) - d.min);
+          params[d.key] = d.type === "int" ? Math.round(x) : Math.round(x * 100) / 100;
+        }
+        if ("lo" in params && "hi" in params && params.lo > params.hi) [params.lo, params.hi] = [params.hi, params.lo];
+        const st = resolveStudy({ type, tf: [0, 0, 1, 2, 5, 15, 60, 240][Math.floor(r2() * 8)], params });
+        const sigTf = [1, 2, 3, 5][Math.floor(r2() * 4)], sig = sigOf(sigTf), full = studyOnSignal(H, sig, st), warm = studyWarmupMin(st, sigTf);
+        for (const day of [40 + Math.floor(r2() * 60), 110 + Math.floor(r2() * 30)]) {
+          const cut = H.ts[0] + day * DAY, si = indexAtOrAfter(H.ts, cut - warm * 60000);
+          if (si === 0) continue;                       // the warm-up reaches back past these bars
+          const part = sliceBars(H, si, indexAtOrAfter(H.ts, cut + 15 * DAY)), sp = resample(part, sigTf), r = studyOnSignal(part, sp, st);
+          const off = indexAtOrAfter(sig.ts, sp.ts[0]);
+          for (let q = indexAtOrAfter(sp.ts, cut); q < sp.ts.length - 1; q++) {
+            const f = q + off, a = full.v[f], b = r.v[q];
+            const at = () => `${type} ${JSON.stringify(st.params)} tf ${st.tf} on ${sigTf}m, warm-up ${warm} min, at ${new Date(sig.ts[f]).toISOString().slice(0, 16)}`;
+            if (sig.ts[f] !== sp.ts[q]) throw new Error(`${at()}: the slice's bars are out of step`);
+            if (full.dir[f] !== r.dir[q]) throw new Error(`${at()}: direction ${full.dir[f]}, from the warm-up ${r.dir[q]}`);
+            if (Number.isNaN(a) !== Number.isNaN(b) || Math.abs(a - b) > 1e-6 * Math.max(1, Math.abs(a))) throw new Error(`${at()}: reading ${a}, from the warm-up ${b}`);
+            for (const gate of D.gates) for (const d of [1, -1])
+              if (gatePasses({ ...full, st: { ...st, gate } }, f, d) !== gatePasses({ ...r, st: { ...st, gate } }, q, d))
+                throw new Error(`${at()}: gate ${gate} on a ${d > 0 ? "long" : "short"} differs (${a} vs ${b})`);
+          }
+        }
+      }
+    }
+  });
   t("a gate that allows everything leaves the trades as they were; one that refuses everything leaves none", () => {
     const s = strategies.get("momentum_roc"), p = resolveParams(s, {}), x = resolveExec(s.execDefaults || {});
     const base = runStrategy(H, s, p, x).trades;
@@ -2829,7 +2871,10 @@ if (bars_) {
       close(v.plus[i], win(i, p, (j) => Math.abs(H[j] - L[j - 1])) / win(i, p, (j) => tr[j]), 1e-9, "VI+:");
       close(v.minus[i], win(i, p, (j) => Math.abs(L[j] - H[j - 1])) / win(i, p, (j) => tr[j]), 1e-9, "VI-:");
     }
-    const h = hma(C, 16), half = wma(C, 8), full = wma(C, 16), diff = Float64Array.from(C, (_, i) => 2 * half[i] - full[i]), want = wma(diff, 4);
+    // the outer average written out: wma's running sums over these differences drift with every
+    // bar before (1e-9 by bar 153 here, 1.7e-4 points over 7 years of MNQ), so hma sums it afresh
+    const h = hma(C, 16), half = wma(C, 8), full = wma(C, 16), diff = Float64Array.from(C, (_, i) => 2 * half[i] - full[i]);
+    const want = Float64Array.from(C, (_, i) => (i < 18 ? NaN : (4 * diff[i] + 3 * diff[i - 1] + 2 * diff[i - 2] + diff[i - 3]) / 10));
     arrClose(Array.from(h).slice(40), Array.from(want).slice(40), 1e-9, "HMA:");
     const r = linreg(C, 20);
     for (let i = 19; i < n; i += 17) {

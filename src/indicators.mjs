@@ -247,11 +247,22 @@ export function choppiness(H, L, C, p = 14) {
 
 // Commodity Channel Index — deviation from a typical-price mean, scaled by mean
 // absolute deviation. Unbounded, so extremes are genuinely rare.
+//
+// The mean is a running sum of H + L + C, which is exact in binary for prices on a tick
+// grid. A running sum of the thirds themselves carried rounding from every bar before,
+// so a flat window, whose CCI is 0, read +-66.7 on one stretch of history and 0 on
+// another (fuzz-found: test.mjs section 14, the warm-up check).
 export function cci(H, L, C, p = 20) {
   const n = C.length;
-  const tp = new Float64Array(n);
-  for (let i = 0; i < n; i++) tp[i] = (H[i] + L[i] + C[i]) / 3;
-  const m = sma(tp, p);
+  const tp = new Float64Array(n), m = new Float64Array(n).fill(NaN);
+  let sx = 0;
+  for (let i = 0; i < n; i++) {
+    const x = H[i] + L[i] + C[i];
+    tp[i] = x / 3;
+    sx += x;
+    if (i >= p) sx -= H[i - p] + L[i - p] + C[i - p];
+    if (i >= p - 1) m[i] = sx / (3 * p);
+  }
   const out = new Float64Array(n).fill(NaN);
   for (let i = p - 1; i < n; i++) {
     let mad = 0;
@@ -469,10 +480,20 @@ export function vwma(C, V, p = 20) {
 }
 
 // Hull moving average: WMA(2 WMA(n/2) - WMA(n), sqrt n), far less lag than either.
+// The two inner averages run over closes, whose running sums are exact in binary; the
+// outer one runs over their difference, which is not, so it is summed afresh at each bar.
+// wma's running sums would carry rounding from every bar before, and a close sitting on
+// the line read above it on one stretch of history and below on another (fuzz-found).
 export function hma(C, p = 20) {
   const half = wma(C, Math.max(1, Math.round(p / 2))), full = wma(C, p), n = C.length, d = new Float64Array(n);
   for (let i = 0; i < n; i++) d[i] = 2 * half[i] - full[i];
-  return wma(d, Math.max(1, Math.round(Math.sqrt(p))));
+  const q = Math.max(1, Math.round(Math.sqrt(p))), div = (q * (q + 1)) / 2, out = new Float64Array(n).fill(NaN);
+  for (let i = q - 1; i < n; i++) {
+    let s = 0, ok = true;
+    for (let k = 0; k < q && ok; k++) { const v = d[i - k]; if (Number.isFinite(v)) s += (q - k) * v; else ok = false; }
+    if (ok) out[i] = s / div;
+  }
+  return out;
 }
 
 // Kaufman's adaptive average: its speed follows the efficiency ratio, so it runs with
@@ -491,12 +512,16 @@ export function kama(C, p = 10, fast = 2, slow = 30) {
   return out;
 }
 
-// Money flow index: an RSI of typical price weighted by volume, 0-100.
+// Money flow index: an RSI of typical price weighted by volume, 0-100. Its flows are
+// three times the typical price times the volume, exact in binary for prices on a tick
+// grid and whole volumes, so the running totals carry no rounding from earlier bars: with
+// thirds they could end a little under zero, and a window with no flow read -1.9 instead
+// of 50 (fuzz-found).
 export function mfi(H, L, C, V, p = 14) {
   const n = C.length, out = new Float64Array(n).fill(NaN), up = new Float64Array(n), dn = new Float64Array(n);
   let prev = NaN, su = 0, sd = 0;
   for (let i = 0; i < n; i++) {
-    const tp = (H[i] + L[i] + C[i]) / 3, flow = tp * V[i];
+    const tp = H[i] + L[i] + C[i], flow = tp * V[i];
     if (tp > prev) up[i] = flow; else if (tp < prev) dn[i] = flow;
     prev = tp;
     su += up[i]; sd += dn[i];
@@ -517,15 +542,21 @@ export function williamsR(H, L, C, p = 14) {
 }
 
 // Chaikin money flow: where bars close in their range, weighted by volume, -1 to 1.
+// A bar's flow is a fraction of its range, not exact in binary, so the window's flow is
+// summed afresh at each bar: a running total would carry rounding from every bar before,
+// and a window that nets to exactly 0 would read a hair either side of it.
 export function cmf(H, L, C, V, p = 20) {
   const n = C.length, out = new Float64Array(n).fill(NaN), mfv = new Float64Array(n);
-  let sm = 0, sv = 0;
+  let sv = 0;
   for (let i = 0; i < n; i++) {
     const r = H[i] - L[i];
     mfv[i] = r > 0 ? (((C[i] - L[i]) - (H[i] - C[i])) / r) * V[i] : 0;
-    sm += mfv[i]; sv += V[i];
-    if (i >= p) { sm -= mfv[i - p]; sv -= V[i - p]; }
-    if (i >= p - 1) out[i] = sv > 0 ? sm / sv : 0;
+    sv += V[i];                                   // whole volumes: exact
+    if (i >= p) sv -= V[i - p];
+    if (i < p - 1) continue;
+    let sm = 0;
+    for (let j = i - p + 1; j <= i; j++) sm += mfv[j];
+    out[i] = sv > 0 ? sm / sv : 0;
   }
   return out;
 }
@@ -620,16 +651,20 @@ export function linreg(C, p = 50) {
 }
 
 // Chandelier exit: a stop `mult` ATRs off the highest high (or lowest low) of p bars.
-// dir flips when the close crosses the stop on its side.
-export function chandelier(H, L, C, p = 22, mult = 3) {
+// A close beyond a stop sets dir: over the short stop +1, under the long stop -1. Between
+// the stops it keeps its side, for `hold` bars at most: with no such close in that long it
+// has none (0), so a reading never depends on more than `hold` bars and the ATR's warm-up
+// before it. Infinity is the unbounded original. Far stops can keep a side for months: at
+// length 6 and 6 ATRs on 5-minute MNQ, 83,012 bars; at the default 22 and 3, 85.
+export function chandelier(H, L, C, p = 22, mult = 3, hold = Infinity) {
   const n = C.length, { high: hh, low: ll } = rollingMinMax(H, L, p), a = atr(H, L, C, p);
   const long = new Float64Array(n).fill(NaN), short = new Float64Array(n).fill(NaN), dir = new Int8Array(n);
-  let d = 0;
+  let d = 0, at = -Infinity;
   for (let i = 0; i < n; i++) {
     if (!Number.isFinite(hh[i])) continue;
     long[i] = hh[i] - mult * a[i]; short[i] = ll[i] + mult * a[i];
-    if (C[i] > short[i]) d = 1; else if (C[i] < long[i]) d = -1;
-    dir[i] = d;
+    if (C[i] > short[i]) { d = 1; at = i; } else if (C[i] < long[i]) { d = -1; at = i; }
+    dir[i] = i - at < hold ? d : 0;
   }
   return { long, short, dir };
 }

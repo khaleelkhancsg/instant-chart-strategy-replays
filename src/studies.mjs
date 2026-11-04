@@ -41,8 +41,8 @@ import { ema, sma, atr, adx, rsi, macd, stochastic, cci, roc, zscore, efficiency
 import { periodKey, developingProfile, priorProfile, compositeLevels, nakedPocs, periodLevels, pivotLevels, rangeLevels,
          firstRange, initialBalance, IB_EXTENSIONS, clockRange, clockOpens, CLOCK_SPANS, adrProjections, swingLevels,
          swingVwap, volumeShelf, PCT_ANCHORS, anchorOf, rawOffsets, percentLadder, adrLadder, reachLevels, conformalLevels,
-         noiseArea, moveFan } from "./levels.mjs";
-import { resample } from "./resample.mjs";
+         noiseArea, moveFan, weekOf } from "./levels.mjs";
+import { resample, sliceBars } from "./resample.mjs";
 
 const RTH_OPEN = 510, RTH_CLOSE = 900;        // 08:30 and 15:00 CT
 const SESSION_OPEN = 1020;                     // 17:00 CT
@@ -62,7 +62,7 @@ function source(b, s) {
   const n = b.close.length, out = new Float64Array(n);
   for (let i = 0; i < n; i++) {
     const o = b.open[i], h = b.high[i], l = b.low[i], c = b.close[i];
-    out[i] = s === "open" ? o : s === "hl2" ? (h + l) / 2 : s === "hlc3" ? (h + l + c) / 3 : (o + h + l + c) / 4;
+    out[i] = s === "open" ? o : s === "hl2" ? (h + l) / 2 : s === "hlc3" ? (h + l + c) / 3 : s === "hlc3x3" ? h + l + c : (o + h + l + c) / 4;
   }
   return out;
 }
@@ -160,6 +160,55 @@ const anchorSessions = (p) => ({ week: 8, month: 26 }[p.anchor] || 2) + (p.mode 
 const periodSessions = (p) => ({ week: 14, month: 50, quarter: 140 }[p.period] || 3);
 const PERIODS = [["week", "Week"], ["month", "Month"]];
 
+// ── state that would otherwise date from any earlier bar ──
+// A window loads only the warm-up its studies declare (src/window.mjs), so a reading must
+// not depend on anything before it. Two kinds of study would:
+//
+//   HELD     a value kept until an event renews it: a chandelier's side, a volume shelf, a
+//            swing. Each is forgotten `hold` bars after its event, and the warm-up covers
+//            that. Each hold is about twice the longest seen at sensible settings on 7
+//            years of MNQ, and far more at the defaults: a chandelier side 542 bars (10 / 4;
+//            85 at 22 / 3), a 4x volume shelf 1,352 one-minute bars, a swing 959 (60 / 60;
+//            358 at 5 / 5).
+//   BLOCKED  a recursion whose state never settles on its own: Supertrend's ratcheting
+//            bands, the SAR. It runs afresh from the first bar of every block of whole
+//            trading weeks, and each bar reads the run begun at the start of the block
+//            before its own, so it depends on at most two blocks, bit for bit. A block
+//            holds at least BLOCK_BARS of the study's bars: a fresh run read what the full
+//            history does within 1,672 bars at the slowest Supertrend (200 / 10), 131 at
+//            the default, and 633 for the slowest SAR.
+//
+// Fuzz-found (test.mjs section 14, seed 9001): a chandelier at length 6 and 6 ATRs kept a
+// side for months, so a window that started after the close that set it read none.
+const HOLD = { chandelier: 1000, volshelf: 3000, swings: 2000 };
+const BLOCK_BARS = 1000, WEEK_MIN = 6000;     // a trading week, counted short for holidays
+const blockWeeks = (bars, tf) => Math.max(1, Math.ceil((Math.max(BLOCK_BARS, bars) * tf) / WEEK_MIN));
+
+// Each bar's reading from a fresh `run` over its own block and the one before it. A
+// block is `weeks` trading weeks (levels.mjs weekOf), counted from a fixed week, so a
+// slice of the bars that holds a bar's previous block whole reads it exactly as the full
+// history does.
+function blockRuns(b, weeks, run) {
+  const n = b.close.length, td = b.tday || Float64Array.from(b.ts, (t) => Math.floor(t / 86400000));
+  const blk = (i) => Math.floor(weekOf(td[i]) / weeks);
+  if (!n) return run(b);
+  const starts = [];
+  for (let i = 0; i < n; i++) if (i === 0 || blk(i) !== blk(i - 1)) starts.push(i);
+  const out = {};
+  for (let m = 0; m < starts.length; m++) {
+    const s = starts[m], e = m + 1 < starts.length ? starts[m + 1] : n;
+    const from = m > 0 && blk(starts[m - 1]) === blk(s) - 1 ? starts[m - 1] : s;
+    const r = run(sliceBars(b, from, e));
+    for (const [k, a] of Object.entries(r)) {
+      if (!out[k]) out[k] = new a.constructor(n);
+      out[k].set(a.subarray(s - from, e - from), s);
+    }
+  }
+  return out;
+}
+// Sessions to warm up for a blocked study: the two blocks a reading can reach back over.
+const blockSessions = (bars, tf) => 10 * blockWeeks(bars, tf) + 2;
+
 // ── the catalog ──
 // name, group (for the picker), pane, kind, params, label(p), warmup(p) in bars
 // of the study's timeframe (and warmupSessions for session-anchored ones), the
@@ -182,7 +231,12 @@ export const STUDIES = {
     name: "SMA", group: "Price", pane: "price", kind: "price",
     params: [int("length", "Length", 50, 2, 2000), SOURCE],
     label: (p) => `SMA ${p.length}`, warmup: (p) => p.length + 2, gates: ["with", "against"],
-    compute: (b, p) => { const v = sma(source(b, p.source), p.length); return { line: v, lines: [{ name: `SMA ${p.length}`, data: v }] }; },
+    compute: (b, p) => {
+      // HLC3's thirds are not exact in binary, so a running sum of them would carry rounding
+      // from every bar before: average H + L + C, which is, and take a third of that.
+      const v = p.source === "hlc3" ? sma(source(b, "hlc3x3"), p.length).map((x) => x / 3) : sma(source(b, p.source), p.length);
+      return { line: v, lines: [{ name: `SMA ${p.length}`, data: v }] };
+    },
   },
   emacross: {
     name: "EMA cross (fast / slow)", group: "Price", pane: "price", kind: "trend",
@@ -238,10 +292,12 @@ export const STUDIES = {
   supertrend: {
     name: "Supertrend", group: "Price", pane: "price", kind: "trend",
     params: [int("period", "ATR period", 10, 2, 200), num("mult", "ATR multiple", 3, 0.5, 10, 0.25)],
-    label: (p) => `Supertrend ${p.period}, ${p.mult}`, warmup: (p) => 10 * p.period, gates: ["with", "against"],
+    label: (p) => `Supertrend ${p.period}, ${p.mult}`, warmup: () => 0, warmupSessions: (p, tf) => blockSessions(10 * p.period, tf), gates: ["with", "against"],
     terms: { with: "Longs in its uptrend, shorts in its downtrend", against: "Longs in its downtrend, shorts in its uptrend" },
+    hint: "Its bands ratchet and only a close through one flips it, so it runs afresh every few weeks and each bar reads a run begun at least 1,000 bars earlier: what it shows never depends on all of history.",
     compute: (b, p) => {
-      const r = supertrend(b.high, b.low, b.close, p.period, p.mult), n = r.trend.length, up = nanArr(n), dn = nanArr(n);
+      const run = (x) => { const s = supertrend(x.high, x.low, x.close, p.period, p.mult); return { trend: s.trend, upper: s.upper, lower: s.lower }; };
+      const r = blockRuns(b, blockWeeks(10 * p.period, b.tfMin || 1), run), n = r.trend.length, up = nanArr(n), dn = nanArr(n);
       for (let i = 0; i < n; i++) { if (r.trend[i] === 1) up[i] = r.lower[i]; else dn[i] = r.upper[i]; }
       return { dir: r.trend, lines: [{ name: "up", data: up, color: "#26a69a" }, { name: "down", data: dn, color: "#ef5350" }] };
     },
@@ -447,28 +503,28 @@ export const STUDIES = {
   swings: {
     name: "Swing highs and lows", group: "Levels", pane: "price", kind: "band",
     params: [int("left", "Bars before", 5, 1, 60), int("right", "Bars after", 5, 1, 60)],
-    label: (p) => `Swings ${p.left}/${p.right}`, warmup: (p) => 40 * (p.left + p.right), gates: BAND_GATES, levels: BAND_LEVELS,
+    label: (p) => `Swings ${p.left}/${p.right}`, warmup: (p) => HOLD.swings + p.left + p.right + 2, gates: BAND_GATES, levels: BAND_LEVELS,
     terms: { mid: "the swings' middle", hi: "the last swing high", lo: "the last swing low" },
-    hint: "A swing shows only once the bars after it have closed, so it is drawn late, as it would be live.",
+    hint: "A swing shows only once the bars after it have closed, so it is drawn late, as it would be live. One is kept until the next, or 2,000 bars at most.",
     compute: (b, p) => {
-      const r = swingLevels(b, p);
+      const r = swingLevels(b, { ...p, hold: HOLD.swings });
       return { lo: r.low, hi: r.high, lines: [{ name: "swing high", data: r.high }, { name: "swing low", data: r.low }, { name: "prior high", data: r.high2, dash: [2, 3], alpha: 0.6 }, { name: "prior low", data: r.low2, dash: [2, 3], alpha: 0.6 }] };
     },
   },
   swingvwap: {
     name: "VWAP from the last swings", group: "Levels", pane: "price", kind: "band",
     params: [int("left", "Bars before", 10, 1, 60), int("right", "Bars after", 10, 1, 60)],
-    label: (p) => `Swing VWAP ${p.left}/${p.right}`, warmup: (p) => 40 * (p.left + p.right), gates: BAND_GATES, levels: BAND_LEVELS,
+    label: (p) => `Swing VWAP ${p.left}/${p.right}`, warmup: (p) => HOLD.swings + p.left + p.right + 2, gates: BAND_GATES, levels: BAND_LEVELS,
     terms: { mid: "the middle", hi: "the VWAP from the swing high", lo: "the VWAP from the swing low" },
-    hint: "Anchored VWAPs from the latest swing high and swing low: what buyers and sellers since each extreme have paid.",
-    compute: (b, p) => { const r = swingVwap(b, p); return { lo: r.dn, hi: r.up, lines: [{ name: "from high", data: r.up }, { name: "from low", data: r.dn }] }; },
+    hint: "Anchored VWAPs from the latest swing high and swing low: what buyers and sellers since each extreme have paid. Each runs until the next swing, or 2,000 bars at most.",
+    compute: (b, p) => { const r = swingVwap(b, { ...p, hold: HOLD.swings }); return { lo: r.dn, hi: r.up, lines: [{ name: "from high", data: r.up }, { name: "from low", data: r.dn }] }; },
   },
   volshelf: {
     name: "High-volume bar level", group: "Levels", pane: "price", kind: "price",
     params: [int("length", "Average over (bars)", 60, 5, 500), num("mult", "Times the average", 4, 1.5, 20, 0.5)],
-    label: (p) => `Vol shelf ${p.mult}×`, warmup: (p) => p.length + 2, gates: ["with", "against"],
-    hint: "The midpoint of the latest bar with outsized volume, held until the next one.",
-    compute: (b, p) => { const v = volumeShelf(b, p); return { line: v, lines: [{ name: "shelf", data: v }] }; },
+    label: (p) => `Vol shelf ${p.mult}×`, warmup: (p) => HOLD.volshelf + p.length + 2, gates: ["with", "against"],
+    hint: "The midpoint of the latest bar with outsized volume, held until the next one, or 3,000 bars at most.",
+    compute: (b, p) => { const v = volumeShelf(b, { ...p, hold: HOLD.volshelf }); return { line: v, lines: [{ name: "shelf", data: v }] }; },
   },
   hma: {
     name: "Hull MA", group: "Price", pane: "price", kind: "price",
@@ -479,7 +535,9 @@ export const STUDIES = {
   kama: {
     name: "Kaufman adaptive MA", group: "Price", pane: "price", kind: "price",
     params: [int("length", "Efficiency length", 10, 2, 200), int("fast", "Fast", 2, 1, 20), int("slow", "Slow", 30, 5, 100)],
-    label: (p) => `KAMA ${p.length}`, warmup: (p) => 20 * p.slow, gates: ["with", "against"],
+    // In flat chop it moves by (2 / (slow + 1))^2 of the gap a bar, so its seed is e^-20 of
+    // what it was after 5 (slow + 1)^2 bars (fuzz-found: 20 x slow left slow 100 nine points out).
+    label: (p) => `KAMA ${p.length}`, warmup: (p) => 5 * (Math.max(p.fast, p.slow) + 1) ** 2 + p.length + 2, gates: ["with", "against"],
     compute: (b, p) => { const v = kama(b.close, p.length, p.fast, p.slow); return { line: v, lines: [{ name: `KAMA ${p.length}`, data: v }] }; },
   },
   vwma: {
@@ -491,7 +549,8 @@ export const STUDIES = {
   ichimoku: {
     name: "Ichimoku cloud", group: "Price", pane: "price", kind: "trend",
     params: [int("conv", "Conversion", 9, 2, 100), int("base", "Base", 26, 2, 200), int("span", "Span B", 52, 2, 400)],
-    label: (p) => `Ichimoku ${p.conv}/${p.base}/${p.span}`, warmup: (p) => p.base + p.span + 2, gates: ["with", "against"],
+    // the cloud is drawn from values `base` bars old, each the middle of up to the longest line's bars
+    label: (p) => `Ichimoku ${p.conv}/${p.base}/${p.span}`, warmup: (p) => p.base + Math.max(p.conv, p.base, p.span) + 2, gates: ["with", "against"],
     terms: { with: "Longs above the cloud, shorts below it", against: "Longs below the cloud, shorts above it" },
     compute: (b, p) => {
       const r = ichimoku(b.high, b.low, b.close, p.conv, p.base, p.span);
@@ -501,16 +560,22 @@ export const STUDIES = {
   psar: {
     name: "Parabolic SAR", group: "Price", pane: "price", kind: "trend",
     params: [num("step", "Step", 0.02, 0.005, 0.1, 0.005), num("max", "Maximum", 0.2, 0.05, 0.5, 0.05)],
-    label: (p) => `SAR ${p.step}, ${p.max}`, warmup: () => 1500, gates: ["with", "against"],
+    label: (p) => `SAR ${p.step}, ${p.max}`, warmup: () => 0, warmupSessions: (p, tf) => blockSessions(BLOCK_BARS, tf), gates: ["with", "against"],
     terms: { with: "Longs while it trails below, shorts while above", against: "Longs while it is above, shorts while below" },
-    compute: (b, p) => { const r = psar(b.high, b.low, p.step, p.max); return { dir: r.dir, lines: [{ name: "SAR", data: r.sar, dash: [1, 3] }] }; },
+    hint: "Each flip restarts it from the last trend's extreme, so it runs afresh every few weeks and each bar reads a run begun at least 1,000 bars earlier.",
+    compute: (b, p) => {
+      const r = blockRuns(b, blockWeeks(BLOCK_BARS, b.tfMin || 1), (x) => psar(x.high, x.low, p.step, p.max));
+      return { dir: r.dir, lines: [{ name: "SAR", data: r.sar, dash: [1, 3] }] };
+    },
   },
   chandelier: {
     name: "Chandelier exit", group: "Price", pane: "price", kind: "trend",
     params: [int("length", "Length", 22, 2, 200), num("mult", "ATR multiple", 3, 0.5, 8, 0.25)],
-    label: (p) => `Chandelier ${p.length}, ${p.mult}`, warmup: (p) => 20 * p.length, gates: ["with", "against"],
+    // the hold, then the ATR's 10 lengths and the channel before the oldest close it reads
+    label: (p) => `Chandelier ${p.length}, ${p.mult}`, warmup: (p) => HOLD.chandelier + 11 * p.length + 10, gates: ["with", "against"],
     terms: { with: "Longs in its uptrend, shorts in its downtrend", against: "Longs in its downtrend, shorts in its uptrend" },
-    compute: (b, p) => { const r = chandelier(b.high, b.low, b.close, p.length, p.mult); return { dir: r.dir, lines: [{ name: "long stop", data: r.long, color: "#26a69a" }, { name: "short stop", data: r.short, color: "#ef5350" }] }; },
+    hint: "A close beyond a stop sets its side, which lasts until a close beyond the other, or 1,000 bars with neither: then it has none, and a gate refuses both sides.",
+    compute: (b, p) => { const r = chandelier(b.high, b.low, b.close, p.length, p.mult, HOLD.chandelier); return { dir: r.dir, lines: [{ name: "long stop", data: r.long, color: "#26a69a" }, { name: "short stop", data: r.short, color: "#ef5350" }] }; },
   },
   heikin: {
     name: "Heikin-Ashi trend", group: "Price", pane: "price", kind: "trend",
@@ -797,14 +862,18 @@ export const isGating = (st) => !!st && !!st.gate && st.gate !== "off";
 export const gateKey = (studies) => (studies || []).filter(isGating).map((s) => [s.type, s.tf, s.params, s.gate]);
 
 // How far back a study needs data before the window, in minutes, on the signal
-// timeframe `sigTf` -- src/window.mjs's rule: bars padded 1.5x for gaps, plus 3
-// days; sessions as calendar days, 7/5 for weekends plus 4 for holidays.
+// timeframe `sigTf`. Bars become minutes padded 1.6x, plus 3 days: 7/5 for weekends,
+// 24/23 for the daily break, and holidays and early closes, so even a long warm-up on
+// long bars covers its count. Sessions become calendar days, 7/5 for weekends plus 4 for
+// holidays. A study that declares both reads one through the other (an ATR averaged over
+// sessions, a session's delta smoothed over bars), so it needs the two end to end
+// (fuzz-found: the ATR ratio at 200 / 40 read 1e-4 off with only the larger).
 export function studyWarmupMin(st, sigTf = 1) {
   const S = STUDIES[st.type], p = st.params, tf = st.tf || sigTf;
-  const bars = S.warmup ? S.warmup(p) : 0, sessions = S.warmupSessions ? S.warmupSessions(p) : 0;
-  const byBars = bars > 0 ? Math.ceil(bars * tf * 1.5) + 3 * 1440 : 0;
+  const bars = S.warmup ? S.warmup(p, tf) : 0, sessions = S.warmupSessions ? S.warmupSessions(p, tf) : 0;
+  const byBars = bars > 0 ? Math.ceil(bars * tf * 1.6) + 3 * 1440 : 0;
   const bySessions = sessions > 0 ? Math.ceil((sessions * 7) / 5 + 4) * 1440 : 0;
-  return Math.max(byBars, bySessions);
+  return byBars + bySessions;
 }
 
 // ── computing, cached per bar set ──

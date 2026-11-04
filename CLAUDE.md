@@ -128,7 +128,7 @@ rule logic into a script: that is a second engine, and it drifts.
 
 ## Tests
 
-- `npm run check`: test.mjs (481), audit, legacy parity (15), MCP end to end (19),
+- `npm run check`: test.mjs (482), audit, legacy parity (15), MCP end to end (19),
   chart link (13), the indicator mock (91, `npm run test:mock`), the page's arithmetic
   (41, `npm run test:ui`), the level study's engine (22, `npm run test:levels`), the raw
   store (36, `npm run test:store`), the Data panel's routes (21, `npm run test:data`), the
@@ -312,8 +312,15 @@ Nothing external is involved: no API, and no page outside the chart.
   `compute(bars, params)`.
 - Price levels are built in `src/levels.mjs`: `out[i]` may use bars up to i only. A
   band can return `mid`, which is what reads 0.5, as a profile's POC does.
-- test.mjs section 14 then checks it for lookahead and live = sweep
-  automatically.
+- test.mjs section 14 then checks it for lookahead, its warm-up and live = sweep
+  automatically. The warm-up check starts the bars exactly the declared warm-up before a
+  cut and wants every reading and gate verdict after it to be the full run's, so:
+  - state kept until an event (a side, a level, a swing) lapses inside the warm-up:
+    `HOLD` in src/studies.mjs;
+  - a recursion that never settles (Supertrend's bands, the SAR) runs afresh in blocks of
+    whole weeks, each bar reading the run begun a block earlier (`blockRuns`);
+  - a running sum adds only values exact in binary (prices on the tick grid, whole
+    volumes, H + L + C rather than its third), or the window is summed afresh each bar.
 - A new kind of computation (not built on `src/indicators.mjs`) also gets a naive
   reference test there, as VWAP and the day levels have.
 

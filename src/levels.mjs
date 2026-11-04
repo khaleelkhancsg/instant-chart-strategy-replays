@@ -631,16 +631,19 @@ function pivots(b, left, right, onHigh, onLow) {
   }
 }
 
-// The latest confirmed swing high and low, and the one before each.
-export function swingLevels(b, { left = 5, right = 5 } = {}) {
+// The latest confirmed swing high and low, and the one before each, among the swings
+// confirmed in the last `hold` bars, so a reading never depends on more history than that
+// and the swing's own bars. Infinity keeps every swing until the next.
+export function swingLevels(b, { left = 5, right = 5, hold = Infinity } = {}) {
   const n = b.close.length, high = nanArr(n), low = nanArr(n), high2 = nanArr(n), low2 = nanArr(n);
   const hs = [], ls = [];
   pivots(b, left, right, (j, c) => hs.push([c, b.high[j]]), (j, c) => ls.push([c, b.low[j]]));
   const fill = (ev, a, a2) => {
-    let k = 0, cur = NaN, prev = NaN;
+    let k = 0;
     for (let i = 0; i < n; i++) {
-      while (k < ev.length && ev[k][0] <= i) { prev = cur; cur = ev[k++][1]; }
-      a[i] = cur; a2[i] = prev;
+      while (k < ev.length && ev[k][0] <= i) k++;
+      if (k >= 1 && i - ev[k - 1][0] < hold) a[i] = ev[k - 1][1];
+      if (k >= 2 && i - ev[k - 2][0] < hold) a2[i] = ev[k - 2][1];
     }
   };
   fill(hs, high, high2); fill(ls, low, low2);
@@ -648,22 +651,22 @@ export function swingLevels(b, { left = 5, right = 5 } = {}) {
 }
 
 // VWAP anchored at the latest confirmed swing high and at the latest swing low, from
-// the swing's own bar, shown from when the swing is confirmed.
-export function swingVwap(b, { left = 10, right = 10 } = {}) {
-  const n = b.close.length, pv = new Float64Array(n + 1), vv = new Float64Array(n + 1);
-  for (let i = 0; i < n; i++) {
-    pv[i + 1] = pv[i] + ((b.high[i] + b.low[i] + b.close[i]) / 3) * b.volume[i];
-    vv[i + 1] = vv[i] + b.volume[i];
-  }
-  const up = nanArr(n), dn = nanArr(n), hs = [], ls = [];
+// the swing's own bar, shown from when the swing is confirmed until `hold` bars after.
+// Summed from the anchor, not as a difference of running totals from the first bar, so
+// it comes out bit for bit the same however much history comes before.
+export function swingVwap(b, { left = 10, right = 10, hold = Infinity } = {}) {
+  const n = b.close.length, up = nanArr(n), dn = nanArr(n), hs = [], ls = [];
   pivots(b, left, right, (j, c) => hs.push([c, j]), (j, c) => ls.push([c, j]));
   const fill = (ev, a) => {
-    let k = 0, from = -1;
+    let k = 0, from = -1, conf = 0, pv = 0, vv = 0;
     for (let i = 0; i < n; i++) {
-      while (k < ev.length && ev[k][0] <= i) from = ev[k++][1];
-      if (from < 0) continue;
-      const v = vv[i + 1] - vv[from];
-      if (v > 0) a[i] = (pv[i + 1] - pv[from]) / v;
+      while (k < ev.length && ev[k][0] <= i) {
+        conf = ev[k][0]; from = ev[k++][1]; pv = 0; vv = 0;
+        for (let j = from; j < i; j++) { pv += ((b.high[j] + b.low[j] + b.close[j]) / 3) * b.volume[j]; vv += b.volume[j]; }
+      }
+      if (from < 0 || !(i - conf < hold)) continue;
+      pv += ((b.high[i] + b.low[i] + b.close[i]) / 3) * b.volume[i]; vv += b.volume[i];
+      if (vv > 0) a[i] = pv / vv;
     }
   };
   fill(hs, up); fill(ls, dn);
@@ -671,13 +674,15 @@ export function swingVwap(b, { left = 10, right = 10 } = {}) {
 }
 
 // The midpoint of the latest bar whose volume reached `mult` times the average of the
-// `length` bars before it, held until the next such bar.
-export function volumeShelf(b, { length = 60, mult = 4 } = {}) {
+// `length` bars before it, held until the next such bar, or for `hold` bars at most.
+// Infinity holds it until the next however long that takes: 12,421 one-minute bars at 8
+// times the average on 7 years of MNQ, 1,352 at the default 4.
+export function volumeShelf(b, { length = 60, mult = 4, hold = Infinity } = {}) {
   const n = b.close.length, out = nanArr(n);
-  let sum = 0, cur = NaN;
+  let sum = 0, cur = NaN, at = -Infinity;
   for (let i = 0; i < n; i++) {
-    if (i >= length && b.volume[i] >= (mult * sum) / length) cur = (b.high[i] + b.low[i]) / 2;
-    out[i] = cur;
+    if (i >= length && b.volume[i] >= (mult * sum) / length) { cur = (b.high[i] + b.low[i]) / 2; at = i; }
+    out[i] = i - at < hold ? cur : NaN;
     sum += b.volume[i];
     if (i >= length) sum -= b.volume[i - length];
   }
