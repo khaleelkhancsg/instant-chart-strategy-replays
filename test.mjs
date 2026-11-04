@@ -1013,6 +1013,94 @@ t("exogenous entries: managed by the same exits; untilFlat stops after the last 
   eq(tr[0].reason, EXIT.TP); eq(tr[0].exitIdx, 3); close(tr[0].exitPrice, 105, 1e-9); eq(tr[0].contracts, 2);
 });
 
+// A strategy's own order (compute()'s orderPx, stopPts, targetPts). The signal is on
+// bar 0, which closes at 100; the order rests on bar 1 alone, its bracket measured from
+// its price.
+const NAMED = { ...W, slAtrMult: 0.5, tpAtrMult: 1, flipOnOpposite: false };
+const named = (n, k, px, sl, tp) => {
+  const o = { orderPx: new Float64Array(n).fill(NaN), stopPts: new Float64Array(n).fill(NaN), targetPts: new Float64Array(n).fill(NaN) };
+  o.orderPx[k] = px; o.stopPts[k] = sl; o.targetPts[k] = tp;
+  return o;
+};
+t("named order: a buy under the signal bar's close is a limit, filled on the next bar at its price, the bracket from that price", () => {
+  const sig = new Int8Array(3); sig[0] = 1;
+  const go = (rows, x = {}) => runBrackets(bars(rows), sig, flatAtr(3, 10), { ...NAMED, ...named(3, 0, 98, 4, 6), ...x }).trades[0];
+  const tr = go([[100, 101, 99, 100], [100, 101, 97, 98.5], [98.5, 105, 97, 104]]);
+  eq(tr.entryIdx, 1); eq(tr.entryType, "limit"); close(tr.entryPrice, 98, 1e-9);
+  close(tr.stop, 94, 1e-9, "the stop 4 points under the order's price:"); close(tr.target, 104, 1e-9);
+  eq(tr.reason, EXIT.TP); close(tr.exitPrice, 104, 1e-9);
+  // a bar opening under the limit fills at that open, the better price; the bracket stays put
+  const gap = [[100, 101, 99, 100], [96, 99, 95, 97], [97, 105, 96, 104]];
+  const g = go(gap);
+  close(g.entryPrice, 96, 1e-9, "at the open:"); close(g.stop, 94, 1e-9); close(g.target, 104, 1e-9);
+  close(go(gap, { entryGapFill: "level" }).entryPrice, 98, 1e-9);
+});
+t("named order: a buy over the close is a stop; one its bar does not reach expires, though a later bar would have filled it", () => {
+  const sig = new Int8Array(3); sig[0] = 1;
+  const go = (rows) => runBrackets(bars(rows), sig, flatAtr(3, 10), { ...NAMED, ...named(3, 0, 102, 4, 6) }).trades;
+  const tr = go([[100, 101, 99, 100], [100, 103, 99.5, 102.5], [102.5, 109, 102, 108]])[0];
+  eq(tr.entryIdx, 1); eq(tr.entryType, "stop"); close(tr.entryPrice, 102, 1e-9); close(tr.stop, 98, 1e-9); close(tr.target, 108, 1e-9);
+  close(go([[100, 101, 99, 100], [103, 104, 102.5, 103.5], [103.5, 109, 103, 108]])[0].entryPrice, 103, 1e-9, "a bar opening over it fills at the open:");
+  eq(go([[100, 101, 99, 100], [100, 101.5, 99, 101], [101, 104, 100.5, 103]]).length, 0, "missed on bar 1, the only bar it rested for:");
+});
+t("named order: the coin-flip twin's opposite order fills on the same bar at the same price", () => {
+  const sig = new Int8Array(3), flip = new Int8Array(3); sig[0] = 1; flip[0] = -1;
+  for (const rows of [[[100, 101, 99, 100], [100, 101, 97, 98.5], [98.5, 99, 91, 92]], [[100, 101, 99, 100], [96, 99, 95, 97], [97, 98, 91, 92]]]) {
+    const a = runBrackets(bars(rows), sig, flatAtr(3, 10), { ...NAMED, ...named(3, 0, 98, 4, 6) }).trades[0];
+    const z = runBrackets(bars(rows), flip, flatAtr(3, 10), { ...NAMED, ...named(3, 0, 98, 4, 6) }).trades[0];
+    eq(z.entryType, "stop", "a sell under the close is a stop:"); eq(z.entryIdx, a.entryIdx); close(z.entryPrice, a.entryPrice, 1e-9);
+    close(z.stop, 102, 1e-9); close(z.target, 92, 1e-9);
+  }
+});
+t("named order: risk sizing divides by its own stop, and the bar it fills on can stop it out", () => {
+  const sig = new Int8Array(3); sig[0] = 1;
+  const tr = runBrackets(bars([[100, 101, 99, 100], [100, 101, 93, 95], [95, 96, 94, 95]]), sig, flatAtr(3, 10),
+                         { ...NAMED, sizingMode: "risk", riskDollars: 40, maxContracts: 20, ...named(3, 0, 98, 4, 6) }).trades[0];
+  eq(tr.contracts, 5, "$40 over 4 points x $2:"); eq(tr.reason, EXIT.SL); eq(tr.exitIdx, 1, "out on the bar it filled:"); close(tr.exitPrice, 94, 1e-9);
+});
+t("named order: no price leaves the signal to the configured entry, no stop or target to the configured bracket", () => {
+  const sig = new Int8Array(3); sig[0] = 1;
+  const rows = [[100, 101, 99, 100], [100, 101, 97, 98.5], [98.5, 99, 97, 98]];
+  const m = runBrackets(bars(rows), sig, flatAtr(3, 10), { ...NAMED, ...named(3, 0, NaN, 4, 6) }).trades[0];
+  eq(m.entryType, "market"); close(m.entryPrice, 100, 1e-9); close(m.stop, 95, 1e-9, "0.5 x ATR:"); close(m.target, 110, 1e-9);
+  const l = runBrackets(bars(rows), sig, flatAtr(3, 10), { ...NAMED, ...named(3, 0, 98, NaN, 0) }).trades[0];
+  eq(l.entryType, "limit"); close(l.stop, 93, 1e-9); close(l.target, 108, 1e-9, "1 x ATR from the order's price:");
+});
+t("day counts: no new entries once the day has had dayMaxWins winning or dayMaxLosses losing trades", () => {
+  // each trade: a long signal, then a bar reaching its 5-point target (W) or its 10-point stop (L)
+  const day = (seq) => {
+    const rows = [];
+    let px = 100;
+    for (const o of seq) {
+      rows.push([px, px + 1, px - 1, px], o === "W" ? [px, px + 6, px - 1, px + 5] : [px, px + 1, px - 11, px - 10]);
+      px += o === "W" ? 5 : -10;
+    }
+    return rows;
+  };
+  const go = (seq, x, days = 1) => {
+    const rows = [];
+    for (let d = 0; d < days; d++) rows.push(...day(seq));
+    const b = bars(rows), n = rows.length, sig = new Int8Array(n), ev = [];
+    for (let i = 0; i < n; i += 2) sig[i] = 1;
+    for (let i = 0; i < n; i++) b.tday[i] = 100 + Math.floor(i / (2 * seq.length));
+    const tr = runBrackets(b, sig, flatAtr(n, 10), { ...W, slAtrMult: 1, tpAtrMult: 0.5, ...x,
+                                                     onSignal: (k, d, what, info) => ev.push({ k, what, ...info }) }).trades;
+    return { tr, ev };
+  };
+  eq(go("WWW", {}).tr.length, 3, "no count, every signal trades:");
+  eq(go("WWW", { dayMaxWins: 1 }).tr.length, 1, "one win and done:");
+  eq(go("WWW", { dayMaxWins: 2 }).tr.length, 2);
+  eq(go("LLL", { dayMaxLosses: 2 }).tr.length, 2, "two losses and done:");
+  eq(go("LWL", { dayMaxWins: 1, dayMaxLosses: 2 }).tr.length, 2, "a loss, then the win ends it:");
+  eq(go("LLW", { dayMaxWins: 1, dayMaxLosses: 2 }).tr.length, 2);
+  eq(go("LWW", { dayMaxLosses: 1 }).tr.length, 1, "one loss and done:");
+  eq(go("WLL", { dayMaxLosses: 2 }).tr.length, 3, "wins do not count as losses:");
+  const r = go("WW", { dayMaxWins: 1 }, 2);
+  eq(r.tr.length, 2, "the next day trades again:"); eq(r.tr[1].entryIdx, 5);
+  const ref = r.ev.find((e) => e.k === 2);
+  eq(ref.what, "refused"); eq(ref.why, "dayWins");
+});
+
 // ══════════════════════════════ 4. CHALLENGE RULES ══════════════════════════════
 section("4. Combine rules");
 
@@ -1810,7 +1898,7 @@ if (bars_) {
         const tfP = resample(sliceBars(H, 0, Math.floor(N * frac)), p.timeframeMin);
         const oP = s.compute(tfP, p);
         const m = tfP.close.length - 1;             // its last bar may be a partial bucket
-        for (const k of ["sig", "atr", "exitSig", "sizeMult"]) {
+        for (const k of ["sig", "atr", "exitSig", "sizeMult", "orderPx", "stopPts", "targetPts"]) {
           if (!oF[k] && !oP[k]) continue;
           for (let i = 0; i < m; i++) {
             if (!same(oF[k][i], oP[k][i])) throw new Error(`${k} at bar ${i} of ${m} changes when later bars exist (cut ${frac})`);
@@ -1873,6 +1961,7 @@ function randomExec() {
     scaleOutAtr: pick([0.5, 1, 2]), flipOnAnySignal: rnd() < 0.1, capEndsDay: rnd() < 0.85,
     staleBars: pick([0, 0, 0, 5, 20, 60]), staleMfeAtr: pick([0.25, 1, 3]),
     newsRule: pick(["off", "off", "noentry", "flat"]), newsBeforeMin: pick([0, 2, 5, 15, 30]), newsAfterMin: pick([0, 5, 15, 60]),
+    dayMaxWins: pick([0, 0, 0, 1, 2]), dayMaxLosses: pick([0, 0, 0, 1, 2, 3]),
   };
 }
 
@@ -1891,15 +1980,27 @@ if (bars_) {
       for (let i = 0; i < n; i++) if (rnd() < dens) sig[i] = rnd() < 0.5 ? 1 : -1;
       const x = randomExec();
       if (rnd() < 0.3) { x.exitSig = new Int8Array(n); for (let i = 0; i < n; i++) if (rnd() < 0.03) x.exitSig[i] = iuni(1, 3); }
+      if (rnd() < 0.3) {
+        // a strategy's own orders on most signals: a price near the signal bar's close, its own stop and target or none
+        x.orderPx = new Float64Array(n).fill(NaN); x.stopPts = new Float64Array(n).fill(NaN); x.targetPts = new Float64Array(n).fill(NaN);
+        for (let i = 0; i < n; i++) {
+          if (!sig[i] || rnd() < 0.2) continue;
+          const u = a[i] > 0 ? a[i] : 5;
+          x.orderPx[i] = tf.close[i] + uni(-1, 1) * u;
+          if (rnd() < 0.8) x.stopPts[i] = uni(0.2, 3) * u;
+          if (rnd() < 0.8) x.targetPts[i] = uni(0.2, 3) * u;
+        }
+      }
       if (x.newsRule !== "off") x.newsMask = newsWindowMask(tf, x.newsBeforeMin, x.newsAfterMin);
       const cfg = resolveExec(x);
       const { trades } = runBrackets(tf, sig, a, cfg);
       const again = runBrackets(tf, sig, a, cfg).trades;
-      const where = () => `case ${c} (tf ${tfMin}, ${JSON.stringify({ ...x, exitSig: x.exitSig ? "mask" : undefined, newsMask: x.newsMask ? "mask" : undefined })})`;
+      const where = () => `case ${c} (tf ${tfMin}, ${JSON.stringify({ ...x, exitSig: x.exitSig ? "mask" : undefined, newsMask: x.newsMask ? "mask" : undefined,
+                                                                  orderPx: x.orderPx ? "prices" : undefined, stopPts: undefined, targetPts: undefined })})`;
       if (again.length !== trades.length || again.some((t2, k) => t2.pnl !== trades[k].pnl)) throw new Error(`not deterministic: ${where()}`);
       const cap = Math.max(1, Math.trunc(cfg.maxContracts));
       const slip = cfg.slippageTicks * cfg.tickSize;
-      const day = new Map(), blockDay = new Map(), capDays = new Set();
+      const day = new Map(), blockDay = new Map(), capDays = new Set(), counts = new Map();
       const atOpenOf = (k, px) => Math.abs(px - tf.open[k]) < 1e-6;
       let prev = null, lastStop = null;
       for (const tr of trades) {
@@ -1942,8 +2043,22 @@ if (bars_) {
           if ((tr.reason === "DAYCAP" || tr.reason === "TP") && !(cfg.tpGapFill === "open" && atOpen(raw))) fail(`day ${d} realised ${day.get(d).toFixed(2)} above the ${cfg.dayProfitStopUsd} cap`);
         }
         if (cfg.dayLossStopUsd > 0 && cfg.dayLossStopMode === "exact" && day.get(d) < -cfg.dayLossStopUsd - 1e-6) fail(`day ${d} realised ${day.get(d).toFixed(2)} below the exact -${cfg.dayLossStopUsd} cap`);
-        // the order it came in on: off the arm bar's open, inside its window, at its trigger or a better-for-the-market open
-        if (cfg.entryType !== "market") {
+        // a strategy's own order: the bar after its signal, a limit on the passive side of that
+        // signal bar's close and a stop if not, at its price or an open beyond it, the stop from that price
+        if (x.orderPx && Number.isFinite(x.orderPx[tr.sigIdx])) {
+          const k = tr.sigIdx, p0 = Math.round(x.orderPx[k] / cfg.tickSize) * cfg.tickSize;
+          const lim = tr.dir === 1 ? p0 <= tf.close[k] : p0 >= tf.close[k], px = tr.entryPrice - tr.dir * slip, worse = tr.dir * (px - p0);
+          if (tr.entryIdx !== k + 1) fail(`a named order filled ${tr.entryIdx - k} bars after its signal`);
+          if (tr.entryType !== (lim ? "limit" : "stop")) fail(`a named ${lim ? "limit" : "stop"} filled as ${tr.entryType}`);
+          if (!(cfg.scaleInFrac > 0)) {
+            if (lim && worse > 1e-6) fail("a named limit filled worse than its price");
+            if (!lim && worse < -1e-6) fail("a named stop filled better than its price");
+            if (Math.abs(worse) > 1e-6 && !(cfg.entryGapFill === "open" && atOpenOf(tr.entryIdx, px))) fail("a named order filled away from its price without a gap");
+            const sp = x.stopPts[k], slD = sp > 0 ? Math.max(sp, cfg.tickSize) : Math.max(tr.atr * cfg.slAtrMult, cfg.tickSize);
+            if (Math.abs(tr.stop - (p0 - tr.dir * slD)) > 1e-6) fail(`a named order's stop ${tr.stop} is not ${slD} from its price ${p0}`);
+          }
+        } else if (cfg.entryType !== "market") {
+          // the order it came in on: off the arm bar's open, inside its window, at its trigger or a better-for-the-market open
           if (tr.entryType !== cfg.entryType && !(tr.limitFill && cfg.entryType === "stop")) fail(`filled as ${tr.entryType}`);
           const arm = tr.sigIdx + 1, ref = tf.open[arm], a0 = tr.atr, px = tr.entryPrice - tr.dir * slip;
           if (!(tr.entryIdx > arm && tr.entryIdx <= arm + cfg.entryWindowBars)) fail(`filled ${tr.entryIdx - arm} bars after the arm bar`);
@@ -1961,10 +2076,17 @@ if (bars_) {
         const realisedBefore = blockDay.get(tf.tday[tr.entryIdx]) || 0;
         if (cfg.dayBreakerUsd > 0 && realisedBefore <= -cfg.dayBreakerUsd) fail(`entered with the day at ${realisedBefore.toFixed(2)}, past the breaker`);
         if (cfg.dayProfitBlockUsd > 0 && realisedBefore >= cfg.dayProfitBlockUsd) fail(`entered with the day at ${realisedBefore.toFixed(2)}, past the profit block`);
+        // ...nor once it has had its winning or losing trades
+        const wl = counts.get(tf.tday[tr.entryIdx]) || [0, 0];
+        if (cfg.dayMaxWins > 0 && wl[0] >= cfg.dayMaxWins) fail(`entered after ${wl[0]} winning trades that day`);
+        if (cfg.dayMaxLosses > 0 && wl[1] >= cfg.dayMaxLosses) fail(`entered after ${wl[1]} losing trades that day`);
         // and a platform cap that fired ended the day
         if (cfg.capEndsDay && capDays.has(tf.tday[tr.entryIdx])) fail("entered after a platform cap ended the day");
         if (tr.reason === "DAYCAP" || tr.reason === "DAYLOSS") capDays.add(tf.tday[tr.exitIdx]);
         blockDay.set(tf.tday[tr.exitIdx], (blockDay.get(tf.tday[tr.exitIdx]) || 0) + tr.pnl);
+        const wlx = counts.get(tf.tday[tr.exitIdx]) || [0, 0];
+        if (tr.pnl > 0) wlx[0]++; else if (tr.pnl < 0) wlx[1]++;
+        counts.set(tf.tday[tr.exitIdx], wlx);
         // intraday with session-end flattening: never across a session boundary
         if (cfg.intradayOnly && tf.ctMin && cfg.sessionEndFlat === "close" && tf.tday[tr.entryIdx] !== tf.tday[tr.exitIdx]) fail("held across a session boundary");
         // ...nor entered on the previous session's signal
@@ -2132,7 +2254,7 @@ if (bars_) {
         // no lookahead
         const oF = s.compute(resample(H, p.timeframeMin), p);
         const tfP = resample(sliceBars(H, 0, Math.floor(N * 0.7)), p.timeframeMin), oP = s.compute(tfP, p);
-        for (const k of ["sig", "atr", "exitSig", "sizeMult"]) {
+        for (const k of ["sig", "atr", "exitSig", "sizeMult", "orderPx", "stopPts", "targetPts"]) {
           if (!oF[k] && !oP[k]) continue;
           for (let i = 0; i < tfP.close.length - 1; i++) if (!same(oF[k][i], oP[k][i])) throw new Error(`${k} at bar ${i} reads ahead -- ${tag()}`);
         }
@@ -2837,6 +2959,44 @@ if (bars_) {
     const rd = (v) => ({ st: { gate: "beyond" }, S: { kind: "band" }, v: Float64Array.of(v), dir: Int8Array.of(0), levels: { lo: 0, hi: 1, mid: 0.5 } });
     eq(gatePasses(rd(1.2), 0, 1), true); eq(gatePasses(rd(1.2), 0, -1), false); eq(gatePasses(rd(-0.2), 0, -1), true); eq(gatePasses(rd(0.5), 0, 1), false); eq(gatePasses(rd(NaN), 0, 1), false);
   });
+}
+
+section("14d. Cammy value levels: the strategy's levels are the Tradovate indicator's");
+// Two implementations of the same profiles: src/valueprofile.mjs with the strategy's
+// session logic, and TradingCustomIndicators/tradovate/cammyValueLevels.js run on the
+// mock. Each draws a level the other may not (the indicator through the 16:00-18:00
+// break, the strategy before the indicator's first bar), but where both draw, they agree.
+if (bars_) {
+  const { bars: B } = bars_;
+  // four weeks, so the previous week's profile is whole for the last two or three
+  const H = sliceBars(B, B.count - 40000, B.count);
+  let ind = null;
+  try {
+    const { Run, loadIndicator } = await import("./tradovate/mock/runtime.mjs");
+    const { loadTools, readIndicator } = await import("./tradovate/mock/library.mjs");
+    const rows = [];
+    for (let i = 0; i < H.ts.length; i++) rows.push({ ts: H.ts[i], o: H.open[i], h: H.high[i], l: H.low[i], c: H.close[i], v: H.volume[i], td: H.tday[i], ct: H.ctMin[i] });
+    ind = new Run(loadIndicator(readIndicator("cammyValueLevels").source, loadTools()), { minutes: 1 }).compute(rows);
+  } catch (e) {
+    console.log(`  skip: ${e.message} -- the indicator lives in ../TradingCustomIndicators/tradovate/`);
+  }
+  if (ind) {
+    const s = (await loadStrategies()).get("cammy_value_levels");
+    t("all twelve levels agree on every bar both draw, at the strategy's defaults", () => {
+      const o = s.compute(H, resolveParams(s, {}));
+      const ov = o.overlays, keys = ["pwVah", "pwPoc", "pwVal", "pdVah", "pdPoc", "pdVal", "onVah", "onPoc", "onVal", "devVah", "devPoc", "devVal"];
+      for (let j = 0; j < 12; j++) {
+        let n = 0;
+        for (let k = 0; k < H.ts.length; k++) {
+          const x = ov[j].data[k], y = ind[k][keys[j]];
+          if (!(x === x) || y == null) continue;
+          n++;
+          if (Math.abs(x - y) > 1e-6) throw new Error(`${keys[j]} at ${new Date(H.ts[k]).toISOString()}: the strategy has ${x}, the indicator ${y}`);
+        }
+        if (n < 5000) throw new Error(`${keys[j]}: only ${n} bars drawn by both`);
+      }
+    });
+  }
 }
 
 section("15. Stale exit");

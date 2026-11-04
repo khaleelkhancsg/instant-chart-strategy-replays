@@ -93,6 +93,17 @@ rule logic into a script: that is a second engine, and it drifts.
   volatility gates, as the research's sizers did.
 - **`tpMaxUsd`** caps the target at that many dollars for the size traded, as the
   MACD fade's `min(5.15 ATR, $600 / (2 x lots))`.
+- **A strategy's own orders**: `orderPx`, `stopPts` and `targetPts` from `compute()`,
+  per signal bar. NaN leaves that signal to the configured entry.
+  - The order rests on the bar after the signal only, from its open.
+  - It is a limit when its price is on the passive side of the signal bar's close, and
+    a stop when not. So the coin-flip twin's opposite order fills on the same bar at the
+    same price.
+  - The bracket is measured from the order's price, and risk sizing divides by its stop.
+  - `cammy_value_levels` rests its limits this way. test.mjs 3b works the cases by hand
+    and section 8 fuzzes them.
+- **`dayMaxWins` / `dayMaxLosses`**: no new orders, and working ones cancelled, once the
+  day has had that many winning or losing trades, counted by net P&L (0 = off).
 - **`onSignal(k, dir, what, info)`** reports what became of each signal: entered,
   armed then filled / replaced / cancelled / expired, flipped, held, ignored,
   dropped, refused (with `why`). It observes only; test.mjs section 17 holds the
@@ -117,8 +128,8 @@ rule logic into a script: that is a second engine, and it drifts.
 
 ## Tests
 
-- `npm run check`: test.mjs (467), audit, legacy parity (15), MCP end to end (19),
-  chart link (13), the indicator mock (90, `npm run test:mock`), the page's arithmetic
+- `npm run check`: test.mjs (481), audit, legacy parity (15), MCP end to end (19),
+  chart link (13), the indicator mock (91, `npm run test:mock`), the page's arithmetic
   (41, `npm run test:ui`), the level study's engine (22, `npm run test:levels`), the raw
   store (36, `npm run test:store`), the Data panel's routes (21, `npm run test:data`), the
   TopstepX pull (44, `npm run test:pull`), red-folder news (17, `npm run test:news`), the $1,250
@@ -212,12 +223,27 @@ rule logic into a script: that is a second engine, and it drifts.
 - **`trend_pullback`, `orb_trend` and `macd_momentum` are the indicator
   combinations.** Each was tuned on 2026, and none held forward. Their headers
   carry the numbers.
+- **`cammy_value_levels` (Cammy Capital's volume profile strategy) has no edge.**
+  - At Cammy's own risk it passes 0% of 2026's windows, by either method, at both evals.
+  - It nets +$772 in 2026 and +$705 forward, and no coin-flip twin nets as much. But
+    placebo markets do the same: 60.6% won and +$621 in 2026.
+  - The 60% is the bar a limit fills on. Its target counts whenever that bar's high reached
+    it, and 76 of the 168 trades were credited that way.
+  - No version of its 41 holds: the halves' edges over placebo rank at -0.17, and the
+    worse-half pick lost to placebo forward.
+  - `research/cammy_protocol.mjs` runs it all (about 30 minutes); its header has the figures.
 - **The protocol** (`research/lib_eval1250.mjs` scores it, through `mcp/lab.mjs`):
   - score 2026 by both methods, and in both halves;
   - pick on one half and read the other;
   - choose by the worse half;
   - check the neighbours;
   - compare with the coin-flip twin (`nullCfg`);
+  - **for a book that rests limit orders, use placebo paths instead** (`research/lib_levels.mjs`
+    `placeboBars`, as `research/cammy_protocol.mjs` does). Flipped, a buy limit is a sell stop
+    at the same price, and on the bar they fill the engine credits the limit's target where it
+    charges the stop's stop. Such a book beats every twin on a random walk;
+  - quote per-trade figures when nothing passes: a book sized below the target's reach scores
+    0% everywhere, and its pass rates rank nothing;
   - then run `research/forward_1250.mjs`: `FORWARD_FROM=2026-07-15` with `data/mnq_1m_beta.bin`
     scores everything after the lab's data, 77 days nothing was chosen on. With no arguments it
     reproduces the published Sep 10 - Oct 26 run on `data/topstepx_1m.bin`.

@@ -12,7 +12,8 @@
 // not directions; one a large search found and the null matches is noise.
 
 import * as L from "../mcp/lab.mjs";
-import { mulberry32 } from "../src/dayeval.mjs";
+import { mulberry32, dayVector, bootstrapPass, consecutiveSampler, passRate } from "../src/dayeval.mjs";
+import { replayWindow, OUTCOME } from "../src/challenge.mjs";
 
 export const Y26 = Date.UTC(2026, 0, 1), APR = Date.UTC(2026, 3, 1);
 export const lab = L;
@@ -77,3 +78,31 @@ export function nullScore(cfg, real, seeds = 20) {
 
 export const fmt = (r) => `cal ${r.cal}% (${r.calA} / ${r.calB})  boot ${r.boot}% (${r.bootA} / ${r.bootB})  ` +
   `${r.trades} tr  ${r.winRate}% won  $${r.perTrade}/tr  PF ${r.pf}  net $${r.net}`;
+
+// Forward scoring (research/forward_1250.mjs), for bars after the lab's data: the trading
+// days from `from`, a calendar window started on every day from it that has 30 days of bars
+// after it (on the grid of the file's first bar), consecutive 21-day windows ("real") and
+// the bootstrap. `bars` is the whole file, so the grid is the same whatever the trades were
+// run on.
+export function forwardScorer(bars, from) {
+  const DAY = 86400000, last = bars.ts[bars.count - 1];
+  const days = [];
+  for (let i = 0; i < bars.count; i++) if ((i === 0 || bars.tday[i] !== bars.tday[i - 1]) && bars.ts[i] >= from) days.push(bars.tday[i]);
+  const starts = [];
+  for (let s = bars.ts[0] + Math.ceil((from - bars.ts[0]) / DAY) * DAY; s + 30 * DAY <= last; s += DAY) starts.push(s);
+  const score = (trades, R) => {
+    const rules = { target: R.profitTarget, dd: R.trailingDD, consistency: R.consistencyGatesPass ? R.consistencyPct / 100 : 0 };
+    const vec = dayVector(trades, days), sub = Int32Array.from(vec, (_, k) => k);
+    let net = 0, wins = 0, gw = 0, gl = 0;
+    for (const t of trades) { net += t.pnl; if (t.pnl > 0) { wins++; gw += t.pnl; } else gl -= t.pnl; }
+    const cal = starts.filter((s) => replayWindow(trades, s, R).outcome === OUTCOME.PASS).length;
+    return {
+      trades: trades.length, net: Math.round(net), winRate: trades.length ? Math.round((1000 * wins) / trades.length) / 10 : 0,
+      pf: gl > 0 ? Math.round((gw / gl) * 100) / 100 : null, perTrade: trades.length ? Math.round(net / trades.length) : 0,
+      cal: Math.round((1000 * cal) / starts.length) / 10, real: Math.round(passRate(vec, sub, consecutiveSampler(days.length, 21), rules) * 10) / 10,
+      boot: Math.round(bootstrapPass(vec, { window: 21, ...rules }) * 10) / 10,
+      downDays: vec.filter((v) => v <= -590).length,
+    };
+  };
+  return { days, starts, last, score };
+}

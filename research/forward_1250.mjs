@@ -28,39 +28,19 @@
 
 import { loadBars } from "../src/data.mjs";
 import { runStrategy } from "../src/run.mjs";
-import { replayWindow, OUTCOME } from "../src/challenge.mjs";
-import { dayVector, bootstrapPass, consecutiveSampler, passRate } from "../src/dayeval.mjs";
 import * as L from "../mcp/lab.mjs";
-import { nullCfg } from "./lib_eval1250.mjs";
+import { nullCfg, forwardScorer } from "./lib_eval1250.mjs";
 
 const FILE = process.argv[2] || "data/topstepx_1m.bin";
 // FORWARD_FROM=2026-07-15 with data/mnq_1m_beta.bin scores everything after the lab's data ends:
 // Databento to Sep 11, TopstepX after, no gap since the Jul 15 - Aug 27 file arrived.
-const FROM = process.env.FORWARD_FROM ? Date.parse(`${process.env.FORWARD_FROM}T00:00:00Z`) : Date.UTC(2026, 8, 10), DAY = 86400000;
+const FROM = process.env.FORWARD_FROM ? Date.parse(`${process.env.FORWARD_FROM}T00:00:00Z`) : Date.UTC(2026, 8, 10);
 const { bars } = loadBars(FILE);
 const last = bars.ts[bars.count - 1];
 console.log(`${FILE}: ${new Date(bars.ts[0]).toISOString().slice(0, 10)} to ${new Date(last).toISOString().slice(0, 10)}; scored from ${new Date(FROM).toISOString().slice(0, 10)}`);
 
-const days = [];
-for (let i = 0; i < bars.count; i++) if ((i === 0 || bars.tday[i] !== bars.tday[i - 1]) && bars.ts[i] >= FROM) days.push(bars.tday[i]);
-const starts = [];
-for (let s = bars.ts[0] + Math.ceil((FROM - bars.ts[0]) / DAY) * DAY; s + 30 * DAY <= last; s += DAY) starts.push(s);
-
-function score(cfg) {
-  const trades = runStrategy(bars, cfg.s, cfg.params, cfg.exec, { filter: cfg.filter, studies: cfg.studies, fromMs: FROM }).trades;
-  const R = cfg.rules, rules = { target: R.profitTarget, dd: R.trailingDD, consistency: R.consistencyGatesPass ? R.consistencyPct / 100 : 0 };
-  const vec = dayVector(trades, days), sub = Int32Array.from(vec, (_, k) => k);
-  let net = 0, wins = 0, gw = 0, gl = 0;
-  for (const t of trades) { net += t.pnl; if (t.pnl > 0) { wins++; gw += t.pnl; } else gl -= t.pnl; }
-  const cal = starts.filter((s) => replayWindow(trades, s, R).outcome === OUTCOME.PASS).length;
-  return {
-    trades: trades.length, net: Math.round(net), winRate: trades.length ? Math.round((1000 * wins) / trades.length) / 10 : 0,
-    pf: gl > 0 ? Math.round((gw / gl) * 100) / 100 : null, perTrade: trades.length ? Math.round(net / trades.length) : 0,
-    cal: Math.round((1000 * cal) / starts.length) / 10, real: Math.round(passRate(vec, sub, consecutiveSampler(days.length, 21), rules) * 10) / 10,
-    boot: Math.round(bootstrapPass(vec, { window: 21, ...rules }) * 10) / 10,
-    downDays: vec.filter((v) => v <= -590).length,
-  };
-}
+const F = forwardScorer(bars, FROM), { days, starts } = F;
+const score = (cfg) => F.score(runStrategy(bars, cfg.s, cfg.params, cfg.exec, { filter: cfg.filter, studies: cfg.studies, fromMs: FROM }).trades, cfg.rules);
 const fmt = (r) => `${String(r.trades).padStart(3)} tr  net ${String(r.net).padStart(6)}  ${r.winRate}% won  PF ${r.pf}  $${r.perTrade}/tr  | cal ${r.cal}%  real ${r.real}%  boot ${r.boot}%  | days at the -$600 line ${r.downDays}`;
 
 const BOOKS = [

@@ -178,6 +178,11 @@ export const DEFAULT_EXEC = {
   // post-hoc versions for the window replay. 0 = off.
   dayBreakerUsd: 0,
   dayProfitBlockUsd: 0,
+  // The same block by COUNT: no new orders once the day has had this many winning
+  // (or losing) closed trades -- "one win, or two losses, and done for the day".
+  // A trade counts by its net P&L. 0 = off.
+  dayMaxWins: 0,
+  dayMaxLosses: 0,
   // SCALE-IN (pyramiding). 0 = off; otherwise the FRACTION of `contracts` taken
   // at the signal, with the remainder added only once price has moved
   // `scaleInTrigger` x ATR in the trade's FAVOUR, within `scaleInWindowBars`.
@@ -317,6 +322,11 @@ const NO_DAY = -2147483648;
  *   sizeMult  Float64Array per bar, read at the signal bar (compute()'s
  *             `sizeMult`): the size is multiplied by it and rounded, at least 1;
  *             0 refuses the entry the way entryGate does
+ *   orderPx, stopPts, targetPts  per bar, read at the signal bar (compute()'s):
+ *             a price for the signal's order, NaN for the usual entryType rule.
+ *             The order rests on the next bar only, a limit on the passive side
+ *             of the signal bar's close and a stop on the other, with its stop and
+ *             target that many points from its price (NaN: the exec's own)
  *   sizer(atrAtSignal, ctMin, seq, bar) -> contracts; below 1 skips the signal
  *   tpFn(atrAtSignal, contracts)        -> target distance in points
  *   exitFn(closedBar, dir, state)       -> true closes at the next open
@@ -381,14 +391,17 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
   // actually traded, for the platform caps and the entry blocks.
   const dayCap = x.dayProfitStopUsd || 0, dayLoss = x.dayLossStopUsd || 0;
   const breaker = x.dayBreakerUsd || 0, profitBlock = x.dayProfitBlockUsd || 0;
+  const maxWins = x.dayMaxWins || 0, maxLosses = x.dayMaxLosses || 0;
   const exactLoss = x.dayLossStopMode === "exact";
-  let curTday = NO_DAY, dayRealised = 0, dayCapHit = false, dayLossHit = false;
+  let curTday = NO_DAY, dayRealised = 0, dayCapHit = false, dayLossHit = false, dayWins = 0, dayLosses = 0;
   let seq = 0, ePtr = 0;
 
   const blocked = () => dayCapHit || dayLossHit ||
-    (breaker > 0 && dayRealised <= -breaker) || (profitBlock > 0 && dayRealised >= profitBlock);
+    (breaker > 0 && dayRealised <= -breaker) || (profitBlock > 0 && dayRealised >= profitBlock) ||
+    (maxWins > 0 && dayWins >= maxWins) || (maxLosses > 0 && dayLosses >= maxLosses);
   // which of them, for onSignal
-  const blockWhy = () => (dayCapHit ? "dayCap" : dayLossHit ? "dayLoss" : breaker > 0 && dayRealised <= -breaker ? "breaker" : "profitBlock");
+  const blockWhy = () => (dayCapHit ? "dayCap" : dayLossHit ? "dayLoss" : breaker > 0 && dayRealised <= -breaker ? "breaker"
+    : profitBlock > 0 && dayRealised >= profitBlock ? "profitBlock" : maxWins > 0 && dayWins >= maxWins ? "dayWins" : "dayLosses");
   const state = () => ({ dir: pos, fill: notional / qIn, ep, atr: atrSig, slD: slDist, tpD: tpDist,
                          entBar: ei, qty: qOpen, mx, mn, sigBar: sigIdx, tsl });
 
@@ -451,6 +464,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
     if (reason === EXIT.SL) { lastStopMs = TS[i]; lastStopDir = pos; }
     pendQty = 0; addBy = -1; notional = 0; banked = 0; t1Frac = 0; tsl = null;
     dayRealised += pnl;
+    if (pnl > 0) dayWins++; else if (pnl < 0) dayLosses++;
     if (dayCap > 0 && (dayRealised >= dayCap || (x.capEndsDay && reason === EXIT.DAYCAP))) dayCapHit = true;   // done for the day
     if (dayLoss > 0 && (dayRealised <= -dayLoss || (x.capEndsDay && reason === EXIT.DAYLOSS))) dayLossHit = true;
     pos = 0;
@@ -599,7 +613,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
         if (onSignal && armDir !== 0) onSignal(armBar - 1, armDir, "cancelled", { bar: i, why: "session" });
         armDir = 0;
       }
-      curTday = TD[i]; dayRealised = 0; dayCapHit = false; dayLossHit = false;
+      curTday = TD[i]; dayRealised = 0; dayCapHit = false; dayLossHit = false; dayWins = 0; dayLosses = 0;
     }
 
     // A working entry order: cancelled, or filled somewhere inside this bar.
@@ -757,18 +771,22 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
     const a = atrArr[i - 1];
     if (!(Number.isFinite(a) && a > 0)) { if (onSignal) onSignal(i - 1, s, "refused", { bar: i, why: "atr" }); continue; }
 
-    const slD = Math.max(a * x.slAtrMult, tick);
+    // A strategy may name this signal's order (compute()'s orderPx, stopPts and
+    // targetPts): its price, and the stop and target measured from that price.
+    const named = x.orderPx ? x.orderPx[i - 1] : NaN, own = named === named;
+    const sp = own && x.stopPts ? x.stopPts[i - 1] : NaN, tq = own && x.targetPts ? x.targetPts[i - 1] : NaN;
+    const slD = sp > 0 ? Math.max(sp, tick) : Math.max(a * x.slAtrMult, tick);
     // Size from what is known at the signal — never from anything later. Risk
     // sizing divides by the distance from where the fill is expected to the
     // stop: a stop entry fills a trigger beyond the reference the stop is
-    // measured from, a limit entry that much inside it.
+    // measured from, a limit entry that much inside it, a named order at its price.
     let full;
     if (sizer) {
       full = sizer(a, CT ? CT[i] : 0, seq++, i);
       if (!(full >= 1)) { if (onSignal) onSignal(i - 1, s, "refused", { bar: i, why: "sizer" }); continue; }
       if (full > cap) full = cap;
     } else if (x.sizingMode === "risk") {
-      const riskPts = x.entryType === "stop" ? slD + Math.max(a * x.entryTriggerAtr, tick)
+      const riskPts = own ? slD : x.entryType === "stop" ? slD + Math.max(a * x.entryTriggerAtr, tick)
                     : x.entryType === "limit" ? Math.max(slD - a * x.entryLimitAtr, tick) : slD;
       full = Math.max(1, Math.min(cap, Math.round(x.riskDollars / (riskPts * pv))));
     } else {
@@ -781,10 +799,31 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       if (!(m > 0)) { if (onSignal) onSignal(i - 1, s, "refused", { bar: i, why: "size" }); continue; }
       if (m !== 1) full = Math.max(1, Math.min(cap, Math.round(full * m)));
     }
-    let tpD = tpFn ? Math.max(tpFn(a, full), tick)
+    let tpD = tq > 0 ? Math.max(tq, tick)
+            : tpFn ? Math.max(tpFn(a, full), tick)
             : x.tpMode === "rr" ? Math.max(slD * x.tpRR, tick)
             : Math.max(a * x.tpAtrMult, tick);
     if (x.tpMaxUsd > 0) tpD = Math.max(tick, Math.min(tpD, x.tpMaxUsd / (pv * full)));
+
+    if (own) {
+      // A named order rests from this bar's open, for this bar (the strategy names
+      // it again to keep it there). It is a limit when its price is on the passive
+      // side of the signal bar's close -- a buy at or below it -- and a stop when
+      // not, so a coin-flip twin's opposite order fills at the same price on the
+      // same bar. The bar it fills on can stop it out or reach its target.
+      if (onSignal && armDir !== 0) onSignal(armBar - 1, armDir, "replaced", { bar: i, by: i - 1 });
+      const p0 = Math.round(named / tick) * tick, lim = s === 1 ? p0 <= C[i - 1] : p0 >= C[i - 1];
+      armDir = s; armBar = i; armBy = i; armEp = p0; armPx = p0; armQty = full; armAtr = a; armSl = slD; armTp = tpD; armLimit = lim;
+      if (onSignal) onSignal(i - 1, s, "armed", { bar: i, px: p0, limit: lim, lots: full, window: 0, named: true });
+      if (lim ? (s === 1 ? L[i] <= p0 : H[i] >= p0) : (s === 1 ? H[i] >= p0 : L[i] <= p0)) {
+        const px = x.entryGapFill !== "open" ? p0 : lim ? (s === 1 ? Math.min(p0, O[i]) : Math.max(p0, O[i])) : stopFillPrice(p0, O[i], s);
+        open_(s, i, px, p0, slD, tpD, full, i - 1, a, lim ? "limit" : "stop", lim, true);
+        if (onSignal) { levels(); onSignal(i - 1, s, "filled", { bar: i, px, limit: lim, lots: qIn, stop: lvSl, stopWhy: lvSlWhy, target: lvTp, targetWhy: lvTpWhy }); }
+        if (x.scaleOutFrac > 0) { t1Px = tpBase + s * Math.max(a * x.scaleOutAtr, tick); t1Frac = x.scaleOutFrac; }
+        bracket(i, true);
+      }
+      continue;
+    }
 
     if (x.entryType === "market") {
       open_(s, i, O[i], O[i], slD, tpD, full, i - 1, a, "market", false, true);

@@ -57,6 +57,9 @@ export function runStrategy(bars1m, strategy, params, exec, opts = {}) {
   // ...and a size multiplier per signal bar: a fraction late in the day, or 0
   // to refuse an entry while the signal still flips an opposite position.
   if (out.sizeMult) x.sizeMult = out.sizeMult;
+  // ...and its own orders: a price for a signal's order, and that order's stop and
+  // target in points from it (src/engine.mjs). A level book rests a limit there.
+  if (out.orderPx) { x.orderPx = out.orderPx; x.stopPts = out.stopPts || null; x.targetPts = out.targetPts || null; }
   // Red-folder news: the windows around each release, as one flag a bar of these bars.
   if (x.newsRule === "noentry" || x.newsRule === "flat") x.newsMask = newsWindowMask(tf, x.newsBeforeMin, x.newsAfterMin, opts.newsEvents);
   // Indicator gates refuse entries only, so they are a hook rather than a mask
@@ -85,7 +88,8 @@ export function runStrategy(bars1m, strategy, params, exec, opts = {}) {
   return {
     trades: kept,
     tf,
-    overlays: out.overlays || [],
+    // read when drawn: a full-history run never needs them, and a level book's are big
+    get overlays() { return out.overlays || []; },
     stats: tradeStats(kept),
     signalsGated: gated,
     studyGated,

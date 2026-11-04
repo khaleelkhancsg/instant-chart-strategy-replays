@@ -383,6 +383,8 @@ export function describeEntry(t, tf, x, events = []) {
   const ref = tf.open[t.sigIdx + 1];
   if (t.entryType === "market") {
     lines.push(`Market order at the next bar's open (${barClock(tf, t.sigIdx + 1)}), ${px(ref)}`);
+  } else if (armed && armed.named) {
+    lines.push(`${d === 1 ? "Buy" : "Sell"} ${armed.limit ? "limit" : "stop"} ${px(armed.px)}, the strategy's own price, resting on the ${barClock(tf, t.sigIdx + 1)} bar`);
   } else if (armed) {
     // the order as placed (a refused stop fills as a limit at the stop's price)
     const stop = x.entryType === "stop", dist = Math.abs(armed.px - ref);
@@ -395,6 +397,13 @@ export function describeEntry(t, tf, x, events = []) {
   }
   // the bracket as configured, and the platform's day line where it was nearer
   // both order types measure the bracket from the open of the bar after the signal
+  if (armed && armed.named) {
+    // a named order's bracket is the strategy's, measured from the order's price
+    lines.push(`Stop ${px(t.stop)}: ${pts(Math.abs(armed.px - t.stop))} from the order's price, the strategy's own`);
+    lines.push(`Target ${px(t.target)}: ${pts(Math.abs(t.target - armed.px))} from the order's price, the strategy's own`);
+    if (filled && filled.stopWhy && filled.stopWhy !== "SL" && Number.isFinite(filled.stop)) lines.push(`… but a nearer stop was set, at ${px(filled.stop)}`);
+    return lines;
+  }
   const slD = Math.abs(ref - t.stop);
   lines.push(`Stop ${px(t.stop)}: ${num(x.slAtrMult)} × ATR ${num(a)} = ${pts(slD)} from the ${t.entryType === "market" ? "fill bar's open" : "order's reference open"}`);
   if (filled && filled.stopWhy && filled.stopWhy !== "SL" && Number.isFinite(filled.stop)) {

@@ -212,7 +212,7 @@ never repaint 30,000 candles.
 
 ## The strategy library
 
-35 strategies ship in `strategies/`. **Four are templates** built to be tuned
+38 strategies ship in `strategies/`. **Four are templates** built to be tuned
 rather than traded as-is — each collapses a whole family of ideas onto sliders:
 
 | Template | What its parameters span |
@@ -236,6 +236,11 @@ The rest:
   `session_range_fade`, `vwap_fade`, `zscore_fade`.
 - **Trend ports:** `trend_neutev`, `trend_vol_adaptive`, `supertrend`,
   `adx_di_trend`, `triple_ema`, `macd_cross`, `momentum_roc`.
+- **Levels:** `pct_levels` (any percent level; see "Do percentages work?"),
+  `noise_area` (the published noise-area breakout) and `cammy_value_levels`
+  (Cammy Capital's volume profile strategy; see "Cammy Capital's volume profile
+  strategy" below). The tables below were measured before `cammy_value_levels`
+  was added.
 
 `momentum_roc` is deliberately crude — bare rate-of-change, no smoothing. It is
 the baseline: if an elaborate book cannot beat it, the elaboration is not paying
@@ -460,6 +465,59 @@ overlap almost entirely are about 2.6 independent ones, so each pass rate is ±4
 - **The pieces are in the chart.** "ADR used" and "ATR vs its session average" are
   indicator studies now, and each new book's parameters span its whole search. A
   variation can be looked at, gated and swept from the sidebar or the MCP tools.
+
+### Cammy Capital's volume profile strategy
+
+`cammy_value_levels` is the strategy Cammy Capital teaches in the 44 videos of the Order
+Flow and Volume Profile playlists.
+- It rests a limit order at the first tap of the previous week's, the previous day's and
+  the overnight value levels, and at a balanced developing profile's edges.
+- Each order is graded by how many levels stack there. A trades the full risk (10% of the
+  drawdown), B half and C a quarter.
+- It targets 1:1, and the day is done after one win or two losses.
+- Every call Cammy makes by eye is a setting: which side to trade, what counts as a node,
+  where the stop goes, how close levels must be to stack, and more.
+- The levels are the ones the Tradovate indicator draws (`cammyValueLevels.js` in the
+  custom indicator repo). Of 2.1 million readings, none differs.
+
+`research/cammy_protocol.mjs` runs everything below (about 30 minutes).
+
+**It has no edge.**
+- **At Cammy's own risk it cannot pass.** It passes 0% of 2026's windows by either method,
+  at both evals and at every version. About $5 a trade on 1 or 2 lots cannot reach $1,250
+  in 30 days.
+- **It looks like it wins.** It nets +$772 over 168 trades in 2026 (60% won) and +$705
+  over 92 trades forward, and no coin-flip twin nets as much.
+- **A placebo market does just as well.** These are paths that turn each bar up-for-down
+  at random, keeping its size, volume and time, so no level can mean anything. On them the
+  book wins 60.6% and nets +$621. It matches the real bars in each half of 2026 and forward.
+- **The 60% is the bar a limit fills on.** The engine credits the target whenever that
+  bar's high reached it, but the high may have printed before price came down to the
+  order. 76 of the 168 trades were credited that way. Counted only when the bar closed
+  beyond the target, the book wins 44% and loses $1,710, and the placebo paths lose
+  $1,715.
+- **The coin-flip twin is fooled for the same reason.** Flipped, a buy limit is a sell
+  stop at the same price, and on the same bar the engine charges the stop's stop. For a
+  book that rests limits, placebo paths are the control.
+
+| Cammy's rules, $1,250 eval | real bars | placebo paths, mean | paths netting as much |
+|---|---|---|---|
+| 2026 | 168 trades, 60.1% won, +$772 | 60.6% won, +$621 | 3 of 10 |
+| 2026, Jan–Mar · Apr–Jul | +$409 · +$363 | +$223 · +$399 | |
+| forward, Jul 15 – Oct 30 | 92 trades, 63.0% won, +$705 | 62.9% won, +$558 | 9 of 20 |
+| 2026, the fill bar's target only on a close | 188 trades, 43.6% won, −$1,710 | 42.9% won, −$1,715 | 4 of 10 |
+
+**No version of the settings holds.** Each of 41 versions was read against the same placebo
+paths, by half.
+- The edge over placebo in Jan–Mar says nothing about Apr–Jul: across the versions the two
+  halves rank at −0.17.
+- Two versions beat all 10 of their placebo paths, where chance alone gives about 4.
+- The one the worse half picks, an 80-tick stop where no node is behind, beat placebo by
+  $769 and $1,026 in the two halves. Forward it lost to placebo: +$783 against +$870, with
+  13 of 20 paths netting as much.
+- A POC as an entry even when nothing stacks beat placebo forward (+$1,286 against +$707,
+  2 of 20 paths as much). It was not the pick, and its Apr–Jul edge was weak, so it is a
+  lead at most.
 
 ## Adding a strategy
 
