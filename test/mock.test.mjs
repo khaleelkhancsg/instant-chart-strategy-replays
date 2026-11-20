@@ -173,6 +173,12 @@ t("filter() drops what it refuses from the plots", () => {
   const lines = plotPrims(r, [{ type: "multiline", fields: ["value"] }], A, 0, 2);
   eq(lines.length, 0);
 });
+t("filter() is given the bar's index too, as Tradovate's EMA and Bollinger Bands read it", () => {
+  const r = new Run(loadIndicator(fs.readFileSync(path.join(VENDOR, "builtin", "ema.js"), "utf8"), tools), { props: { period: 3 } });
+  r.compute(BARS.slice(0, 6));
+  eq(r.rows[2].filtered, true, "bar 2, inside the period:");
+  if (!Number.isFinite(r.rows[3].value)) throw new Error("bar 3, past the period, drew nothing");
+});
 t("a real tool runs: EMA as Tradovate wrote it", () => {
   const mod = loadIndicator(`const EMA = require("./tools/EMA"); class c { init() { this.e = EMA(3); } map(d) { return this.e(d.value()); } } module.exports = { name: "x", calculator: c };`, tools);
   const b = BARS.slice(0, 3), r = new Run(mod);
@@ -222,6 +228,73 @@ t("the page's quick paths: the forming check can run later, and a redraw can ski
 });
 
 console.log("\nconformance: Tradovate's own indicators, and ours");
+console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
+{
+  const vendor = (f) => loadIndicator(fs.readFileSync(path.join(VENDOR, "builtin", f), "utf8"), tools);
+  const box = loadIndicator(readIndicator("emaMacdDatabox").source, tools);
+  // Tradovate's EMA tool from the first bar (its built-in EMA hides the first `period`)
+  const raw = loadIndicator(`const EMA = require("./tools/EMA"); class c { init() { this.f = EMA(9); this.s = EMA(21); }
+    map(d) { return { f: this.f(d.value()), s: this.s(d.value()) }; } } module.exports = { name: "x", calculator: c };`, tools);
+  const E = new Run(raw).compute(BARS), M = new Run(vendor("macd.js")).compute(BARS);
+  const hEma = (i) => (i < 0 ? undefined : E[i].f - E[i].s);
+  const hMacd = (i) => (i < 0 ? undefined : M[i].difference);
+  // What a row should read on bar j, worked out again from a histogram series.
+  const expected = (h, j, ready) => {
+    const sides = [];
+    let side = 0;
+    for (let i = 0; i <= j; i++) {
+      const x = h(i);
+      sides[i] = x === undefined ? null : (side = x > 0 ? 1 : x < 0 ? -1 : side);
+    }
+    let bars = 0;
+    for (let i = j; i >= 0 && sides[i] === sides[j]; i--) bars++;
+    const s = sides[j], warn = h(j - 1) === undefined ? 0 : s === 1 && h(j) < h(j - 1) ? -1 : s === -1 && h(j) > h(j - 1) ? 1 : 0;
+    if (!ready || !s) return { text: "Warming up", bars: "" };
+    return { text: s === 1 ? (warn ? "Potentially short" : "Long") : warn ? "Potentially long" : "Short", bars: `${bars} bar${bars === 1 ? "" : "s"}` };
+  };
+  const boxAt = (k, props) => {
+    const r = new Run(box, { props }).compute(BARS.slice(0, k + 1));
+    return Object.fromEntries(r[k].graphics.items.map((it) => [it.key, it]));
+  };
+
+  t("its EMA lines are Tradovate's EMA, to the bit", () => {
+    const mine = new Run(box, { props: { showEmas: true } }).compute(BARS);
+    for (const [n, field] of [[9, "emaFast"], [21, "emaSlow"]]) {
+      const theirs = new Run(vendor("ema.js"), { props: { period: n } }).compute(BARS);
+      for (let i = 21; i < BARS.length; i++) eq(mine[i][field], theirs[i].value, `${field} on bar ${i}:`);
+    }
+  });
+  t("each row reads the last closed bar: its side, its warning and its count, from Tradovate's MACD", () => {
+    let seen = new Set();
+    for (let k = 40; k < BARS.length; k += 47) {
+      const b = boxAt(k), j = k - 1;
+      const e = expected(hEma, j, j >= 21), m = expected(hMacd, j, j >= 33);
+      eq(b.dbState0.text, e.text, `EMA row at bar ${j}:`); eq(b.dbBars0.text, e.bars, `EMA count at bar ${j}:`);
+      eq(b.dbState1.text, m.text, `MACD row at bar ${j}:`); eq(b.dbBars1.text, m.bars, `MACD count at bar ${j}:`);
+      seen.add(e.text); seen.add(m.text);
+    }
+    for (const s of ["Long", "Short", "Potentially short", "Potentially long"]) if (!seen.has(s)) throw new Error(`never saw "${s}"`);
+  });
+  t("reading the forming bar reads the last bar instead", () => {
+    for (const k of [300, 1234, 5000]) {
+      const b = boxAt(k, { readFormingBar: true });
+      eq(b.dbState1.text, expected(hMacd, k, true).text, `MACD row at bar ${k}:`);
+      eq(b.dbState0.text, expected(hEma, k, true).text, `EMA row at bar ${k}:`);
+    }
+  });
+  t("warnings can be switched off row by row", () => {
+    for (let k = 40; k < 3000; k += 31) {
+      const b = boxAt(k, { emaWarning: false, macdWarning: false });
+      for (const key of ["dbState0", "dbState1"]) if (/Potentially/.test(b[key].text)) throw new Error(`${key} warned at ${k}`);
+    }
+  });
+  t("the box always draws the same keys, so the platform replaces it", () => {
+    const keys = (props) => Object.keys(boxAt(500, props)).sort().join(",");
+    eq(keys({ showBars: false }), keys({}));
+    eq(keys({}), "dbBars0,dbBars1,dbBox,dbEdge,dbHead,dbLabel0,dbLabel1,dbState0,dbState1");
+  });
+}
+
 const files = (d) => fs.readdirSync(path.join(VENDOR, d)).filter((f) => f.endsWith(".js"));
 const NEEDS = { "07-FourierMA.js": "a DLL the mock has not" };
 function runsClean(name, source) {

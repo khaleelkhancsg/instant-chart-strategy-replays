@@ -145,7 +145,7 @@ rule logic into a script: that is a second engine, and it drifts.
 ## Tests
 
 - `npm run check`: test.mjs (491), audit, legacy parity (15), MCP end to end (19),
-  chart link (13), the indicator mock (91, `npm run test:mock`), the page's arithmetic
+  chart link (13), the indicator mock (98, `npm run test:mock`), the page's arithmetic
   (41, `npm run test:ui`), the level study's engine (22, `npm run test:levels`), the raw
   store (36, `npm run test:store`), the Data panel's routes (21, `npm run test:data`), the
   TopstepX pull (44, `npm run test:pull`), red-folder news (17, `npm run test:news`), the $1,250

@@ -31,6 +31,7 @@ Real:
 - **The runtime** is built from Tradovate's public definitions: what `map()` receives and may return, the coordinate system, every graphics type and its fields. `vendor/NOTICE.md` says where they came from.
 - **The tools** are Tradovate's own files, so an EMA here is its EMA.
 - **Every one of its 42 built-in indicators** runs through this with no errors, and `test/mock.test.mjs` keeps it that way. That is also how the checks were corrected: its Bollinger Bands return NaN while warming up, so NaN is a gap, not a fault.
+- **`filter(d, i)` gets the bar's index.** Tradovate's EMA, Bollinger Bands, Bollinger width, Keltner Channels, %B, Force Index and Volatility read it to hide their warm-up. Until 2026-11-20 the mock passed only `d`, so those seven drew nothing.
 - **The checks** come from the definitions, plus what has failed for people on Tradovate's forum: text with no `fontSize` does not draw, and a colour needs its `#`.
 
 Assumptions, because Tradovate does not document them:

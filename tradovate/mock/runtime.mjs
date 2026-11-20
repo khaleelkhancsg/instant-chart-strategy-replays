@@ -255,7 +255,8 @@ export class Run {
     if (this.check) checkOutput(out, i, this.mod, this.problems);
     if (this.calc.filter) {
       let keep = true;
-      try { keep = this.calc.filter(out); } catch (err) { this.problems.add("error", "throw", `filter() threw: ${err && err.message}`, i); }
+      // filter(d, i): Tradovate's EMA, Bollinger Bands and others read the bar's index
+      try { keep = this.calc.filter(out, i); } catch (err) { this.problems.add("error", "throw", `filter() threw: ${err && err.message}`, i); }
       if (!keep) out = { graphics: out.graphics, filtered: true };
     }
     this.rows[i] = out;
