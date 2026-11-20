@@ -209,6 +209,34 @@ function blockRuns(b, weeks, run) {
 // Sessions to warm up for a blocked study: the two blocks a reading can reach back over.
 const blockSessions = (bars, tf) => 10 * blockWeeks(bars, tf) + 2;
 
+// The EMA + MACD databox (TradingCustomIndicators/tradovate/emaMacdDatabox.js): each row's
+// state on each bar, as the box reads it at that bar's close. Codes 1 Long, 2 Potentially
+// short, 3 Short, 4 Potentially long (0 warming up), drawn as a lane a row.
+//   - A row's side is its histogram's sign: the fast EMA minus the slow one, or the MACD
+//     line minus its signal. Exactly 0 keeps the side it had.
+//   - A histogram bar smaller than the one before (nearer zero) on that side is the
+//     warning.
+//   - Tradovate seeds an EMA on its first n values and this lab on the first value. The
+//     declared warm-up leaves that gap under a billionth of a point
+//     (test/mock.test.mjs holds the lanes to the indicator).
+export const DATABOX_STATES = ["", "Long", "Potentially short", "Short", "Potentially long"];
+export const DATABOX_COLORS = ["", "#26a65b", "#e0a341", "#d1566e", "#a8d36a"];
+function databoxRow(h, warnOn) {
+  const n = h.length, code = new Int8Array(n);
+  let side = 0;
+  for (let i = 0; i < n; i++) {
+    const x = h[i];
+    if (!Number.isFinite(x)) { side = 0; continue; }
+    side = x > 0 ? 1 : x < 0 ? -1 : side;
+    if (!side) continue;
+    const prev = i > 0 ? h[i - 1] : NaN;
+    const warn = warnOn && Number.isFinite(prev) && (side === 1 ? x < prev : x > prev);
+    code[i] = side === 1 ? (warn ? 2 : 1) : warn ? 4 : 3;
+  }
+  return code;
+}
+const databoxSide = (c) => (c === 1 || c === 2 ? 1 : c === 3 || c === 4 ? -1 : 0);
+
 // ── the catalog ──
 // name, group (for the picker), pane, kind, params, label(p), warmup(p) in bars
 // of the study's timeframe (and warmupSessions for session-anchored ones), the
@@ -618,6 +646,34 @@ export const STUDIES = {
     compute: (b, p) => {
       const r = macd(b.close, p.fast, p.slow, p.signal);
       return { value: r.hist, lines: [{ name: "hist", data: r.hist, kind: "hist" }, { name: "MACD", data: r.line }, { name: "signal", data: r.signal, dash: [4, 3] }] };
+    },
+  },
+  databox: {
+    name: "EMA + MACD databox", group: "Oscillators", pane: "sub", kind: "trend",
+    params: [int("emaFast", "EMA fast (1 = price)", 9, 1, 500), int("emaSlow", "EMA slow", 21, 2, 1000),
+             int("fast", "MACD fast", 12, 2, 500), int("slow", "MACD slow", 26, 3, 1000), int("signal", "MACD signal", 9, 2, 200),
+             { key: "warn", label: "Warnings", type: "select", default: "both",
+               options: [["both", "Both rows"], ["ema", "EMA row only"], ["macd", "MACD row only"], ["off", "Off"]] },
+             { key: "gateOn", label: "Gate and trade split read", type: "select", default: "both",
+               options: [["both", "Both rows on one side"], ["strict", "Both rows Long / Short, no warning"], ["ema", "The EMA row's side"], ["macd", "The MACD row's side"]] }],
+    label: (p) => `Databox EMA ${p.emaFast}/${p.emaSlow}, MACD ${p.fast}/${p.slow}/${p.signal}`,
+    warmup: (p) => 10 * (Math.max(p.emaFast, p.emaSlow, p.fast, p.slow) + p.signal), gates: ["with", "against"],
+    terms: { with: "Longs while the box reads long, shorts while it reads short", against: "Longs while the box reads short, shorts while it reads long" },
+    hint: "Each row as the databox indicator reads it at bar close: green Long, amber Potentially short, red Short, yellow-green Potentially long. A Potentially is the row's histogram bar smaller than the one before. research/databox_predict.mjs found no predictive ability in 2026.",
+    compute: (b, p) => {
+      const n = b.close.length, ef = ema(b.close, p.emaFast), es = ema(b.close, p.emaSlow), m = macd(b.close, p.fast, p.slow, p.signal);
+      const spread = new Float64Array(n);
+      for (let i = 0; i < n; i++) spread[i] = ef[i] - es[i];
+      const e = databoxRow(spread, p.warn === "both" || p.warn === "ema"), mc = databoxRow(m.hist, p.warn === "both" || p.warn === "macd");
+      const dir = new Int8Array(n);
+      for (let i = 0; i < n; i++) {
+        const a = databoxSide(e[i]), z = databoxSide(mc[i]);
+        dir[i] = p.gateOn === "ema" ? a : p.gateOn === "macd" ? z
+          : p.gateOn === "strict" ? (e[i] === 1 && mc[i] === 1 ? 1 : e[i] === 3 && mc[i] === 3 ? -1 : 0)
+          : a === z ? a : 0;
+      }
+      const lane = (name, codes) => ({ name, codes, states: DATABOX_STATES, colors: DATABOX_COLORS });
+      return { dir, value: m.hist, lines: [], lanes: [lane(`EMA ${p.emaFast}/${p.emaSlow}`, e), lane(`MACD ${p.fast}/${p.slow}/${p.signal}`, mc)] };
     },
   },
   cci: {

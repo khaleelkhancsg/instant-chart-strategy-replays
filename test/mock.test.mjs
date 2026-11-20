@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 import { audit, defaultProps, loadIndicator, Problems, Run } from "../tradovate/mock/runtime.mjs";
 import { boundPx, graphicsPrims, lengthPx, overlaps, paneAxes, plotPrims, textBox } from "../tradovate/mock/draw.mjs";
 import { indicatorFile, listIndicators, loadTools, readIndicator } from "../tradovate/mock/library.mjs";
+import { STUDIES } from "../src/studies.mjs";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const VENDOR = path.join(ROOT, "tradovate", "mock", "vendor");
@@ -287,6 +288,26 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
       const b = boxAt(k, { emaWarning: false, macdWarning: false });
       for (const key of ["dbState0", "dbState1"]) if (/Potentially/.test(b[key].text)) throw new Error(`${key} warned at ${k}`);
     }
+  });
+  t("the lab's databox study draws the indicator's states, bar for bar after its warm-up", () => {
+    // the study on the same bars, as the chart computes it
+    const T = { ts: Float64Array.from(BARS, (b) => b.ts), open: Float64Array.from(BARS, (b) => b.o), high: Float64Array.from(BARS, (b) => b.h),
+                low: Float64Array.from(BARS, (b) => b.l), close: Float64Array.from(BARS, (b) => b.c), volume: Float64Array.from(BARS, (b) => b.v),
+                tday: Int32Array.from(BARS, (b) => b.td), ctMin: Int16Array.from(BARS, (b) => b.ct) };
+    const st = STUDIES.databox, p = Object.fromEntries(st.params.map((d) => [d.key, d.default]));
+    const lanes = st.compute(T, p).lanes, warm = st.warmup(p);
+    // the indicator's own state on every bar
+    const run = new Run(box), map = run.calc.map.bind(run.calc), mine = [];
+    const code = (r, ready) => (!ready || !r || r.side === 0 ? 0 : r.side === 1 ? (r.warn ? 2 : 1) : r.warn ? 4 : 3);
+    run.calc.map = (d, i) => { const out = map(d, i), S = run.calc.st[i]; mine[i] = [code(S.ema, S.emaReady), code(S.macd, S.macdReady)]; return out; };
+    run.compute(BARS);
+    let seen = new Set();
+    for (let i = warm; i < BARS.length; i++) {
+      eq(lanes[0].codes[i], mine[i][0], `EMA lane on bar ${i}:`);
+      eq(lanes[1].codes[i], mine[i][1], `MACD lane on bar ${i}:`);
+      seen.add(mine[i][0]); seen.add(mine[i][1]);
+    }
+    eq([...seen].sort().join(","), "1,2,3,4", "every state seen:");
   });
   t("the box always draws the same keys, so the platform replaces it", () => {
     const keys = (props) => Object.keys(boxAt(500, props)).sort().join(",");

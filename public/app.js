@@ -743,7 +743,7 @@ function studyOverlays(res) {
     out.push({
       key: `st:${st.id}`, name: studyLabel(st) + (st.tf ? "" : ` · ${sigTf}m`), color: st.color, pane: D.pane, hidden: !!st.hidden,
       gateText: isGating(st) ? gateLabel(st.type, st.gate, st.params) : "",
-      lines: o.lines, map, range: D.range || null, auto: D.auto || null, guides,
+      lines: o.lines, lanes: o.lanes || null, map, range: D.range || null, auto: D.auto || null, guides,
     });
   }
   return out;

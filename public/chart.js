@@ -1055,7 +1055,49 @@ export class ChartView {
       if (ln.kind === "hist") this._drawOverlayHist(ctx, { ...ln, colorUp: "rgba(38,166,154,0.55)", colorDown: "rgba(239,83,80,0.55)" }, P, y, st.map);
       else this._drawOverlayLine(ctx, { ...ln, color: ln.color || st.color, width: 1.2 }, P, y, st.map);
     }
+    if (st.lanes) this._drawLanes(ctx, P, st);
     this._paneLabel(ctx, P, st.name + (st.gateText ? `  ·  gate: ${st.gateText}` : ""), key);
+  }
+
+  // A study's lanes, one strip a row, each bar the colour of its state: the databox's
+  // EMA and MACD rows. A bar spans its own minutes (a longer timeframe's, from its
+  // close, as its gate reads it). Runs of one state draw as one block, and zoomed out
+  // a pixel column draws its latest state only, so a frame fills at most the pane's
+  // width of blocks a lane.
+  _drawLanes(ctx, P, st) {
+    const map = st.map, xs = map.localIdx, stride = map.stride || 1, off = map.step ? stride / 2 : 0;
+    const n = st.lanes.length, top = P.top + 17, laneH = Math.max(4, Math.min(16, (P.height - 22) / n - 5));
+    const from = Math.max(0, lowerBound(xs, this.i0 - off - stride)), to = Math.min(xs.length, upperBound(xs, this.i1 - off + stride));
+    ctx.font = "9px ui-monospace, monospace";
+    const wide = (this.plotW / Math.max(1, this.i1 - this.i0)) * stride >= 1;
+    st.lanes.forEach((ln, r) => {
+      const y0 = top + r * (laneH + 5), end = Math.min(to, ln.codes.length);
+      let x0 = NaN, x1 = NaN, code = 0;
+      const flush = () => {
+        if (!code || !Number.isFinite(x0)) return;
+        const a = Math.max(this.plotL, Math.round(x0)), b = Math.min(this.plotR, Math.round(x1));
+        if (b <= a) return;
+        ctx.fillStyle = ln.colors[code];
+        ctx.fillRect(a, y0, b - a, laneH);
+      };
+      // extend the block being built, or draw it and start the next
+      const put = (a, b, c) => { if (c === code && a <= x1 + 0.5) { x1 = b; return; } flush(); x0 = a; x1 = b; code = c; };
+      if (wide) {
+        for (let k = from; k < end; k++) put(this.x(xs[k] + off - stride / 2), this.x(xs[k] + off + stride / 2), ln.codes[k]);
+      } else {
+        // a column a pixel wide takes the state of the last bar in it
+        let col = NaN, last = 0;
+        for (let k = from; k < end; k++) {
+          const cx = Math.floor(this.x(xs[k] + off));
+          if (cx !== col) { if (Number.isFinite(col)) put(col, col + 1, last); col = cx; }
+          last = ln.codes[k];
+        }
+        if (Number.isFinite(col)) put(col, col + 1, last);
+      }
+      flush();
+      ctx.fillStyle = CSS.text;
+      ctx.fillText(ln.name, this.plotR + 4, y0 + laneH / 2 + 3);
+    });
   }
 
   // The value of a series under 1-minute index i: the point whose bar holds it
@@ -1569,7 +1611,9 @@ export class ChartView {
     for (const st of this.data.studyOverlays || []) {
       if (st.hidden) continue;
       const vals = st.lines.map((ln) => [ln.name, this._valueAt(st.map, ln.data, i)]).filter(([, v]) => Number.isFinite(v));
-      const text = vals.map(([nm, v]) => `${nm} ${fmtVal(v)}`).join("  ");
+      // a lane names its state rather than a number
+      const lanes = (st.lanes || []).map((ln) => [ln.name, ln.states[this._valueAt(st.map, ln.codes, i)] || ""]).filter(([, s]) => s);
+      const text = [...vals.map(([nm, v]) => `${nm} ${fmtVal(v)}`), ...lanes.map(([nm, s]) => `${nm} ${s}`)].join("  ");
       if (st.pane === "price") {
         if (!text) continue;
         ctx.fillStyle = st.color;

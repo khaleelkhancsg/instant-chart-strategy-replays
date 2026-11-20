@@ -145,7 +145,7 @@ rule logic into a script: that is a second engine, and it drifts.
 ## Tests
 
 - `npm run check`: test.mjs (491), audit, legacy parity (15), MCP end to end (19),
-  chart link (13), the indicator mock (98, `npm run test:mock`), the page's arithmetic
+  chart link (13), the indicator mock (99, `npm run test:mock`), the page's arithmetic
   (41, `npm run test:ui`), the level study's engine (22, `npm run test:levels`), the raw
   store (36, `npm run test:store`), the Data panel's routes (21, `npm run test:data`), the
   TopstepX pull (44, `npm run test:pull`), red-folder news (17, `npm run test:news`), the $1,250
@@ -429,6 +429,12 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
 - **It finds no predictive ability on 1m, 5m or 1m + 5m in 2026,** against 100 placebo markets.
   Its control, the 5-minute reversal, shows at z −2.
 - **The warnings lean the wrong way where they lean at all.**
+- **The `databox` study** (src/studies.mjs) is the box on the chart, a lane a row.
+  - `lanes` are drawn by chart.js `_drawLanes`, a block a run or a pixel column.
+  - The crosshair names each lane's state.
+  - It gates and splits trades as a `trend` study.
+  - test/mock.test.mjs holds its lanes equal to the indicator's states after the warm-up.
+  - It uses the lab's EMAs, seeded on the first value; Tradovate seeds on the first n.
 - **No 30-second bars are held.** Getting them takes a working TopstepX key (second bars, recent
   only) or Databento 1-second data (paid). Add one to `TFS` to run the other four
   combinations.

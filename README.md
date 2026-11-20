@@ -139,7 +139,7 @@ re-sweeps automatically ~700ms after you stop changing parameters.
 
 ### Indicators beside the strategy
 
-**Indicators** in the sidebar adds any of 60 studies to the chart, each on a
+**Indicators** in the sidebar adds any of 61 studies to the chart, each on a
 timeframe of your choice. They are drawn on the price pane or in a pane of their
 own, with their values under the crosshair:
 
@@ -149,7 +149,7 @@ own, with their values under the crosshair:
 | Bands & levels | Bollinger, Keltner, Donchian, prior day & overnight levels, opening range, linear regression channel |
 | Levels | Volume or TPO profile (POC, VAH, VAL), developing or prior, of the session, RTH, week or month; composite profile and volume nodes; naked POCs; floor, Camarilla and Fibonacci pivots; week and month levels; the developing range; Monday's range; initial balance and extensions; Asia, London and pre-market ranges; session, week and month opens; ADR projections; swing highs and lows; VWAP from the last swings; high-volume bar levels |
 | Percent levels | Percent ladder (from settlement, the open, the week or month, in percent or ADRs), move from an anchor, rank of today's move at this minute, fan of the normal move, noise area, recent reach from settlement, self-correcting band |
-| Oscillators | RSI, Stochastic, MACD, CCI, rate of change, z-score, money flow index, Williams %R, Aroon, Chaikin money flow, on-balance volume, estimated volume delta |
+| Oscillators | RSI, Stochastic, MACD, the EMA + MACD databox (its rows as lanes), CCI, rate of change, z-score, money flow index, Williams %R, Aroon, Chaikin money flow, on-balance volume, estimated volume delta |
 | Regime & volatility | ADX / DMI, ATR, efficiency ratio, choppiness, relative volume, ADR used, ATR vs its session average, Vortex, squeeze |
 
 Each study does two jobs:
@@ -1123,6 +1123,16 @@ Results:
 - **The test can see real effects.** As a control, the known 5-minute reversal shows at z −2.
   At +15 minutes it would have caught gaps of 1.1–3.5 points, against 2.5 needed to pay
   costs.
+
+**To check it by hand,** add the **EMA + MACD databox** study (Indicators, under Oscillators) on
+1 and 5 minutes, or open `#st=databox:1~databox:5`.
+- **Each study draws a lane a row.** The colours are the Tradovate box's own: green Long, amber
+  Potentially short, red Short, yellow-green Potentially long.
+- **The crosshair names each row's state** at the bar under it, as of that bar's close. A 5-minute
+  lane steps at each 5-minute close, as the box does.
+- **Its states equal the indicator's** on every bar after the warm-up (`test/mock.test.mjs`).
+- **It also gates and splits trades** like any study. "Gate and trade split read" picks both rows,
+  either row, or both with no warning.
 
 ### Panels and links
 
