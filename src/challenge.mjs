@@ -289,8 +289,10 @@ export function replayWindow(trades, startMs, rules = {}) {
 // What is modelled here, and what is assumed, stated plainly because the numbers
 // are only as good as these:
 //   MODELLED  — winning-day accrual, payout unlock, withdrawal reducing the
-//               balance, the trailing drawdown still killing the account, and
-//               the same soft daily lockouts as the evaluation.
+//               balance, the trailing drawdown still killing the account (on
+//               closed trades, or also on each trade's worst point when
+//               rules.evaluateOn is 'intraday', as in the evaluation), and the
+//               same soft daily lockouts as the evaluation.
 //   ASSUMED   — profit split, payout cap, and how much profit must stay in the
 //               account. All are exposed as parameters; set them to your firm's
 //               actual terms before trusting any figure.
@@ -367,13 +369,25 @@ export function simulateFunded(trades, startMs, rules = {}, funded = {}) {
     if (R.circuitBreaker > 0 && dayPnl <= -R.circuitBreaker) continue;
     if (R.dailyLossLimit > 0 && dayPnl <= -R.dailyLossLimit) continue;
 
+    // Judged 'intraday', as the firm watches live equity, a trade's worst point can
+    // blow the account too, in replayWindow's order (the peak first).
+    let breached = false;
+    if (R.evaluateOn === "intraday") {
+      if (!eodTrail) {
+        const hi = cum + (t.mfe || 0);
+        if (hi > peak) peak = hi;
+        if (R.lockAtBreakeven && !locked && peak >= R.trailingDD) locked = true;
+      }
+      breached = cum + (t.mae || 0) <= floorNow();
+    }
+
     cum += t.pnl;
     dayPnl += t.pnl;
     if (!eodTrail) {
       if (cum > peak) peak = cum;
       if (R.lockAtBreakeven && !locked && peak >= R.trailingDD) locked = true;
     }
-    if (cum <= floorNow()) { blownMs = t.exitTime; break; }
+    if (breached || cum <= floorNow()) { blownMs = t.exitTime; break; }
   }
   if (!blownMs) closeDay(endMs);
 

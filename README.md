@@ -124,7 +124,7 @@ rule the same book manages only 28.6% reaching any payout at all.
 
 > **Modelled vs assumed.** Winning-day accrual, payout unlock, withdrawals
 > lowering the balance, and the trailing drawdown still killing the account are
-> all modelled. The **profit split, payout cap, and required buffer are
+> all modelled, on live equity too when `evaluateOn` is `'intraday'`. The **profit split, payout cap, and required buffer are
 > assumptions** — they are exposed as parameters, so set them to your firm's
 > actual terms before trusting any figure here.
 
@@ -1048,6 +1048,38 @@ year, by 0.13–0.44 points a bar, though never past 1.96 standard deviations in
 Followed with one MNQ after costs, it made money in all eight years, from +$15 in 2019 to
 +$7,838 in 2021, and +$347 in 2022. It was found after the fact among 154 combinations, so it
 needs bars nothing was chosen on before it is more than a lead.
+
+### Which eval gets to a payout: $1,250 or $3,000?
+
+`research/eval_choice_regime.mjs` takes the two live Donchian bots through each eval and on to a
+first payout, on the latest bars only (Aug 1 – Oct 30 2026). It takes about four minutes.
+- **The setup:**
+  - each bot runs under both evals, at many sizes;
+  - the drawdown is judged on live equity, as the firm watches it;
+  - the funded account has the eval's drawdown and daily limit, and pays once 5 days have
+    each made $150.
+- **No edge, two ways:** 100 coin-flip twins and 100 placebo markets made from those same
+  weeks.
+- **The odds alone:** `research/eval_choice_geometry.mjs` does the same for coin-flip trades of
+  any size, with no strategy.
+
+Results:
+- **The chance of getting paid is about the same.** At each eval's best size, a first payout
+  comes on 24% against 23% of attempts for the $1,250 bot's twins, and 17% against 16% for the
+  $3,000 bot's. Placebo markets give 10–13% on both. Coin-flip trades of any size give 10.6%
+  against 7.9%.
+- **The $3,000 eval pays 1.6–2.1 times as much per attempt.** Its first payout is
+  $1,700–2,400, against $900–1,300 on the $1,250 eval. So it is the better buy unless it costs
+  more than about one and a half times as much.
+- **The regime moves the best size, not the ranking.**
+  - At 8 lots on the $3,000 eval, one trade in ten dips $1,200 or more, and losers close at the
+    $1,000 daily limit. Its best there is 4–6 lots.
+  - On the $1,250 eval the $1,250 bot's 4 lots is right.
+  - In dollars a contract, all of 2026 is this regime. New York's first two hours ranged a
+    median $410–815 a month.
+- **Without an edge, more room only takes longer.** Twice the room helps only a real edge,
+  which has more trades to show itself. The $1,250 bot's forward record matches its coin-flip
+  twin, so it has not shown one.
 
 ### Panels and links
 

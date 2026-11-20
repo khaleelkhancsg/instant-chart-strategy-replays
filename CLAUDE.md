@@ -135,7 +135,7 @@ rule logic into a script: that is a second engine, and it drifts.
 
 ## Tests
 
-- `npm run check`: test.mjs (484), audit, legacy parity (15), MCP end to end (19),
+- `npm run check`: test.mjs (486), audit, legacy parity (15), MCP end to end (19),
   chart link (13), the indicator mock (91, `npm run test:mock`), the page's arithmetic
   (41, `npm run test:ui`), the level study's engine (22, `npm run test:levels`), the raw
   store (36, `npm run test:store`), the Data panel's routes (21, `npm run test:data`), the
@@ -391,6 +391,20 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
   - The lead is price against the week's VWAP on 15-minute bars: above its placebos and
     profitable after costs on one MNQ in all eight years, found after the fact.
   - 5-minute reversal is real, but about 0.3 points a bar: far under costs.
+
+## Which eval: $1,250 or $3,000
+
+- **Two scripts answer it:**
+  - `research/eval_choice_regime.mjs` takes the two live Donchian bots through each eval and on
+    to a first payout, on Aug 1 – Oct 30 2026 bars, with twins and placebo markets;
+  - `research/eval_choice_geometry.mjs` does the same for coin-flip trades with no strategy.
+- **Judge the drawdown on live equity** (`evaluateOn: 'intraday'`; `simulateFunded` takes it
+  too). On closed trades, 7 lots on the $3,000 eval looked 41.7% unresolved, and those windows
+  fail on live equity.
+- **Result:** with no edge, the chance of a first payout is about the same on both (the $1,250
+  a point or two ahead), and the $3,000 eval pays 1.6–2.1 times as much per attempt.
+  - The regime moves the best size: 4–6 lots for the $3,000 bot on $3,000, not its 8.
+  - All of 2026 is this regime in dollars a contract.
 
 ## Papers
 

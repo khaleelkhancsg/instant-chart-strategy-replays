@@ -1473,6 +1473,28 @@ t("the trailing drawdown still kills a funded account", () => {
   eq(r.payouts.length, 0);
 });
 
+t("judged intraday, a funded account blows on a trade's worst point", () => {
+  // End-of-day trailing, floor -2000: a +100 trade that dipped -2200 first.
+  const trades = tr([100]);
+  trades[0].mae = -2200;
+  const R = { ...BASE, trailingMode: "eod", trailingDD: 2000 };
+  eq(simulateFunded(trades, START, R, FUND).survived, true, "closed trades only:");
+  eq(simulateFunded(trades, START, { ...R, evaluateOn: "intraday" }, FUND).survived, false, "live equity:");
+});
+
+t("judged intraday, the funded run and the eval's replay breach on the same trade", () => {
+  // Day 1 closes +1500, so the floor is -500; day 2's +100 dipped to -600 (mae -2100), or to -300.
+  const R = { ...BASE, trailingMode: "eod", trailingDD: 2000, evaluateOn: "intraday" }, F = { ...FUND, winDaysRequired: 99 };
+  for (const [mae, blown] of [[-2100, true], [-1800, false]]) {
+    const trades = tr([1500, 100]);
+    trades[1].mae = mae;
+    eq(replayWindow(trades, START, R).outcome === OUTCOME.FAIL, blown, `eval, mae ${mae}:`);
+    const f = simulateFunded(trades, START, R, F);
+    eq(!f.survived, blown, `funded, mae ${mae}:`);
+    if (blown) eq(f.blownMs, trades[1].exitTime, "blown on that trade:");
+  }
+});
+
 t("the horizon bounds the run", () => {
   const long = Array(60).fill(200);          // one winning day each
   const short = simulateFunded(tr(long), START, FBASE, { ...FUND, horizonDays: 20 });
