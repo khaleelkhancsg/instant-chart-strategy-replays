@@ -998,6 +998,44 @@ on random markets.
 
 `strategies/pct_levels.mjs` trades any of these levels, so an idea can be tried on the chart.
 
+### Does a regime bias work?
+
+`research/regime_bias.mjs` asks whether the bars can say which way to lean, long or short, and
+on which timeframe. It takes about a minute.
+- **What it tests:** thirteen biases, each saying long, short or none from the bars so far:
+  - price against its 20, 50 and 200 EMA;
+  - the 9/21, 20/50 and 50/200 EMA crosses;
+  - the last bar's direction, and the 10- and 50-bar move;
+  - the Donchian middle, the MACD histogram, ADX with the stronger DI, and Supertrend.
+- **How hard it leans:** two more measures take the distance from the 50 EMA and the 20-bar
+  move, each in ATRs, and set the strongest fifth against the weakest.
+- **Where:** on 5-minute, 15-minute, 1-hour, 4-hour, daily and weekly bars, and the daily bias
+  held through the next New York session alone.
+- **When:** each calendar year from 2019 to 2026 is taken on its own.
+
+How it is scored:
+- **The edge is drift-free.** It is how much more the next bar rose when the bias said long
+  than when it said short. Always-long scores 0, though it made money in every year but 2022.
+- **Each edge is judged against its own placebo markets.** The raw edge leans negative by
+  itself. A move against the bias tends to flip it for the bars that follow, which shrinks
+  that move's group and so weighs it more. Placebo markets showed the lean as strongly as the
+  real bars did. So each bias, timeframe and year is set against the same on 20 placebo markets.
+
+**No bias calls the next move better than random markets,** on any timeframe, in any year:
+- **The counts are chance's.** Of 736 year-cells, 42 sit outside 1.96 placebo standard
+  deviations; each placebo market judged against the others gives 19–100 (median 53). Six
+  biases are above their placebos in all but one year and six below, where placebo markets give
+  0–27 and 0–15 (medians 3).
+- **No timeframe stands out.** 15-minute biases lean with the trend (9 cells, placebos 0–13),
+  and daily ones against it (8, placebos 0–17). Both are inside what random markets give.
+- **How hard the market leans adds nothing.** The strongest fifth against the weakest stays
+  inside its placebos on every timeframe.
+- **The one steady effect is too small to trade.** After an up 5-minute bar the next leans
+  down, below its placebos in 7 of 8 years. It is about 0.3 points a bar. Faded with one MNQ it
+  earned $6,500–21,000 a year before costs, against $60,000–91,000 of costs.
+- **Followed with one MNQ after costs, no bias made money in every year.** The 4-hour MACD
+  histogram, above its placebos in 7 of 8 years, made +$9,261 in 2024 and lost $4,588 in 2020.
+
 ### Panels and links
 
 The sidebar has three tabs. **Results** says what happened, **Settings** holds what

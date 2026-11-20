@@ -369,6 +369,22 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
 - **The odds ladder needs no R and no twins** (`research/pct_ladder.mjs`): from any rung, the next
   rung up or down is a coin flip on a random walk.
 
+## Regime bias
+
+`research/regime_bias.mjs` tests whether a long/short bias can call the next bar's move.
+- **What it covers:**
+  - thirteen trend biases and two measures of how hard price leans;
+  - 5-minute to weekly bars;
+  - each calendar year from 2019 alone, as the person asked.
+- **Judge a long-minus-short edge against placebo markets, never a slide null.** The raw edge
+  leans negative on its own. A move against a persistent bias flips it, which shrinks that
+  move's own group and weighs it more, and five placebo runs showed the lean as strongly as the
+  real bars. So each cell is set against the same cell on 20 placebo markets, and the counts
+  against each placebo market judged against the others.
+- **Result:** nothing beats random markets.
+  - 42 of 736 year-cells are significant, where placebo markets give 19–100 (median 53).
+  - The real effect, 5-minute reversal, is about 0.3 points a bar: far under costs.
+
 ## Papers
 
 - `papers/<id>.md` holds one summary per paper (front matter: title, authors,
