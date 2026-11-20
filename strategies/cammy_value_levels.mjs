@@ -16,7 +16,9 @@
 //   - a grade by confluence, sized A 100%, B 50%, C 25% of the risk [VP 13, 14, 20]
 //   - a 1:1 target, the "base hit", by default [VP 5, 18, 30], and the day done after
 //     one win or two losses [VP 26] (exec.dayMaxWins, exec.dayMaxLosses)
-//   - risk per A trade: 10% of the eval's drawdown [VP 9, 18]
+//   - risk per A trade: 10% of the eval's drawdown [VP 9, 18], times `sizeX`. At 1, Cammy's
+//     own risk, no window passes or fails inside 30 days; the default, 5, is the least
+//     at which most of 2026's windows end
 //
 // SETTINGS, because they are the calls Cammy makes by eye; each has a few versions:
 //   - which side: price accepted beyond the previous day's POC for `acceptMin` minutes
@@ -36,29 +38,27 @@
 // NOT CODED: the order-flow reads (DOM, Bookmap, tape) need data these bars do not
 // have; runners, which Cammy keeps for funded accounts past their buffer [VP 18].
 //
-// RESULT (research/cammy_protocol.mjs, 2026-11-04): no edge.
-//   - At Cammy's risk it cannot pass. It passes 0% of 2026's windows by either method, at
-//     the $1,250 and $3,000 evals, making about $5 a trade on 1 or 2 lots.
-//   - 2026, $1,250 eval: 168 trades, 60.1% won, PF 1.26, +$772. Forward, Jul 15 - Oct 30:
-//     92 trades, 63% won, PF 1.48, +$705. No coin-flip twin nets as much in either.
-//   - Placebo markets do as well. On paths that turn each bar up-for-down at random, where
-//     no level can mean anything, it wins 60.6% and nets +$621 in 2026 (10 paths). It
-//     matches the real bars in each half and forward (7, 10 and 9 of 20 paths net as much).
-//   - The 60% is the bar a limit fills on. The engine credits the target whenever that bar's
-//     high reached it (exec.limitFillTp "high"), though the high may have printed before
-//     price came down to the order. That was 76 of the 168 trades. Counted only when the
-//     bar closed beyond it, the book wins 43.6% and loses $1,710, and the placebo paths
-//     lose $1,715.
-//   - The coin-flip twin is fooled for the same reason: flipped, a buy limit is a sell stop,
-//     and on the same bar the engine charges the stop's stop.
-//   - No version of the settings holds. Across 41 of them, the edge over placebo in Jan-Mar
-//     says nothing about Apr-Jul (rank correlation -0.17). Two beat all 10 of their placebo
-//     paths, where chance alone gives about 4. The one the worse half picks, an 80-tick stop
-//     where no node is behind, beat placebo in both halves and then lost to it forward:
-//     +$783 against +$870, and 13 of 20 paths netted as much.
-//   - A lead at most: a POC as an entry even when nothing stacks beat placebo forward
-//     (+$1,286 against +$707, 2 of 20 paths as much). It was not the pick, it was read
-//     after seeing the halves, and its Apr-Jul edge was weak (5 of 20 paths as much).
+// RESULT (research/cammy_protocol.mjs, 2026-11-04): no edge, and one lead.
+//   - Size decides how fast windows end, not whether the book wins. At Cammy's risk none
+//     ends; at 5x it passes 34.5% of 2026's windows (40 / 28 by half; bootstrap 33.6%),
+//     and placebo markets pass 31.8%. At 8-10x both are a coin flip, about 48%.
+//   - Placebo markets turn each bar up-for-down at random, so no level can mean anything.
+//     The book wins 60.1% of its trades on the real bars and 60.6% on them. Forward (Jul 15
+//     - Oct 30) it passes 42.9% against their 36.2%, and 7 of 20 paths pass as often.
+//   - The 60% is the bar a limit fills on. The engine credits the target whenever that
+//     bar's high reached it (exec.limitFillTp "high"), though the high may have printed
+//     before price came down to the order: 76 of the 168 trades in 2026. Counted only when
+//     the bar closed beyond it, the book passes 0.6% and the placebo paths 3.7%.
+//   - The coin-flip twin is fooled for the same reason (it passes 2.6%): flipped, a buy
+//     limit is a sell stop, and on the same bar the engine charges the stop's stop.
+//   - No version holds as the house reads it. Across 41, the halves' edges over placebo
+//     rank at 0.12, and 3 beat all 10 placebo paths where chance gives about 4. The
+//     worse-half pick, an 80-tick stop where no node is behind, passed 53.2% forward
+//     against placebo's 34.6% (4 of 20 paths as often) but netted less than they did.
+//   - The lead: a POC as an entry even when nothing stacks. 52.7% in 2026 against
+//     placebo's 29.2%, above it in both halves; forward 80.5% against 44.9%, 2 of 20
+//     paths as often. It was not the pick and was found among 42 versions, so it needs
+//     bars nothing was chosen on.
 
 import { atr } from "../src/indicators.mjs";
 import { Profile, levels, balanced } from "../src/valueprofile.mjs";
@@ -88,7 +88,7 @@ const weekOf = (td) => Math.floor((td + 3) / 7);
 export default {
   id: "cammy_value_levels",
   name: "Cammy Capital value levels",
-  description: "Cammy Capital's volume profile strategy: limit orders at the first tap of the previous week's, previous day's and overnight value levels, graded by how many stack, with the side, nodes and stops as settings. 1:1, one win or two losses a day. No edge: random placebo markets do as well, and its 60% win rate comes from how the bar a limit fills on is read.",
+  description: "Cammy Capital's volume profile strategy: limit orders at the first tap of the previous week's, previous day's and overnight value levels, graded by how many stack, with the side, nodes and stops as settings. 1:1, one win or two losses a day, at 5x Cammy's risk. No edge: random placebo markets do as well, and its 60% win rate comes from how the bar a limit fills on is read.",
 
   timeframeMin: 1,
   warmupBars: 300,
@@ -136,6 +136,8 @@ export default {
     { key: "minGrade", label: "Lowest grade traded", type: "select", default: "C",
       options: [["C", "C: one confluence, a quarter size"], ["B", "B: two, half size"], ["A", "A: three or more, full size"]],
       hint: "Cammy sizes C at 25% (VP 14) and says to aim for two or more (VP 20)." },
+    { key: "sizeX", label: "Size: × Cammy's risk", type: "float", min: 0.5, max: 10, step: 0.5, default: 5,
+      hint: "Every grade's risk times this; the firm's contract cap still applies. 1 is Cammy's: 10% of the drawdown on an A trade (VP 9, 18), at which no window passes or fails inside 30 days. 5 is the least at which most of 2026's windows end." },
     { key: "stopRule", label: "Stop", type: "select", default: "node",
       options: [["node", "Behind the nearest node"], ["fixed", "A fixed distance behind the stack"]] },
     { key: "stopTicks", label: "Stop with no node behind (ticks)", type: "int", min: 8, max: 400, step: 4, default: 48 },
@@ -152,7 +154,7 @@ export default {
     const { high: H, low: L, close: C, volume: V, ts: TS, ctMin, tday } = bars;
     const n = C.length, tfMin = bars.tfMin || 1;
     const a = atr(H, L, C, 14);
-    const sig = new Int8Array(n), sizeMult = new Float32Array(n);
+    const sig = new Int8Array(n), sizeMult = new Float64Array(n), sx = p.sizeX > 0 ? p.sizeX : 1;
     const orderPx = new Float32Array(n).fill(NaN), stopPts = new Float32Array(n).fill(NaN), targetPts = new Float32Array(n).fill(NaN);
     // what explain(k) and the overlays read back
     const cand = new Int8Array(n).fill(-1), none = new Int8Array(n), bits = new Uint16Array(n), grade = new Int8Array(n);
@@ -378,7 +380,7 @@ export default {
       if (!R) { none[i] = 4; continue; }
       cand[i] = R.k; bits[i] = R.ok; grade[i] = R.g; stackMask[i] = R.mask; opp[i] = R.oppD; vetoPx[i] = R.vetoAt;
       stopPts[i] = R.stopD; targetPts[i] = R.tgt; orderPx[i] = lv[R.k];
-      if (pick) { sig[i] = R.d; sizeMult[i] = SIZE[R.g]; }
+      if (pick) { sig[i] = R.d; sizeMult[i] = SIZE[R.g] * sx; }
     }
 
     // a level at bar k, as the loop had it
@@ -410,7 +412,8 @@ export default {
         // a grade under the lowest traded is no order at all; a traded one sets the size
         chk(`Grade ${GRADE[g]}: ${stacked.join(" + ")}${(b & B.NODE_AT) && p.countNodes === "on" ? " + a node" : ""}${(b & B.CTX) && p.countContext === "on" ? " + the side" : ""}`,
             !!(b & B.GRADE), { text: `trades grade ${p.minGrade} and up` }),
-        sized(`Size: ${SIZE[g] * 100}% of the risk`, SIZE[g] === 1, { text: `grade ${GRADE[g]}; A trades full size, B half, C a quarter` }),
+        sized(`Size: ${SIZE[g] * 100}% of the A-trade risk${sx !== 1 ? ` × ${sx}` : ""}`, SIZE[g] === 1,
+              { text: `grade ${GRADE[g]}: A trades full size, B half, C a quarter${sx !== 1 ? `; ${sx} × Cammy's risk` : ""}` }),
       ];
       const dir = verdict(d, checks);
       const marks = [mark.level(P, Math.max(0, devFrom[k]), k, `${NAME[j]} ${px(P)}`, { color: COLORS[j] })];
@@ -418,7 +421,7 @@ export default {
         marks.push(mark.level(P - d * stopPts[k], k, k, `stop ${px(P - d * stopPts[k])}`, { color: COLOR.down }));
         marks.push(mark.level(P + d * targetPts[k], k, k, `target ${px(P + d * targetPts[k])}`, { color: COLOR.up }));
       }
-      return { dir, size: dir ? SIZE[g] : 0, checks, marks,
+      return { dir, size: dir ? SIZE[g] * sx : 0, checks, marks,
                title: dir ? `${d === 1 ? "Buy" : "Sell"} limit at ${NAME[j]} ${px(P)}, grade ${GRADE[g]}` : `No order at ${NAME[j]} ${px(P)}` };
     };
 

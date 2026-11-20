@@ -472,52 +472,62 @@ overlap almost entirely are about 2.6 independent ones, so each pass rate is ±4
 Flow and Volume Profile playlists.
 - It rests a limit order at the first tap of the previous week's, the previous day's and
   the overnight value levels, and at a balanced developing profile's edges.
-- Each order is graded by how many levels stack there. A trades the full risk (10% of the
-  drawdown), B half and C a quarter.
+- Each order is graded by how many levels stack there. A trades the full risk, B half and
+  C a quarter.
 - It targets 1:1, and the day is done after one win or two losses.
 - Every call Cammy makes by eye is a setting: which side to trade, what counts as a node,
   where the stop goes, how close levels must be to stack, and more.
+- **Size** is "Size: × Cammy's risk". Cammy risks 10% of the drawdown on an A trade, which
+  is $100 at the $1,250 eval. The default trades 5 times that, the least at which most of
+  2026's windows end.
 - The levels are the ones the Tradovate indicator draws (`cammyValueLevels.js` in the
   custom indicator repo). Of 2.1 million readings, none differs.
 
-`research/cammy_protocol.mjs` runs everything below (about 30 minutes).
+`research/cammy_protocol.mjs` runs everything below (about 40 minutes).
 
 **It has no edge.**
-- **At Cammy's own risk it cannot pass.** It passes 0% of 2026's windows by either method,
-  at both evals and at every version. About $5 a trade on 1 or 2 lots cannot reach $1,250
-  in 30 days.
-- **It looks like it wins.** It nets +$772 over 168 trades in 2026 (60% won) and +$705
-  over 92 trades forward, and no coin-flip twin nets as much.
-- **A placebo market does just as well.** These are paths that turn each bar up-for-down
-  at random, keeping its size, volume and time, so no level can mean anything. On them the
-  book wins 60.6% and nets +$621. It matches the real bars in each half of 2026 and forward.
-- **The 60% is the bar a limit fills on.** The engine credits the target whenever that
-  bar's high reached it, but the high may have printed before price came down to the
-  order. 76 of the 168 trades were credited that way. Counted only when the bar closed
-  beyond the target, the book wins 44% and loses $1,710, and the placebo paths lose
-  $1,715.
-- **The coin-flip twin is fooled for the same reason.** Flipped, a buy limit is a sell
-  stop at the same price, and on the same bar the engine charges the stop's stop. For a
-  book that rests limits, placebo paths are the control.
+- **Placebo markets are the control.** These are paths that turn each bar up-for-down at
+  random, keeping its size, volume and time, so no level can mean anything.
+- **Size decides how fast windows end, not whether the book wins.** At Cammy's own risk no
+  window passes or fails in 30 days: about $5 a trade on 1 or 2 contracts. Sized up, passes
+  and fails rise together, on the real bars and the placebo paths alike.
+- **The 60% is the bar a limit fills on.** The book wins 60.1% of its trades on the real bars
+  and 60.6% on the placebo paths. The engine credits a target whenever the bar the limit
+  filled on reached it, but that bar's high may have printed before price came down to the
+  order. 76 of the 168 trades in 2026 were credited that way. Counted only when the bar
+  closed beyond the target, the book passes 0.6% of 2026's windows and the placebo paths
+  3.7%.
+- **The coin-flip twin is fooled for the same reason.** Flipped, a buy limit is a sell stop
+  at the same price, and on the same bar the engine charges the stop's stop. For a book that
+  rests limits, placebo paths are the control.
 
-| Cammy's rules, $1,250 eval | real bars | placebo paths, mean | paths netting as much |
-|---|---|---|---|
-| 2026 | 168 trades, 60.1% won, +$772 | 60.6% won, +$621 | 3 of 10 |
-| 2026, Jan–Mar · Apr–Jul | +$409 · +$363 | +$223 · +$399 | |
-| forward, Jul 15 – Oct 30 | 92 trades, 63.0% won, +$705 | 62.9% won, +$558 | 9 of 20 |
-| 2026, the fill bar's target only on a close | 188 trades, 43.6% won, −$1,710 | 42.9% won, −$1,715 | 4 of 10 |
+$1,250 eval, calendar windows, costs included:
 
-**No version of the settings holds.** Each of 41 versions was read against the same placebo
-paths, by half.
-- The edge over placebo in Jan–Mar says nothing about Apr–Jul: across the versions the two
-  halves rank at −0.17.
-- Two versions beat all 10 of their placebo paths, where chance alone gives about 4.
-- The one the worse half picks, an 80-tick stop where no node is behind, beat placebo by
-  $769 and $1,026 in the two halves. Forward it lost to placebo: +$783 against +$870, with
-  13 of 20 paths netting as much.
-- A POC as an entry even when nothing stacks beat placebo forward (+$1,286 against +$707,
-  2 of 20 paths as much). It was not the pick, and its Apr–Jul edge was weak, so it is a
-  lead at most.
+| size | contracts a trade | 2026: pass · fail · out of time | placebo, 10 paths: pass · fail · out of time | forward: pass, placebo pass |
+|---|---|---|---|---|
+| ×1, Cammy's | 1.7 | 0 · 0 · 100% | 0 · 0 · 100% | 0%, 0% |
+| ×3 | 5.0 | 10.9 · 6.7 · 82.4% | 7.8 · 9.8 · 82.4% | 20.8%, 6.8% |
+| ×4 | 6.5 | 24.2 · 11.5 · 64.2% | 21.2 · 23.0 · 55.8% | 32.5%, 23.0% |
+| **×5, the default** | 8.0 | **34.5** · 22.4 · 43.0% | 31.8 · 36.6 · 31.7% | 42.9%, 36.2% |
+| ×6 | 9.8 | 40.0 · 25.5 · 34.5% | 38.9 · 38.2 · 22.8% | 40.3%, 45.2% |
+| ×8 | 12.6 | 48.5 · 32.7 · 18.8% | 48.2 · 45.1 · 6.7% | 50.6%, 53.6% |
+| ×10 | 15.0 | 47.9 · 51.5 · 0.6% | 47.9 · 50.5 · 1.6% | 50.6%, 56.4% |
+
+At ×5, 3 of the 10 placebo paths pass 2026's windows as often as the real bars, and forward
+(Jul 15 – Oct 30, 20 paths) 7 do. The real bars' halves are 40% (Jan–Mar) and 28% (Apr–Jul),
+and the bootstrap gives 33.6%.
+
+**No version of the settings holds as the house reads it; one is a lead.** Each of 41
+versions was read against the same placebo paths, by half.
+- The pass-rate edge over placebo in Jan–Mar says little about Apr–Jul: across the versions
+  the two halves rank at 0.12.
+- Three versions beat all 10 of their placebo paths, where chance alone gives about 4.
+- The worse-half pick, an 80-tick stop where no node is behind, passed 53.2% forward
+  against placebo's 34.6% (4 of 20 paths as often), but netted less than they did.
+- **The lead:** a POC as an entry even when nothing stacks there. It passes 52.7% of 2026's
+  windows against placebo's 29.2%, above it in both halves, and forward 80.5% against 44.9%,
+  with 2 of 20 paths as often. It was not the pick and was found among 42 versions, so it
+  needs bars nothing was chosen on before it is more than a lead.
 
 ## Adding a strategy
 

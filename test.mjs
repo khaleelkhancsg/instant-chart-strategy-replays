@@ -1058,6 +1058,13 @@ t("named order: risk sizing divides by its own stop, and the bar it fills on can
                          { ...NAMED, sizingMode: "risk", riskDollars: 40, maxContracts: 20, ...named(3, 0, 98, 4, 6) }).trades[0];
   eq(tr.contracts, 5, "$40 over 4 points x $2:"); eq(tr.reason, EXIT.SL); eq(tr.exitIdx, 1, "out on the bar it filled:"); close(tr.exitPrice, 94, 1e-9);
 });
+t("risk sizing: a strategy's size fraction scales the dollar risk before the lots are rounded and capped", () => {
+  // $400 over a 6-point stop is 33 lots, capped at 20; a quarter of the risk is 8 lots, not a quarter of 20
+  const sig = new Int8Array(3); sig[0] = 1;
+  const lots = (m) => runBrackets(bars([[100, 101, 99, 100], [100, 101, 97, 98.5], [98.5, 105, 97, 104]]), sig, flatAtr(3, 10),
+    { ...NAMED, sizingMode: "risk", riskDollars: 400, maxContracts: 20, ...named(3, 0, 98, 6, 6), sizeMult: Float64Array.of(m, 1, 1) }).trades[0].contracts;
+  eq(lots(1), 20, "the cap:"); eq(lots(0.25), 8, "a quarter of the risk:"); eq(lots(0.5), 17, "half of it, rounded:"); eq(lots(0.01), 1, "never below one lot:");
+});
 t("named order: no price leaves the signal to the configured entry, no stop or target to the configured bracket", () => {
   const sig = new Int8Array(3); sig[0] = 1;
   const rows = [[100, 101, 99, 100], [100, 101, 97, 98.5], [98.5, 99, 97, 98]];

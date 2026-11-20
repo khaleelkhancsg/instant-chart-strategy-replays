@@ -780,7 +780,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
     // sizing divides by the distance from where the fill is expected to the
     // stop: a stop entry fills a trigger beyond the reference the stop is
     // measured from, a limit entry that much inside it, a named order at its price.
-    let full;
+    let full, perRisk = false;
     if (sizer) {
       full = sizer(a, CT ? CT[i] : 0, seq++, i);
       if (!(full >= 1)) { if (onSignal) onSignal(i - 1, s, "refused", { bar: i, why: "sizer" }); continue; }
@@ -788,17 +788,21 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
     } else if (x.sizingMode === "risk") {
       const riskPts = own ? slD : x.entryType === "stop" ? slD + Math.max(a * x.entryTriggerAtr, tick)
                     : x.entryType === "limit" ? Math.max(slD - a * x.entryLimitAtr, tick) : slD;
-      full = Math.max(1, Math.min(cap, Math.round(x.riskDollars / (riskPts * pv))));
+      full = x.riskDollars / (riskPts * pv);          // lots, rounded and capped below
+      perRisk = true;
     } else {
       full = q;
     }
     // The strategy's own say on size at this signal: a fraction of it late in
-    // the day, or none.
+    // the day, or none. Under risk sizing it scales the dollar risk before the
+    // lots are rounded and capped, so a fraction of a capped size is still that
+    // fraction of the risk.
     if (x.sizeMult) {
       const m = x.sizeMult[i - 1];
       if (!(m > 0)) { if (onSignal) onSignal(i - 1, s, "refused", { bar: i, why: "size" }); continue; }
-      if (m !== 1) full = Math.max(1, Math.min(cap, Math.round(full * m)));
+      if (m !== 1) full = perRisk ? full * m : Math.max(1, Math.min(cap, Math.round(full * m)));
     }
+    if (perRisk) full = Math.max(1, Math.min(cap, Math.round(full)));
     let tpD = tq > 0 ? Math.max(tq, tick)
             : tpFn ? Math.max(tpFn(a, full), tick)
             : x.tpMode === "rr" ? Math.max(slD * x.tpRR, tick)

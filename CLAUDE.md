@@ -90,7 +90,9 @@ rule logic into a script: that is a second engine, and it drifts.
   multiplies the size, rounded and at least 1. `0` refuses the entry the way a gate
   does, so the signal still flips. `donchian_1250` uses it for the 10-minute EMA
   filter and its late half size, and `macd_fade_1250` for its weak-cross and
-  volatility gates, as the research's sizers did.
+  volatility gates, as the research's sizers did. Under risk sizing it multiplies the
+  dollar risk before the lots are rounded and capped, so a quarter of a capped A trade
+  is still a quarter of the risk (`cammy_value_levels` sizes its grades and `sizeX` so).
 - **`tpMaxUsd`** caps the target at that many dollars for the size traded, as the
   MACD fade's `min(5.15 ATR, $600 / (2 x lots))`.
 - **A strategy's own orders**: `orderPx`, `stopPts` and `targetPts` from `compute()`,
@@ -133,7 +135,7 @@ rule logic into a script: that is a second engine, and it drifts.
 
 ## Tests
 
-- `npm run check`: test.mjs (483), audit, legacy parity (15), MCP end to end (19),
+- `npm run check`: test.mjs (484), audit, legacy parity (15), MCP end to end (19),
   chart link (13), the indicator mock (91, `npm run test:mock`), the page's arithmetic
   (41, `npm run test:ui`), the level study's engine (22, `npm run test:levels`), the raw
   store (36, `npm run test:store`), the Data panel's routes (21, `npm run test:data`), the
@@ -229,14 +231,14 @@ rule logic into a script: that is a second engine, and it drifts.
   combinations.** Each was tuned on 2026, and none held forward. Their headers
   carry the numbers.
 - **`cammy_value_levels` (Cammy Capital's volume profile strategy) has no edge.**
-  - At Cammy's own risk it passes 0% of 2026's windows, by either method, at both evals.
-  - It nets +$772 in 2026 and +$705 forward, and no coin-flip twin nets as much. But
-    placebo markets do the same: 60.6% won and +$621 in 2026.
-  - The 60% is the bar a limit fills on. Its target counts whenever that bar's high reached
-    it, and 76 of the 168 trades were credited that way.
-  - No version of its 41 holds: the halves' edges over placebo rank at -0.17, and the
-    worse-half pick lost to placebo forward.
-  - `research/cammy_protocol.mjs` runs it all (about 30 minutes); its header has the figures.
+  - At Cammy's own risk (`sizeX` 1) no window ends inside 30 days. Its default, 5x, is the
+    least at which most of 2026's windows end. There it passes 34.5% of them and placebo
+    markets pass 31.8%; forward, 42.9% against 36.2%.
+  - It beats every coin-flip twin, but placebo markets match it. Its 60% win rate is the bar
+    a limit fills on, whose target counts whenever that bar's high reached it (76 of 168).
+  - No version of its 41 holds by the worse half. A POC as an entry even unstacked is a lead
+    (forward 80.5% against placebo's 44.9%), not a result.
+  - `research/cammy_protocol.mjs` runs it all (about 40 minutes); its header has the figures.
 - **The protocol** (`research/lib_eval1250.mjs` scores it, through `mcp/lab.mjs`):
   - score 2026 by both methods, and in both halves;
   - pick on one half and read the other;
