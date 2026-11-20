@@ -373,7 +373,8 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
 
 `research/regime_bias.mjs` tests whether a long/short bias can call the next bar's move.
 - **What it covers:**
-  - thirteen trend biases and two measures of how hard price leans;
+  - eighteen biases (EMAs, VWAP, crosses, moves, Donchian, MACD, ADX, Supertrend, RSI) and
+    two measures of how hard price leans;
   - 5-minute to weekly bars;
   - each calendar year from 2019 alone, as the person asked.
 - **Judge a long-minus-short edge against placebo markets, never a slide null.** The raw edge
@@ -381,9 +382,12 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
   move's own group and weighs it more, and five placebo runs showed the lean as strongly as the
   real bars. So each cell is set against the same cell on 20 placebo markets, and the counts
   against each placebo market judged against the others.
-- **Result:** nothing beats random markets.
-  - 42 of 736 year-cells are significant, where placebo markets give 19–100 (median 53).
-  - The real effect, 5-minute reversal, is about 0.3 points a bar: far under costs.
+- **Result:** nothing beats random markets taken together.
+  - 71 of 983 year-cells are significant, where placebo markets give 29–133 (median 73).
+  - The one lead is price against the week's VWAP on 15-minute bars: above its placebos and
+    profitable after costs on one MNQ in all eight years. It was the best of 140 after the
+    fact, so it needs new bars.
+  - 5-minute reversal is real, but about 0.3 points a bar: far under costs.
 
 ## Papers
 

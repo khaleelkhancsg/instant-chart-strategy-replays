@@ -1002,11 +1002,12 @@ on random markets.
 
 `research/regime_bias.mjs` asks whether the bars can say which way to lean, long or short, and
 on which timeframe. It takes about a minute.
-- **What it tests:** thirteen biases, each saying long, short or none from the bars so far:
-  - price against its 20, 50 and 200 EMA;
+- **What it tests:** eighteen biases, each saying long, short or none from the bars so far:
+  - price against its 20, 50 and 200 EMA, and against the session's and the week's VWAP;
   - the 9/21, 20/50 and 50/200 EMA crosses;
   - the last bar's direction, and the 10- and 50-bar move;
-  - the Donchian middle, the MACD histogram, ADX with the stronger DI, and Supertrend.
+  - the Donchian middle, the MACD histogram, ADX with the stronger DI, and Supertrend;
+  - RSI 14 over 50, and RSI 14 and RSI 2 at their extremes (a negative edge says fade them).
 - **How hard it leans:** two more measures take the distance from the 50 EMA and the 20-bar
   move, each in ATRs, and set the strongest fifth against the weakest.
 - **Where:** on 5-minute, 15-minute, 1-hour, 4-hour, daily and weekly bars, and the daily bias
@@ -1021,20 +1022,27 @@ How it is scored:
   that move's group and so weighs it more. Placebo markets showed the lean as strongly as the
   real bars did. So each bias, timeframe and year is set against the same on 20 placebo markets.
 
-**No bias calls the next move better than random markets,** on any timeframe, in any year:
-- **The counts are chance's.** Of 736 year-cells, 42 sit outside 1.96 placebo standard
-  deviations; each placebo market judged against the others gives 19–100 (median 53). Six
-  biases are above their placebos in all but one year and six below, where placebo markets give
-  0–27 and 0–15 (medians 3).
-- **No timeframe stands out.** 15-minute biases lean with the trend (9 cells, placebos 0–13),
-  and daily ones against it (8, placebos 0–17). Both are inside what random markets give.
+**Taken together, no bias calls the next move better than random markets:**
+- **The counts are chance's.** Of 983 year-cells, 71 sit outside 1.96 placebo standard
+  deviations; each placebo market judged against the others gives 29–133 (median 73). Eleven
+  biases are above their placebos in all but one year and seven below, where placebo markets
+  give 0–36 and 0–19 (medians 3).
+- **No timeframe stands out.** The most consistent are 5- and 15-minute bars, where 1 in 10
+  placebo markets is as consistent. 15-minute biases lean with the trend and daily ones against
+  it, each matched by about 1 in 7 placebo markets.
 - **How hard the market leans adds nothing.** The strongest fifth against the weakest stays
   inside its placebos on every timeframe.
-- **The one steady effect is too small to trade.** After an up 5-minute bar the next leans
-  down, below its placebos in 7 of 8 years. It is about 0.3 points a bar. Faded with one MNQ it
-  earned $6,500–21,000 a year before costs, against $60,000–91,000 of costs.
-- **Followed with one MNQ after costs, no bias made money in every year.** The 4-hour MACD
-  histogram, above its placebos in 7 of 8 years, made +$9,261 in 2024 and lost $4,588 in 2020.
+- **The steady effect at 5 minutes is too small to trade.** After an up bar, or RSI 2 above 90,
+  the next 5 minutes lean down, below their placebos in 7 and 8 of 8 years. It is about 0.3
+  points a bar. Faded with one MNQ it earned $6,500–21,000 a year before costs, against
+  $60,000–91,000 of costs.
+
+**One lead: price against the week's VWAP.** On 15-minute bars it is above its placebos in every
+year, by about 0.5 points a bar, and in 7 of 8 years on 5-minute and hourly bars. Followed with
+one MNQ after costs on 15-minute bars, it made money in all eight years, from +$15 in 2019 to
++$7,838 in 2021, and +$347 in 2022. It is the best of 140 combinations, found after the fact, and
+1 in 10 random markets turns up one as consistent. It needs bars nothing was chosen on before
+it is more than a lead.
 
 ### Panels and links
 
