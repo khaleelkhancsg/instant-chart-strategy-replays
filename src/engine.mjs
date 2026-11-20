@@ -267,6 +267,14 @@ export const DEFAULT_EXEC = {
   fillBarOpen: false,
   // One bar reaching both the stop and the target: 'stop' (pessimistic) or 'target'.
   sameBarTie: "stop",
+  // A trade's excursions (mae / mfe) count its exit bar only up to the exit.
+  // Nothing of the bar counts after an exit at its open. After a stop or a target
+  // inside the bar, the side the exit was reached on counts only as far as the
+  // exit; the bar's other extreme stays in, since which came first is unknown.
+  // 'bar' (old) counted the whole exit bar. A stopped trade then showed the bar's
+  // run past its stop as a dip the account never took, and evaluateOn 'intraday'
+  // failed accounts on it.
+  exitBarExcursion: "toExit", // 'toExit' | 'bar'
   // A bar that OPENS through a resting order fills it at the open -- a target or
   // a limit entry at the better price it really gets, a stop entry at the worse.
   // 'level' (old) filled at the order's own price, which the market had left.
@@ -289,7 +297,7 @@ export function resolveExec(cfg = {}) {
 // made explicit, so a pre-consolidation result can be reproduced exactly.
 export const LEGACY_EXEC = {
   exitFirst: false, entryBarExits: false, tpGapFill: "level", entryGapFill: "level",
-  sessionEndFlat: "none", cancelOpposite: false, capEndsDay: false,
+  sessionEndFlat: "none", cancelOpposite: false, capEndsDay: false, exitBarExcursion: "bar",
 };
 
 // Where a resting stop actually fills: at its trigger, or at the open when the
@@ -379,6 +387,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
   let ep = 0, slDist = 0, tpDist = 0, tpBase = 0, ei = 0;
   let sigIdx = -1, atrSig = NaN, kind = "market", limFill = false, ambiguous = false;
   let hiSeen = -Infinity, loSeen = Infinity;      // for MAE / MFE
+  let hiPrev = -Infinity, loPrev = Infinity, seenBar = -1;   // the same before bar seenBar was added
   let mx = 0, mn = 0, tsl = null;                 // the management hooks' view
   let banked = 0, t1Px = 0, t1Frac = 0;           // scale-out
   const scaleFrac = x.scaleInFrac > 0 && x.scaleInFrac < 1 ? x.scaleInFrac : 0;
@@ -405,7 +414,9 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
   const state = () => ({ dir: pos, fill: notional / qIn, ep, atr: atrSig, slD: slDist, tpD: tpDist,
                          entBar: ei, qty: qOpen, mx, mn, sigBar: sigIdx, tsl });
 
-  function close_(rawExit, reason, i, exactNet) {
+  // `at` is where in bar i the exit happened: 'open', 'inside' (a stop or a target
+  // reached within the bar) or 'close'.
+  function close_(rawExit, reason, i, exactNet, at) {
     // Slippage always works against the position on both legs. With scale-in,
     // the fill is the size-weighted average of the tranches, each already slipped.
     const fill = notional / qIn;
@@ -434,8 +445,24 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
         reason = EXIT.DAYLOSS; exactNet = floorNet;
       }
     }
-    const mfe = (pos === 1 ? hiSeen - fill : fill - loSeen) * pv * qIn;
-    const mae = (pos === 1 ? loSeen - fill : fill - hiSeen) * pv * qIn;
+    // The exit bar up to the exit only (exitBarExcursion 'toExit'). The adverse side
+    // goes as far as the fill, slippage included; the favourable side as far as the
+    // price that printed. An exit on the fill bar keeps the fill bar's own reading.
+    let hi = hiSeen, lo = loSeen;
+    if (x.exitBarExcursion === "toExit") {
+      if (i !== ei && (at === "open" || at === "inside")) {
+        const hp = seenBar === i ? hiPrev : hiSeen, lp = seenBar === i ? loPrev : loSeen;
+        const stopSide = reason === EXIT.SL || reason === EXIT.TRAIL || reason === EXIT.DAYLOSS;
+        if (at === "open" || stopSide) { if (pos === 1) lo = Math.min(lp, exitPrice); else hi = Math.max(hp, exitPrice); }
+        if (at === "open" || !stopSide) { if (pos === 1) hi = Math.max(hp, rawExit); else lo = Math.min(lp, rawExit); }
+      }
+      // Whatever else is unknown, the trade was open at its own exit. A stop booked on a
+      // stop entry's fill bar, whose far extreme may predate the fill, still dipped to it.
+      if (pos === 1) { lo = Math.min(lo, exitPrice); hi = Math.max(hi, rawExit); }
+      else { hi = Math.max(hi, exitPrice); lo = Math.min(lo, rawExit); }
+    }
+    const mfe = (pos === 1 ? hi - fill : fill - lo) * pv * qIn;
+    const mae = (pos === 1 ? lo - fill : fill - hi) * pv * qIn;
     const t = {
       entryIdx: ei, exitIdx: i,
       entryTime: TS[ei], exitTime: TS[i],
@@ -493,6 +520,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
     if (how === "market" || px === O[i]) { hiSeen = H[i]; loSeen = L[i]; }
     else if ((how === "stop") === (dir === 1)) { hiSeen = H[i]; loSeen = Math.min(px, C[i]); }
     else { hiSeen = Math.max(px, C[i]); loSeen = L[i]; }
+    seenBar = -1;
   }
 
   // Add the pending tranche once price has moved far enough the right way.
@@ -546,8 +574,8 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
     const openOk = !fillBar || (resting && x.fillBarOpen && !fb);
     // A gap straight through the stop fills at the open, not the stop price;
     // a gap through the target fills there too.
-    if (openOk && (up ? O[i] <= sl : O[i] >= sl)) { close_(O[i], lvSlWhy, i, lvCut); return true; }
-    if (openOk && x.tpGapFill === "open" && (up ? O[i] >= tp : O[i] <= tp)) { close_(O[i], lvTpWhy, i); return true; }
+    if (openOk && (up ? O[i] <= sl : O[i] >= sl)) { close_(O[i], lvSlWhy, i, lvCut, "open"); return true; }
+    if (openOk && x.tpGapFill === "open" && (up ? O[i] >= tp : O[i] <= tp)) { close_(O[i], lvTpWhy, i, undefined, "open"); return true; }
     const slHit = (up ? L[i] <= sl : H[i] >= sl) && !(fb && (up ? C[i] > sl : C[i] < sl));
     const reaches = (px) => (up ? H[i] >= px : L[i] <= px) &&
                             !(x.limitFillTp === "close" && limFill && fillBar && (up ? C[i] < px : C[i] > px));
@@ -555,7 +583,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
     // Within one bar: stop before target unless told otherwise. Which printed
     // first is unknowable, so the loss is the default assumption.
     if (slHit && tpHit) ambiguous = true;
-    if (slHit && !(x.sameBarTie === "target" && tpHit)) { close_(sl, lvSlWhy, i, lvCut); return true; }
+    if (slHit && !(x.sameBarTie === "target" && tpHit)) { close_(sl, lvSlWhy, i, lvCut, "inside"); return true; }
     // A scale-out level NEARER than the target is reached first: bank there, and
     // re-price the target, whose dollar caps depend on what is still open. One
     // beyond the target never trades -- the whole position is out before it.
@@ -567,7 +595,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       levels();
       tpHit = reaches(lvTp);
     }
-    if (tpHit) { close_(lvTp, lvTpWhy, i); return true; }
+    if (tpHit) { close_(lvTp, lvTpWhy, i, undefined, "inside"); return true; }
     return false;
   }
 
@@ -584,13 +612,13 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
     if (maxBars > 0 && i - ei >= maxBars) return endAt(i, s, EXIT.TIME);
     if (x.flipOnOpposite && s !== 0 && (s !== pos || x.flipOnAnySignal)) {
       if (onSignal) onSignal(i - 1, s, "flipped", { bar: i, closed: pos });
-      close_(O[i], EXIT.FLIP, i); return "flip";
+      close_(O[i], EXIT.FLIP, i, undefined, "open"); return "flip";
     }
     return null;
   }
   // An exit at this open ends the bar, so a signal on the bar before opens nothing.
   function endAt(i, s, reason) {
-    close_(O[i], reason, i);
+    close_(O[i], reason, i, undefined, "open");
     if (onSignal && s) onSignal(i - 1, s, "dropped", { bar: i, reason });
     return "end";
   }
@@ -609,7 +637,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       // A session that ended before the flatten time (an early close) never had
       // a bar in the flat window: flatten at its last price, drop any order.
       if (sessionFlat && curTday !== NO_DAY) {
-        if (pos !== 0) close_(C[i - 1], EXIT.FLAT, i - 1);
+        if (pos !== 0) close_(C[i - 1], EXIT.FLAT, i - 1, undefined, "close");
         if (onSignal && armDir !== 0) onSignal(armBar - 1, armDir, "cancelled", { bar: i, why: "session" });
         armDir = 0;
       }
@@ -651,6 +679,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
     if (pos !== 0) {
       const fillBar = ei === i;
       if (!fillBar) {
+        hiPrev = hiSeen; loPrev = loSeen; seenBar = i;
         if (H[i] > hiSeen) hiSeen = H[i];
         if (L[i] < loSeen) loSeen = L[i];
       }
@@ -660,13 +689,13 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
       // this bar's open regardless of where stop and target sit. Checking it
       // first is what makes the run honest about overnight holds being banned.
       if (flatNow) {
-        close_(O[i], EXIT.FLAT, i);
+        close_(O[i], EXIT.FLAT, i, undefined, "open");
         if (onSignal && s) onSignal(i - 1, s, "refused", { bar: i, why: "flat" });
         continue;
       }
       // So does a red-folder window under the 'flat' rule, at the same open.
       if (newsNow && newsFlat) {
-        close_(O[i], EXIT.NEWS, i);
+        close_(O[i], EXIT.NEWS, i, undefined, "open");
         if (onSignal && s) onSignal(i - 1, s, "refused", { bar: i, why: "news" });
         continue;
       }
@@ -850,7 +879,7 @@ export function runBrackets(bars, sig, atrArr, cfg = {}) {
     }
   }
   // A halted run stops there: a position still open has no later price to close at.
-  if (pos !== 0 && x.closeAtEnd && !halted) close_(C[n - 1], EXIT.EOD, n - 1);
+  if (pos !== 0 && x.closeAtEnd && !halted) close_(C[n - 1], EXIT.EOD, n - 1, undefined, "close");
 
   return { trades };
 }

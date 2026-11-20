@@ -634,7 +634,11 @@ Two deliberate deviations from `lib_challenge_v2`, both toward realism:
    (MAE), not just its realised close — real firms breach on live equity. Because
    we can't know whether MFE or MAE printed first inside a trade, the peak is
    ratcheted *before* the breach test: the pessimistic ordering. Default is
-   `Realised P&L only`, which matches v2.
+   `Realised P&L only`, which matches v2. A trade's worst excursion counts its
+   exit bar only up to the exit (`exitBarExcursion`). It counts none of the bar
+   after an exit at its open, and no further than the stop after a stop inside
+   it. Until 2026-11-20 it counted the whole exit bar, so a trade stopped on a
+   fast bar showed the bar's run past its stop as a dip that failed the account.
 
 ### Commission
 
@@ -1051,35 +1055,49 @@ needs bars nothing was chosen on before it is more than a lead.
 
 ### Which eval gets to a payout: $1,250 or $3,000?
 
-`research/eval_choice_regime.mjs` takes the two live Donchian bots through each eval and on to a
-first payout, on the latest bars only (Aug 1 – Oct 30 2026). It takes about four minutes.
-- **The setup:**
-  - each bot runs under both evals, at many sizes;
-  - the drawdown is judged on live equity, as the firm watches it;
-  - the funded account has the eval's drawdown and daily limit, and pays once 5 days have
-    each made $150.
-- **No edge, two ways:** 100 coin-flip twins and 100 placebo markets made from those same
-  weeks.
-- **The odds alone:** `research/eval_choice_geometry.mjs` does the same for coin-flip trades of
-  any size, with no strategy.
+Four scripts answer it, run on 2026-11-20 against fees of $58 and $96 a month:
+- `research/eval_choice_regime.mjs`: the two live Donchian bots through each eval and on to
+  a first payout, on the latest bars only (Aug 1 - Oct 30 2026), one month an attempt.
+  About four minutes.
+- `research/eval_size_fees.mjs`: 1 to 8 lots on all of 2026. An attempt may run four
+  months, each month started costing its fee. About three minutes.
+- `research/eval_volatile_day.mjs`: 2026's most volatile day at 1 to 8 lots, and how often
+  each size's days end at the daily limit.
+- `research/eval_choice_geometry.mjs`: coin-flip trades of any size, with no strategy.
+
+All of them use the same setup:
+- **The drawdown is judged on live equity,** as the firm watches it.
+- **The funded account** has the eval's drawdown and daily limit, and pays once 5 days have
+  each made $150.
+- **No edge, two ways:** coin-flip twins (100) and placebo markets (50-100).
 
 Results:
-- **The chance of getting paid is about the same.** At each eval's best size, a first payout
-  comes on 24% against 23% of attempts for the $1,250 bot's twins, and 17% against 16% for the
-  $3,000 bot's. Placebo markets give 10–13% on both. Coin-flip trades of any size give 10.6%
+- **With no edge, the chance of getting paid per attempt is about the same on both.** At each
+  eval's best size a first payout comes on 25% against 23% of one-month attempts for the
+  $1,250 bot's twins, and 17% against 16% for the $3,000 bot's. Coin-flip trades give 10.6%
   against 7.9%.
-- **The $3,000 eval pays 1.6–2.1 times as much per attempt.** Its first payout is
-  $1,700–2,400, against $900–1,300 on the $1,250 eval. So it is the better buy unless it costs
-  more than about one and a half times as much.
-- **The regime moves the best size, not the ranking.**
-  - At 8 lots on the $3,000 eval, one trade in ten dips $1,200 or more, and losers close at the
-    $1,000 daily limit. Its best there is 4–6 lots.
-  - On the $1,250 eval the $1,250 bot's 4 lots is right.
-  - In dollars a contract, all of 2026 is this regime. New York's first two hours ranged a
-    median $410–815 a month.
+- **At $58 against $96, the $1,250 eval gets you paid for less.**
+  - A first payout costs about $420-740 of fees there, at its cheapest sizes, and $650-930
+    on the $3,000 eval.
+  - The $3,000 eval's payouts are about twice the size, $1,600-2,300 against $900-1,300. So
+    dollars back per dollar of fees come out even, about $2-2.6. That is the lab's funded
+    rule; a firm's cap or split comes off both alike.
+- **Size: past about 4 lots the daily limit sits inside one bar's noise.**
+  - On 2026-06-09 (New York range 1,620 points, $3,240 a contract), the bots' stops were
+    320-410 points, so the daily limit was the real stop. $600 is 60 points away at 5 lots,
+    and the biggest 1-minute bar ran 222.
+  - The same 11:04 CT short made +$1,267 at 5 lots on the $3,000 eval and lost $1,000 at 8.
+  - Across 2026, the live bot's days ended at the $600 limit 0% of the time at 1 lot, 5% at
+    2, 17% at 4, 26% at 5 and 46% at 8.
+- **Which size, by fees per payout:**
+  - On the $1,250 eval, 1-4 lots all cost about the same; past that the cost climbs.
+  - On the $3,000 eval, 2-6 lots. 1 lot is its worst size: a third to over half of the
+    attempts are still running after four months of fees.
+  - With no edge, small size does not raise the pass rate (27% at 1 lot, 31% at 4). It only
+    takes longer and pays smaller.
 - **Without an edge, more room only takes longer.** Twice the room helps only a real edge,
-  which has more trades to show itself. The $1,250 bot's forward record matches its coin-flip
-  twin, so it has not shown one.
+  which has more trades to show itself. The $1,250 bot's forward record matches its
+  coin-flip twin, so it has not shown one.
 
 ### Panels and links
 

@@ -747,6 +747,94 @@ t("MAE/MFE capture the worst and best excursion in dollars", () => {
   if (tr.mfe < 0) throw new Error("MFE must be >= 0");
 });
 
+t("a stop inside the exit bar counts the dip only as far as the stop", () => {
+  const b = bars([
+    [100, 101, 99, 100], [100, 101, 99, 100],
+    [100, 100, 100, 100],   // entry at 100, stop 90, target 130
+    [100, 103, 97, 100],    // +3 / -3 while open
+    [100, 101, 80, 85],     // stopped at 90; the bar runs on to 80 after the account is flat
+  ]);
+  const sig = new Int8Array(5); sig[1] = 1;
+  const run = (o) => runBrackets(b, sig, flatAtr(5, 10), { ...NOFEE, slAtrMult: 1, tpAtrMult: 3, ...o }).trades[0];
+  const tr = run({});
+  eq(tr.reason, "SL");
+  close(tr.mae, -10 * 2, 1e-6, "MAE (the stop, -10):");
+  close(tr.mfe, 3 * 2, 1e-6, "MFE keeps the bar's other side (+3):");
+  close(run({ exitBarExcursion: "bar" }).mae, -20 * 2, 1e-6, "'bar' counts the whole exit bar (-20):");
+});
+
+t("an exit at the open counts none of the exit bar", () => {
+  const b = bars([
+    [100, 101, 99, 100], [100, 101, 99, 100],
+    [100, 100, 100, 100],   // entry at 100
+    [100, 104, 98, 102],    // +4 / -2 while open
+    [102, 130, 60, 100],    // the time stop closes at this open, 102
+  ]);
+  const sig = new Int8Array(5); sig[1] = 1;
+  const run = (o) => runBrackets(b, sig, flatAtr(5, 10), { ...NOFEE, slAtrMult: 5, tpAtrMult: 5, maxBarsInTrade: 2, ...o }).trades[0];
+  const tr = run({});
+  eq(tr.reason, "TIME");
+  close(tr.exitPrice, 102, 1e-6);
+  close(tr.mae, -2 * 2, 1e-6, "MAE (-2, before the exit bar):");
+  close(tr.mfe, 4 * 2, 1e-6, "MFE (+4, before the exit bar):");
+  const old = run({ exitBarExcursion: "bar" });
+  close(old.mae, -40 * 2, 1e-6, "'bar' MAE:");
+  close(old.mfe, 30 * 2, 1e-6, "'bar' MFE:");
+});
+
+t("a target inside the exit bar counts the run only as far as the target", () => {
+  const b = bars([
+    [100, 101, 99, 100], [100, 101, 99, 100],
+    [100, 100, 100, 100],   // entry at 100, target 110
+    [100, 104, 96, 102],    // +4 / -4 while open
+    [102, 125, 99, 120],    // target at 110; the bar runs on to 125
+  ]);
+  const sig = new Int8Array(5); sig[1] = 1;
+  const run = (o) => runBrackets(b, sig, flatAtr(5, 10), { ...NOFEE, slAtrMult: 5, tpAtrMult: 1, ...o }).trades[0];
+  const tr = run({});
+  eq(tr.reason, "TP");
+  close(tr.mfe, 10 * 2, 1e-6, "MFE (the target, +10):");
+  close(tr.mae, -4 * 2, 1e-6, "MAE keeps the bar's other side (-4):");
+  close(run({ exitBarExcursion: "bar" }).mfe, 25 * 2, 1e-6, "'bar' MFE:");
+});
+
+t("a stop booked on a stop entry's fill bar dips at least to the stop", () => {
+  // A buy stop fills at 101.5 on a bar that also touches the stop below it: the engine
+  // books the stop (fillBarStop 'touch'), so the dip must reach it too.
+  const b = bars([
+    [100, 101, 99, 100], [100, 101, 99, 100],
+    [100, 100.5, 99.5, 100],   // the buy stop is armed at 101.5, its stop at 95
+    [100, 103, 95, 99],        // the trigger fills, and the stop is touched
+    [99, 100, 98, 99],
+  ]);
+  const sig = new Int8Array(5); sig[1] = 1;
+  const run = (o) => runBrackets(b, sig, flatAtr(5, 10), { ...NOFEE, entryType: "stop", entryTriggerAtr: 0.15, slAtrMult: 0.5, tpAtrMult: 3, ...o }).trades[0];
+  const tr = run({});
+  eq(tr.reason, "SL");
+  eq(tr.entryIdx, tr.exitIdx, "stopped on its fill bar:");
+  if (!(tr.mae <= tr.pnl + 1e-9)) throw new Error(`MAE ${tr.mae} shallower than the loss ${tr.pnl}`);
+  const old = run({ exitBarExcursion: "bar" });
+  if (!(old.mae > old.pnl)) throw new Error("'bar' should keep the old, shallower reading");
+});
+
+t("every trade's dip reaches its own exit price", () => {
+  // Random walks through every exit path: the fill (slippage included) is a price the
+  // account held the trade at, so MAE <= the exit's excursion and MFE >= the print.
+  let s = 7; const r = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };   // its own, not the shared sequence
+  const rows = []; let p = 100;
+  for (let i = 0; i < 3000; i++) { const o = p, c = o + (r() - 0.5) * 8; rows.push([o, Math.max(o, c) + r() * 4, Math.min(o, c) - r() * 4, c]); p = c; }
+  const b = bars(rows);
+  const sig = new Int8Array(rows.length); for (let i = 0; i < rows.length; i++) sig[i] = r() < 0.05 ? (r() < 0.5 ? 1 : -1) : 0;
+  for (const o of [{}, { entryType: "stop" }, { entryType: "limit" }, { maxBarsInTrade: 6 }, { dayLossStopUsd: 30, dayLossStopMode: "exact" }]) {
+    const { trades } = runBrackets(b, sig, flatAtr(rows.length, 6), { ...NOFEE, slippageTicks: 1, slAtrMult: 1.5, tpAtrMult: 2, ...o });
+    if (trades.length < 20) throw new Error(`only ${trades.length} trades for ${JSON.stringify(o)}`);
+    for (const t of trades) {
+      const exitMove = (t.exitPrice - t.entryPrice) * t.dir * 2 * t.contracts;
+      if (t.mae > Math.min(0, exitMove) + 1e-6) throw new Error(`${JSON.stringify(o)} ${t.reason}: MAE ${t.mae} above the exit's ${exitMove}`);
+    }
+  }
+});
+
 t("stop/target levels recorded on the trade match the ATR bracket", () => {
   const b = bars([[100, 101, 99, 100], [100, 101, 99, 100], [100, 101, 99, 100], [100, 101, 99, 100]]);
   const sig = new Int8Array(4); sig[0] = 1;

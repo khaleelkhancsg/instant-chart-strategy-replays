@@ -28,37 +28,42 @@
 //   times that payout rate; "$ per attempt" the pass rate times the first payout's mean,
 //   zeros included (the whole profit at that point; a firm's cap or split comes off it).
 //
-// RESULT (run 2026-11-20, 100 twin seeds and 100 placebo markets, live equity):
+// RESULT (run 2026-11-20, 100 twin seeds and 100 placebo markets, live equity; rerun after
+// the engine counted each trade's exit bar only up to its exit, which moved every figure
+// by a point or less):
 //   - With no edge, the two evals give about the same chance of a first payout per attempt,
 //     each at its best size. Chances below are $1,250 eval / $3,000 eval:
-//       the $1,250 bot  24.4% / 22.8% on its twins, 12.4% / 10.0% on placebo markets
-//       the $3,000 bot  17.1% / 15.9% on its twins, 13.0% / 12.0% on placebo markets
+//       the $1,250 bot  24.8% / 23.0% on its twins, 12.6% / 10.4% on placebo markets
+//       the $3,000 bot  17.1% / 16.0% on its twins, 13.2% / 12.1% on placebo markets
 //     Coin-flip trades of any size with no strategy (research/eval_choice_geometry.mjs)
 //     agree: 10.6% / 7.9% at best.
-//   - The $3,000 eval pays about 1.6-2.1 times as much per attempt. Its first payout is
-//     $1,700-2,400, against $900-1,300 on the $1,250 eval. Dollars per attempt, each at
+//   - The $3,000 eval pays about 1.6-2.2 times as much per attempt. Its first payout is
+//     $1,600-2,300, against $900-1,300 on the $1,250 eval. Dollars per attempt, each at
 //     its best size, $1,250 eval / $3,000 eval:
-//       the $1,250 bot  $244 / $426 on its twins, $144 / $232 on placebo markets
-//       the $3,000 bot  $172 / $369 on its twins, $141 / $260 on placebo markets
+//       the $1,250 bot  $246 / $427 on its twins, $152 / $240 on placebo markets
+//       the $3,000 bot  $172 / $376 on its twins, $143 / $261 on placebo markets
 //       geometry        $114 / $173
+//   - At the fees ($58 / $96, 1.66x), dollars per dollar of fees come out even (the $1,250
+//     bot $4.2 / $4.4 on its twins, $2.6 / $2.5 on placebo markets), and the $1,250 eval
+//     pays out 1.7-2 times as often per dollar. research/eval_size_fees.mjs has the sizes.
 //   - The regime moves the best size, not the ranking.
 //       - The $3,000 bot's 8 lots is too big on the $3,000 eval. One trade in ten dips
 //         $1,200 or more before it closes, and a typical loser closes at the $1,000 daily
-//         limit. Its best is 4-6 lots: twin 15.9% at 4 against 9.3% at 8.
-//       - On the $1,250 eval the $1,250 bot's 4 lots (3-5) is right. The $3,000 bot's best
+//         limit. Its best is 4-6 lots: twin 16.0% at 4 against 9.5% at 8.
+//       - On the $1,250 eval the $1,250 bot's 3-4 lots is right. The $3,000 bot's best
 //         there is 2-3.
 //       - These dips are no bigger than January-July 2026's. In dollars a contract, the
 //         whole of 2026 is this regime; 2025 was calmer.
 //   - Live equity matters. Judged on closed trades, the $1,250 bot at 7 lots on the $3,000
-//     eval left 41.7% of its windows unresolved; on live equity those fail (53.3% fail).
-//     simulateFunded now takes rules.evaluateOn, as replayWindow does.
+//     eval left 41.7% of its windows unresolved; on live equity they fail (51.7% fail,
+//     1.7% open). simulateFunded now takes rules.evaluateOn, as replayWindow does.
 //   - Real bars, Aug-Oct, per attempt:
-//       $1,250 eval  21.8% (twin 22.0%; 38 of 100 twins as high)
-//       $3,000 eval  31.9% (twin 22.7%; 30 of 100 twins as high)
+//       $1,250 eval  21.8% (twin 22.4%; 39 of 100 twins as high)
+//       $3,000 eval  32.7% (twin 23.0%; 30 of 100 twins as high)
 //     About two independent windows: chance either way.
 //   - Earlier in 2026 the no-edge ranking holds. Per attempt, $1,250 eval / $3,000 eval:
-//       the $1,250 bot's twins  Jan-Mar 16.3% / 16.1%, Apr-Jul 11.1% / 11.7%
-//       the $3,000 bot's twins  Jan-Mar 11.4% / 8.0%,  Apr-Jul 11.1% / 5.5% (at 8 lots)
+//       the $1,250 bot's twins  Jan-Mar 17.7% / 16.9%, Apr-Jul 11.3% / 12.1%
+//       the $3,000 bot's twins  Jan-Mar 12.0% / 8.5%,  Apr-Jul 11.7% / 5.8% (at 8 lots)
 //
 //   node --max-old-space-size=8192 research/eval_choice_regime.mjs [--paths N]   (about 4 minutes)
 

@@ -83,6 +83,15 @@ rule logic into a script: that is a second engine, and it drifts.
 - **Indicator gates (`entryGate`) refuse entries only.** The refused signal still
   flips an opposite position and cancels a working order. Studies read their last
   CLOSED bar (`closedIndexMap`, clock-based like a live bot).
+- **A trade's `mae` / `mfe` count its exit bar only up to the exit** (`exitBarExcursion`
+  'toExit'; `LEGACY_EXEC` keeps 'bar', the whole bar).
+  - Nothing of the bar counts after an exit at its open.
+  - A stop inside the bar counts the adverse side only to the fill, and a target the
+    favourable side only to the target. The bar's other extreme stays in.
+  - The exit's own fill always counts, so a stop booked on a stop entry's fill bar dips at
+    least to it.
+  - `evaluateOn: 'intraday'` reads these. test.mjs section 3 works the cases and checks
+    the exit invariant on random walks.
 - **`staleBars` / `staleMfeAtr`** leave a trade at the next open once it has run
   that many bars without being that many ATRs in favour. It is the $1,250 bot's
   40-minute exit, and the research's `exitFn` trade for trade.
@@ -135,7 +144,7 @@ rule logic into a script: that is a second engine, and it drifts.
 
 ## Tests
 
-- `npm run check`: test.mjs (486), audit, legacy parity (15), MCP end to end (19),
+- `npm run check`: test.mjs (491), audit, legacy parity (15), MCP end to end (19),
   chart link (13), the indicator mock (91, `npm run test:mock`), the page's arithmetic
   (41, `npm run test:ui`), the level study's engine (22, `npm run test:levels`), the raw
   store (36, `npm run test:store`), the Data panel's routes (21, `npm run test:data`), the
@@ -394,17 +403,24 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
 
 ## Which eval: $1,250 or $3,000
 
-- **Two scripts answer it:**
-  - `research/eval_choice_regime.mjs` takes the two live Donchian bots through each eval and on
+- **Four scripts answer it** (fees: $58 and $96 a month):
+  - `research/eval_choice_regime.mjs`: the two live Donchian bots through each eval and on
     to a first payout, on Aug 1 – Oct 30 2026 bars, with twins and placebo markets;
-  - `research/eval_choice_geometry.mjs` does the same for coin-flip trades with no strategy.
+  - `research/eval_size_fees.mjs`: 1–8 lots on 2026, with attempts running up to four months
+    at a fee a month;
+  - `research/eval_volatile_day.mjs`: 2026-06-09, the widest session, and days at the limit;
+  - `research/eval_choice_geometry.mjs`: coin-flip trades with no strategy.
 - **Judge the drawdown on live equity** (`evaluateOn: 'intraday'`; `simulateFunded` takes it
   too). On closed trades, 7 lots on the $3,000 eval looked 41.7% unresolved, and those windows
   fail on live equity.
-- **Result:** with no edge, the chance of a first payout is about the same on both (the $1,250
-  a point or two ahead), and the $3,000 eval pays 1.6–2.1 times as much per attempt.
-  - The regime moves the best size: 4–6 lots for the $3,000 bot on $3,000, not its 8.
-  - All of 2026 is this regime in dollars a contract.
+- **Score small sizes with fees, not 30-day windows.** A month-long window calls a slow
+  attempt "unresolved" when in truth it costs another month's fee.
+- **Result:** with no edge, the chance of a payout per attempt is about the same on both, and
+  the $3,000 eval's payouts are about twice the size. At $58 against $96:
+  - the $1,250 eval gets a payout for about 0.6 times the fees ($420–740 against $650–930);
+  - dollars back per dollar of fees come out even.
+  - Best sizes: 1–4 lots on the $1,250 eval, 2–6 on the $3,000 eval. 1 lot is the $3,000
+    eval's worst.
 
 ## Papers
 
