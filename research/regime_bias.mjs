@@ -4,8 +4,8 @@
 //
 //   node --max-old-space-size=8192 research/regime_bias.mjs [bars file] [--placebo N]
 //
-// The bars file defaults to data/mnq_1m_beta.bin; N, the placebo markets, to 20 (about two
-// minutes in all).
+// The bars file defaults to data/mnq_1m_beta.bin; N, the placebo markets, to 100 (about eight
+// minutes in all). The results go to research/regime_bias_results.json as well.
 //
 // The raw edge: how much more the next bar rose when the bias said long than when it said
 // short, in basis points of the contract's real price. The drift cancels in it: always-long
@@ -24,7 +24,8 @@
 // turn, judged against the other N-1: the range no-knowledge gives.
 //
 // The biases: price against its EMAs, session and week VWAP; EMA crosses; recent moves;
-// the Donchian middle; MACD; ADX's stronger DI; Supertrend; RSI 14 over 50; RSI 14 and RSI 2
+// the Donchian middle; MACD's histogram, its line against zero and the histogram rising;
+// ADX's stronger DI; Supertrend; RSI 14 over 50; RSI 14 and RSI 2
 // at their extremes, long above (a negative edge says fade them).
 //
 // The level: how hard the market leans, not just which way. The distance from the 50 EMA
@@ -35,27 +36,31 @@
 // slippage and $0.75 a side for each change. "1D -> next RTH" holds the daily bias through
 // the next New York session only, 09:30 to 16:00.
 //
-// RESULT (run 2026-11-20, data/mnq_1m_beta.bin to Oct 30, 20 placebo markets; 18 biases
-// and 2 levels): no bias calls the next move better than random markets overall, and one
-// lead.
-//   - 71 of 983 year-cells sit outside 1.96 placebo standard deviations (28 with the bias, 43
-//     against). Each placebo market judged against the others gives 29-133, median 73.
-//   - 11 biases are above their placebos in all but at most one year, and 7 below. Placebo
-//     markets give 0-36 and 0-19, medians 3.
-//   - No timeframe stands out from random markets. The most consistent are 5- and 15-minute
-//     bars, where 1 in 10 placebo markets is as consistent. 15-minute biases lean with the
-//     trend (14 cells, p 0.14) and daily ones against it (13, p 0.14).
-//   - The lead: price against the week's VWAP. On 15-minute bars it is above its placebos in
-//     every year (+0.19 bp, about 0.5 points a bar), and in 7 of 8 on 5-minute and hourly bars.
-//     Followed with one MNQ after costs on 15-minute bars it made money in all 8 years, from
-//     +$15 (2019) to +$7,838 (2021), +$347 in 2022. It is the best of 140 found after the fact,
-//     as consistent as 1 in 10 random markets, so it needs bars nothing was chosen on.
-//   - Reversal at 5 minutes is steady: the last bar's direction (7 of 8 years below its
-//     placebos) and RSI 2 beyond 90 / 10 (8 of 8). It is about 0.3 points a bar. Faded with one
-//     MNQ the first earned $6,500-21,000 a year before costs, against $60,000-91,000 of costs.
-//   - How hard the market leans adds nothing: the strongest fifth against the weakest stays
-//     inside its placebos on every timeframe.
+// RESULT (run 2026-11-20, data/mnq_1m_beta.bin to Oct 30, 100 placebo markets; 20 biases and
+// 2 levels on 7 timeframes): taken together, no bias calls the next move better than random
+// markets.
+//   - 47 of 1,090 year-cells sit outside 1.96 placebo standard deviations (10 with the bias, 37
+//     against). Each placebo market judged against the others gives 14-114, median 60: 79% of
+//     them have at least as many.
+//   - 6 biases are above their placebos in all but at most one year (placebos 0-30, p 0.35), and
+//     13 below (0-22, p 0.13).
+//   - Of the 28 timeframe-by-timeframe p-values, luck alone puts about 1.4 under 0.05; one is.
+//     The daily bias held through the next New York session was on the wrong side every year
+//     for two biases (EMA 20 vs 50, the MACD line against zero), p 0.01: when the daily trend
+//     is up, that session does worse. Next, at p 0.07: 15-minute price against the week's VWAP
+//     right every year, 5-minute RSI 2 at 90 / 10 wrong every year, and daily biases against
+//     the next session (13 cells).
+//   - 15-minute price against the week's VWAP is above its placebos in all 8 years, but by
+//     0.13-0.44 points a bar and never past 1.96 sd in a year. Followed with one MNQ after costs
+//     it made money in all 8 years, from +$15 (2019) to +$7,838 (2021). It is a lead, found
+//     after the fact.
+//   - With 20 placebo markets, two 5-minute trend biases (EMA 50, EMA 9 vs 21) looked right
+//     every year (p 0.10). With 100, each misses a year: a 20-market p is too coarse to lean on.
+//   - Reversal at 5 minutes is steady, but about 0.3 points a bar. Faded with one MNQ, the last
+//     bar's direction earned $6,500-21,000 a year before costs, against $60,000-91,000 of costs.
+//   - How hard the market leans adds nothing on any timeframe.
 
+import fs from "node:fs";
 import { loadBars } from "../src/data.mjs";
 import { resample } from "../src/resample.mjs";
 import { sessionsOf, rawOffsets } from "../src/levels.mjs";
@@ -63,7 +68,7 @@ import { ema, atr, adx, donchian, macd, supertrend, rsi, vwap } from "../src/ind
 import { placeboBars } from "./lib_levels.mjs";
 
 const args = process.argv.slice(2), pi = args.indexOf("--placebo");
-const PLACEBOS = pi >= 0 ? Number(args[pi + 1]) || 20 : 20;
+const PLACEBOS = pi >= 0 ? Number(args[pi + 1]) || 100 : 100;
 const FILE = args.find((a, k) => !a.startsWith("--") && (pi < 0 || k !== pi + 1)) || "data/mnq_1m_beta.bin";
 const SIDE_USD = 0.5 + 0.75;
 
@@ -82,6 +87,8 @@ const BIASES = [
   ["the 50-bar move", (b) => sig(b.n, 50, (i) => b.C[i] - b.C[i - 50])],
   ["Donchian 20: above the middle", (b) => { const d = donchian(b.H, b.L, 20); return sig(b.n, 20, (i) => b.C[i] - (d.high[i] + d.low[i]) / 2); }],
   ["MACD 12/26/9 histogram", (b) => { const m = macd(b.C); return sig(b.n, 100, (i) => m.hist[i]); }],
+  ["MACD 12/26/9 line above zero", (b) => { const m = macd(b.C); return sig(b.n, 100, (i) => m.line[i]); }],
+  ["MACD 12/26/9 histogram rising", (b) => { const m = macd(b.C); return sig(b.n, 100, (i) => m.hist[i] - m.hist[i - 1]); }],
   ["ADX 14 over 20: the stronger DI", (b) => { const a = adx(b.H, b.L, b.C, 14); return sig(b.n, 60, (i) => (a.adx[i] > 20 ? a.pdi[i] - a.ndi[i] : 0)); }],
   ["Supertrend 10 x 3", (b) => { const t = supertrend(b.H, b.L, b.C, 10, 3).trend; return sig(b.n, 30, (i) => t[i]); }],
   // VWAP from the 1-minute bars, anchored at the CME session's or week's open, as it stood at the bar's close
@@ -177,9 +184,9 @@ function study(B, withFollow) {
   if (withFollow) {
     const mv = moves(daily, false);
     out.market = mv.runs.map(([y, lo, hi]) => {
-      let pts = 0, up = 0, bp = 0;
-      for (let i = lo; i < hi; i++) { pts += mv.pts[i]; bp += mv.r[i]; if (mv.pts[i] > 0) up++; }
-      return { y, pts, pct: bp / 100, up: (100 * up) / (hi - lo) };
+      let pts = 0, up = 0, bp = 0, px = 0;
+      for (let i = lo; i < hi; i++) { pts += mv.pts[i]; bp += mv.r[i]; if (mv.pts[i] > 0) up++; px += daily.C[i + 1] - off[daily.last[i + 1]]; }
+      return { y, pts, pct: bp / 100, up: (100 * up) / (hi - lo), price: px / (hi - lo) };
     });
   }
   for (const [tf, rth, label] of TFS) {
@@ -214,9 +221,9 @@ function calibrate(res, pool) {
     rows: t.rows.map((r, b) => {
       const cells = r.e.map((e, y) => {
         const xs = pool.map((p) => p.tfs[a].rows[b].e[y]).filter((x) => x === x);
-        if (!(e === e) || xs.length < 5) return { c: NaN, z: NaN };
+        if (!(e === e) || xs.length < 5) return { c: NaN, z: NaN, sd: NaN };
         const m = xs.reduce((s, x) => s + x, 0) / xs.length, sd = Math.sqrt(xs.reduce((s, x) => s + (x - m) ** 2, 0) / (xs.length - 1));
-        return { c: e - m, z: sd > 0 ? (e - m) / sd : 0 };
+        return { c: e - m, z: sd > 0 ? (e - m) / sd : 0, sd };
       });
       const got = cells.filter((x) => x.c === x.c);
       return { ...r, cells, up: got.filter((x) => x.c > 0).length, of: got.length, mean: got.length ? got.reduce((s, x) => s + x.c, 0) / got.length : NaN };
@@ -259,20 +266,19 @@ console.log(`Cells at |z| >= 1.96: ${T.with + T.against} of ${T.cells} (${T.with
             ` Each placebo market judged against the others: ${range((n) => n.with + n.against)} (with ${range((n) => n.with)}; against ${range((n) => n.against)})`);
 console.log(`Biases above their placebos in all but at most one year: ${T.right.length} (placebos: ${range((n) => n.right.length)});` +
             ` below them in all but at most one year: ${T.wrong.length} (placebos: ${range((n) => n.wrong.length)})`);
-// the same counts timeframe by timeframe: does one lean with its biases, or against them?
 // Timeframe by timeframe: the real counts, and p = the share of placebo markets (judged
 // against the others) with at least as many -- how unusual the real market is there.
+const tfCount = (rows, label) => {
+  const rs = rows.filter((r) => r.tf === label), c = rs.flatMap((r) => r.cells.filter((x) => x.z === x.z)), full = rs.filter((r) => r.of >= 6);
+  return { w: c.filter((x) => x.z >= 1.96).length, a: c.filter((x) => x.z <= -1.96).length, up: full.filter((r) => r.up === r.of).length, dn: full.filter((r) => r.up === 0).length };
+};
+const perTf = cal.map((t) => ({ label: t.label, real: tfCount(T.rows, t.label), nulls: nulls.map((n) => tfCount(n.rows, t.label)) }));
 console.log("\nTimeframe by timeframe, real counts; p = share of placebo markets with at least as many:");
 console.log(`  ${"".padEnd(58)} cells at |z| >= 1.96: with, against | one side of placebo every year: above, below`);
-for (const t of cal) {
-  const at = (rows) => {
-    const rs = rows.filter((r) => r.tf === t.label), c = rs.flatMap((r) => r.cells.filter((x) => x.z === x.z)), full = rs.filter((r) => r.of >= 6);
-    return { w: c.filter((x) => x.z >= 1.96).length, a: c.filter((x) => x.z <= -1.96).length, up: full.filter((r) => r.up === r.of).length, dn: full.filter((r) => r.up === 0).length };
-  };
-  const r = at(T.rows), ps = nulls.map((n) => at(n.rows));
-  const pv = (k) => ((1 + ps.filter((x) => x[k] >= r[k]).length) / (1 + ps.length)).toFixed(2);
-  console.log(`  ${t.label.padEnd(58)} ${String(r.w).padStart(2)} (p ${pv("w")}), ${String(r.a).padStart(2)} (p ${pv("a")})` +
-              `            | ${String(r.up).padStart(2)} (p ${pv("up")}), ${String(r.dn).padStart(2)} (p ${pv("dn")})`);
+for (const t of perTf) {
+  const pv = (k) => ((1 + t.nulls.filter((x) => x[k] >= t.real[k]).length) / (1 + t.nulls.length)).toFixed(2);
+  console.log(`  ${t.label.padEnd(58)} ${String(t.real.w).padStart(2)} (p ${pv("w")}), ${String(t.real.a).padStart(2)} (p ${pv("a")})` +
+              `            | ${String(t.real.up).padStart(2)} (p ${pv("up")}), ${String(t.real.dn).padStart(2)} (p ${pv("dn")})`);
 }
 for (const [label, list] of [["above", T.right], ["below", T.wrong]]) {
   if (!list.length) continue;
@@ -282,3 +288,15 @@ for (const [label, list] of [["above", T.right], ["below", T.wrong]]) {
     console.log(`    follow, 1 MNQ after costs: ${r.years.map((y, k) => `${y} ${r.follow[k] >= 0 ? "+" : "-"}$${Math.abs(Math.round(r.follow[k]))}`).join(", ")}`);
   }
 }
+
+const r4 = (x) => (x === x ? Math.round(x * 1e4) / 1e4 : null);
+fs.writeFileSync(new URL("./regime_bias_results.json", import.meta.url), JSON.stringify({
+  file: FILE, from: new Date(bars.ts[0]).toISOString().slice(0, 10), to: new Date(bars.ts[bars.count - 1]).toISOString().slice(0, 10),
+  run: new Date().toISOString().slice(0, 10), placebos: PLACEBOS, market: real.market,
+  timeframes: cal.map((t) => ({ label: t.label, years: t.years, rows: t.rows.map((r) => ({
+    name: r.name, up: r.up, of: r.of, mean: r4(r.mean), follow: r.follow.map((x) => Math.round(x)),
+    cells: r.cells.map((x) => ({ c: r4(x.c), z: x.z === x.z ? Math.round(x.z * 100) / 100 : null, sd: r4(x.sd) })) })) })),
+  summary: { cells: T.cells, with: T.with, against: T.against, right: T.right.length, wrong: T.wrong.length,
+             nulls: nulls.map((n) => ({ with: n.with, against: n.against, right: n.right.length, wrong: n.wrong.length })) },
+  perTf,
+}));

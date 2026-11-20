@@ -373,20 +373,23 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
 
 `research/regime_bias.mjs` tests whether a long/short bias can call the next bar's move.
 - **What it covers:**
-  - eighteen biases (EMAs, VWAP, crosses, moves, Donchian, MACD, ADX, Supertrend, RSI) and
-    two measures of how hard price leans;
+  - twenty biases (EMAs, VWAP, crosses, moves, Donchian, MACD three ways, ADX, Supertrend,
+    RSI) and two measures of how hard price leans;
   - 5-minute to weekly bars;
   - each calendar year from 2019 alone, as the person asked.
+  - It writes `research/regime_bias_results.json`.
 - **Judge a long-minus-short edge against placebo markets, never a slide null.** The raw edge
   leans negative on its own. A move against a persistent bias flips it, which shrinks that
   move's own group and weighs it more, and five placebo runs showed the lean as strongly as the
-  real bars. So each cell is set against the same cell on 20 placebo markets, and the counts
-  against each placebo market judged against the others.
+  real bars. So each cell is set against the same cell on 100 placebo markets, and the counts
+  against each placebo market judged against the others. 20 placebo markets gave p-values
+  too coarse to read.
 - **Result:** nothing beats random markets taken together.
-  - 71 of 983 year-cells are significant, where placebo markets give 29–133 (median 73).
-  - The one lead is price against the week's VWAP on 15-minute bars: above its placebos and
-    profitable after costs on one MNQ in all eight years. It was the best of 140 after the
-    fact, so it needs new bars.
+  - 47 of 1,090 year-cells are significant, where placebo markets give 14–114 (median 60).
+  - Of 28 timeframe p-values, one is under 0.05 (luck gives 1.4): the daily trend held
+    through the next NY session is wrong every year for two biases, p 0.01.
+  - The lead is price against the week's VWAP on 15-minute bars: above its placebos and
+    profitable after costs on one MNQ in all eight years, found after the fact.
   - 5-minute reversal is real, but about 0.3 points a bar: far under costs.
 
 ## Papers

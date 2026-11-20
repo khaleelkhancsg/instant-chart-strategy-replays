@@ -1001,12 +1001,13 @@ on random markets.
 ### Does a regime bias work?
 
 `research/regime_bias.mjs` asks whether the bars can say which way to lean, long or short, and
-on which timeframe. It takes about a minute.
-- **What it tests:** eighteen biases, each saying long, short or none from the bars so far:
+on which timeframe. It takes about eight minutes.
+- **What it tests:** twenty biases, each saying long, short or none from the bars so far:
   - price against its 20, 50 and 200 EMA, and against the session's and the week's VWAP;
   - the 9/21, 20/50 and 50/200 EMA crosses;
   - the last bar's direction, and the 10- and 50-bar move;
-  - the Donchian middle, the MACD histogram, ADX with the stronger DI, and Supertrend;
+  - the Donchian middle, MACD (its histogram, its line against zero, the histogram rising),
+    ADX with the stronger DI, and Supertrend;
   - RSI 14 over 50, and RSI 14 and RSI 2 at their extremes (a negative edge says fade them).
 - **How hard it leans:** two more measures take the distance from the 50 EMA and the 20-bar
   move, each in ATRs, and set the strongest fifth against the weakest.
@@ -1020,29 +1021,33 @@ How it is scored:
 - **Each edge is judged against its own placebo markets.** The raw edge leans negative by
   itself. A move against the bias tends to flip it for the bars that follow, which shrinks
   that move's group and so weighs it more. Placebo markets showed the lean as strongly as the
-  real bars did. So each bias, timeframe and year is set against the same on 20 placebo markets.
+  real bars did. So each bias, timeframe and year is set against the same on 100 placebo markets.
 
-**Taken together, no bias calls the next move better than random markets:**
-- **The counts are chance's.** Of 983 year-cells, 71 sit outside 1.96 placebo standard
-  deviations; each placebo market judged against the others gives 29–133 (median 73). Eleven
-  biases are above their placebos in all but one year and seven below, where placebo markets
-  give 0–36 and 0–19 (medians 3).
-- **No timeframe stands out.** The most consistent are 5- and 15-minute bars, where 1 in 10
-  placebo markets is as consistent. 15-minute biases lean with the trend and daily ones against
-  it, each matched by about 1 in 7 placebo markets.
+**Taken together, no bias calls the next move better than random markets** (100 placebo
+markets; `research/regime_bias_results.json` holds every figure):
+- **The counts are chance's.** Of 1,090 year-cells, 47 sit outside 1.96 placebo standard
+  deviations; each placebo market judged against the others gives 14–114 (median 60). Six
+  biases are above their placebos in all but one year and thirteen below, where placebo markets
+  give 0–30 and 0–22 (p 0.35 and 0.13).
+- **No timeframe clearly stands out.** Of 28 timeframe-by-timeframe p-values, luck alone puts
+  about 1.4 under 0.05, and one is: the daily bias held through the next New York session was
+  on the wrong side every year for two biases (EMA 20 vs 50, the MACD line against zero), p
+  0.01. When the daily trend is up, that session does worse. Next come three at p 0.07:
+  15-minute price against the week's VWAP, 5-minute RSI 2 at 90/10, and daily biases against
+  the next session.
+- **A p from 20 placebo markets is too coarse.** With 20, two 5-minute trend biases looked
+  right every year (p 0.10). With 100, each misses a year.
 - **How hard the market leans adds nothing.** The strongest fifth against the weakest stays
   inside its placebos on every timeframe.
 - **The steady effect at 5 minutes is too small to trade.** After an up bar, or RSI 2 above 90,
-  the next 5 minutes lean down, below their placebos in 7 and 8 of 8 years. It is about 0.3
-  points a bar. Faded with one MNQ it earned $6,500–21,000 a year before costs, against
-  $60,000–91,000 of costs.
+  the next 5 minutes lean down. It is about 0.3 points a bar. Faded with one MNQ it earned
+  $6,500–21,000 a year before costs, against $60,000–91,000 of costs.
 
 **One lead: price against the week's VWAP.** On 15-minute bars it is above its placebos in every
-year, by about 0.5 points a bar, and in 7 of 8 years on 5-minute and hourly bars. Followed with
-one MNQ after costs on 15-minute bars, it made money in all eight years, from +$15 in 2019 to
-+$7,838 in 2021, and +$347 in 2022. It is the best of 140 combinations, found after the fact, and
-1 in 10 random markets turns up one as consistent. It needs bars nothing was chosen on before
-it is more than a lead.
+year, by 0.13–0.44 points a bar, though never past 1.96 standard deviations in any one year.
+Followed with one MNQ after costs, it made money in all eight years, from +$15 in 2019 to
++$7,838 in 2021, and +$347 in 2022. It was found after the fact among 154 combinations, so it
+needs bars nothing was chosen on before it is more than a lead.
 
 ### Panels and links
 
