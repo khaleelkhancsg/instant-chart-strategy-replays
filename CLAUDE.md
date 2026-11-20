@@ -422,6 +422,17 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
   - Best sizes: 1–4 lots on the $1,250 eval, 2–6 on the $3,000 eval. 1 lot is the $3,000
     eval's worst.
 
+## The EMA + MACD databox
+
+`research/databox_predict.mjs` runs the indicator file itself through the mock (a wrapper on
+`calc.map` reads `calc.st[i]`), so its states are the indicator's own.
+- **It finds no predictive ability on 1m, 5m or 1m + 5m in 2026,** against 100 placebo markets.
+  Its control, the 5-minute reversal, shows at z −2.
+- **The warnings lean the wrong way where they lean at all.**
+- **No 30-second bars are held.** Getting them takes a working TopstepX key (second bars, recent
+  only) or Databento 1-second data (paid). Add one to `TFS` to run the other four
+  combinations.
+
 ## Papers
 
 - `papers/<id>.md` holds one summary per paper (front matter: title, authors,

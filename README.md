@@ -1099,6 +1099,31 @@ Results:
   which has more trades to show itself. The $1,250 bot's forward record matches its
   coin-flip twin, so it has not shown one.
 
+### Does the EMA + MACD databox predict anything?
+
+`research/databox_predict.mjs` runs the databox indicator (`emaMacdDatabox.js` in the
+TradingCustomIndicators repo) itself through the Tradovate mock. It takes about a minute.
+- **What it reads:** every New York minute of 2026, each timeframe's box at its last closed bar,
+  and price over the next 1, 5, 15 and 30 minutes.
+- **What it tests:** each timeframe alone and together; the box read as long or short; the
+  warnings; and every combination of states. Each is set against 100 placebo markets and
+  checked in Jan–Mar, Apr–Jul and Aug–Oct.
+- **No 30-second bars are held,** so it covers 1m, 5m and 1m + 5m. A 30-second series is one
+  more entry in its `TFS`.
+
+Results:
+- **It calls nothing better than random markets.** Of about 180 long/short tests, none passes
+  |z| 2.5.
+- **The warnings do not call turns.** After the 5m EMA row's "Potentially long", price did
+  worse than after plain "Short" in every period. That is the opposite of its name, and still
+  within chance.
+- **Every combination of states counts no more beyond-chance cells than placebo markets
+  give,** except 1m + 5m at one minute ahead (p 0.04, one of twelve). The strongest
+  combinations picked on Jan–Jul do no better on Aug–Oct than placebo markets' picks (p 0.22).
+- **The test can see real effects.** As a control, the known 5-minute reversal shows at z −2.
+  At +15 minutes it would have caught gaps of 1.1–3.5 points, against 2.5 needed to pay
+  costs.
+
 ### Panels and links
 
 The sidebar has three tabs. **Results** says what happened, **Settings** holds what
