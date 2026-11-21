@@ -2596,6 +2596,21 @@ async function boot() {
   const help = $("keysHelp"), toggleHelp = () => help.classList.toggle("hidden");
   $("keysBtn").onclick = toggleHelp;
   help.onclick = toggleHelp;
+  // Full screen: just the chart and its panes (style.css body.chartfull). The browser's own
+  // full screen is asked for on top, and leaving it (its Esc) leaves the mode. Where the
+  // browser refuses, the chart still fills the window. The chart re-sizes itself (its
+  // ResizeObserver).
+  const fullBtn = $("fullBtn"), isFull = () => document.body.classList.contains("chartfull");
+  const setFull = (on) => {
+    document.body.classList.toggle("chartfull", on);
+    fullBtn.setAttribute("aria-pressed", String(on));
+    fullBtn.title = on ? "Leave full screen (F or Esc)" : "Full screen: just the chart and its panes (F). Esc or F again returns.";
+    const root = document.documentElement;
+    if (on && !document.fullscreenElement && root.requestFullscreen) root.requestFullscreen().catch(() => {});
+    if (!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+  };
+  fullBtn.onclick = () => setFull(!isFull());
+  document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && isFull()) setFull(false); });
   // On a narrow screen the sidebar is a drawer, closed by a click on the chart.
   $("sideToggle").onclick = () => document.body.classList.toggle("side-open");
   $("main").addEventListener("mousedown", (e) => { if (!e.target.closest("#sideToggle")) document.body.classList.remove("side-open"); });
@@ -2606,6 +2621,8 @@ async function boot() {
     if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;     // the browser's own
     if (e.key === "Escape" && S.why) { selectWhy(null); return; }
+    if (e.key === "Escape" && isFull()) { setFull(false); return; }
+    if (e.key === "f") { setFull(!isFull()); e.preventDefault(); return; }
     if (e.key === "/") { showTab("settings"); $("setSearch").focus(); e.preventDefault(); return; }
     if (e.key === "?") { toggleHelp(); return; }
     if (e.key === "s") { openPicker(); e.preventDefault(); return; }

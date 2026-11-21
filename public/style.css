@@ -96,6 +96,14 @@ html, body {
 .dp-log:empty { display: none; }
 @media (max-width: 620px) { .dp-row { grid-template-columns: 1fr; gap: 3px; } .dp-folder { grid-template-columns: 1fr 1fr; } .dp-folder label, .dp-folder input { grid-column: 1 / -1; } .dp-table td, .dp-table th { white-space: normal; } }
 .keysbtn { margin-left: auto; padding: 1px 8px; font-size: 11px; color: var(--muted); }
+.fullbtn { margin-left: auto; padding: 0 8px; font-size: 14px; line-height: 18px; color: var(--muted); }
+.fullbtn + .keysbtn { margin-left: 0; }
+.fullbtn[aria-pressed="true"] { background: rgba(240,180,41,.14); border-color: #f0b429; color: #f0b429; }
+/* Full screen chart (F): the sidebar, the top bar and the navigator strip step aside, and the
+   chart bar and the chart take the screen. It is a class on the page rather than the chart
+   alone in the browser's full screen, so the help, the picker and the toasts still show; the
+   browser's full screen is asked for on top of it. */
+body.chartfull #sidebar, body.chartfull #topbar, body.chartfull #navWrap { display: none !important; }
 .sidetoggle { display: none; padding: 3px 8px; }
 .sidepanes { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
 .sidepanes::-webkit-scrollbar { width: 9px; }

@@ -944,6 +944,7 @@ blocks *new* entries and a single trade can blow straight through it.
 | `?` | List these |
 | `Esc` | Close the entry card, the picker or the list |
 | `r` | Back to the opening view |
+| `f` | Full screen: just the chart and its panes (the ⤢ button does the same; `Esc` or `f` returns) |
 | Wheel / drag | Zoom / pan |
 | Double-click | Back to the opening view |
 
