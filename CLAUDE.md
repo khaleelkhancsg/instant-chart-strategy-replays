@@ -487,7 +487,9 @@ The VXN comes from FRED's VXNCLS, saved to `data/raw/fred/` (git-ignored: it is 
   are on Cboe's site only.
 - **What the VXN does call is the session's size.**
   - In 2026 the VXN before the open explains 20% of the RTH range (% of price). The 10-session
-    average range explains 10%, and adds nothing once the VXN is in.
+    average range explains 10%, and adds nothing once the VXN is in. 2020-2025: 43% against 38%.
+  - The VXN is a percentage, so compare years in % of the contract's real price, never in points.
+    NQ's median price was 12,466 in 2022 and 29,126 in 2026.
   - Median range: 277 / 388 / 440 points by VXN third.
   - It is not a trend filter.
 - **Nor does it call a choppy day over the whole session** (`research/vxn_chop_day.mjs`).

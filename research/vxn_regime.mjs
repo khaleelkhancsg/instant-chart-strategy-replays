@@ -73,18 +73,22 @@
 //       - 1 of its 40 gaps beyond 1.96 sd, placebo median 2.
 //       - Only 10 of 2026's sessions opened inverted (VIX at or above VIX3M), 9 of them in Jan-Mar;
 //         2020-2025 had 103. Too few to judge an inverted-day rule on 2026.
-//   - What the VXN does call is how big the session is. Its RTH range, in % of the prior close:
+//   - What the VXN does call is how big the session is. Its RTH range, in % of the prior close on
+//     the contract's real price:
 //       - 2026: correlation 0.45 with the VXN before the open, 0.32 with the 10-session average
-//         range. R2: average range 0.10, VXN 0.20, both 0.20. Median range by VXN third: 277,
-//         388, 440 points.
-//       - 2020-2025: 0.56 with each; R2 0.31, 0.31, both 0.36.
-//     So for sizing and stop width the VXN is the better gauge in 2026. For which way, or whether
-//     moves carry on, it says nothing.
+//         range. R2: average range 0.10, VXN 0.20, both 0.20. Median range by VXN third: 0.96%,
+//         1.34%, 1.60% (277, 388, 440 points).
+//       - 2020-2025: 0.65 with the VXN, 0.61 with the average range; R2 0.38, 0.43, both 0.44.
+//       - The first run divided by the back-adjusted close. That close sits about 3,600 points
+//         above the real one in 2020-2022, so it gave 0.56 with each and R2 0.31, 0.31, 0.36
+//         there. 2026 was unchanged; fixed 2026-11-21.
+//     So for sizing and stop width the VXN is the better gauge. For which way, or whether moves
+//     carry on, it says nothing.
 
 import fs from "node:fs";
 import { loadBars } from "../src/data.mjs";
 import { resample } from "../src/resample.mjs";
-import { sessionsOf, adrOf } from "../src/levels.mjs";
+import { sessionsOf, adrOf, rawOffsets } from "../src/levels.mjs";
 import { ema } from "../src/indicators.mjs";
 import { placeboBars, zToP } from "./lib_levels.mjs";
 
@@ -330,11 +334,13 @@ function rSquared(y, xs) {
   X.forEach((row, i) => { const fit = row.reduce((s, v, j) => s + v * beta[j], 0); res += (y[i] - fit) ** 2; tot += (y[i] - my) ** 2; });
   return 1 - res / tot;
 }
-const rangeCall = {};
+// The % is of the contract's own price: the bars are back-adjusted at every roll, and the adjusted
+// close sits about 3,600 points above the real one in 2020-2022.
+const RAW_OFF = rawOffsets(bars), rangeCall = {};
 console.log("\nHow big the session is: the RTH range (% of the prior close) against what was known before the open");
 for (const [p, from, to] of PERIODS.filter(([q]) => q === "2026" || q === "2020-2025")) {
   const R = days.filter((d) => d.ms >= from && d.ms < to && Number.isFinite(d.raw.level) && Number.isFinite(d.raw.range)).map((d) => {
-    const s = sessions[d.k], px = bars.close[d.pc];
+    const s = sessions[d.k], px = bars.close[d.pc] - RAW_OFF[d.pc];
     return { rng: (100 * (s.hi - s.lo)) / px, adr: (100 * d.raw.range) / px, vxn: d.raw.level, pts: s.hi - s.lo };
   });
   const rng = R.map((r) => r.rng), a = R.map((r) => r.adr), v = R.map((r) => r.vxn);

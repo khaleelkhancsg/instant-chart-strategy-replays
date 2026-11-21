@@ -1,5 +1,5 @@
 {
- "run": "2026-11-21T17:46:36.449Z",
+ "run": "2026-11-21T19:41:06.716Z",
  "bars": "data/mnq_1m_beta.bin",
  "vxn": "data/raw/fred/VXNCLS.csv",
  "placebos": 100,
@@ -69,18 +69,18 @@
  "rangeCall": {
   "2026": {
    "sessions": 208,
-   "corrVxn": 0.4519237249473901,
-   "corrAvgRange": 0.3178445900175174,
-   "r2AvgRange": 0.1010251834034046,
-   "r2Vxn": 0.20423505317032453,
-   "r2Both": 0.20425196577888483,
+   "corrVxn": 0.45182145683851316,
+   "corrAvgRange": 0.32212934873170196,
+   "r2AvgRange": 0.10376731731431121,
+   "r2Vxn": 0.20414262885967738,
+   "r2Both": 0.204146248701206,
    "thirds": [
     {
      "vxn": [
       19.06,
       22.51
      ],
-     "medianRangePct": 0.9462576355387332,
+     "medianRangePct": 0.9578046046111102,
      "medianRangePts": 276.75
     },
     {
@@ -88,7 +88,7 @@
       22.52,
       25.64
      ],
-     "medianRangePct": 1.314741710858479,
+     "medianRangePct": 1.341458144258611,
      "medianRangePts": 388
     },
     {
@@ -96,25 +96,25 @@
       25.65,
       33.54
      ],
-     "medianRangePct": 1.575493064854767,
+     "medianRangePct": 1.596566345625512,
      "medianRangePts": 440.25
     }
    ]
   },
   "2020-2025": {
    "sessions": 1487,
-   "corrVxn": 0.5586434382967655,
-   "corrAvgRange": 0.5577467761193908,
-   "r2AvgRange": 0.31108146627157496,
-   "r2Vxn": 0.3120824911520318,
-   "r2Both": 0.35494703837257846,
+   "corrVxn": 0.6521165263366941,
+   "corrAvgRange": 0.6135328056509484,
+   "r2AvgRange": 0.3764225036099226,
+   "r2Vxn": 0.4252559639214327,
+   "r2Both": 0.43999917258220944,
    "thirds": [
     {
      "vxn": [
       13.59,
       20.61
      ],
-     "medianRangePct": 0.8856761878026528,
+     "medianRangePct": 1.022836925056288,
      "medianRangePts": 183
     },
     {
@@ -122,7 +122,7 @@
       20.62,
       27.39
      ],
-     "medianRangePct": 1.1643640911933595,
+     "medianRangePct": 1.3960236853456727,
      "medianRangePts": 223.5
     },
     {
@@ -130,7 +130,7 @@
       27.4,
       80.08
      ],
-     "medianRangePct": 1.6360198822919525,
+     "medianRangePct": 2.1314314824248597,
      "medianRangePts": 257.5
     }
    ]
