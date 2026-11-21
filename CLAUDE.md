@@ -490,6 +490,14 @@ The VXN comes from FRED's VXNCLS, saved to `data/raw/fred/` (git-ignored: it is 
     average range explains 10%, and adds nothing once the VXN is in.
   - Median range: 277 / 388 / 440 points by VXN third.
   - It is not a trend filter.
+- **Nor does it call a choppy day over the whole session** (`research/vxn_chop_day.mjs`).
+  - It measured the Choppiness Index over the RTH session, the share of the range the close kept,
+    and trend days (the close keeps 70% of the range).
+  - 2026 Choppiness Index: 49.2 / 49.1 / 49.5 by VXN third, placebo markets 49.0 / 49.2 / 49.4.
+    The named test (high third less low): -0.07, z -0.1.
+  - 2026 trend days: 21.6% against a placebo 21.7%.
+  - The 2020-2025 pooled lean toward more trend days on high-VXN days is 2022's (34.4% trend days).
+    Inside each year it flips sign.
 - **As sizing on `donchian_1250` it does not help** (`research/vxn_sizing_1250.mjs`).
   - The rule: lots x the 60-close median VXN over the close before, held to 0.5-1.5.
   - 2026: calendar 59.4% against the shipped 74.5%. 35 of 40 shuffle twins (the same sizes on
