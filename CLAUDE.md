@@ -489,7 +489,13 @@ The VXN comes from FRED's VXNCLS, saved to `data/raw/fred/` (git-ignored: it is 
   - In 2026 the VXN before the open explains 20% of the RTH range (% of price). The 10-session
     average range explains 10%, and adds nothing once the VXN is in.
   - Median range: 277 / 388 / 440 points by VXN third.
-  - It is a sizing and stop-width input, untested in the engine; not a trend filter.
+  - It is not a trend filter.
+- **As sizing on `donchian_1250` it does not help** (`research/vxn_sizing_1250.mjs`).
+  - The rule: lots x the 60-close median VXN over the close before, held to 0.5-1.5.
+  - 2026: calendar 59.4% against the shipped 74.5%. 35 of 40 shuffle twins (the same sizes on
+    random days) do as well.
+  - Every variant's pass rate follows its average size: 4 lots is the top of the 2026 curve. Keep
+    4 lots.
 - **So dealer gamma would have to carry something the VXN does not.**
   - Cboe's delayed quote pages forbid automated download.
   - Daily options open interest comes legitimately from Databento's statistics schema: OPRA for
