@@ -26,6 +26,19 @@
 // Named before the first run: the 60-close rule against the shipped 4 lots, 2026 calendar and
 // bootstrap, by the worse half of each, and against its shuffle twins.
 //
+// Added 2026-11-21, after finding that the VXN is a percentage while the eval's lines are
+// dollars. A contract's one-sd day is VXN / 16 x the real price x $2. NQ rose from about 25,000
+// in Jan-Mar to 30,000 from May, so the same VXN priced 20% more dollars, and the rule above
+// never saw it. The dollar move, VXN x the real prior close, sized three ways:
+//   - "$ target": f = T / (VXN x price), T its median over 2026's days (so 2026's average size
+//     stays the shipped book's: this tests timing, not leverage), held to 0.5-1.5. T is fixed
+//     from 2026 for the forward period.
+//   - "$ vs 60-day median": f = the median of the 60 sessions' dollar moves / the day's.
+//   - The realised version: the 10-session average range in points (dollars a contract), the
+//     same target T / range, T its 2026 median.
+// Named before its run: "$ target" against the shipped book (2026 calendar and bootstrap, the
+// worse half of each), against its 40 shuffle twins, and forward.
+//
 // RESULT (run 2026-11-21; 2026 = the lab's bars to Jul 14, 139 days; forward Jul 15 - Oct 30, 77
 // days; 40 shuffle twins): no. Keep the shipped 4 lots.
 //   - The named rule (60-close median) against the shipped book, 2026:
@@ -50,12 +63,35 @@
 //     so a 15-point gap is inside the noise. What the variants share is that their pass rates
 //     follow their average size, not the VXN. 4 lots sits at the top of the 2026 curve: 3 lots
 //     60.0%, 5 lots 52.1%.
+//
+// RESULT, the dollar move (run 2026-11-21; same data, the rows above unchanged): level with the
+// shipped 4 lots in 2026 and better forward, on 77 days. Keep 4 lots.
+//   - T = VXN x price 665,409, a one-sd day of $838 a contract. The factor's 2026 median is 1.00
+//     (4% of days under 0.75, 11% over 1.25), forward 0.98. Rounding leaves 4 lots alone from
+//     0.875 to 1.125, so most days trade the shipped size.
+//   - 2026 at the shipped book's size (3.41 lots against 3.44):
+//       - calendar 73.3% (73.3 / 73.3) against 74.5% (75.6 / 73.3);
+//       - bootstrap 65.2% (68.8 / 68.5) against 71.1%;
+//       - +$7,978 against +$9,933;
+//       - ci95 [33.8, 93.7] against [34.7, 94.2].
+//   - Its shuffle twins: 4 of 40 match its 2026 calendar rate and 8 its forward one. But 17 match
+//     its bootstrap and 27 its 2026 net. The timing helps one measure, not the others.
+//   - Forward (3.46 lots against 3.57): 53.2% calendar and +$3,518 against 44.2% and +$2,584.
+//     1 of 40 twins matches that net. But 77 days hold two or three independent windows.
+//   - f^0.5 changes almost no day's lots: 74.5% / 71.0%, and forward the shipped book's trades.
+//   - Against its own 60-day median, the dollar move does what the VXN alone did: 61.8% / 64.6%
+//     at 3.14 lots.
+//   - The realised version (the 10-session range to a 378-point target):
+//       - 2026: 55.8% / 62.6% at 3.48 lots, below the shipped book at its size.
+//       - Forward: 80.5% and +$5,875, but at 3.99 lots, where fixed 5 lots gives 70.1%.
+//   - What 2026 cannot test: a 2022-sized percentage regime at today's price. There the rule
+//     would cut 4 lots to about 3 (VXN 32) or 2 (VXN 45), and no 2026 day came close.
 
 import fs from "node:fs";
 import { loadBars } from "../src/data.mjs";
 import { runStrategy } from "../src/run.mjs";
 import { sliceBars, indexAtOrAfter } from "../src/resample.mjs";
-import { sessionsOf, adrOf } from "../src/levels.mjs";
+import { sessionsOf, adrOf, rawOffsets } from "../src/levels.mjs";
 import { mulberry32 } from "../src/dayeval.mjs";
 import { configOf, trades2026, score, forwardScorer, Y26, lab as L } from "./lib_eval1250.mjs";
 
@@ -128,8 +164,39 @@ function run(cfg) {
   return { ...score(tr, cfg.rules), lots: lots(tr), fwd: { ...F.score(fw, cfg.rules), lots: lots(fw) } };
 }
 
+// ── the dollar move: VXN x the real prior close, and the 10-session range in points ──
+// Each trading day's last RTH close before it on the contract's own price (the beta bars hold
+// 2026 and the forward period), and its 10-session average range.
+const SESS = (() => {
+  const ss = sessionsOf(beta), off = rawOffsets(beta), adr = adrOf(ss), px = new Map(), rng = new Map(), order = [];
+  let last = NaN;
+  for (let k = 0; k < ss.length; k++) {
+    if (Number.isFinite(last)) { px.set(ss[k].td, last); order.push(ss[k].td); }
+    if (Number.isFinite(adr[k])) rng.set(ss[k].td, adr[k]);
+    if (ss[k].rthA >= 0) last = ss[k].close - off[ss[k].rthZ - 1];
+  }
+  return { px, rng, order, at: new Map(order.map((td, i) => [td, i])) };
+})();
+const dollarMove = (td) => { const k = lastBefore(td * DAY), p = SESS.px.get(td); return k >= 0 && p ? vxn[k].v * p : NaN; };
+function targetFactor(value, e = 1, lo = 0.5, hi = 1.5) {
+  const T = median(days26.map(value).filter(Number.isFinite));
+  const f = (td) => { const v = value(td); return Number.isFinite(v) && v > 0 ? clamp((T / v) ** e, lo, hi) : 1; };
+  f.T = T;
+  return f;
+}
+function trailingFactor(value, W, lo = 0.5, hi = 1.5) {
+  return (td) => {
+    const i = SESS.at.get(td), v = value(td);
+    if (i === undefined || i < W - 1 || !(v > 0)) return 1;
+    const xs = SESS.order.slice(i - W + 1, i + 1).map(value).filter(Number.isFinite);
+    return xs.length >= W * 0.9 ? clamp(median(xs) / v, lo, hi) : 1;
+  };
+}
+
 const base = await configOf("donchian_1250");
 const ADR = adrFactor(beta, 60);
+const DOLLAR = targetFactor(dollarMove), DOLLAR_SOFT = targetFactor(dollarMove, 0.5);
+const RANGE_T = targetFactor((td) => SESS.rng.get(td) ?? NaN);
 const ROWS = [
   ["shipped: 4 lots", base],
   ["fixed 3 lots", await configOf("donchian_1250", { exec: { contracts: 3 } })],
@@ -141,6 +208,10 @@ const ROWS = [
   ["  VXN, 60, f^0.5 (softer)", withFactor(base, vxnFactor(60, 0.5))],
   ["  VXN, 60, f^2 (stronger)", withFactor(base, vxnFactor(60, 2))],
   ["10-session range, 60 median", withFactor(base, ADR)],
+  ["$ target (named 2nd)", withFactor(base, DOLLAR)],
+  ["  $ target, f^0.5", withFactor(base, DOLLAR_SOFT)],
+  ["  $ vs 60-day median", withFactor(base, trailingFactor(dollarMove, 60))],
+  ["  range target (realised $)", withFactor(base, RANGE_T)],
 ];
 
 const pad = (s, n) => String(s).padStart(n);
@@ -172,6 +243,24 @@ console.log(`  forward: cal ${mean((r) => r.fwd.cal)}%, boot ${mean((r) => r.fwd
 // how the named rule's factors fell
 const f26 = days26.map(named), ffw = daysFwd.map(named), share = (xs, lo, hi) => Math.round((100 * xs.filter((x) => x >= lo && x < hi).length) / xs.length);
 console.log(`\nThe named rule's factor by day: 2026 median ${median(f26).toFixed(2)} (under 0.75: ${share(f26, 0, 0.75)}%, 0.75-1.25: ${share(f26, 0.75, 1.25)}%, over: ${share(f26, 1.25, 9)}%); forward median ${median(ffw).toFixed(2)}`);
+
+// ── the dollar rule's shuffle twins: its factors on random days ──
+const real2 = out["$ target (named 2nd)"], tw2 = [];
+for (let s = 1; s <= SEEDS; s++) {
+  const shuf26 = withFactor(base, shuffled(DOLLAR, days26, 2000 + s)), shufFwd = withFactor(base, shuffled(DOLLAR, daysFwd, 3000 + s));
+  const a = score(trades2026(shuf26), base.rules);
+  const fw = F.score(runStrategy(betaRun, shufFwd.s, base.params, base.exec, { filter: base.filter, studies: base.studies, fromMs: FWD_FROM }).trades, base.rules);
+  tw2.push({ ...a, fwd: fw });
+}
+const mean2 = (f) => Math.round((tw2.reduce((s, r) => s + f(r), 0) / tw2.length) * 10) / 10;
+const atLeast2 = (f) => tw2.filter((r) => f(r) >= f(real2)).length;
+const d26 = days26.map(DOLLAR), dfw = daysFwd.map(DOLLAR);
+console.log(`\nThe dollar rule: T = VXN x price ${DOLLAR.T.toFixed(0)} (a one-sd day of $${((DOLLAR.T / 100 / Math.sqrt(252)) * 2).toFixed(0)} a contract); factor 2026 median ${median(d26).toFixed(2)}` +
+  ` (under 0.75: ${share(d26, 0, 0.75)}%, over 1.25: ${share(d26, 1.25, 9)}%), forward median ${median(dfw).toFixed(2)}; the range target's T ${RANGE_T.T.toFixed(0)} points`);
+console.log(`Its shuffle twins (${SEEDS}): 2026 cal ${mean2((r) => r.cal)}% (${mean2((r) => r.calA)}/${mean2((r) => r.calB)}), boot ${mean2((r) => r.boot)}%, net ${mean2((r) => r.net)}`);
+console.log(`  twins at least as good: cal ${atLeast2((r) => r.cal)}/${SEEDS}, worse-half cal ${atLeast2((r) => Math.min(r.calA, r.calB))}/${SEEDS}, boot ${atLeast2((r) => r.boot)}/${SEEDS}, net ${atLeast2((r) => r.net)}/${SEEDS}`);
+console.log(`  forward: cal ${mean2((r) => r.fwd.cal)}%, boot ${mean2((r) => r.fwd.boot)}%, net ${mean2((r) => r.fwd.net)}; at least as good: cal ${atLeast2((r) => r.fwd.cal)}/${SEEDS}, net ${atLeast2((r) => r.fwd.net)}/${SEEDS}`);
 console.log(`${((Date.now() - t0) / 1000).toFixed(0)}s`);
-fs.writeFileSync("research/vxn_sizing_1250_results.json", JSON.stringify({ run: new Date().toISOString(), seeds: SEEDS, rows: out, twins: tw }, null, 1));
+fs.writeFileSync("research/vxn_sizing_1250_results.json", JSON.stringify({ run: new Date().toISOString(), seeds: SEEDS, rows: out, twins: tw,
+  dollar: { T: DOLLAR.T, rangeT: RANGE_T.T, twins: tw2 } }, null, 1));
 console.log("wrote research/vxn_sizing_1250_results.json");

@@ -516,6 +516,10 @@ The VXN comes from FRED's VXNCLS, saved to `data/raw/fred/` (git-ignored: it is 
   - The rule: lots x the 60-close median VXN over the close before, held to 0.5-1.5.
   - 2026: calendar 59.4% against the shipped 74.5%. 35 of 40 shuffle twins (the same sizes on
     random days) do as well.
+  - Sized by the dollar move instead (VXN x the real price, to a fixed 2026 target, at the
+    shipped book's average size), it is level in 2026: 73.3% calendar against 74.5%, bootstrap
+    65.2% against 71.1%. Forward it does better, 53.2% and +$3,518 against 44.2% and +$2,584, on
+    77 days. Its shuffle twins are split by measure.
   - Every variant's pass rate follows its average size: 4 lots is the top of the 2026 curve. Keep
     4 lots.
 - **So dealer gamma would have to carry something the VXN does not.**
