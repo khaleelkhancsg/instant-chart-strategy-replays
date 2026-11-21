@@ -53,6 +53,15 @@ rule logic into a script: that is a second engine, and it drifts.
     (`bars.ts[0] + k days`), each replayed with the full rule set.
   - `bootstrap` is research/lib_shipped's: 12,000 draws of 21 trading days in
     5-day blocks, seed 4242. It is about 1 point above calendar on the shipped book.
+  - Back to back (`research/eval_back_to_back.mjs`) is one account: each eval starts when the
+    last ends.
+    - Each outcome counts as often as it fits in its time, so quick failures count more and
+      30-day run-outs count less.
+    - `donchian_1250` in 2026 on live equity: 52.0% back to back against 57.7% calendar.
+      Jan 1-Jul 14: 58.7% against 70.3%.
+    - On closed trades it matches calendar or sits above it (67.8% against 63.2%).
+    - Calendar answers "one attempt on a random day". Back to back answers "the share of my
+      evals that pass if I keep going".
 - **Quote the ci95.** Neighbouring windows share most of their days, so 2026 holds
   only about 5.5 independent 30-day samples. A 10-point gap in 2026 can be noise.
   `sensitivity` shows 2026 rates swinging ±20 points on small parameter nudges.

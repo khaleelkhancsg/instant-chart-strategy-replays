@@ -1,0 +1,591 @@
+{
+ "run": "2026-11-21T22:16:23.264Z",
+ "chains": 30,
+ "window": 30,
+ "results": {
+  "closed": {
+   "2019": {
+    "everyDay": {
+     "pass": 0,
+     "fail": 28,
+     "out": 72,
+     "n": 211
+    },
+    "backToBack": {
+     "pass": 0,
+     "fail": 28.3,
+     "out": 71.7,
+     "evals": 233,
+     "chains": 30,
+     "evalsPerChain": 8,
+     "passesPerChain": 0,
+     "daysToFirst": null,
+     "evalsToFirst": null,
+     "chainsWithoutPass": 30,
+     "accountPassShareRange": [
+      0,
+      0
+     ]
+    },
+    "medianDays": {
+     "pass": null,
+     "fail": 22.679861111111112,
+     "out": 30
+    }
+   },
+   "2020": {
+    "everyDay": {
+     "pass": 21.1,
+     "fail": 57.4,
+     "out": 21.4,
+     "n": 336
+    },
+    "backToBack": {
+     "pass": 16.8,
+     "fail": 71.9,
+     "out": 11.4,
+     "evals": 537,
+     "chains": 30,
+     "evalsPerChain": 18,
+     "passesPerChain": 3,
+     "daysToFirst": 92.65069444444444,
+     "evalsToFirst": 8,
+     "chainsWithoutPass": 0,
+     "accountPassShareRange": [
+      17,
+      18
+     ]
+    },
+    "medianDays": {
+     "pass": 15.650694444444444,
+     "fail": 20.74652777777778,
+     "out": 30
+    }
+   },
+   "2021": {
+    "everyDay": {
+     "pass": 18.8,
+     "fail": 38.8,
+     "out": 42.4,
+     "n": 335
+    },
+    "backToBack": {
+     "pass": 19,
+     "fail": 36.7,
+     "out": 44.3,
+     "evals": 474,
+     "chains": 30,
+     "evalsPerChain": 16,
+     "passesPerChain": 3,
+     "daysToFirst": 54.796527777777776,
+     "evalsToFirst": 3,
+     "chainsWithoutPass": 0,
+     "accountPassShareRange": [
+      19,
+      20
+     ]
+    },
+    "medianDays": {
+     "pass": 11.796527777777778,
+     "fail": 13.952083333333333,
+     "out": 30
+    }
+   },
+   "2022": {
+    "everyDay": {
+     "pass": 58.2,
+     "fail": 36.7,
+     "out": 5.1,
+     "n": 335
+    },
+    "backToBack": {
+     "pass": 65.3,
+     "fail": 30.1,
+     "out": 4.7,
+     "evals": 642,
+     "chains": 30,
+     "evalsPerChain": 21,
+     "passesPerChain": 14,
+     "daysToFirst": 18.711805555555557,
+     "evalsToFirst": 2,
+     "chainsWithoutPass": 0,
+     "accountPassShareRange": [
+      64,
+      68
+     ]
+    },
+    "medianDays": {
+     "pass": 12.674305555555556,
+     "fail": 14.845138888888888,
+     "out": 30
+    }
+   },
+   "2023": {
+    "everyDay": {
+     "pass": 32.8,
+     "fail": 44.5,
+     "out": 22.7,
+     "n": 335
+    },
+    "backToBack": {
+     "pass": 35.6,
+     "fail": 40.4,
+     "out": 24.1,
+     "evals": 503,
+     "chains": 30,
+     "evalsPerChain": 17,
+     "passesPerChain": 6,
+     "daysToFirst": 53.87569444444444,
+     "evalsToFirst": 3,
+     "chainsWithoutPass": 0,
+     "accountPassShareRange": [
+      31,
+      38
+     ]
+    },
+    "medianDays": {
+     "pass": 12.653472222222222,
+     "fail": 13.715972222222222,
+     "out": 30
+    }
+   },
+   "2024": {
+    "everyDay": {
+     "pass": 43.8,
+     "fail": 50.9,
+     "out": 5.4,
+     "n": 336
+    },
+    "backToBack": {
+     "pass": 40.7,
+     "fail": 54.6,
+     "out": 4.7,
+     "evals": 854,
+     "chains": 30,
+     "evalsPerChain": 29,
+     "passesPerChain": 12,
+     "daysToFirst": 37.88125,
+     "evalsToFirst": 2,
+     "chainsWithoutPass": 0,
+     "accountPassShareRange": [
+      38,
+      43
+     ]
+    },
+    "medianDays": {
+     "pass": 11.709027777777777,
+     "fail": 7.746527777777778,
+     "out": 30
+    }
+   },
+   "2025": {
+    "everyDay": {
+     "pass": 48.7,
+     "fail": 43.3,
+     "out": 8.1,
+     "n": 335
+    },
+    "backToBack": {
+     "pass": 50.6,
+     "fail": 45.7,
+     "out": 3.7,
+     "evals": 941,
+     "chains": 30,
+     "evalsPerChain": 31,
+     "passesPerChain": 16,
+     "daysToFirst": 29.814583333333335,
+     "evalsToFirst": 1,
+     "chainsWithoutPass": 0,
+     "accountPassShareRange": [
+      48,
+      52
+     ]
+    },
+    "medianDays": {
+     "pass": 9.76875,
+     "fail": 6.657638888888889,
+     "out": 30
+    }
+   },
+   "2026, Jan 1 - Oct 30": {
+    "everyDay": {
+     "pass": 63.2,
+     "fail": 34.9,
+     "out": 1.8,
+     "n": 272
+    },
+    "backToBack": {
+     "pass": 67.8,
+     "fail": 31.1,
+     "out": 1,
+     "evals": 482,
+     "chains": 30,
+     "evalsPerChain": 16,
+     "passesPerChain": 11,
+     "daysToFirst": 21.740972222222222,
+     "evalsToFirst": 1,
+     "chainsWithoutPass": 0,
+     "accountPassShareRange": [
+      63,
+      69
+     ]
+    },
+    "medianDays": {
+     "pass": 15.702083333333333,
+     "fail": 15.67013888888889,
+     "out": 30
+    }
+   },
+   "Jan 1 - Jul 14": {
+    "everyDay": {
+     "pass": 74.5,
+     "fail": 22.4,
+     "out": 3,
+     "n": 165
+    },
+    "backToBack": {
+     "pass": 76.1,
+     "fail": 22.1,
+     "out": 1.8,
+     "evals": 272,
+     "chains": 30,
+     "evalsPerChain": 9,
+     "passesPerChain": 7,
+     "daysToFirst": 21.740972222222222,
+     "evalsToFirst": 1,
+     "chainsWithoutPass": 0,
+     "accountPassShareRange": [
+      67,
+      78
+     ]
+    },
+    "medianDays": {
+     "pass": 20.73125,
+     "fail": 20.661805555555556,
+     "out": 30
+    }
+   },
+   "Jul 15 - Oct 30": {
+    "everyDay": {
+     "pass": 44.2,
+     "fail": 55.8,
+     "out": 0,
+     "n": 77
+    },
+    "backToBack": {
+     "pass": 55.6,
+     "fail": 44.4,
+     "out": 0,
+     "evals": 133,
+     "chains": 30,
+     "evalsPerChain": 4,
+     "passesPerChain": 2,
+     "daysToFirst": 41.66875,
+     "evalsToFirst": 2,
+     "chainsWithoutPass": 0,
+     "accountPassShareRange": [
+      50,
+      67
+     ]
+    },
+    "medianDays": {
+     "pass": 14.803472222222222,
+     "fail": 18.87986111111111,
+     "out": null
+    }
+   }
+  },
+  "live": {
+   "2019": {
+    "everyDay": {
+     "pass": 0,
+     "fail": 28.9,
+     "out": 71.1,
+     "n": 211
+    },
+    "backToBack": {
+     "pass": 0,
+     "fail": 41.2,
+     "out": 58.8,
+     "evals": 233,
+     "chains": 30,
+     "evalsPerChain": 8,
+     "passesPerChain": 0,
+     "daysToFirst": null,
+     "evalsToFirst": null,
+     "chainsWithoutPass": 30,
+     "accountPassShareRange": [
+      0,
+      0
+     ]
+    },
+    "medianDays": {
+     "pass": null,
+     "fail": 23.675694444444446,
+     "out": 30
+    }
+   },
+   "2020": {
+    "everyDay": {
+     "pass": 21.1,
+     "fail": 58.9,
+     "out": 19.9,
+     "n": 336
+    },
+    "backToBack": {
+     "pass": 19.1,
+     "fail": 71.1,
+     "out": 9.7,
+     "evals": 627,
+     "chains": 30,
+     "evalsPerChain": 21,
+     "passesPerChain": 4,
+     "daysToFirst": 92.65069444444444,
+     "evalsToFirst": 8,
+     "chainsWithoutPass": 0,
+     "accountPassShareRange": [
+      19,
+      20
+     ]
+    },
+    "medianDays": {
+     "pass": 15.650694444444444,
+     "fail": 9.660416666666666,
+     "out": 30
+    }
+   },
+   "2021": {
+    "everyDay": {
+     "pass": 18.5,
+     "fail": 58.5,
+     "out": 23,
+     "n": 335
+    },
+    "backToBack": {
+     "pass": 18.6,
+     "fail": 50.4,
+     "out": 31,
+     "evals": 484,
+     "chains": 30,
+     "evalsPerChain": 16,
+     "passesPerChain": 3,
+     "daysToFirst": 45.953472222222224,
+     "evalsToFirst": 3,
+     "chainsWithoutPass": 0,
+     "accountPassShareRange": [
+      18,
+      20
+     ]
+    },
+    "medianDays": {
+     "pass": 19.95347222222222,
+     "fail": 15.81875,
+     "out": 30
+    }
+   },
+   "2022": {
+    "everyDay": {
+     "pass": 50.4,
+     "fail": 48.7,
+     "out": 0.9,
+     "n": 335
+    },
+    "backToBack": {
+     "pass": 51.5,
+     "fail": 44.6,
+     "out": 4,
+     "evals": 756,
+     "chains": 30,
+     "evalsPerChain": 25,
+     "passesPerChain": 13,
+     "daysToFirst": 21.802083333333332,
+     "evalsToFirst": 2,
+     "chainsWithoutPass": 0,
+     "accountPassShareRange": [
+      50,
+      54
+     ]
+    },
+    "medianDays": {
+     "pass": 8.838194444444444,
+     "fail": 12.672916666666667,
+     "out": 30
+    }
+   },
+   "2023": {
+    "everyDay": {
+     "pass": 32.5,
+     "fail": 51.3,
+     "out": 16.1,
+     "n": 335
+    },
+    "backToBack": {
+     "pass": 39.2,
+     "fail": 43.7,
+     "out": 17.1,
+     "evals": 533,
+     "chains": 30,
+     "evalsPerChain": 18,
+     "passesPerChain": 7,
+     "daysToFirst": 53.87569444444444,
+     "evalsToFirst": 3,
+     "chainsWithoutPass": 0,
+     "accountPassShareRange": [
+      35,
+      41
+     ]
+    },
+    "medianDays": {
+     "pass": 20.69236111111111,
+     "fail": 10.924305555555556,
+     "out": 30
+    }
+   },
+   "2024": {
+    "everyDay": {
+     "pass": 42,
+     "fail": 56.5,
+     "out": 1.5,
+     "n": 336
+    },
+    "backToBack": {
+     "pass": 40.9,
+     "fail": 55.7,
+     "out": 3.4,
+     "evals": 880,
+     "chains": 30,
+     "evalsPerChain": 29,
+     "passesPerChain": 12,
+     "daysToFirst": 29.70625,
+     "evalsToFirst": 2,
+     "chainsWithoutPass": 0,
+     "accountPassShareRange": [
+      40,
+      41
+     ]
+    },
+    "medianDays": {
+     "pass": 11.911805555555556,
+     "fail": 7.746527777777778,
+     "out": 30
+    }
+   },
+   "2025": {
+    "everyDay": {
+     "pass": 45.1,
+     "fail": 51.6,
+     "out": 3.3,
+     "n": 335
+    },
+    "backToBack": {
+     "pass": 50.6,
+     "fail": 45.7,
+     "out": 3.7,
+     "evals": 941,
+     "chains": 30,
+     "evalsPerChain": 31,
+     "passesPerChain": 16,
+     "daysToFirst": 29.814583333333335,
+     "evalsToFirst": 1,
+     "chainsWithoutPass": 0,
+     "accountPassShareRange": [
+      48,
+      52
+     ]
+    },
+    "medianDays": {
+     "pass": 9.76875,
+     "fail": 5.660416666666666,
+     "out": 30
+    }
+   },
+   "2026, Jan 1 - Oct 30": {
+    "everyDay": {
+     "pass": 57.7,
+     "fail": 41.9,
+     "out": 0.4,
+     "n": 272
+    },
+    "backToBack": {
+     "pass": 52,
+     "fail": 47.8,
+     "out": 0.2,
+     "evals": 573,
+     "chains": 30,
+     "evalsPerChain": 19,
+     "passesPerChain": 10,
+     "daysToFirst": 21.740972222222222,
+     "evalsToFirst": 1,
+     "chainsWithoutPass": 0,
+     "accountPassShareRange": [
+      47,
+      53
+     ]
+    },
+    "medianDays": {
+     "pass": 15.702083333333333,
+     "fail": 12.65625,
+     "out": 30
+    }
+   },
+   "Jan 1 - Jul 14": {
+    "everyDay": {
+     "pass": 70.3,
+     "fail": 29.1,
+     "out": 0.6,
+     "n": 165
+    },
+    "backToBack": {
+     "pass": 58.7,
+     "fail": 40.9,
+     "out": 0.3,
+     "evals": 303,
+     "chains": 30,
+     "evalsPerChain": 10,
+     "passesPerChain": 6,
+     "daysToFirst": 21.740972222222222,
+     "evalsToFirst": 1,
+     "chainsWithoutPass": 0,
+     "accountPassShareRange": [
+      50,
+      60
+     ]
+    },
+    "medianDays": {
+     "pass": 19.913194444444443,
+     "fail": 12.65625,
+     "out": 30
+    }
+   },
+   "Jul 15 - Oct 30": {
+    "everyDay": {
+     "pass": 44.2,
+     "fail": 55.8,
+     "out": 0,
+     "n": 77
+    },
+    "backToBack": {
+     "pass": 45.4,
+     "fail": 54.6,
+     "out": 0,
+     "evals": 163,
+     "chains": 30,
+     "evalsPerChain": 5,
+     "passesPerChain": 2,
+     "daysToFirst": 41.66875,
+     "evalsToFirst": 3,
+     "chainsWithoutPass": 0,
+     "accountPassShareRange": [
+      40,
+      50
+     ]
+    },
+    "medianDays": {
+     "pass": 14.803472222222222,
+     "fail": 10.879861111111111,
+     "out": null
+    }
+   }
+  }
+ }
+}
