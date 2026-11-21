@@ -2046,6 +2046,54 @@ if (bars_) {
       }
     });
   }
+
+  // The books the bots trade, end to end. The whole pipeline runs on data cut short at a trade's
+  // entry bar, at its exit bar and at signal bars (gate refusals included). Every trade and signal
+  // the cut data could know must be the full run's, to the cent (research/lookahead_audit.mjs runs
+  // every trade and every strategy). A copy that acts one bar early must be caught, or the check
+  // proves nothing.
+  {
+    const ENTRY = ["entryTime", "dir", "entryPrice", "stop", "target", "contracts", "sigIdx", "entryType", "limitFill"];
+    const WHOLE = [...ENTRY, "exitTime", "exitPrice", "pnl", "mae", "mfe"];
+    const eqK = (a, b, keys) => keys.every((k) => a[k] === b[k] || (Number.isNaN(a[k]) && Number.isNaN(b[k])));
+    const cutBars = (k) => sliceBars(H, 0, k);
+    // the cut problems one book shows: entry and exit cuts at `nT` of its trades, signal cuts at `nS` signal bars
+    const cutProblems = (s, ev, nT, nS) => {
+      const b = evalBase(s, ev), exec = resolveExec({ ...b.exec, intradayOnly: true }), p = b.params;
+      const TFMS = (p.timeframeMin || s.timeframeMin || 1) * 60000, through = (t) => indexAtOrAfter(H.ts, (Math.floor(t / TFMS) + 1) * TFMS);
+      const run = (bars) => runStrategy(bars, s, p, exec, { filter: b.filter }).trades;
+      const full = run(H), probs = [];
+      const late = full.filter((x) => x.entryTime >= H.ts[Math.floor(N * 0.3)]), step = Math.max(1, Math.floor(late.length / nT));
+      for (let q = 0; q < late.length && probs.length < 3; q += step) {
+        const T = late[q];
+        const e = run(cutBars(through(T.entryTime))).find((x) => x.entryTime === T.entryTime && x.dir === T.dir);
+        if (!e || !eqK(T, e, ENTRY)) probs.push(`entry ${new Date(T.entryTime).toISOString().slice(0, 16)}`);
+        const x = run(cutBars(through(T.exitTime))).find((y) => y.entryTime === T.entryTime && y.dir === T.dir);
+        if (!x || !eqK(T, x, WHOLE)) probs.push(`exit ${new Date(T.entryTime).toISOString().slice(0, 16)}`);
+      }
+      const tfF = resample(H, p.timeframeMin), oF = s.compute(tfF, p), sigs = [];
+      for (let k = Math.floor(tfF.ts.length * 0.3); k < tfF.ts.length - 1; k++) if (oF.sig[k]) sigs.push(k);
+      const sStep = Math.max(1, Math.floor(sigs.length / nS));
+      for (let q = 0; q < sigs.length && probs.length < 3; q += sStep) {
+        const k = sigs[q], tfC = resample(cutBars(indexAtOrAfter(H.ts, tfF.ts[k] + TFMS)), p.timeframeMin), oC = s.compute(tfC, p), m = tfC.ts.length - 1;
+        for (const key of ["sig", "sizeMult", "atr", "exitSig", "orderPx"]) {
+          if ((oF[key] || oC[key]) && !(oF[key][k] === oC[key][m] || (Number.isNaN(oF[key][k]) && Number.isNaN(oC[key][m])))) { probs.push(`signal ${new Date(tfF.ts[k]).toISOString().slice(0, 16)} ${key}`); break; }
+        }
+      }
+      return probs;
+    };
+    for (const [id, ev] of [["donchian_1250", "1250"], ["donchian_shipped", "3000"], ["macd_fade_1250", "1250"]]) {
+      t(`${id} ($${ev === "1250" ? "1,250" : "3,000"}): no trade or signal changes when the data ends at its entry, exit or signal bar`, () => {
+        const probs = cutProblems(strategies.get(id), ev, 12, 20);
+        if (probs.length) throw new Error(`changed with later bars: ${probs.join("; ")}`);
+      });
+    }
+    t("the cut check catches a book that acts one bar early", () => {
+      const s = strategies.get("donchian_1250");
+      const cheat = { ...s, id: "donchian_1250~early", compute(b, p) { const o = s.compute(b, p); return { ...o, sig: Int8Array.from(o.sig, (_, k) => (k + 1 < o.sig.length ? o.sig[k + 1] : 0)) }; } };
+      if (!cutProblems(cheat, "1250", 4, 20).some((x) => x.startsWith("signal"))) throw new Error("a one-bar peek passed the cut check");
+    });
+  }
 }
 
 // ══════════════════════════════ 8-11. FUZZ ══════════════════════════════

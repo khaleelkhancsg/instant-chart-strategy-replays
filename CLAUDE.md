@@ -76,6 +76,18 @@ rule logic into a script: that is a second engine, and it drifts.
 
 ## Engine conventions (src/engine.mjs)
 
+- **No trade sees the future: proven end to end** (`research/lookahead_audit.mjs`, 2026-11-21).
+  - The whole pipeline runs again on data cut short at each 2026 trade's entry bar, at its exit
+    bar, at 400 signal bars (gate refusals included) and at 150 random minutes. Every trade and
+    signal the cut data could know matches the full run to the cent.
+  - The three bot books pass every cut: 198, 244 and 285 trades. So do all 35 other strategies,
+    on signal and random cuts.
+  - The audit catches two planted peeks: acting a bar early, and the day's final range. Random
+    cuts alone catch neither, which is why it cuts at signals, entries and exits.
+  - test.mjs section 7 keeps a sampled copy for the three books, with the one-bar-early canary.
+  - It cannot see a factor built outside `compute()` from the whole file, such as a day's VXN
+    factor. Read those by hand: the VXN close dated before the session, the prior session's
+    close.
 - **`DEFAULT_EXEC` is the physically consistent model:**
   - an exit decided at a bar's close fills at the next open;
   - a bar can stop out the trade it filled;
@@ -153,9 +165,9 @@ rule logic into a script: that is a second engine, and it drifts.
 
 ## Tests
 
-- `npm run check`: test.mjs (498), audit, legacy parity (15), MCP end to end (19),
+- `npm run check`: test.mjs (502), audit, legacy parity (15), MCP end to end (19),
   chart link (13), the indicator mock (101, `npm run test:mock`), the page's arithmetic
-  (42, `npm run test:ui`), the level study's engine (22, `npm run test:levels`), the raw
+  (42, `npm run test:ui`), the level study's engine (23, `npm run test:levels`), the raw
   store (36, `npm run test:store`), the Data panel's routes (21, `npm run test:data`), the
   TopstepX pull (44, `npm run test:pull`), red-folder news (17, `npm run test:news`), the $1,250
   Tradovate indicators (41, `npm run verify:tradovate`, about 2 minutes).

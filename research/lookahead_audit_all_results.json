@@ -1,0 +1,994 @@
+{
+ "run": "2026-11-21T23:24:23.860Z",
+ "quick": false,
+ "results": {
+  "$1,250 bot: donchian_1250, $1,250": {
+   "trades": 198,
+   "entry": [
+    198,
+    198
+   ],
+   "exit": [
+    198,
+    198
+   ],
+   "endBooked": 0,
+   "prefix": [
+    198,
+    198
+   ],
+   "signal": [
+    400,
+    400
+   ],
+   "random": [
+    150,
+    150
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "$3,000 bot: donchian_shipped, $3,000": {
+   "trades": 244,
+   "entry": [
+    244,
+    244
+   ],
+   "exit": [
+    244,
+    244
+   ],
+   "endBooked": 1,
+   "prefix": [
+    244,
+    244
+   ],
+   "signal": [
+    400,
+    400
+   ],
+   "random": [
+    150,
+    150
+   ],
+   "ambiguous": 1,
+   "bad": []
+  },
+  "MACD fade: macd_fade_1250, $1,250": {
+   "trades": 285,
+   "entry": [
+    285,
+    285
+   ],
+   "exit": [
+    285,
+    285
+   ],
+   "endBooked": 0,
+   "prefix": [
+    285,
+    285
+   ],
+   "signal": [
+    400,
+    400
+   ],
+   "random": [
+    150,
+    150
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "adx_di_trend": {
+   "trades": 2916,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "cammy_value_levels": {
+   "trades": 260,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 45,
+   "bad": []
+  },
+  "donchian_eff_rth": {
+   "trades": 657,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "ema_cross_macd_fade": {
+   "trades": 2540,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "gap_fade": {
+   "trades": 188,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "macd_1m_anticipate": {
+   "trades": 12738,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "macd_1m_fade": {
+   "trades": 23826,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "macd_1m_flip": {
+   "trades": 23826,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "macd_1m_quiet_anticipate": {
+   "trades": 2743,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "macd_5m_anticipate": {
+   "trades": 2527,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "macd_5m_fade": {
+   "trades": 4690,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "macd_5m_flip": {
+   "trades": 4690,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "macd_5m_quiet_anticipate": {
+   "trades": 673,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "macd_angle_v4": {
+   "trades": 4623,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 6,
+   "bad": []
+  },
+  "macd_cross": {
+   "trades": 4522,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 1,
+   "bad": []
+  },
+  "macd_momentum": {
+   "trades": 155,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "macd_mtf_confirm": {
+   "trades": 990,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "momentum_roc": {
+   "trades": 1897,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 1,
+   "bad": []
+  },
+  "noise_area": {
+   "trades": 248,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "orb": {
+   "trades": 248,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "orb_trend": {
+   "trades": 150,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "pct_levels": {
+   "trades": 791,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 1,
+   "bad": []
+  },
+  "prior_day_break": {
+   "trades": 169,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "session_range_fade": {
+   "trades": 238,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "supertrend": {
+   "trades": 1467,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "tpl_channel": {
+   "trades": 1463,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 1,
+   "bad": []
+  },
+  "tpl_consensus": {
+   "trades": 4941,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 10,
+   "bad": []
+  },
+  "tpl_ma_cross": {
+   "trades": 2547,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 1,
+   "bad": []
+  },
+  "tpl_oscillator": {
+   "trades": 1691,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 5,
+   "bad": []
+  },
+  "trend_neutev": {
+   "trades": 1244,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "trend_pullback": {
+   "trades": 281,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "trend_vol_adaptive": {
+   "trades": 2101,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 0,
+   "bad": []
+  },
+  "triple_ema": {
+   "trades": 1809,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 1,
+   "bad": []
+  },
+  "vwap_fade": {
+   "trades": 2787,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 10,
+   "bad": []
+  },
+  "zscore_fade": {
+   "trades": 105,
+   "entry": [
+    0,
+    0
+   ],
+   "exit": [
+    0,
+    0
+   ],
+   "endBooked": 0,
+   "prefix": [
+    0,
+    0
+   ],
+   "signal": [
+    48,
+    48
+   ],
+   "random": [
+    12,
+    12
+   ],
+   "ambiguous": 0,
+   "bad": []
+  }
+ }
+}
