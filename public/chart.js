@@ -37,8 +37,9 @@ const TRADE_KINDS = [
 const PANE_WEIGHTS = { price: 0.46, sub: 0.12, equity: 0.27, daily: 0.15 };
 // Each oscillator study added beside the strategy gets a pane of its own.
 const STUDY_PANE_WEIGHT = 0.11;
-const PAD = { l: 8, r: 74, t: 8, b: 22 };
+const PAD = { l: 8, r: 74, t: 8, b: 4 };
 const AXIS_H = 20;
+const GAP = 6;          // after each pane: between panes, and before the time axis
 
 const fmtUsd = (v, dp = 0) =>
   (v < 0 ? "-$" : "$") + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: dp, maximumFractionDigits: dp });
@@ -101,6 +102,11 @@ export class ChartView {
     this.onHoverNews = null;
     // A click on a trade, a signal marker, or nothing: ({trade} | {signal} | null)
     this.onClick = null;
+    // Linked charts: this one reports the time and price under its pointer ({ts, price} or
+    // null), and draws another's as its own crosshair (showLinked).
+    this.onHoverMove = null;
+    this.linked = null;
+    this.showBook = true;        // the equity and daily P&L panes
     this._raf = 0;
 
     this._bindEvents();
@@ -212,18 +218,21 @@ export class ChartView {
     if (!showSub) { weights.price += weights.sub; weights.sub = 0; }
     const studies = this._studyPanes();
     for (const o of studies) weights[o.key] = STUDY_PANE_WEIGHT;
-    // With `focus` the chart is the price and an indicator's panes, nothing else.
-    const book = this.data && this.data.focus ? [] : ["equity", "daily"];
+    // With `focus`, or the book's panes switched off, the chart is the price and the
+    // indicators' panes, nothing else.
+    const book = (this.data && this.data.focus) || !this.showBook ? [] : ["equity", "daily"];
     const order = ["price", ...(showSub ? ["sub"] : []), ...studies.map((o) => o.key), ...book];
     const total = order.reduce((s, k) => s + weights[k], 0);
 
-    const usable = this.h - PAD.t - PAD.b - AXIS_H;
+    // The gaps come out of the height first. Added on top of it, six panes pushed the
+    // time axis, and the crosshair's time on it, 36 px past the bottom of the canvas.
+    const usable = this.h - PAD.t - PAD.b - AXIS_H - GAP * order.length;
     let y = PAD.t;
     this.panes = {};
     for (const k of order) {
       const ph = Math.round((usable * weights[k]) / total);
       this.panes[k] = { top: y, height: ph, bottom: y + ph };
-      y += ph + (ph > 0 ? 6 : 0);
+      y += ph + (ph > 0 ? GAP : 0);
     }
     for (const k of ["sub", "equity", "daily"]) if (!this.panes[k]) this.panes[k] = { top: y, height: 0, bottom: y };
     this.paneOrder = order;
@@ -256,6 +265,41 @@ export class ChartView {
     }
     this._layout();
     this.requestDraw();
+  }
+
+  // The equity and daily P&L panes, or the price and its indicators alone: a view setting.
+  setShowBook(on) {
+    this.showBook = !!on;
+    this._layout();
+    this.requestDraw();
+  }
+
+  // Another chart's pointer, drawn here as this chart's own crosshair at the same minute
+  // and, over the price pane, the same price. The pointer over this chart wins.
+  showLinked(pt) {
+    this.linked = pt;
+    if (!this.hover) this._drawCrosshair();
+  }
+  // What is under the pointer, for the charts linked to this one: the minute's time, and
+  // the price when the pointer is over the price pane.
+  _pointAt(mx, my) {
+    if (!this.data || mx < this.plotL || mx > this.plotR) return null;
+    const b = this.data.bars, i = Math.round(this.iAt(mx));
+    if (i < 0 || i >= b.count) return null;
+    const P = this.panes.price;
+    const price = this.priceY && my >= P.top && my <= P.bottom ? this.priceHi - ((my - P.top) / P.height) * (this.priceHi - this.priceLo) : null;
+    return { ts: b.ts[i], price };
+  }
+  // Where a linked point falls on this chart, or null when it is out of view.
+  _linkedXY() {
+    const L = this.linked, b = this.data && this.data.bars;
+    if (!L || !b || !b.count) return null;
+    const i = upperBound(b.ts.subarray(0, b.count), L.ts) - 1;      // the minute that holds that time
+    if (i < 0 || i < this.i0 - 1 || i > this.i1) return null;
+    const P = this.panes.price;
+    let y = -1;
+    if (L.price != null && this.priceY) { const py = this.priceY(L.price); if (py >= P.top && py <= P.bottom) y = py; }
+    return { x: this.x(i), y };
   }
 
   // Candle aggregation for DISPLAY only. It does not touch the strategy, which
@@ -336,6 +380,8 @@ export class ChartView {
     this._drawSessionBands(ctx);
     this._drawResolutionMarker(ctx);
     this._drawTimeAxis(ctx);
+    // a linked crosshair follows the view as it zooms and pans
+    if (!this.hover && this.linked) this._drawCrosshair();
   }
 
   // Faint vertical separators at each CME session boundary (17:00 ET).
@@ -1470,6 +1516,7 @@ export class ChartView {
       }
       el.style.cursor = mx > this.plotR ? "ns-resize" : t || sg ? "pointer" : "crosshair";
       this._drawCrosshair();
+      if (this.onHoverMove) this.onHoverMove(this._pointAt(mx, my));
     });
 
     // A click that did not drag: a trade, a signal marker, or empty chart.
@@ -1486,6 +1533,8 @@ export class ChartView {
     el.addEventListener("mouseleave", () => {
       this.hover = null;
       this.octx.clearRect(0, 0, this.w, this.h);
+      if (this.linked) this._drawCrosshair();
+      if (this.onHoverMove) this.onHoverMove(null);
     });
 
     el.addEventListener("mousedown", (e) => {
@@ -1562,8 +1611,11 @@ export class ChartView {
   _drawCrosshair() {
     const ctx = this.octx;
     ctx.clearRect(0, 0, this.w, this.h);
-    if (!this.hover || !this.data) return;
-    const { x: mx, y: my } = this.hover;
+    if (!this.data) return;
+    // this chart's pointer, or else a linked chart's (its y is -1 off the price pane)
+    const at = this.hover || this._linkedXY();
+    if (!at) return;
+    const { x: mx, y: my } = at;
     if (mx < this.plotL || mx > this.plotR) return;
 
     ctx.strokeStyle = CSS.crosshair;

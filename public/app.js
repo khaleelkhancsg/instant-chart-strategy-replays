@@ -22,6 +22,15 @@ import { newsMarks, newsSpans, newsClock } from "/ui.mjs";
 import { FORWARD_2026, Y2026, wilson, houseRates, runRecord, compareRuns, flips, linkSettings, linkDiff, logPosition, logValue, LOG_TRACK, sessionView, stepDays, pickerRows } from "/ui.mjs";
 import { loadIndicator, defaultProps, plotters, audit, formingProblems, Problems } from "/tradovate/mock/runtime.mjs";
 
+// A chart popped out into a window of its own (?pop=1&tf=M) follows the window that opened
+// it and keeps nothing: what the page remembers between visits stays the main window's.
+const QS = new URLSearchParams(location.search), POP = QS.get("pop") === "1";
+function saveLocal(key, value) { if (!POP) localStorage.setItem(key, value); }
+// This page's windows share one channel: the crosshair, and the main window's state.
+const BC = typeof BroadcastChannel === "function" ? new BroadcastChannel("mnq-chart") : null;
+// The charts on screen: the main one, and the right-hand one while split.
+const charts = () => (S.split && S.chart2 ? [S.chart, S.chart2] : [S.chart]);
+
 // The 1-minute x-position a resampled bar should be drawn at: the middle of the
 // minutes it covers. srcLast+1 is the exclusive end, so the centre of bar k is
 // halfway between srcFirst[k] and srcLast[k]+1. At 1-minute that is i + 0.5,
@@ -423,7 +432,7 @@ function buildGroup(title, collapsed = false) {
   head.innerHTML = `<span class="group-title">${title}</span><span class="group-changed"></span><span class="group-caret">▼</span>`;
   head.addEventListener("click", () => {
     FOLDED[title] = g.classList.toggle("collapsed");
-    try { localStorage.setItem("mnq.folded", JSON.stringify(FOLDED)); } catch { /* private mode */ }
+    try { saveLocal("mnq.folded", JSON.stringify(FOLDED)); } catch { /* private mode */ }
   });
   const body = document.createElement("div");
   body.className = "group-body";
@@ -480,7 +489,7 @@ function showTab(tab) {
   for (const b of $("sideTabs").querySelectorAll("button")) { const on = b.dataset.tab === tab; b.classList.toggle("on", on); b.setAttribute("aria-selected", String(on)); }
   for (const p of panes.querySelectorAll(".sidepane")) p.classList.toggle("on", p.dataset.tab === tab);
   panes.scrollTop = sideScroll[tab] || 0;
-  try { localStorage.setItem("mnq.tab", tab); } catch { /* private mode */ }
+  try { saveLocal("mnq.tab", tab); } catch { /* private mode */ }
 }
 
 function renderSidebar() {
@@ -603,7 +612,7 @@ function adoptStudies(list) {
 }
 
 function saveStudies() {
-  try { localStorage.setItem("mnq.studies", JSON.stringify(S.studies)); } catch { /* private mode */ }
+  try { saveLocal("mnq.studies", JSON.stringify(S.studies)); } catch { /* private mode */ }
 }
 function studiesChanged() {
   saveStudies();
@@ -835,7 +844,7 @@ function tvShowDay() {
 }
 
 function saveTv() {
-  try { localStorage.setItem("mnq.tv", JSON.stringify({ focus: S.tvFocus, list: tvConfig() })); } catch { /* private mode */ }
+  try { saveLocal("mnq.tv", JSON.stringify({ focus: S.tvFocus, list: tvConfig() })); } catch { /* private mode */ }
 }
 // What identifies each one: its name, its bars, and the settings changed.
 function tvConfig() {
@@ -1336,8 +1345,8 @@ function loadRuns() {
 }
 function saveRuns() {
   try {
-    localStorage.setItem("mnq.runs", JSON.stringify(S.runs));
-    localStorage.setItem("mnq.baseline", JSON.stringify(S.baseline));
+    saveLocal("mnq.runs", JSON.stringify(S.runs));
+    saveLocal("mnq.baseline", JSON.stringify(S.baseline));
   } catch { /* private mode, or full: the page works without them */ }
 }
 function recordRun(r, key) {
@@ -1716,7 +1725,7 @@ function paintChart(res, replay) {
   $("chartTf").value = String(candleMin);
   $("chartTf").disabled = focus;
 
-  S.chart.setData({
+  const data = {
     token: `${S.windowStart}:${blob.count}`,
     bars: blob,
     trades: focus ? [] : trades,
@@ -1743,7 +1752,11 @@ function paintChart(res, replay) {
       ? indexAtOrAfter(blob.ts, replay.passMs ?? replay.failMs) : null,
     title: focus ? `MNQ · ${S.tv.map((x) => x.name).join(" + ")}` : `MNQ · ${S.strategyDesc.name}`,
     initialView: (focus && tvDayView()) || presetView(S.winStartLocal),
-  });
+  };
+  S.chart.setData(data);
+  // The right-hand chart: the same data and its own candles. A study pane keeps its scale on
+  // its overlay (st.y), so each chart gets overlays of its own.
+  if (S.split && S.chart2) S.chart2.setData({ ...data, studyOverlays: data.studyOverlays.map((o) => ({ ...o })) });
 }
 
 // ──────────────────────────── the zoom presets ────────────────────────────
@@ -1759,20 +1772,22 @@ function paintZoom() {
 }
 function setZoom(mode) {
   S.zoom = mode;
-  try { localStorage.setItem("mnq.zoom", mode); } catch { /* private mode */ }
+  try { saveLocal("mnq.zoom", mode); } catch { /* private mode */ }
   paintZoom();
   const c = S.chart, whole = c.i1 - c.i0 >= (S.winEndLocal - S.winStartLocal) * 0.9;
   // from the selected trade if there is one, then wherever the view is looking
   const tf = lastResult && lastResult.res.tf, k = S.why && tf ? indexAtOrAfter(tf.ts, S.why.ts) : -1;
   const at = k >= 0 && k < tf.ts.length ? tf.srcFirst[k] : whole ? S.winStartLocal : Math.floor((c.i0 + c.i1) / 2);
   const v = presetView(at);
-  c.zoomTo(v[0], v[1]);
+  for (const k of charts()) k.zoomTo(v[0], v[1]);
 }
 function pageView(dir) {
-  const c = S.chart, days = PRESET_DAYS[S.zoom];
-  if (!days) { const w = c.i1 - c.i0; c.zoomTo(c.i0 + dir * w, c.i1 + dir * w); return; }
-  const v = sessionView(S.blob, stepDays(S.blob, Math.ceil(c.i0), dir * days), days);
-  c.zoomTo(v[0], v[1]);
+  const days = PRESET_DAYS[S.zoom];
+  for (const c of charts()) {
+    if (!days) { const w = c.i1 - c.i0; c.zoomTo(c.i0 + dir * w, c.i1 + dir * w); continue; }
+    const v = sessionView(S.blob, stepDays(S.blob, Math.ceil(c.i0), dir * days), days);
+    c.zoomTo(v[0], v[1]);
+  }
 }
 
 // Redraw without re-running anything: a study's colour or visibility changed.
@@ -1916,6 +1931,7 @@ function scheduleSweep() {
 }
 
 async function runSweep() {
+  if (POP) return;          // a pop-out has no sidebar to sweep for
   const key = sweepKey(), strategyId = S.strategyDesc.id;
   if (S.sweeping) return;
   if (key === S.lastSweepKey) {
@@ -2021,6 +2037,7 @@ function chartSnapshot(appliedId, applyError) {
   };
 }
 function postState(appliedId, applyError) {
+  if (POP) return;          // chart_state reads the main window
   fetch("/api/chart/state", { method: "POST", headers: { "content-type": "application/json" },
                               body: JSON.stringify(chartSnapshot(appliedId, applyError)) }).catch(() => {});
 }
@@ -2105,7 +2122,7 @@ function setEval(id) {
   S.eval = id;
   const after = baseConfig();
   for (const g of ["params", "exec", "rules", "filter"]) S[g] = { ...after[g], ...keep[g] };
-  try { localStorage.setItem("mnq.eval", id); } catch { /* private mode */ }
+  try { saveLocal("mnq.eval", id); } catch { /* private mode */ }
 }
 async function switchEval(id) {
   if (id === S.eval || !EVALS[id]) return;
@@ -2198,7 +2215,8 @@ function queueHash() {
     if (!S.booted) return;
     const h = urlHash();
     if (h !== location.hash) history.replaceState(null, "", h);
-    try { localStorage.setItem("mnq.last", h); } catch { /* private mode */ }
+    try { saveLocal("mnq.last", h); } catch { /* private mode */ }
+    if (!POP && BC) BC.postMessage({ type: "state", hash: h });
   }, 300);
 }
 // And what was in view, in time, for the same window.
@@ -2206,7 +2224,7 @@ function saveView() {
   const c = S.chart, b = S.blob;
   if (!S.booted || !b || !b.count) return;
   const at = (i) => b.ts[Math.max(0, Math.min(b.count - 1, Math.round(i)))];
-  try { localStorage.setItem("mnq.view", JSON.stringify({ start: S.windowStart, from: at(c.i0), to: at(c.i1 - 1) })); } catch { /* private mode */ }
+  try { saveLocal("mnq.view", JSON.stringify({ start: S.windowStart, from: at(c.i0), to: at(c.i1 - 1) })); } catch { /* private mode */ }
 }
 function restoreView() {
   try {
@@ -2249,10 +2267,11 @@ function chartNews(blob, focus) {
 
 function tradeTooltip(t, ev) {
   const el = $("tooltip");
-  const sg = !t && S.chart && S.chart.hoverSignal;
-  const nw = !t && !sg && S.chart && S.chart.hoverNews;
+  const C = S.hoverChart || S.chart;
+  const sg = !t && C && C.hoverSignal;
+  const nw = !t && !sg && C && C.hoverNews;
   if (nw && ev) {
-    const blob = S.chart.data.bars;
+    const blob = C.data.bars;
     el.innerHTML = `<div class="t-head" style="color:#ff6b6b">RED-FOLDER NEWS · ${esc(newsClock(nw, blob.ts, blob.ctMin))}</div>` +
       nw.kinds.map((k) => `<div class="t-ev">${esc(NEWS_KINDS[k] ? NEWS_KINDS[k].label : k)}</div>`).join("") +
       (S.exec.newsRule === "noentry" || S.exec.newsRule === "flat"
@@ -2365,7 +2384,7 @@ function bindPicker() {
     if (star) {
       const id = star.dataset.star;
       if (!FAVS.delete(id)) FAVS.add(id);
-      try { localStorage.setItem("mnq.favs", JSON.stringify([...FAVS])); } catch { /* private mode */ }
+      try { saveLocal("mnq.favs", JSON.stringify([...FAVS])); } catch { /* private mode */ }
       paintPicker();
       $("stratSearch").focus();
     } else if (row) pickStrategy(row.dataset.id);
@@ -2419,7 +2438,7 @@ async function switchData(name, { load = true } = {}) {
   const meta = await fetchMeta(name);
   S.meta = meta;
   S.data = meta.data;
-  try { localStorage.setItem("mnq.data", S.data); } catch { /* private mode */ }
+  try { saveLocal("mnq.data", S.data); } catch { /* private mode */ }
   paintDataset();
   // A sweep and a window from the other bars describe nothing on screen.
   S.sweep = null; S.run = null; S.sweepStale = false; S.lastSweepKey = ""; S.blobUrl = "";
@@ -2430,6 +2449,7 @@ async function switchData(name, { load = true } = {}) {
 }
 
 async function boot() {
+  if (POP) { document.body.classList.add("chartfull", "pop"); document.title = `MNQ chart · ${Number(QS.get("tf")) || "auto"} min · pop-out`; }
   try { S.data = localStorage.getItem("mnq.data") === "main" ? "main" : "latest"; } catch { S.data = "latest"; }
   S.meta = await fetchMeta(S.data);
   S.data = S.meta.data;
@@ -2471,7 +2491,7 @@ async function boot() {
   paintNewsBtn();
   newsBtn.onclick = () => {
     S.showNews = !S.showNews;
-    try { localStorage.setItem("mnq.news", S.showNews ? "1" : "0"); } catch { /* private mode */ }
+    try { saveLocal("mnq.news", S.showNews ? "1" : "0"); } catch { /* private mode */ }
     paintNewsBtn();
     repaint();
   };
@@ -2485,7 +2505,7 @@ async function boot() {
   paintSigBtn();
   sigBtn.onclick = () => {
     S.showSignals = !S.showSignals;
-    try { localStorage.setItem("mnq.signals", S.showSignals ? "1" : "0"); } catch { /* private mode */ }
+    try { saveLocal("mnq.signals", S.showSignals ? "1" : "0"); } catch { /* private mode */ }
     paintSigBtn();
     repaint();
   };
@@ -2495,12 +2515,12 @@ async function boot() {
   // same trades whatever size the candles are drawn at. Remembered between
   // visits because it is a preference, not part of a result.
   const tfSel = $("chartTf");
-  try { S.chartTf = Number(localStorage.getItem("mnq.candles")) || 0; } catch { /* private mode */ }
+  try { S.chartTf = POP ? Number(QS.get("tf")) || 0 : Number(localStorage.getItem("mnq.candles")) || 0; } catch { /* private mode */ }
   tfSel.value = String(S.chartTf);
   S.chart.setTimeframe(S.chartTf);
   tfSel.addEventListener("change", () => {
     S.chartTf = Number(tfSel.value) || 0;
-    try { localStorage.setItem("mnq.candles", String(S.chartTf)); } catch { /* private mode */ }
+    try { saveLocal("mnq.candles", String(S.chartTf)); } catch { /* private mode */ }
     S.chart.setTimeframe(S.chartTf);
     queuePostState();
   });
@@ -2510,10 +2530,92 @@ async function boot() {
   $("pagePrev").onclick = () => pageView(-1);
   $("pageNext").onclick = () => pageView(1);
   $("chartWrap").addEventListener("mousemove", (e) => {
+    S.hoverChart = S.chart;
     if (e.target.closest("#whyCard")) { $("tooltip").classList.add("hidden"); return; }   // the card is not the chart
     tradeTooltip(window._hoverTrade, e);
   });
   $("chartWrap").addEventListener("mouseleave", () => tradeTooltip(null));
+
+  // ── the view: the P&L panes, the split, the pop-out, the linked crosshairs ──
+  // The equity and daily P&L panes: shown unless switched off (P), a view preference, kept.
+  // A pop-out opens without them: it is there for a second timeframe.
+  try { S.showBook = POP ? false : localStorage.getItem("mnq.book") !== "0"; } catch { S.showBook = true; }
+  const bookBtn = $("bookBtn");
+  const paintBook = () => {
+    bookBtn.classList.toggle("on", S.showBook);
+    bookBtn.setAttribute("aria-pressed", String(S.showBook));
+    for (const c of [S.chart, S.chart2]) if (c) c.setShowBook(S.showBook);
+  };
+  const toggleBook = () => { S.showBook = !S.showBook; try { saveLocal("mnq.book", S.showBook ? "1" : "0"); } catch { /* private mode */ } paintBook(); };
+  bookBtn.onclick = toggleBook;
+  paintBook();
+
+  // A pointer over any chart, in this window or another, puts the same minute (and, over
+  // the price pane, the same price) under the other charts' crosshairs.
+  const linkHover = (from, pt) => {
+    for (const c of charts()) if (c !== from) c.showLinked(pt);
+    if (BC) BC.postMessage({ type: "hover", pt });
+  };
+  S.chart.onHoverMove = (pt) => linkHover(S.chart, pt);
+  if (BC) BC.onmessage = (ev) => {
+    const m = ev.data || {};
+    if (m.type === "hover") for (const c of charts()) c.showLinked(m.pt);
+    // A pop-out goes where the main window goes: the address carries every setting, and
+    // the page applies a new one as it would a pasted link.
+    else if (m.type === "state" && POP && m.hash && m.hash !== location.hash) location.hash = m.hash;
+  };
+
+  // Split (V): a second chart on the right with candles of its own. The zoom presets,
+  // paging and reset move both; the mouse zooms and pans each on its own.
+  let split = { on: false, tf: 5 };
+  try { split = { ...split, ...JSON.parse(localStorage.getItem("mnq.split") || "{}") }; } catch { /* private mode, or an older format */ }
+  S.chartTf2 = Number(split.tf) || 0;
+  const tfSel2 = $("chartTf2"), splitBtn = $("splitBtn");
+  tfSel2.value = String(S.chartTf2);
+  const saveSplit = () => { try { saveLocal("mnq.split", JSON.stringify({ on: !!S.split, tf: S.chartTf2 })); } catch { /* private mode */ } };
+  const setSplit = (on) => {
+    S.split = !!on;
+    if (S.split && !S.chart2) {
+      const c = new ChartView($("chartWrap2"));
+      c.onHoverTrade = (t) => { window._hoverTrade = t; if (!t) tradeTooltip(null); };
+      c.onHoverSignal = (sg) => { if (!sg && !window._hoverTrade) tradeTooltip(null); };
+      c.onHoverNews = (nw) => { if (!nw && !window._hoverTrade && !c.hoverSignal) tradeTooltip(null); };
+      c.onClick = (hit) => { if (hit) selectWhy(hit.trade || hit.signal); };
+      c.onHoverMove = (pt) => linkHover(c, pt);
+      $("chartWrap2").addEventListener("mousemove", (e) => { S.hoverChart = c; tradeTooltip(window._hoverTrade, e); });
+      $("chartWrap2").addEventListener("mouseleave", () => tradeTooltip(null));
+      S.chart2 = c;
+    }
+    $("chartWrap2").hidden = !S.split;
+    $("tfPick2").hidden = !S.split;
+    $("chartTfLabel").textContent = S.split ? "Left" : "Candles";
+    splitBtn.setAttribute("aria-pressed", String(S.split));
+    if (S.split) {
+      S.chart2.setShowBook(S.showBook);
+      S.chart2.setTimeframe(S.chartTf2);
+      repaint();
+      if (S.chart.data) S.chart2.zoomTo(S.chart.i0, S.chart.i1);      // opening on what the left shows
+    } else if (S.chart2) S.chart.showLinked(null);
+    saveSplit();
+  };
+  splitBtn.onclick = () => setSplit(!S.split);
+  tfSel2.addEventListener("change", () => { S.chartTf2 = Number(tfSel2.value) || 0; if (S.chart2) S.chart2.setTimeframe(S.chartTf2); saveSplit(); });
+  if (split.on) setSplit(true);
+
+  // Pop out: this page in a window of its own, for a second monitor. It follows this one
+  // over the channel (the day, the strategy, every setting) with candles of its own, and
+  // the crosshairs follow each other. Chrome and Edge can put it on the other screen (they
+  // ask once for leave to place windows); otherwise it opens here, to be dragged across.
+  $("popBtn").onclick = () => {
+    const tf = S.split ? S.chartTf2 : S.chartTf === 1 ? 5 : 1;
+    const url = `${location.origin}${location.pathname}?pop=1&tf=${tf}${urlHash()}`;
+    const w = window.open(url, `mnq-pop-${Date.now()}`, "popup,width=1280,height=800");
+    if (!w) { toast("The browser blocked the new window: allow pop-ups for this page", true); return; }
+    if (window.getScreenDetails) window.getScreenDetails().then((d) => {
+      const other = d.screens.find((sc) => sc !== d.currentScreen);
+      if (other && !w.closed) { w.moveTo(other.availLeft, other.availTop); w.resizeTo(other.availWidth, other.availHeight); }
+    }).catch(() => { /* not allowed: it stays on this screen */ });
+  };
 
   S.nav = new Navigator($("nav"), (ms) => {
     const hi = S.meta.endMs - S.rules.windowDays * DAY;
@@ -2527,7 +2629,7 @@ async function boot() {
     const b = e.target.closest("button");
     if (!b) return;
     S.nav.span = b.dataset.span;
-    try { localStorage.setItem("mnq.nav", S.nav.span); } catch { /* private mode */ }
+    try { saveLocal("mnq.nav", S.nav.span); } catch { /* private mode */ }
     paintNavSpan();
     S.nav.draw();
   });
@@ -2564,7 +2666,7 @@ async function boot() {
   S.booted = true;
   queueHash();
   window.addEventListener("pagehide", saveView);
-  connectChartLink();
+  if (!POP) connectChartLink();
   // A link pasted into this tab, or the back button through edited links.
   window.addEventListener("hashchange", () => {
     const m = readHash();
@@ -2602,7 +2704,7 @@ async function boot() {
   // ResizeObserver).
   const fullBtn = $("fullBtn"), isFull = () => document.body.classList.contains("chartfull");
   const setFull = (on) => {
-    document.body.classList.toggle("chartfull", on);
+    document.body.classList.toggle("chartfull", on || POP);
     fullBtn.setAttribute("aria-pressed", String(on));
     fullBtn.title = on ? "Leave full screen (F or Esc)" : "Full screen: just the chart and its panes (F). Esc or F again returns.";
     const root = document.documentElement;
@@ -2623,12 +2725,14 @@ async function boot() {
     if (e.key === "Escape" && S.why) { selectWhy(null); return; }
     if (e.key === "Escape" && isFull()) { setFull(false); return; }
     if (e.key === "f") { setFull(!isFull()); e.preventDefault(); return; }
+    if (e.key === "p") { toggleBook(); return; }
+    if (e.key === "v") { setSplit(!S.split); return; }
     if (e.key === "/") { showTab("settings"); $("setSearch").focus(); e.preventDefault(); return; }
     if (e.key === "?") { toggleHelp(); return; }
     if (e.key === "s") { openPicker(); e.preventDefault(); return; }
     if (e.key === "ArrowLeft") { stepWindow(e.shiftKey ? -7 : -1); e.preventDefault(); }
     else if (e.key === "ArrowRight") { stepWindow(e.shiftKey ? 7 : 1); e.preventDefault(); }
-    else if (e.key === "r") S.chart.resetView();
+    else if (e.key === "r") for (const c of charts()) c.resetView();
     else if (e.key === "1") setZoom("day");
     else if (e.key === "2") setZoom("week");
     else if (e.key === "3") setZoom("window");

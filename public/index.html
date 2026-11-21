@@ -103,8 +103,26 @@
       </div>
 
       <div class="tfpick" title="How the candles are DRAWN. It does not re-run anything — the trades on screen stay the same. Auto picks the size that fits the zoom. To change the bars the strategy actually computes on, and with them the indicators and the signals, use 'Signal timeframe' in Settings.">
-        <label for="chartTf">Candles</label>
+        <label for="chartTf" id="chartTfLabel">Candles</label>
         <select id="chartTf">
+          <option value="0">Auto</option>
+          <option value="1">1 min</option>
+          <option value="2">2 min</option>
+          <option value="3">3 min</option>
+          <option value="5">5 min</option>
+          <option value="10">10 min</option>
+          <option value="15">15 min</option>
+          <option value="30">30 min</option>
+          <option value="60">1 hour</option>
+          <option value="120">2 hours</option>
+          <option value="240">4 hours</option>
+          <option value="1440">1 day</option>
+        </select>
+      </div>
+
+      <div class="tfpick" id="tfPick2" hidden title="The right-hand chart's candles. The two charts share their trades and indicators, and their crosshairs follow each other.">
+        <label for="chartTf2">Right</label>
+        <select id="chartTf2">
           <option value="0">Auto</option>
           <option value="1">1 min</option>
           <option value="2">2 min</option>
@@ -122,11 +140,19 @@
 
       <button id="newsToggle" class="sigtoggle newstoggle on" aria-pressed="true" title="Mark each red-folder US release: the jobs report, CPI, PPI, retail sales, advance GDP, PCE, the FOMC decision, press conference and minutes. Hover one for its time. Session rules → Red-folder news makes the strategy stand aside around them.">News</button>
       <button id="sigToggle" class="sigtoggle" aria-pressed="false" title="Mark every signal bar the strategy produced: ◆ entered, ◇ an order that never filled, × refused (with the reason on hover), · already in a position. Click one, or any trade, for what triggered it.">Signals</button>
-      <button id="fullBtn" class="fullbtn" aria-pressed="false" title="Full screen: just the chart and its panes (F). Esc or F again returns." aria-label="Full screen chart">⤢</button>
-      <button id="keysBtn" class="keysbtn" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">?</button>
+      <div class="viewbtns" role="group" aria-label="View">
+        <button id="bookBtn" class="sigtoggle on" aria-pressed="true" title="The equity and daily P&amp;L panes, or the price and its indicators alone (P)">P&amp;L</button>
+        <button id="splitBtn" class="fullbtn" aria-pressed="false" title="Two charts side by side, each with its own candles, their crosshairs linked (V)" aria-label="Split the chart">◫</button>
+        <button id="popBtn" class="fullbtn" title="Pop a chart out into its own window, for a second monitor. It follows this one: the same day and settings, its own candles, the crosshairs linked." aria-label="Pop a chart out">⧉</button>
+        <button id="fullBtn" class="fullbtn" aria-pressed="false" title="Full screen: just the chart and its panes (F). Esc or F again returns." aria-label="Full screen chart">⤢</button>
+        <button id="keysBtn" class="keysbtn" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">?</button>
+      </div>
     </div>
 
-    <div id="chartWrap"><div id="whyCard" class="whycard hidden" role="dialog" aria-label="What triggered this entry"></div></div>
+    <div id="charts">
+      <div id="chartWrap"><div id="whyCard" class="whycard hidden" role="dialog" aria-label="What triggered this entry"></div></div>
+      <div id="chartWrap2" hidden></div>
+    </div>
 
     <div id="tooltip" class="tooltip hidden"></div>
     <div id="toast" class="toast hidden"></div>
@@ -175,6 +201,8 @@
         <dt>[ ]</dt><dd>Along the chart by a day, a week or a screen</dd>
         <dt>R</dt><dd>Back to the opening view</dd>
         <dt>F</dt><dd>Full screen: just the chart and its panes (Esc or F returns)</dd>
+        <dt>P</dt><dd>Show or hide the equity and daily P&amp;L panes</dd>
+        <dt>V</dt><dd>Split: two charts side by side, crosshairs linked</dd>
         <dt>E</dt><dd>Switch evaluation</dd>
         <dt>S</dt><dd>Pick a strategy</dd>
         <dt>B</dt><dd>Pin this run as the baseline</dd>

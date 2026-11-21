@@ -96,9 +96,14 @@ html, body {
 .dp-log:empty { display: none; }
 @media (max-width: 620px) { .dp-row { grid-template-columns: 1fr; gap: 3px; } .dp-folder { grid-template-columns: 1fr 1fr; } .dp-folder label, .dp-folder input { grid-column: 1 / -1; } .dp-table td, .dp-table th { white-space: normal; } }
 .keysbtn { margin-left: auto; padding: 1px 8px; font-size: 11px; color: var(--muted); }
-.fullbtn { margin-left: auto; padding: 0 8px; font-size: 14px; line-height: 18px; color: var(--muted); }
-.fullbtn + .keysbtn { margin-left: 0; }
+/* The view's buttons, at the bar's right end: the P&L panes, split, pop out, full screen, keys. */
+.viewbtns { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.viewbtns .keysbtn { margin-left: 0; }
+.fullbtn { padding: 0 8px; font-size: 14px; line-height: 18px; color: var(--muted); }
 .fullbtn[aria-pressed="true"] { background: rgba(240,180,41,.14); border-color: #f0b429; color: #f0b429; }
+.tfpick[hidden], #chartWrap2[hidden] { display: none; }
+/* A popped-out window follows the one that opened it: it pops out nothing itself. */
+body.pop #popBtn { display: none; }
 /* Full screen chart (F): the sidebar, the top bar and the navigator strip step aside, and the
    chart bar and the chart take the screen. It is a class on the page rather than the chart
    alone in the browser's full screen, so the help, the picker and the toasts still show; the
@@ -423,7 +428,9 @@ button:disabled { opacity: .5; cursor: default; }
 #navSummary .k { color: var(--muted); }
 #navSummary .pass { color: var(--bull); } #navSummary .fail { color: var(--bear); }
 
-#chartWrap { flex: 1; position: relative; min-height: 0; }
+#charts { flex: 1; display: flex; min-height: 0; }
+#chartWrap { flex: 1; position: relative; min-height: 0; min-width: 0; }
+#chartWrap2 { flex: 1; position: relative; min-height: 0; min-width: 0; border-left: 1px solid var(--line); }
 .chart-canvas { position: absolute; inset: 0; display: block; }
 .chart-overlay { cursor: crosshair; }
 

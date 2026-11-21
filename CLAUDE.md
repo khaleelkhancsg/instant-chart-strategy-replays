@@ -190,6 +190,13 @@ rule logic into a script: that is a second engine, and it drifts.
   lower than the published 73.3. `chart_state` reports `data`; `chart_apply` takes it.
 - **Time:** the axis and crosshair read Chicago time, worked out from each bar's
   `ctMin`. `chart_state` and the CSVs stay in UTC.
+- **Split and pop-out** (`app.js`):
+  - `S.chart2` is a second ChartView on the same run.
+  - A pop-out is the same page at `?pop=1&tf=M` (`POP`). It saves nothing to localStorage, posts
+    no state and runs no sweeps.
+  - It follows the main window through `BroadcastChannel("mnq-chart")`: `state` carries the hash,
+    `hover` the crosshair's `{ts, price}`.
+  - Crosshairs link by bar time, never by index, because windows load different warm-ups.
 - **Frames** are under 7 ms on every strategy at the full window. Keep it so: a frame
   must not sort, and zoomed out each pixel draws one thing (`nthSmallest`, the
   histogram's columns, dots for dense trades).

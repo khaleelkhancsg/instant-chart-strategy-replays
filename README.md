@@ -945,8 +945,21 @@ blocks *new* entries and a single trade can blow straight through it.
 | `Esc` | Close the entry card, the picker or the list |
 | `r` | Back to the opening view |
 | `f` | Full screen: just the chart and its panes (the ⤢ button does the same; `Esc` or `f` returns) |
+| `p` | Show or hide the equity and daily P&L panes (the **P&L** button) |
+| `v` | Split: two charts side by side (the ◫ button) |
 | Wheel / drag | Zoom / pan |
 | Double-click | Back to the opening view |
+
+**Two charts, two screens.**
+- **◫ splits the chart** into two, side by side, each with its own candle size (**Right** picks the
+  second's). They show the same trades.
+- **The crosshairs are linked by time.** The minute under the pointer is marked on both charts,
+  whatever their candle sizes.
+- **⧉ pops a chart out** into a window of its own, for a second monitor. It follows this window's
+  day, strategy and settings, keeps its own candles, and its crosshair is linked too. Where the
+  browser allows window placement it opens on the other screen; otherwise drag it there.
+- **P&L hides the equity and daily P&L panes,** leaving the price and its indicators. A pop-out
+  opens without them.
 
 The sweep runs by itself about 700 ms after a setting stops moving, and **↻ Sweep**
 forces one. A sweep that lands after the settings have moved is marked as old, and
