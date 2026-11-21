@@ -214,14 +214,18 @@ const blockSessions = (bars, tf) => 10 * blockWeeks(bars, tf) + 2;
 // short, 3 Short, 4 Potentially long (0 warming up), drawn as a lane a row.
 //   - A row's side is its histogram's sign: the fast EMA minus the slow one, or the MACD
 //     line minus its signal. Exactly 0 keeps the side it had.
-//   - A histogram bar smaller than the one before (nearer zero) on that side is the
-//     warning.
+//   - The warning, rule "shrink" (the MACD row's): the bar is smaller than the one before,
+//     nearer zero.
+//   - Rule "speed" (the EMA row's): the gap closed by more on this bar than on the one
+//     before. A gap still closing but more slowly, as when a bounce or a pullback fades
+//     while the lagging EMAs drift together, is no warning. "shrink" on the EMA row was the
+//     first version's, and warned there too.
 //   - Tradovate seeds an EMA on its first n values and this lab on the first value. The
 //     declared warm-up leaves that gap under a billionth of a point
 //     (test/mock.test.mjs holds the lanes to the indicator).
 export const DATABOX_STATES = ["", "Long", "Potentially short", "Short", "Potentially long"];
 export const DATABOX_COLORS = ["", "#26a65b", "#e0a341", "#d1566e", "#a8d36a"];
-function databoxRow(h, warnOn) {
+export function databoxRow(h, rule) {
   const n = h.length, code = new Int8Array(n);
   let side = 0;
   for (let i = 0; i < n; i++) {
@@ -229,8 +233,13 @@ function databoxRow(h, warnOn) {
     if (!Number.isFinite(x)) { side = 0; continue; }
     side = x > 0 ? 1 : x < 0 ? -1 : side;
     if (!side) continue;
-    const prev = i > 0 ? h[i - 1] : NaN;
-    const warn = warnOn && Number.isFinite(prev) && (side === 1 ? x < prev : x > prev);
+    const prev = i > 0 ? h[i - 1] : NaN, prev2 = i > 1 ? h[i - 2] : NaN;
+    let warn = false;
+    if (rule === "shrink") warn = Number.isFinite(prev) && (side === 1 ? x < prev : x > prev);
+    else if (rule === "speed" && Number.isFinite(prev) && Number.isFinite(prev2)) {
+      const move = x - prev, before = prev - prev2;
+      warn = side === 1 ? move < 0 && move < before : move > 0 && move > before;
+    }
     code[i] = side === 1 ? (warn ? 2 : 1) : warn ? 4 : 3;
   }
   return code;
@@ -654,17 +663,20 @@ export const STUDIES = {
              int("fast", "MACD fast", 12, 2, 500), int("slow", "MACD slow", 26, 3, 1000), int("signal", "MACD signal", 9, 2, 200),
              { key: "warn", label: "Warnings", type: "select", default: "both",
                options: [["both", "Both rows"], ["ema", "EMA row only"], ["macd", "MACD row only"], ["off", "Off"]] },
+             { key: "emaRule", label: "EMA row warns when the gap is", type: "select", default: "speed",
+               options: [["speed", "Closing faster than the bar before"], ["closer", "Closing at all"]] },
              { key: "gateOn", label: "Gate and trade split read", type: "select", default: "both",
                options: [["both", "Both rows on one side"], ["strict", "Both rows Long / Short, no warning"], ["ema", "The EMA row's side"], ["macd", "The MACD row's side"]] }],
-    label: (p) => `Databox EMA ${p.emaFast}/${p.emaSlow}, MACD ${p.fast}/${p.slow}/${p.signal}`,
+    label: (p) => `Databox EMA ${p.emaFast}/${p.emaSlow}${p.emaRule === "closer" ? " (warns on any closing gap)" : ""}, MACD ${p.fast}/${p.slow}/${p.signal}`,
     warmup: (p) => 10 * (Math.max(p.emaFast, p.emaSlow, p.fast, p.slow) + p.signal), gates: ["with", "against"],
     terms: { with: "Longs while the box reads long, shorts while it reads short", against: "Longs while the box reads short, shorts while it reads long" },
-    hint: "Each row as the databox indicator reads it at bar close: green Long, amber Potentially short, red Short, yellow-green Potentially long. A Potentially is the row's histogram bar smaller than the one before. research/databox_predict.mjs found no predictive ability in 2026.",
+    hint: "Each row as the databox indicator reads it at bar close: green Long, amber Potentially short, red Short, yellow-green Potentially long. On the MACD row a Potentially is the histogram bar smaller than the one before; on the EMA row, the gap between the EMAs closing by more than it did the bar before. research/databox_predict.mjs found no predictive ability in 2026.",
     compute: (b, p) => {
       const n = b.close.length, ef = ema(b.close, p.emaFast), es = ema(b.close, p.emaSlow), m = macd(b.close, p.fast, p.slow, p.signal);
       const spread = new Float64Array(n);
       for (let i = 0; i < n; i++) spread[i] = ef[i] - es[i];
-      const e = databoxRow(spread, p.warn === "both" || p.warn === "ema"), mc = databoxRow(m.hist, p.warn === "both" || p.warn === "macd");
+      const emaOn = p.warn === "both" || p.warn === "ema", macdOn = p.warn === "both" || p.warn === "macd";
+      const e = databoxRow(spread, emaOn ? (p.emaRule === "closer" ? "shrink" : "speed") : "off"), mc = databoxRow(m.hist, macdOn ? "shrink" : "off");
       const dir = new Int8Array(n);
       for (let i = 0; i < n; i++) {
         const a = databoxSide(e[i]), z = databoxSide(mc[i]);

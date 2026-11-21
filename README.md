@@ -1112,20 +1112,24 @@ TradingCustomIndicators repo) itself through the Tradovate mock. It takes about 
   more entry in its `TFS`.
 
 Results:
-- **It calls nothing better than random markets** at its defaults (EMA 12/26, MACD 12/26/9;
-  9/21 gave the same). Of 140 long/short tests the largest |z| is 2.4, and four reach 2.0,
-  where chance gives about 7.
+- **Taken together, it calls nothing better than random markets.** That holds at its defaults:
+  EMA 12/26, MACD 12/26/9, and the EMA row warning when the gap closes faster than the bar
+  before. Every combination of states counts no more beyond-chance cells than placebo markets
+  give, except 1m + 5m at one minute ahead (p 0.02, one of twelve). The strongest
+  combinations picked on Jan–Jul do no better on Aug–Oct than placebo markets' picks (p 0.16,
+  0.48 and 0.77).
+- **One reading stands out, and it points the opposite way to its name.** The 5m EMA row's
+  "Potentially long" is a bounce gathering pace while the EMAs are still bearish.
+  - Price fell 2.65 points over the next 15 minutes, against +1.83 after plain "Short", in
+    all three periods (z −3.3, 1,569 occurrences).
+  - But by less each period: −3.9, −2.4, −1.8.
+  - It is the short-term reversal seen through the box, found after the fact among 140 tests,
+    so it is a lead for new bars. Its mirror, a pullback gathering pace in a rise, shows
+    nothing.
 - **At 12/26 the EMA row is the MACD line against zero,** since that line is the 12 EMA minus
   the 26.
-- **The warnings do not call turns.** After the 5m EMA row's "Potentially long", price did
-  worse than after plain "Short" in every period (z −2.0 at +15 minutes). That is the opposite
-  of its name, and still within chance.
-- **Every combination of states counts no more beyond-chance cells than placebo markets
-  give.** The lowest p is 0.05, 5m at one minute ahead, one of twelve. The strongest
-  combinations picked on Jan–Jul do no better on Aug–Oct than placebo markets' picks (p 0.14,
-  0.17 and 0.66).
 - **The test can see real effects.** As a control, the known 5-minute reversal shows at z −2.
-  At +15 minutes it would have caught gaps of 1.1–3.0 points on 1m and 2.6–5.4 on 5m, against
+  At +15 minutes it would have caught gaps of 1.1–3.0 points on 1m and 2.3–5.4 on 5m, against
   2.5 needed to pay costs.
 
 **To check it by hand,** add the **EMA + MACD databox** study (Indicators, under Oscillators) on

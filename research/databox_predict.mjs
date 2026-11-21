@@ -22,29 +22,36 @@
 // - Costs: a round trip is about 1.25 points on MNQ ($1.50 commission and a tick each
 //   way), so an edge smaller than that does not pay to trade.
 //
-// RESULT (run 2026-11-21 at the indicator's defaults, EMA 12/26 and MACD 12/26/9; 82,555 New
-// York minutes of 2026; 100 placebo markets): the box does not call the next 1-30 minutes
-// better than random markets, on 1m, on 5m, or on both.
-//   - At 12/26 the EMA row reads the MACD line against zero.
-//   - The control works. The last 5 minutes' direction shows the known reversal: -0.19 points
-//     over the next minute (z -2.2) and -0.67 over the next five (z -2.0).
-//   - Read as long / short: 140 tests across the three sets (36 signals at 4 horizons; four
-//     too rare to read). The largest |z| is 2.4; four reach 2.0, where chance gives about 7.
-//     Trend states lean slightly the wrong way, as reversal would make them.
-//   - The warnings do not call turns. After the 5m EMA row's Potentially long (the MACD line
-//     below zero, rising), price did worse than after its plain Short: -1.5 points at +5 min
-//     (z -2.4) and -3.1 at +15 (z -2.0), lower in all three periods. That is the opposite
-//     of its name, and inside chance across this many tests.
+// RESULT (run 2026-11-21 at the indicator's defaults: EMA 12/26, MACD 12/26/9, and the EMA
+// row warning on a gap closing faster than the bar before; 82,555 New York minutes of 2026;
+// 100 placebo markets):
+//   - Taken together, the box does not call the next 1-30 minutes better than random markets.
+//   - One reading stands out, opposite to its name: the 5m EMA row's Potentially long, a
+//     bounce gathering pace while the EMAs are still bearish. Against plain Short, price
+//     did -0.50 points at +1 min (z -3.6), -1.85 at +5 (z -3.0), -4.47 at +15 (z -3.3)
+//     and -4.22 at +30 (z -2.2). It was lower in all three periods.
+//       - In points over 15 minutes: -2.65 after it, +1.83 after Short, +0.27 every
+//         minute, across 1,569 runs. By period -3.87 / -2.42 / -1.76: shrinking.
+//       - It is the market's short-term reversal (the control below) seen through the box.
+//         It was found after the fact: under the null, the largest of 140 |z| is about
+//         2.9. Its mirror, a pullback gathering pace in a rise, shows nothing.
+//       - A lead for bars nothing was chosen on, not a signal.
+//   - The other signals: the only other |z| >= 2 is the EMA row's all Long vs all Short on
+//     1m + 5m, -2.1. The 140 tests count each warning twice (its own set and 1m + 5m).
 //   - Every combination of states, against placebo markets:
-//       1m      p 0.15-1.00
-//       5m      3 of 12 at +1 minute (placebo median 1, p 0.05), then p 0.50-1.00
-//       1m + 5m 6-7 of 64 (median 3, p 0.08-0.39)
-//     Picked on Jan-Jul and read on Aug-Oct, the 10 strongest make -0.39 (1m), +1.13 (5m)
-//     and +1.69 points (1m + 5m). Placebo markets' picks do as well (p 0.66, 0.14, 0.17).
-//   - The test sees edges at +15 min of 1.1-3.0 points on 1m and 2.6-5.4 on 5m; the 1m + 5m
+//       1m      p 0.14-1.00
+//       5m      p 0.06-1.00
+//       1m + 5m 9 of 72 at +1 minute (median 4, p 0.02), then p 0.24, 0.96, 1.00
+//     The 10 strongest picked on Jan-Jul make -0.70, +0.28 and +1.50 points on Aug-Oct,
+//     as placebo markets' picks do (p 0.77, 0.48, 0.16).
+//   - The control works. The last 5 minutes' direction shows the known reversal: -0.19
+//     points at +1 min (z -2.2), -0.67 at +5 (z -2.0).
+//   - The test sees edges at +15 min of 1.1-3.0 points on 1m and 2.3-5.4 on 5m; 1m + 5m
 //     signals range 1.1-9.4. A round trip costs 1.25, so a long-minus-short gap needs about
 //     2.5 to pay.
-//   - The first run, at EMA 9/21 (2026-11-20), gave the same verdict.
+//   - Earlier runs, with the EMA row warning on any closing gap (EMA 9/21 on 2026-11-20, then
+//     12/26), found nothing past chance. There the same warning leaned the same way,
+//     z -1.8 to -2.5.
 //
 //   node --max-old-space-size=8192 research/databox_predict.mjs [--placebos N]   (about a minute)
 

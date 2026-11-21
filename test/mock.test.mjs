@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 import { audit, defaultProps, loadIndicator, Problems, Run } from "../tradovate/mock/runtime.mjs";
 import { boundPx, graphicsPrims, lengthPx, overlaps, paneAxes, plotPrims, textBox } from "../tradovate/mock/draw.mjs";
 import { indicatorFile, listIndicators, loadTools, readIndicator } from "../tradovate/mock/library.mjs";
-import { STUDIES } from "../src/studies.mjs";
+import { STUDIES, databoxRow } from "../src/studies.mjs";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const VENDOR = path.join(ROOT, "tradovate", "mock", "vendor");
@@ -239,8 +239,10 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
   const E = new Run(raw).compute(BARS), M = new Run(vendor("macd.js")).compute(BARS);
   const hEma = (i) => (i < 0 ? undefined : E[i].f - E[i].s);
   const hMacd = (i) => (i < 0 ? undefined : M[i].difference);
-  // What a row should read on bar j, worked out again from a histogram series.
-  const expected = (h, j, ready) => {
+  // What a row should read on bar j, worked out again from a histogram series and the
+  // row's rule: "shrink" (the bar nearer zero than the one before; the MACD row's) or
+  // "speed" (the bar moved toward zero by more than the one before moved; the EMA row's).
+  const expected = (h, j, ready, rule) => {
     const sides = [];
     let side = 0;
     for (let i = 0; i <= j; i++) {
@@ -249,7 +251,9 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
     }
     let bars = 0;
     for (let i = j; i >= 0 && sides[i] === sides[j]; i--) bars++;
-    const s = sides[j], warn = h(j - 1) === undefined ? 0 : s === 1 && h(j) < h(j - 1) ? -1 : s === -1 && h(j) > h(j - 1) ? 1 : 0;
+    const s = sides[j], m = h(j) - h(j - 1), before = h(j - 1) - h(j - 2);
+    const warn = rule === "shrink" ? h(j - 1) !== undefined && (s === 1 ? h(j) < h(j - 1) : s === -1 && h(j) > h(j - 1))
+      : rule === "speed" ? h(j - 2) !== undefined && (s === 1 ? m < 0 && m < before : s === -1 && m > 0 && m > before) : false;
     if (!ready || !s) return { text: "Warming up", bars: "" };
     return { text: s === 1 ? (warn ? "Potentially short" : "Long") : warn ? "Potentially long" : "Short", bars: `${bars} bar${bars === 1 ? "" : "s"}` };
   };
@@ -269,7 +273,7 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
     let seen = new Set();
     for (let k = 40; k < BARS.length; k += 47) {
       const b = boxAt(k), j = k - 1;
-      const e = expected(hEma, j, j >= 26), m = expected(hMacd, j, j >= 33);
+      const e = expected(hEma, j, j >= 26, "speed"), m = expected(hMacd, j, j >= 33, "shrink");
       eq(b.dbState0.text, e.text, `EMA row at bar ${j}:`); eq(b.dbBars0.text, e.bars, `EMA count at bar ${j}:`);
       eq(b.dbState1.text, m.text, `MACD row at bar ${j}:`); eq(b.dbBars1.text, m.bars, `MACD count at bar ${j}:`);
       seen.add(e.text); seen.add(m.text);
@@ -279,15 +283,39 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
   t("reading the forming bar reads the last bar instead", () => {
     for (const k of [300, 1234, 5000]) {
       const b = boxAt(k, { readFormingBar: true });
-      eq(b.dbState1.text, expected(hMacd, k, true).text, `MACD row at bar ${k}:`);
-      eq(b.dbState0.text, expected(hEma, k, true).text, `EMA row at bar ${k}:`);
+      eq(b.dbState1.text, expected(hMacd, k, true, "shrink").text, `MACD row at bar ${k}:`);
+      eq(b.dbState0.text, expected(hEma, k, true, "speed").text, `EMA row at bar ${k}:`);
     }
   });
-  t("warnings can be switched off row by row", () => {
+  t("warnings can be switched off row by row, and a setting saved as on / off still reads", () => {
     for (let k = 40; k < 3000; k += 31) {
-      const b = boxAt(k, { emaWarning: false, macdWarning: false });
-      for (const key of ["dbState0", "dbState1"]) if (/Potentially/.test(b[key].text)) throw new Error(`${key} warned at ${k}`);
+      for (const props of [{ emaWarning: "off", macdWarning: false }, { emaWarning: false, macdWarning: false }]) {
+        const b = boxAt(k, props);
+        for (const key of ["dbState0", "dbState1"]) if (/Potentially/.test(b[key].text)) throw new Error(`${key} warned at ${k}`);
+      }
+      eq(boxAt(k, { emaWarning: true }).dbState0.text, boxAt(k, {}).dbState0.text, `on reads as the default at ${k}:`);
     }
+  });
+  t("the EMA row's \"closing at all\" reads any closing gap, as the first version did", () => {
+    let differs = 0;
+    for (let k = 40; k < BARS.length; k += 47) {
+      const j = k - 1, b = boxAt(k, { emaWarning: "closer" });
+      eq(b.dbState0.text, expected(hEma, j, j >= 26, "shrink").text, `EMA row at bar ${j}:`);
+      if (b.dbState0.text !== boxAt(k, {}).dbState0.text) differs++;
+    }
+    if (!differs) throw new Error("the two rules never differed");
+  });
+  t("hand-traced: a gap still closing, but more slowly, is no warning; closing faster is", () => {
+    // a bounce in a drop: the gap closes by 2, 3, 2, 1, then 0.5 a bar
+    const bounce = [-10, -8, -5, -3, -2, -1.5];
+    eq([...databoxRow(bounce, "speed")].join(","), "3,3,4,3,3,3", "speed:");
+    eq([...databoxRow(bounce, "shrink")].join(","), "3,4,4,4,4,4", "closing at all:");
+    // its mirror, a pullback in a rise
+    eq([...databoxRow(bounce.map((x) => -x), "speed")].join(","), "1,1,2,1,1,1", "the mirror:");
+    // the gap turning: widening, then closing ever faster
+    eq([...databoxRow([-4, -5, -4.5, -3.5, -2, -0.2], "speed")].join(","), "3,3,4,4,4,4", "a turn:");
+    // closing at the same speed as the bar before is no warning
+    eq([...databoxRow([-6, -5, -3.5, -2], "speed")].join(","), "3,3,4,3", "the same speed:");
   });
   t("the lab's databox study draws the indicator's states, bar for bar after its warm-up", () => {
     // the study on the same bars, as the chart computes it
