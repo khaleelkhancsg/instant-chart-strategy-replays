@@ -7,7 +7,7 @@
 // alone and together. A 30-second series plugs in as another entry in TFS once one exists.
 //
 // - The box: the indicator file itself, run bar by bar through the mock of Tradovate's
-//   runtime (tradovate/mock), at its defaults (EMA 9/21, MACD 12/26/9, both warnings).
+//   runtime (tradovate/mock), at its defaults (EMA 12/26, MACD 12/26/9, both warnings).
 //   Each row is Long, Potentially short, Short or Potentially long.
 // - When it is read: at the close of every New York minute (08:30-15:00 CT) of 2026, each
 //   timeframe's box as of its last CLOSED bar (a 5-minute box changes every 5 minutes).
@@ -22,24 +22,29 @@
 // - Costs: a round trip is about 1.25 points on MNQ ($1.50 commission and a tick each
 //   way), so an edge smaller than that does not pay to trade.
 //
-// RESULT (run 2026-11-20; 82,555 New York minutes of 2026; 100 placebo markets): the box
-// does not call the next 1-30 minutes better than random markets, on 1m, on 5m, or on both.
+// RESULT (run 2026-11-21 at the indicator's defaults, EMA 12/26 and MACD 12/26/9; 82,555 New
+// York minutes of 2026; 100 placebo markets): the box does not call the next 1-30 minutes
+// better than random markets, on 1m, on 5m, or on both.
+//   - At 12/26 the EMA row reads the MACD line against zero.
 //   - The control works. The last 5 minutes' direction shows the known reversal: -0.19 points
 //     over the next minute (z -2.2) and -0.67 over the next five (z -2.0).
-//   - Read as long / short, about 180 tests across the three sets. None passes |z| 2.5; two
-//     reach 2.0. Trend states lean slightly the wrong way, as reversal would make them.
-//   - The warnings do not call turns. After the 5m EMA row's Potentially long, price did
-//     worse than after its plain Short: -1.4 points at +5 min (z -2.5) and -2.8 at +15
-//     (z -1.8), lower in all three periods. That is the opposite of its name, and still
-//     inside chance across this many tests.
-//   - Every combination of states: 1m and 5m have 0-2 cells a horizon outside 1.96 sd,
-//     where placebo markets give as many (p 0.12-1.00). 1m + 5m has 8 of 57 at +1 minute,
-//     against a placebo median of 3 (p 0.04), then p 0.07, 0.35 and 0.73 at 5, 15 and 30.
-//     The 10 strongest picked on Jan-Jul make +1.13 points on Aug-Oct, inside what the
-//     placebo markets' picks make (-4.97 to +2.92, p 0.22).
-//   - The test sees edges of 1.1-3.5 points at +15 min on one timeframe, and 2.9-8.8 on the
-//     rarer 1m + 5m signals. A round trip costs 1.25, so a long-minus-short gap needs about
+//   - Read as long / short: 140 tests across the three sets (36 signals at 4 horizons; four
+//     too rare to read). The largest |z| is 2.4; four reach 2.0, where chance gives about 7.
+//     Trend states lean slightly the wrong way, as reversal would make them.
+//   - The warnings do not call turns. After the 5m EMA row's Potentially long (the MACD line
+//     below zero, rising), price did worse than after its plain Short: -1.5 points at +5 min
+//     (z -2.4) and -3.1 at +15 (z -2.0), lower in all three periods. That is the opposite
+//     of its name, and inside chance across this many tests.
+//   - Every combination of states, against placebo markets:
+//       1m      p 0.15-1.00
+//       5m      3 of 12 at +1 minute (placebo median 1, p 0.05), then p 0.50-1.00
+//       1m + 5m 6-7 of 64 (median 3, p 0.08-0.39)
+//     Picked on Jan-Jul and read on Aug-Oct, the 10 strongest make -0.39 (1m), +1.13 (5m)
+//     and +1.69 points (1m + 5m). Placebo markets' picks do as well (p 0.66, 0.14, 0.17).
+//   - The test sees edges at +15 min of 1.1-3.0 points on 1m and 2.6-5.4 on 5m; the 1m + 5m
+//     signals range 1.1-9.4. A round trip costs 1.25, so a long-minus-short gap needs about
 //     2.5 to pay.
+//   - The first run, at EMA 9/21 (2026-11-20), gave the same verdict.
 //
 //   node --max-old-space-size=8192 research/databox_predict.mjs [--placebos N]   (about a minute)
 

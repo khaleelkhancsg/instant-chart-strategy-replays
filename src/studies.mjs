@@ -650,7 +650,7 @@ export const STUDIES = {
   },
   databox: {
     name: "EMA + MACD databox", group: "Oscillators", pane: "sub", kind: "trend",
-    params: [int("emaFast", "EMA fast (1 = price)", 9, 1, 500), int("emaSlow", "EMA slow", 21, 2, 1000),
+    params: [int("emaFast", "EMA fast (1 = price)", 12, 1, 500), int("emaSlow", "EMA slow", 26, 2, 1000),
              int("fast", "MACD fast", 12, 2, 500), int("slow", "MACD slow", 26, 3, 1000), int("signal", "MACD signal", 9, 2, 200),
              { key: "warn", label: "Warnings", type: "select", default: "both",
                options: [["both", "Both rows"], ["ema", "EMA row only"], ["macd", "MACD row only"], ["off", "Off"]] },

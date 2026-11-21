@@ -234,7 +234,7 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
   const vendor = (f) => loadIndicator(fs.readFileSync(path.join(VENDOR, "builtin", f), "utf8"), tools);
   const box = loadIndicator(readIndicator("emaMacdDatabox").source, tools);
   // Tradovate's EMA tool from the first bar (its built-in EMA hides the first `period`)
-  const raw = loadIndicator(`const EMA = require("./tools/EMA"); class c { init() { this.f = EMA(9); this.s = EMA(21); }
+  const raw = loadIndicator(`const EMA = require("./tools/EMA"); class c { init() { this.f = EMA(12); this.s = EMA(26); }
     map(d) { return { f: this.f(d.value()), s: this.s(d.value()) }; } } module.exports = { name: "x", calculator: c };`, tools);
   const E = new Run(raw).compute(BARS), M = new Run(vendor("macd.js")).compute(BARS);
   const hEma = (i) => (i < 0 ? undefined : E[i].f - E[i].s);
@@ -260,16 +260,16 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
 
   t("its EMA lines are Tradovate's EMA, to the bit", () => {
     const mine = new Run(box, { props: { showEmas: true } }).compute(BARS);
-    for (const [n, field] of [[9, "emaFast"], [21, "emaSlow"]]) {
+    for (const [n, field] of [[12, "emaFast"], [26, "emaSlow"]]) {
       const theirs = new Run(vendor("ema.js"), { props: { period: n } }).compute(BARS);
-      for (let i = 21; i < BARS.length; i++) eq(mine[i][field], theirs[i].value, `${field} on bar ${i}:`);
+      for (let i = 26; i < BARS.length; i++) eq(mine[i][field], theirs[i].value, `${field} on bar ${i}:`);
     }
   });
   t("each row reads the last closed bar: its side, its warning and its count, from Tradovate's MACD", () => {
     let seen = new Set();
     for (let k = 40; k < BARS.length; k += 47) {
       const b = boxAt(k), j = k - 1;
-      const e = expected(hEma, j, j >= 21), m = expected(hMacd, j, j >= 33);
+      const e = expected(hEma, j, j >= 26), m = expected(hMacd, j, j >= 33);
       eq(b.dbState0.text, e.text, `EMA row at bar ${j}:`); eq(b.dbBars0.text, e.bars, `EMA count at bar ${j}:`);
       eq(b.dbState1.text, m.text, `MACD row at bar ${j}:`); eq(b.dbBars1.text, m.bars, `MACD count at bar ${j}:`);
       seen.add(e.text); seen.add(m.text);

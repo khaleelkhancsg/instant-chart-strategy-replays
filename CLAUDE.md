@@ -426,7 +426,8 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
 
 `research/databox_predict.mjs` runs the indicator file itself through the mock (a wrapper on
 `calc.map` reads `calc.st[i]`), so its states are the indicator's own.
-- **It finds no predictive ability on 1m, 5m or 1m + 5m in 2026,** against 100 placebo markets.
+- **It finds no predictive ability on 1m, 5m or 1m + 5m in 2026,** against 100 placebo markets,
+  at EMA 12/26 and MACD 12/26/9 (the defaults since 2026-11-21) as at 9/21.
   Its control, the 5-minute reversal, shows at z −2.
 - **The warnings lean the wrong way where they lean at all.**
 - **The `databox` study** (src/studies.mjs) is the box on the chart, a lane a row.
