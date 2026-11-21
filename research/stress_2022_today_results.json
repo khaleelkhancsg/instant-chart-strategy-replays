@@ -1,0 +1,500 @@
+{
+ "run": "2026-11-21T20:36:35.371Z",
+ "today": 28545.75,
+ "scale": 2.2987012343076683,
+ "T": 665408.68,
+ "results": {
+  "2022 at today's price": {
+   "shipped: 4 lots": {
+    "trades": 242,
+    "net": 693,
+    "winRate": 53.7,
+    "pf": 1.01,
+    "perTrade": 3,
+    "cal": 31.1,
+    "real": 29.8,
+    "boot": 30.3,
+    "downDays": 103,
+    "lots": 3.74,
+    "closed": {
+     "pass": 31.1,
+     "fail": 68.9,
+     "open": 0,
+     "windows": 334
+    },
+    "live": {
+     "pass": 26.9,
+     "fail": 73.1,
+     "open": 0,
+     "windows": 334
+    },
+    "worstDay": -600,
+    "deepestFall": 7986,
+    "stopPts": 246
+   },
+   "fixed 3 lots": {
+    "trades": 253,
+    "net": 9716,
+    "winRate": 61.7,
+    "pf": 1.19,
+    "perTrade": 38,
+    "cal": 49.4,
+    "real": 47.5,
+    "boot": 44.1,
+    "downDays": 77,
+    "lots": 2.87,
+    "closed": {
+     "pass": 49.4,
+     "fail": 50.6,
+     "open": 0,
+     "windows": 334
+    },
+    "live": {
+     "pass": 39.5,
+     "fail": 60.5,
+     "open": 0,
+     "windows": 334
+    },
+    "worstDay": -600,
+    "deepestFall": 4929,
+    "stopPts": 241
+   },
+   "fixed 2 lots": {
+    "trades": 284,
+    "net": 20181,
+    "winRate": 72.2,
+    "pf": 1.62,
+    "perTrade": 71,
+    "cal": 63.5,
+    "real": 62.2,
+    "boot": 65.6,
+    "downDays": 36,
+    "lots": 1.85,
+    "closed": {
+     "pass": 63.5,
+     "fail": 33.8,
+     "open": 2.7,
+     "windows": 334
+    },
+    "live": {
+     "pass": 54.5,
+     "fail": 45.5,
+     "open": 0,
+     "windows": 334
+    },
+    "worstDay": -600,
+    "deepestFall": 2454,
+    "stopPts": 235
+   },
+   "fixed 1 lot": {
+    "trades": 422,
+    "net": 10785,
+    "winRate": 72,
+    "pf": 1.34,
+    "perTrade": 26,
+    "cal": 47.6,
+    "real": 45.8,
+    "boot": 47.5,
+    "downDays": 7,
+    "lots": 1,
+    "closed": {
+     "pass": 47.6,
+     "fail": 23.4,
+     "open": 29,
+     "windows": 334
+    },
+    "live": {
+     "pass": 47,
+     "fail": 29,
+     "open": 24,
+     "windows": 334
+    },
+    "worstDay": -600,
+    "deepestFall": 1777,
+    "stopPts": 238
+   },
+   "$ rule, 0.5-1.5 (named)": {
+    "trades": 253,
+    "net": 15263,
+    "winRate": 64.8,
+    "pf": 1.33,
+    "perTrade": 60,
+    "cal": 54.8,
+    "real": 53.4,
+    "boot": 53.4,
+    "downDays": 67,
+    "lots": 2.74,
+    "closed": {
+     "pass": 54.8,
+     "fail": 45.2,
+     "open": 0,
+     "windows": 334
+    },
+    "live": {
+     "pass": 45.8,
+     "fail": 54.2,
+     "open": 0,
+     "windows": 334
+    },
+    "worstDay": -600,
+    "deepestFall": 4995,
+    "stopPts": 242
+   },
+   "$ rule, cut only (0.5-1)": {
+    "trades": 253,
+    "net": 15263,
+    "winRate": 64.8,
+    "pf": 1.33,
+    "perTrade": 60,
+    "cal": 54.8,
+    "real": 53.4,
+    "boot": 53.4,
+    "downDays": 67,
+    "lots": 2.74,
+    "closed": {
+     "pass": 54.8,
+     "fail": 45.2,
+     "open": 0,
+     "windows": 334
+    },
+    "live": {
+     "pass": 45.8,
+     "fail": 54.2,
+     "open": 0,
+     "windows": 334
+    },
+    "worstDay": -600,
+    "deepestFall": 4995,
+    "stopPts": 242
+   }
+  },
+  "2022 as it was": {
+   "shipped: 4 lots": {
+    "trades": 307,
+    "net": 15265,
+    "winRate": 72.6,
+    "pf": 1.47,
+    "perTrade": 50,
+    "cal": 57.8,
+    "real": 58.4,
+    "boot": 58.3,
+    "downDays": 34,
+    "lots": 3.65,
+    "closed": {
+     "pass": 57.8,
+     "fail": 37.1,
+     "open": 5.1,
+     "windows": 334
+    },
+    "live": {
+     "pass": 50,
+     "fail": 49.1,
+     "open": 0.9,
+     "windows": 334
+    },
+    "worstDay": -600,
+    "deepestFall": 2724,
+    "stopPts": 101
+   },
+   "fixed 3 lots": {
+    "trades": 381,
+    "net": 11560,
+    "winRate": 71.7,
+    "pf": 1.34,
+    "perTrade": 30,
+    "cal": 56,
+    "real": 54.6,
+    "boot": 51.3,
+    "downDays": 19,
+    "lots": 2.8,
+    "closed": {
+     "pass": 56,
+     "fail": 34.7,
+     "open": 9.3,
+     "windows": 334
+    },
+    "live": {
+     "pass": 55.4,
+     "fail": 42.5,
+     "open": 2.1,
+     "windows": 334
+    },
+    "worstDay": -600,
+    "deepestFall": 2905,
+    "stopPts": 104
+   },
+   "fixed 2 lots": {
+    "trades": 458,
+    "net": 7077,
+    "winRate": 71.4,
+    "pf": 1.27,
+    "perTrade": 15,
+    "cal": 40.7,
+    "real": 37.4,
+    "boot": 33,
+    "downDays": 4,
+    "lots": 1.74,
+    "closed": {
+     "pass": 40.7,
+     "fail": 18.6,
+     "open": 40.7,
+     "windows": 334
+    },
+    "live": {
+     "pass": 38,
+     "fail": 28.7,
+     "open": 33.2,
+     "windows": 334
+    },
+    "worstDay": -600,
+    "deepestFall": 1959,
+    "stopPts": 105
+   },
+   "fixed 1 lot": {
+    "trades": 530,
+    "net": 5724,
+    "winRate": 72.1,
+    "pf": 1.34,
+    "perTrade": 11,
+    "cal": 7.8,
+    "real": 5.9,
+    "boot": 10.5,
+    "downDays": 0,
+    "lots": 1,
+    "closed": {
+     "pass": 7.8,
+     "fail": 0,
+     "open": 92.2,
+     "windows": 334
+    },
+    "live": {
+     "pass": 7.8,
+     "fail": 0,
+     "open": 92.2,
+     "windows": 334
+    },
+    "worstDay": -481,
+    "deepestFall": 901,
+    "stopPts": 104
+   },
+   "$ rule, 0.5-1.5 (named)": {
+    "trades": 264,
+    "net": 9305,
+    "winRate": 65.2,
+    "pf": 1.2,
+    "perTrade": 35,
+    "cal": 48.2,
+    "real": 45.8,
+    "boot": 46.1,
+    "downDays": 63,
+    "lots": 5.5,
+    "closed": {
+     "pass": 48.2,
+     "fail": 51.8,
+     "open": 0,
+     "windows": 334
+    },
+    "live": {
+     "pass": 41.3,
+     "fail": 58.7,
+     "open": 0,
+     "windows": 334
+    },
+    "worstDay": -600,
+    "deepestFall": 5043,
+    "stopPts": 105
+   },
+   "$ rule, cut only (0.5-1)": {
+    "trades": 307,
+    "net": 15265,
+    "winRate": 72.6,
+    "pf": 1.47,
+    "perTrade": 50,
+    "cal": 57.8,
+    "real": 58.4,
+    "boot": 58.3,
+    "downDays": 34,
+    "lots": 3.65,
+    "closed": {
+     "pass": 57.8,
+     "fail": 37.1,
+     "open": 5.1,
+     "windows": 334
+    },
+    "live": {
+     "pass": 50,
+     "fail": 49.1,
+     "open": 0.9,
+     "windows": 334
+    },
+    "worstDay": -600,
+    "deepestFall": 2724,
+    "stopPts": 101
+   }
+  },
+  "2026 (to Jul 14)": {
+   "shipped: 4 lots": {
+    "trades": 128,
+    "net": 9933,
+    "winRate": 66.4,
+    "pf": 1.62,
+    "perTrade": 78,
+    "cal": 73.9,
+    "real": 74.8,
+    "boot": 71.1,
+    "downDays": 17,
+    "lots": 3.44,
+    "closed": {
+     "pass": 73.9,
+     "fail": 22.4,
+     "open": 3.6,
+     "windows": 165
+    },
+    "live": {
+     "pass": 70.3,
+     "fail": 29.1,
+     "open": 0.6,
+     "windows": 165
+    },
+    "worstDay": -600,
+    "deepestFall": 2812,
+    "stopPts": 149
+   },
+   "fixed 3 lots": {
+    "trades": 141,
+    "net": 5547,
+    "winRate": 64.5,
+    "pf": 1.33,
+    "perTrade": 39,
+    "cal": 59.4,
+    "real": 59.7,
+    "boot": 54.4,
+    "downDays": 14,
+    "lots": 2.73,
+    "closed": {
+     "pass": 59.4,
+     "fail": 36.4,
+     "open": 4.2,
+     "windows": 165
+    },
+    "live": {
+     "pass": 55.8,
+     "fail": 40,
+     "open": 4.2,
+     "windows": 165
+    },
+    "worstDay": -600,
+    "deepestFall": 3717,
+    "stopPts": 147
+   },
+   "fixed 2 lots": {
+    "trades": 178,
+    "net": 3208,
+    "winRate": 63.5,
+    "pf": 1.23,
+    "perTrade": 18,
+    "cal": 38.2,
+    "real": 38.7,
+    "boot": 33.9,
+    "downDays": 7,
+    "lots": 1.7,
+    "closed": {
+     "pass": 38.2,
+     "fail": 40,
+     "open": 21.8,
+     "windows": 165
+    },
+    "live": {
+     "pass": 35.8,
+     "fail": 53.3,
+     "open": 10.9,
+     "windows": 165
+    },
+    "worstDay": -600,
+    "deepestFall": 2352,
+    "stopPts": 146
+   },
+   "fixed 1 lot": {
+    "trades": 215,
+    "net": 1357,
+    "winRate": 63.3,
+    "pf": 1.13,
+    "perTrade": 6,
+    "cal": 7.3,
+    "real": 4.2,
+    "boot": 11.4,
+    "downDays": 0,
+    "lots": 1,
+    "closed": {
+     "pass": 7.3,
+     "fail": 23.6,
+     "open": 69.1,
+     "windows": 165
+    },
+    "live": {
+     "pass": 7.3,
+     "fail": 23.6,
+     "open": 69.1,
+     "windows": 165
+    },
+    "worstDay": -437,
+    "deepestFall": 1810,
+    "stopPts": 146
+   },
+   "$ rule, 0.5-1.5 (named)": {
+    "trades": 128,
+    "net": 7978,
+    "winRate": 64.8,
+    "pf": 1.47,
+    "perTrade": 62,
+    "cal": 72.7,
+    "real": 73.9,
+    "boot": 65.2,
+    "downDays": 19,
+    "lots": 3.41,
+    "closed": {
+     "pass": 72.7,
+     "fail": 25.5,
+     "open": 1.8,
+     "windows": 165
+    },
+    "live": {
+     "pass": 66.7,
+     "fail": 33.3,
+     "open": 0,
+     "windows": 165
+    },
+    "worstDay": -600,
+    "deepestFall": 3627,
+    "stopPts": 151
+   },
+   "$ rule, cut only (0.5-1)": {
+    "trades": 131,
+    "net": 9210,
+    "winRate": 66.4,
+    "pf": 1.59,
+    "perTrade": 70,
+    "cal": 73.9,
+    "real": 74.8,
+    "boot": 70.1,
+    "downDays": 16,
+    "lots": 3.24,
+    "closed": {
+     "pass": 73.9,
+     "fail": 22.4,
+     "open": 3.6,
+     "windows": 165
+    },
+    "live": {
+     "pass": 70.9,
+     "fail": 28.5,
+     "open": 0.6,
+     "windows": 165
+    },
+    "worstDay": -600,
+    "deepestFall": 2812,
+    "stopPts": 151
+   }
+  }
+ }
+}

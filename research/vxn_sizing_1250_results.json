@@ -1,5 +1,5 @@
 {
- "run": "2026-11-21T20:23:42.337Z",
+ "run": "2026-11-21T20:35:37.481Z",
  "seeds": 40,
  "rows": {
   "shipped: 4 lots": {
@@ -360,6 +360,36 @@
     "boot": 40.4,
     "downDays": 10,
     "lots": 3.57
+   }
+  },
+  "  $ target, cut only (0.5-1)": {
+   "cal": 74.5,
+   "calA": 75.6,
+   "calB": 73.3,
+   "ci": [
+    34.7,
+    94.2
+   ],
+   "boot": 70.1,
+   "bootA": 71,
+   "bootB": 75.9,
+   "trades": 131,
+   "net": 9210,
+   "winRate": 66.4,
+   "perTrade": 70,
+   "pf": 1.59,
+   "lots": 3.24,
+   "fwd": {
+    "trades": 70,
+    "net": 3415,
+    "winRate": 64.3,
+    "pf": 1.36,
+    "perTrade": 49,
+    "cal": 53.2,
+    "real": 50.9,
+    "boot": 48,
+    "downDays": 8,
+    "lots": 3.41
    }
   },
   "  $ vs 60-day median": {

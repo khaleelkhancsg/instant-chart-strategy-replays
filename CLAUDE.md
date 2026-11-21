@@ -520,6 +520,14 @@ The VXN comes from FRED's VXNCLS, saved to `data/raw/fred/` (git-ignored: it is 
     shipped book's average size), it is level in 2026: 73.3% calendar against 74.5%, bootstrap
     65.2% against 71.1%. Forward it does better, 53.2% and +$3,518 against 44.2% and +$2,584, on
     77 days. Its shuffle twins are split by measure.
+  - The stress test (`research/stress_2022_today.mjs`): 2022's percentage moves rebuilt at today's
+    price.
+    - The shipped 4 lots passes 26.9% on live equity, fails 73%, and hits the $600 line on 103
+      days.
+    - The dollar rule passes 45.8%.
+    - Cut only (never above 4 lots, chosen after that run) matches the shipped book in 2026
+      (74.5% calendar, 70.1% bootstrap) and in the real 2022, and gives 53.2% forward. It is a
+      candidate, not shipped.
   - Every variant's pass rate follows its average size: 4 lots is the top of the 2026 curve. Keep
     4 lots.
 - **So dealer gamma would have to carry something the VXN does not.**

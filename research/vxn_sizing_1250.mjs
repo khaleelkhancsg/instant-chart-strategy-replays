@@ -86,6 +86,11 @@
 //       - Forward: 80.5% and +$5,875, but at 3.99 lots, where fixed 5 lots gives 70.1%.
 //   - What 2026 cannot test: a 2022-sized percentage regime at today's price. There the rule
 //     would cut 4 lots to about 3 (VXN 32) or 2 (VXN 45), and no 2026 day came close.
+//     research/stress_2022_today.mjs builds that year: shipped 4 lots passes 26.9% on live equity,
+//     the dollar rule 45.8%.
+//   - Cut only (held to 0.5-1, so never above the shipped size; added after that stress run):
+//     2026 3.24 lots, calendar 74.5% (75.6 / 73.3), bootstrap 70.1% (71.0 / 75.9), +$9,210;
+//     forward 3.41 lots, 53.2% calendar, 48.0% bootstrap, +$3,415.
 
 import fs from "node:fs";
 import { loadBars } from "../src/data.mjs";
@@ -210,6 +215,7 @@ const ROWS = [
   ["10-session range, 60 median", withFactor(base, ADR)],
   ["$ target (named 2nd)", withFactor(base, DOLLAR)],
   ["  $ target, f^0.5", withFactor(base, DOLLAR_SOFT)],
+  ["  $ target, cut only (0.5-1)", withFactor(base, targetFactor(dollarMove, 1, 0.5, 1))],
   ["  $ vs 60-day median", withFactor(base, trailingFactor(dollarMove, 60))],
   ["  range target (realised $)", withFactor(base, RANGE_T)],
 ];
