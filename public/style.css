@@ -102,8 +102,22 @@ html, body {
 .fullbtn { padding: 0 8px; font-size: 14px; line-height: 18px; color: var(--muted); }
 .fullbtn[aria-pressed="true"] { background: rgba(240,180,41,.14); border-color: #f0b429; color: #f0b429; }
 .tfpick[hidden], #chartWrap2[hidden] { display: none; }
-/* A popped-out window follows the one that opened it: it pops out nothing itself. */
-body.pop #popBtn { display: none; }
+/* A popped-out window follows the one that opened it: one chart, and it pops out nothing itself. */
+body.pop #popBtn, body.pop #splitBtn { display: none; }
+/* A plain chart (no strategy) has no trades: the figures a strategy has step aside. */
+body.plainchart #verdict, body.plainchart #topStats, body.plainchart #houseChip,
+body.plainchart #bookBtn, body.plainchart #sigToggle { display: none; }
+#paneResults.plain > .group:not(.plainnote) { display: none; }
+#paneResults.plain .plainnote .hint { font-size: 11.5px; color: var(--muted); }
+.setplain { margin: 10px 14px 0; }
+/* Split: which chart's indicators the tab edits. */
+.setpick { padding: 10px 14px 2px; }
+.setpick .seg button { flex: 1; padding: 4px 8px; font-size: 11px; }
+/* ƒx in full screen or a pop-out: this chart's indicators alone, beside it. */
+body.chartfull.indside #sidebar { display: flex !important; transform: none; }
+body.chartfull.indside .brand, body.chartfull.indside .sidetop { display: none; }
+body.chartfull.indside .sidepane { display: none; }
+body.chartfull.indside .sidepane[data-tab="indicators"] { display: block; }
 /* Full screen chart (F): the sidebar, the top bar and the navigator strip step aside, and the
    chart bar and the chart take the screen. It is a class on the page rather than the chart
    alone in the browser's full screen, so the help, the picker and the toasts still show; the
@@ -388,7 +402,8 @@ button:disabled { opacity: .5; cursor: default; }
 .winnav button { padding: 4px 9px; font-size: 11px; }
 .winnav input[type="date"] { width: 140px; font-family: var(--mono); font-size: 12px; }
 .winrange { font-family: var(--mono); font-size: 11px; color: var(--dim); margin-left: 4px; }
-#chartBar { display: flex; align-items: center; gap: 10px; padding: 3px 14px; border-bottom: 1px solid var(--line); background: var(--panel); flex: 0 0 auto; }
+/* It wraps rather than run past the edge: split, with the sidebar open, it outgrows a laptop's width. */
+#chartBar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 3px 14px; border-bottom: 1px solid var(--line); background: var(--panel); flex: 0 0 auto; }
 .tfpick { display: flex; align-items: center; gap: 6px; }
 .tfpick label { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
 .tfpick select { font-family: var(--mono); font-size: 11px; padding: 2px 6px; width: auto; }

@@ -144,9 +144,9 @@ rule logic into a script: that is a second engine, and it drifts.
 
 ## Tests
 
-- `npm run check`: test.mjs (491), audit, legacy parity (15), MCP end to end (19),
+- `npm run check`: test.mjs (498), audit, legacy parity (15), MCP end to end (19),
   chart link (13), the indicator mock (101, `npm run test:mock`), the page's arithmetic
-  (41, `npm run test:ui`), the level study's engine (22, `npm run test:levels`), the raw
+  (42, `npm run test:ui`), the level study's engine (22, `npm run test:levels`), the raw
   store (36, `npm run test:store`), the Data panel's routes (21, `npm run test:data`), the
   TopstepX pull (44, `npm run test:pull`), red-folder news (17, `npm run test:news`), the $1,250
   Tradovate indicators (41, `npm run verify:tradovate`, about 2 minutes).
@@ -192,11 +192,22 @@ rule logic into a script: that is a second engine, and it drifts.
   `ctMin`. `chart_state` and the CSVs stay in UTC.
 - **Split and pop-out** (`app.js`):
   - `S.chart2` is a second ChartView on the same run.
-  - A pop-out is the same page at `?pop=1&tf=M` (`POP`). It saves nothing to localStorage, posts
-    no state and runs no sweeps.
+  - A pop-out is the same page at `?pop=1&tf=M` (`POP`). It is one chart, saves nothing to
+    localStorage, posts no state and runs no sweeps.
   - It follows the main window through `BroadcastChannel("mnq-chart")`: `state` carries the hash,
     `hover` the crosshair's `{ts, price}`.
   - Crosshairs link by bar time, never by index, because windows load different warm-ups.
+- **Each chart draws its own indicator set** (`MAIN_SET`, `RIGHT_SET`, `POP_SET` in `app.js`).
+  - `MAIN_SET` is `S.studies` / `S.tv`: the run reads it (gates, the edge), and the hash and
+    `chart_state` carry it.
+  - The others are for looking only: their studies' gates stay off, so every chart shows the same
+    trades. Their warm-up is still loaded (`lookStudies`).
+  - `RIGHT_SET` is kept in localStorage `mnq.right`, and `chart_state` reports it as `rightChart`.
+    `POP_SET` is kept in the pop-out's own query (`pst`, `ptv`). In a pop-out, `S.studies` still
+    holds the main window's set, run but not drawn.
+- **The plain chart** (`strategies/plain_chart.mjs`, `chartOnly: true`) has no signals.
+  - The page hides the P&L panes, the trade figures and the strategy's own gates, and runs no sweep.
+  - `research/strategy_table.mjs` skips it, and the picker lists it first.
 - **Frames** are under 7 ms on every strategy at the full window. Keep it so: a frame
   must not sort, and zoomed out each pixel draws one thing (`nthSmallest`, the
   histogram's columns, dots for dense trades).

@@ -66,5 +66,7 @@ export function describe(s) {
     rulesDefaults: s.rulesDefaults || null,
     // Its settings for a particular evaluation (src/evals.mjs), if it has any.
     evals: s.evals || null,
+    // A plain chart (strategies/plain_chart.mjs): no trades, so no P&L panes and no sweep.
+    chartOnly: !!s.chartOnly,
   };
 }

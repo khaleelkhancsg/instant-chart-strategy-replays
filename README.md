@@ -212,7 +212,8 @@ never repaint 30,000 candles.
 
 ## The strategy library
 
-38 strategies ship in `strategies/`. **Four are templates** built to be tuned
+38 strategies ship in `strategies/`, beside `plain_chart.mjs`, which is no strategy at all: the
+chart with nothing on it, for your own indicators. **Four are templates** built to be tuned
 rather than traded as-is — each collapses a whole family of ideas onto sliders:
 
 | Template | What its parameters span |
@@ -947,17 +948,35 @@ blocks *new* entries and a single trade can blow straight through it.
 | `f` | Full screen: just the chart and its panes (the ⤢ button does the same; `Esc` or `f` returns) |
 | `p` | Show or hide the equity and daily P&L panes (the **P&L** button) |
 | `v` | Split: two charts side by side (the ◫ button) |
+| `i` | This chart's indicators (the **ƒx** button; beside the chart in full screen and in a pop-out) |
 | Wheel / drag | Zoom / pan |
 | Double-click | Back to the opening view |
+
+**A plain chart.** **Plain chart (no strategy)** heads the strategy picker
+(`strategies/plain_chart.mjs`). It has no signals and no trades: just the candles, for your own
+indicators, studies and Tradovate indicators alike. Nothing is swept, and the P&L panes and the
+trade figures step aside. An indicator's gate has nothing to refuse there. To see how a
+strategy's trades did in an indicator's states, or to gate them, pick that strategy; the
+indicators stay.
 
 **Two charts, two screens.**
 - **◫ splits the chart** into two, side by side, each with its own candle size (**Right** picks the
   second's). They show the same trades.
+- **Each chart has its own indicators.** With the chart split, the Indicators tab has a
+  **Left / Right** switch.
+  - The left chart's indicators can gate the strategy, and the link carries them.
+  - The right chart's are for looking only: they gate nothing, so both charts keep the same
+    trades.
+  - The right chart started as a copy of the left's and keeps its own from then on.
 - **The crosshairs are linked by time.** The minute under the pointer is marked on both charts,
   whatever their candle sizes.
-- **⧉ pops a chart out** into a window of its own, for a second monitor. It follows this window's
-  day, strategy and settings, keeps its own candles, and its crosshair is linked too. Where the
-  browser allows window placement it opens on the other screen; otherwise drag it there.
+- **⧉ pops a chart out** into a window of its own, for a second monitor.
+  - It follows this window's day, strategy and settings, and its crosshair is linked too.
+  - It keeps its own candles and its own indicators. They start as the popped chart's (the right
+    chart's when split), and its address keeps them, so a reload brings them back.
+  - **ƒx** (or `i`) opens its indicators beside it.
+  - Where the browser allows window placement it opens on the other screen; otherwise drag it
+    there.
 - **P&L hides the equity and daily P&L panes,** leaving the price and its indicators. A pop-out
   opens without them.
 

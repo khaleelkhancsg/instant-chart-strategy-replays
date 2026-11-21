@@ -45,6 +45,7 @@ const runOf = (s, b, exec) => {
 const rows = [];
 const t0 = Date.now();
 for (const [id, s] of [...strategies].sort((p, q) => p[0].localeCompare(q[0]))) {
+  if (s.chartOnly) continue;          // the plain chart: no trades to measure
   const row = { id, name: s.name, tf: s.timeframeMin ?? 1, overnightByDefault: (s.execDefaults || {}).intradayOnly === false, evals: {} };
   for (const ev of EVAL_IDS) {
     const b = evalBase(s, ev);

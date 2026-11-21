@@ -1777,8 +1777,9 @@ export class Navigator {
   // final 30 days have no window of their own.
   shown() {
     const [a, b] = this.range, w = this.windows;
-    if (this.span !== "2026" || b <= Y2026 || !w || !w.length) return this.range;
-    return [Math.max(a, Y2026), Math.min(b, w[w.length - 1].startMs + 86400000)];
+    if (this.span !== "2026" || b <= Y2026) return this.range;
+    // With no windows (a plain chart has no sweep, or one is still coming), to the data's end.
+    return [Math.max(a, Y2026), w && w.length ? Math.min(b, w[w.length - 1].startMs + 86400000) : b];
   }
 
   draw() {
@@ -1849,17 +1850,18 @@ export class Navigator {
     }
   }
 
-  // What the window under the pointer did.
+  // What the window under the pointer did; with no windows (a plain chart), its date.
   _drawHover(ctx, w, t0, t1) {
-    const first = this.windows[0], k = Math.floor((t0 + (this.hoverX / w) * (t1 - t0) - first.startMs) / 86400000);
-    const win = this.windows[k];
-    if (!win) return;
-    const text = `${new Date(win.startMs).toISOString().slice(0, 10)}  ${win.outcome === "IN_PROGRESS" ? "UNRESOLVED" : win.outcome}  ${fmtUsd(win.netPnl)}  ${win.daysUsed}d`;
+    const at = t0 + (this.hoverX / w) * (t1 - t0), first = this.windows[0];
+    const win = first ? this.windows[Math.floor((at - first.startMs) / 86400000)] : null;
+    if (first && !win) return;
+    const text = win ? `${new Date(win.startMs).toISOString().slice(0, 10)}  ${win.outcome === "IN_PROGRESS" ? "UNRESOLVED" : win.outcome}  ${fmtUsd(win.netPnl)}  ${win.daysUsed}d`
+                     : new Date(at).toISOString().slice(0, 10);
     ctx.font = "10px ui-monospace, monospace";
     const tw = ctx.measureText(text).width + 10, lx = Math.max(0, Math.min(w - tw, this.hoverX + 8));
     ctx.fillStyle = "rgba(11,15,20,0.92)";
     ctx.fillRect(lx, 8, tw, 15);
-    ctx.fillStyle = win.outcome === "PASS" ? CSS.bull : win.outcome === "FAIL" ? CSS.bear : CSS.textBright;
+    ctx.fillStyle = !win ? CSS.textBright : win.outcome === "PASS" ? CSS.bull : win.outcome === "FAIL" ? CSS.bear : CSS.textBright;
     ctx.fillText(text, lx + 5, 19);
   }
 }

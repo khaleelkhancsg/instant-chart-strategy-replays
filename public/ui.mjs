@@ -310,10 +310,11 @@ export function stepDays(bars, i, days) {
 // ── the strategy picker ──────────────────────────────────────────────────
 // A new strategy file lands in the family its id names, or under Other.
 const FAMILIES = [
-  ["Templates", /^tpl_/], ["Donchian", /donchian/], ["Breakouts", /^orb|prior_day|breakout|noise_area/], ["MACD", /macd/], ["Levels", /^pct_/],
+  ["Chart", /^plain/], ["Templates", /^tpl_/], ["Donchian", /donchian/], ["Breakouts", /^orb|prior_day|breakout|noise_area/], ["MACD", /macd/], ["Levels", /^pct_/],
   ["Mean reversion", /fade|zscore|reversion/], ["Trend", /trend|ema|adx|momentum/],
 ];
-const FAMILY_ORDER = ["Donchian", "Breakouts", "Trend", "MACD", "Mean reversion", "Levels", "Other", "Templates"];
+// The plain chart heads the list, apart from the books: it is where a chart of your own starts.
+const FAMILY_ORDER = ["Chart", "Donchian", "Breakouts", "Trend", "MACD", "Mean reversion", "Levels", "Other", "Templates"];
 export const familyOf = (id) => (FAMILIES.find(([, re]) => re.test(id)) || ["Other"])[0];
 
 // What the measured table says of a book on an evaluation (research/strategy_table.mjs):
@@ -332,6 +333,9 @@ export function pickerRows(list, rows, evalId, favs, query = "") {
   const hit = (s) => { const text = `${s.name} ${s.id} ${s.description || ""}`.toLowerCase(); return words.every((w) => text.includes(w)); };
   const out = list.filter(hit).map((s) => ({ ...s, family: familyOf(s.id), fav: favs.has(s.id), book: bookRate(byId.get(s.id), evalId) }));
   const best = (a, b) => (b.book ? b.book.rate : -1) - (a.book ? a.book.rate : -1) || a.name.localeCompare(b.name);
-  const groups = [["Favourites", out.filter((s) => s.fav)], ...FAMILY_ORDER.map((f) => [f, out.filter((s) => !s.fav && s.family === f)])];
+  // The plain chart stays first, above the favourites: it is not a book to rank.
+  const chart = (s) => s.family === "Chart";
+  const groups = [["Chart", out.filter(chart)], ["Favourites", out.filter((s) => s.fav && !chart(s))],
+                  ...FAMILY_ORDER.filter((f) => f !== "Chart").map((f) => [f, out.filter((s) => !s.fav && s.family === f)])];
   return groups.filter(([, g]) => g.length).map(([title, g]) => ({ title, books: g.sort(best) }));
 }

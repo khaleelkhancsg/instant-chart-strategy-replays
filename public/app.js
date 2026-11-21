@@ -30,6 +30,8 @@ function saveLocal(key, value) { if (!POP) localStorage.setItem(key, value); }
 const BC = typeof BroadcastChannel === "function" ? new BroadcastChannel("mnq-chart") : null;
 // The charts on screen: the main one, and the right-hand one while split.
 const charts = () => (S.split && S.chart2 ? [S.chart, S.chart2] : [S.chart]);
+// The plain chart (strategies/plain_chart.mjs): no strategy, so no trades, P&L panes or sweep.
+const plainChart = () => !!(S.strategyDesc && S.strategyDesc.chartOnly);
 
 // The 1-minute x-position a resampled bar should be drawn at: the middle of the
 // minutes it covers. srcLast+1 is the exclusive end, so the centre of bar k is
@@ -261,6 +263,7 @@ const S = {
   eval: DEFAULT_EVAL,  // which evaluation's rules (src/evals.mjs)
   studies: [],         // indicators added to the chart (src/studies.mjs), some gating entries
   tv: [],              // Tradovate indicators on the chart (tradovate/mock/)
+  editRight: false,    // split: the Indicators tab edits the right-hand chart's own
   tvLib: null,         // what can be added, and the tools they run on
   tvFocus: true,       // the chart given over to them: no trades, equity or daily panes
   showSignals: false,  // mark every signal bar, entered or not (a view preference)
@@ -456,7 +459,8 @@ function paintChanged() {
   $("changedCount").textContent = total ? ` ${total}` : "";
   if (S.changedOnly) filterSettings();
 }
-const paintIndicatorCount = () => { const n = S.studies.length + S.tv.length; $("indicatorCount").textContent = n ? ` ${n}` : ""; };
+// Every chart's on screen, counted together.
+const paintIndicatorCount = () => { const n = drawnSets().reduce((a, s) => a + s.studies.length + s.tv.length, 0); $("indicatorCount").textContent = n ? ` ${n}` : ""; };
 
 // Narrow the settings to what the search names, or to what has changed. A match in a
 // folded group shows while the filter is on; the folding itself is left as it was.
@@ -533,6 +537,24 @@ function renderSidebar() {
   gFund.body.innerHTML = `<div id="fundedPanel"></div>`;
   host.appendChild(gFund);
 
+  // A plain chart has no results: what it is for takes their place (the rest stay built, hidden,
+  // so nothing that paints them has to ask).
+  const plain = plainChart();
+  host.classList.toggle("plain", plain);
+  if (plain) {
+    const gPlain = buildGroup("Plain chart");
+    gPlain.classList.add("plainnote");
+    gPlain.body.innerHTML = `<div class="hint">No strategy: no signals, no trades and nothing to sweep, just the price. ` +
+      `Add your own under <b>Indicators</b>, studies and Tradovate indicators alike. Split the chart (◫) or pop one out (⧉) ` +
+      `and each chart takes indicators of its own.</div>` +
+      `<div class="hint">To see how a strategy's trades did in an indicator's states, or to gate its entries, pick that strategy: the indicators stay.</div>`;
+    host.prepend(gPlain);
+    const note = document.createElement("div");
+    note.className = "hint setplain";
+    note.textContent = "A plain chart takes no trades, so nothing here changes it but the window's length (Combine rules) and the signal timeframe: the one an indicator set to “The signal's” is read on.";
+    settings.appendChild(note);
+  }
+
   // Signal params, declared by the strategy itself.
   const sig = buildGroup("Signal");
   const tfDesc = {
@@ -549,8 +571,12 @@ function renderSidebar() {
   }
   settings.appendChild(sig);
 
-  indicators.appendChild(buildStudiesGroup());
-  indicators.appendChild(buildTvGroup());
+  // Each chart's own: split, a switch says which one the tab edits.
+  if (!S.split) S.editRight = false;
+  if (!POP && S.split) indicators.appendChild(buildSetPick());
+  const set = editSet();
+  indicators.appendChild(buildStudiesGroup(set));
+  indicators.appendChild(buildTvGroup(set));
 
   // One control per descriptor, bound to a config object. A `bool` descriptor
   // shows on/off but stores a boolean; a key the object lacks shows its default.
@@ -588,6 +614,72 @@ function renderSidebar() {
   if (lastResult) paintTrades(lastResult.replay);
 }
 
+// ─────────────────────────── each chart's indicators ───────────────────────────
+// Every chart draws a set of its own: studies and Tradovate indicators. The main chart's is
+// S.studies / S.tv. The run reads it (its gates, the indicator edge), the address bar carries
+// it and the chart link reports it. The right-hand chart of a split and a pop-out each draw a
+// set of their own, for looking only: they gate nothing, so every chart shows the same trades.
+const MAIN_SET = {
+  id: "main", gates: true,
+  get studies() { return S.studies; }, set studies(v) { S.studies = v; },
+  get tv() { return S.tv; }, set tv(v) { S.tv = v; },
+};
+const RIGHT_SET = { id: "right", gates: false, studies: [], tv: [] };
+const POP_SET = { id: "pop", gates: false, studies: [], tv: [] };
+// What the main chart draws: in a pop-out, its own set; the main window's set still runs there,
+// for the gates, so its trades are the main window's.
+const leftSet = () => (POP ? POP_SET : MAIN_SET);
+const drawnSets = () => (POP ? [POP_SET] : S.split ? [MAIN_SET, RIGHT_SET] : [MAIN_SET]);
+// What the Indicators tab edits.
+const editSet = () => (POP ? POP_SET : S.split && S.editRight ? RIGHT_SET : MAIN_SET);
+// Studies drawn but not run, whose warm-up the window must still load.
+const lookStudies = () => drawnSets().filter((s) => s !== MAIN_SET).flatMap((s) => s.studies);
+
+// The right-hand chart's set is remembered between visits. A pop-out's is kept in its own
+// address (?pst=&ptv=), so reloading it brings them back and the main window's stay its own.
+function saveSet(set) {
+  if (set === MAIN_SET) { saveStudies(); saveTv(); return; }
+  const list = tvConfig(set.tv);
+  if (set === RIGHT_SET) { try { saveLocal("mnq.right", JSON.stringify({ studies: set.studies, tv: list })); } catch { /* private mode */ } return; }
+  const q = new URLSearchParams(location.search);
+  if (set.studies.length) q.set("pst", studiesToUrl(set.studies)); else q.delete("pst");
+  if (list.length) q.set("ptv", tvToUrl(list)); else q.delete("ptv");
+  history.replaceState(null, "", `${location.pathname}?${q}${location.hash}`);
+}
+// A set saved as {studies, tv}: the studies resolved and given ids, the indicators read afresh.
+async function loadSet(set, { studies = [], tv = [] }) {
+  set.studies = adoptStudies(studies.flatMap((st) => { try { return [{ ...resolveStudy(st), gate: "off" }]; } catch { return []; } }));
+  set.tv = [];
+  for (const c of tv) { try { set.tv.push(await tvMake(c)); } catch { /* the file has gone */ } }
+}
+// One of the sets changed. The main chart's can move the trades (a gate) and the warm-up; another
+// chart's only what is drawn, and perhaps the warm-up.
+function setChanged(set) {
+  if (set === MAIN_SET) { studiesChanged(); return; }
+  saveSet(set);
+  paintIndicatorCount();
+  if (warmupGrew()) loadWindow(S.windowStart); else repaint();
+}
+// The split's two sets, side by side in the Indicators tab.
+function buildSetPick() {
+  const g = document.createElement("div");
+  g.className = "setpick";
+  const name = (m) => (m ? `${m < 60 ? `${m} min` : `${m / 60} h`}` : "Auto");
+  g.innerHTML = `<div class="seg" role="group" aria-label="Which chart's indicators">` +
+    `<button data-set="main" class="${S.editRight ? "" : "on"}">Left · ${name(S.chartTf)}</button>` +
+    `<button data-set="right" class="${S.editRight ? "on" : ""}">Right · ${name(S.chartTf2)}</button></div>` +
+    `<div class="hint">${S.editRight
+      ? "The right-hand chart's own indicators, for looking: they gate nothing, so both charts show the same trades."
+      : "The left-hand chart's indicators. They are the ones that can gate the strategy, and the ones the link carries."}</div>`;
+  g.querySelector(".seg").onclick = (e) => {
+    const b = e.target.closest("button");
+    if (!b || (b.dataset.set === "right") === S.editRight) return;
+    S.editRight = b.dataset.set === "right";
+    renderSidebar();
+  };
+  return g;
+}
+
 // ─────────────────────────── indicator studies ───────────────────────────
 // Indicators the person adds to the chart, beside the strategy's own: each on its
 // own timeframe, drawn on the price pane or in a pane of its own, and optionally
@@ -595,8 +687,8 @@ function renderSidebar() {
 const STUDY_COLORS = ["#f0b429", "#c678dd", "#56b6c2", "#ff9e64", "#9ece6a", "#7aa2f7", "#e0af68", "#f7768e", "#2ac3de", "#bb9af7"];
 const OPEN_STUDIES = new Set();      // cards shown expanded, this visit
 let studySeq = 0;
-const nextStudyId = () => { const used = new Set(S.studies.map((s) => s.id)); let id; do id = `s${++studySeq}`; while (used.has(id)); return id; };
-const nextColor = () => STUDY_COLORS.find((c) => !S.studies.some((s) => s.color === c)) || STUDY_COLORS[S.studies.length % STUDY_COLORS.length];
+const nextStudyId = (list) => { const used = new Set(list.map((s) => s.id)); let id; do id = `s${++studySeq}`; while (used.has(id)); return id; };
+const nextColor = (list) => STUDY_COLORS.find((c) => !list.some((s) => s.color === c)) || STUDY_COLORS[list.length % STUDY_COLORS.length];
 // Ids and colours for studies arriving from a URL, a saved layout or the chart
 // link: kept when given (and unique), otherwise the next free ones.
 function adoptStudies(list) {
@@ -623,15 +715,15 @@ function studiesChanged() {
   onParamsChanged(warmupGrew());
 }
 
-function addStudy(type) {
-  const st = { ...resolveStudy({ type, tf: 0 }), id: nextStudyId(), color: nextColor() };
-  S.studies.push(st);
+function addStudy(type, set) {
+  const st = { ...resolveStudy({ type, tf: 0 }), id: nextStudyId(set.studies), color: nextColor(set.studies) };
+  set.studies.push(st);
   OPEN_STUDIES.add(st.id);
   renderSidebar();
-  studiesChanged();
+  setChanged(set);
 }
 
-function buildStudiesGroup() {
+function buildStudiesGroup(set) {
   const g = buildGroup("Indicators");
   g.querySelector(".group-title").insertAdjacentHTML("beforeend", `<span id="studyCount"></span>`);
   const pick = document.createElement("select");
@@ -643,21 +735,27 @@ function buildStudiesGroup() {
   }
   pick.innerHTML = `<option value="">＋ Add an indicator…</option>` +
     [...groups].map(([name, opts]) => `<optgroup label="${name}">${opts.join("")}</optgroup>`).join("");
-  pick.onchange = () => { const v = pick.value; pick.value = ""; if (v) addStudy(v); };
+  pick.onchange = () => { const v = pick.value; pick.value = ""; if (v) addStudy(v, set); };
   g.body.appendChild(pick);
-  for (const st of S.studies) g.body.appendChild(buildStudyCard(st));
+  for (const st of set.studies) g.body.appendChild(buildStudyCard(st, set));
   const h = document.createElement("div");
   h.className = "hint";
-  h.textContent = S.studies.length
-    ? "A gate refuses entries only: a refused signal still closes an opposite position, so a gate never changes how a trade exits. A study on a longer timeframe is read from its last CLOSED bar, drawn as steps where each value became known."
-    : "Add indicators to see them beside the strategy's, and in “Indicator edge” how its trades did in each of their states. Set a gate to trade only the states you pick.";
+  const plain = S.strategyDesc && S.strategyDesc.chartOnly;
+  h.textContent = !set.gates
+    ? (set.studies.length ? "A study on a longer timeframe is read from its last CLOSED bar, drawn as steps where each value became known."
+                          : "Add indicators to this chart. They are its own: the other chart keeps its own, and neither changes the trades.")
+    : plain
+      ? "A plain chart: add indicators to look at the price through them. To see how a strategy's trades did in their states, or to gate its entries, pick that strategy."
+      : set.studies.length
+        ? "A gate refuses entries only: a refused signal still closes an opposite position, so a gate never changes how a trade exits. A study on a longer timeframe is read from its last CLOSED bar, drawn as steps where each value became known."
+        : "Add indicators to see them beside the strategy's, and in “Indicator edge” how its trades did in each of their states. Set a gate to trade only the states you pick.";
   g.body.appendChild(h);
-  const n = S.studies.length, gn = S.studies.filter(isGating).length;
+  const n = set.studies.length, gn = set.studies.filter(isGating).length;
   g.querySelector("#studyCount").textContent = n ? ` · ${n}${gn ? ` (${gn} gating)` : ""}` : "";
   return g;
 }
 
-function buildStudyCard(st) {
+function buildStudyCard(st, set) {
   const D = STUDIES[st.type];
   const card = document.createElement("div");
   card.className = "st-card" + (OPEN_STUDIES.has(st.id) ? " open" : "") + (st.hidden ? " hidden-st" : "");
@@ -670,10 +768,12 @@ function buildStudyCard(st) {
     `<button class="st-btn st-x" title="Remove">✕</button>`;
   const name = head.querySelector(".st-name"), gateBadge = head.querySelector(".st-gate");
   name.dataset.id = st.id;
+  // Only the main chart's gate, and only when there is a strategy to gate.
+  const gates = set.gates && !plainChart();
   const refreshHead = () => {
     name.textContent = studyLabel(st) + (st.tf ? "" : ` · ${S.params.timeframeMin}m`);
     name.title = `${D.name} — click to ${card.classList.contains("open") ? "close" : "edit"}`;
-    gateBadge.style.display = isGating(st) ? "" : "none";
+    gateBadge.style.display = gates && isGating(st) ? "" : "none";
   };
   refreshHead();
   name.onclick = () => {
@@ -681,18 +781,18 @@ function buildStudyCard(st) {
     if (card.classList.contains("open")) OPEN_STUDIES.add(st.id); else OPEN_STUDIES.delete(st.id);
     refreshHead();
   };
-  head.querySelector(".st-color").oninput = (e) => { st.color = e.target.value; saveStudies(); repaint(); };
+  head.querySelector(".st-color").oninput = (e) => { st.color = e.target.value; saveSet(set); repaint(); };
   head.querySelector(".st-eye").onclick = (e) => {
     st.hidden = !st.hidden;
     e.target.textContent = st.hidden ? "◌" : "●";
     card.classList.toggle("hidden-st", !!st.hidden);
-    saveStudies(); repaint();
+    saveSet(set); repaint();
   };
   head.querySelector(".st-x").onclick = () => {
-    S.studies = S.studies.filter((x) => x !== st);
+    set.studies = set.studies.filter((x) => x !== st);
     OPEN_STUDIES.delete(st.id);
     renderSidebar();
-    studiesChanged();
+    setChanged(set);
   };
   card.appendChild(head);
 
@@ -702,21 +802,22 @@ function buildStudyCard(st) {
   const tfDesc = { key: "tf", label: "Timeframe", type: "select", default: "0",
                    options: [["0", `The signal's (${sigTf} min)`], ...STUDY_TFS.map((m) => [String(m), m < 60 ? `${m} min` : `${m / 60} hour${m > 60 ? "s" : ""}`])],
                    hint: "Its own bars, rebuilt clock-aligned from the 1-minute data." };
-  body.appendChild(buildParamControl(tfDesc, String(st.tf || 0), (v) => { st.tf = Number(v); refreshHead(); studiesChanged(); }));
+  body.appendChild(buildParamControl(tfDesc, String(st.tf || 0), (v) => { st.tf = Number(v); refreshHead(); setChanged(set); }));
   // A gate's wording quotes the study's levels, so it is rebuilt when they move.
   const gateSlot = document.createElement("div");
   const buildGate = () => {
     gateSlot.innerHTML = "";
+    if (!gates) return;
     const desc = { key: "gate", label: "Gate the strategy's entries", type: "select", default: "off",
                    options: [["off", "Off — draw only"], ...D.gates.map((m) => [m, gateLabel(st.type, m, st.params)])] };
-    gateSlot.appendChild(buildParamControl(desc, st.gate, (v) => { st.gate = v; refreshHead(); studiesChanged(); }));
+    gateSlot.appendChild(buildParamControl(desc, st.gate, (v) => { st.gate = v; refreshHead(); setChanged(set); }));
   };
   for (const d of D.params) {
     body.appendChild(buildParamControl(d, st.params[d.key], (v) => {
       st.params[d.key] = v;
       refreshHead();
       if (d.key === "lo" || d.key === "hi") buildGate();
-      studiesChanged();
+      setChanged(set);
     }));
   }
   buildGate();
@@ -728,19 +829,20 @@ function buildStudyCard(st) {
 
 // A study on "the signal's" timeframe names it, so its card follows that slider.
 function refreshStudyNames() {
+  const list = editSet().studies;
   for (const el of document.querySelectorAll(".st-name[data-id]")) {
-    const st = S.studies.find((x) => x.id === el.dataset.id);
+    const st = list.find((x) => x.id === el.dataset.id);
     if (st && !st.tf) el.textContent = `${studyLabel(st)} · ${S.params.timeframeMin}m`;
   }
 }
 
-// The studies drawn on the chart: each computed on its own bars and placed on
+// The studies a chart draws (its set's): each computed on its own bars and placed on
 // the 1-minute axis -- at bar centres, or as steps from each bar's close for a
 // timeframe longer than the signal's.
-function studyOverlays(res) {
+function studyOverlays(res, list) {
   refreshStudyNames();
-  const sigTf = S.params.timeframeMin || 1, out = [];
-  for (const st of S.studies) {
+  const sigTf = S.params.timeframeMin || 1, out = [], gates = list === S.studies && !plainChart();
+  for (const st of list) {
     const D = STUDIES[st.type];
     const { bars: sb, out: o, tf } = computeStudy(S.blob, st, sigTf, res.tf);
     const step = tf > sigTf;
@@ -751,7 +853,7 @@ function studyOverlays(res) {
     const guides = D.pane === "sub" && lv ? [...new Set([lv.lo, lv.mid, lv.hi].filter((v) => v != null && Number.isFinite(v)))] : [];
     out.push({
       key: `st:${st.id}`, name: studyLabel(st) + (st.tf ? "" : ` · ${sigTf}m`), color: st.color, pane: D.pane, hidden: !!st.hidden,
-      gateText: isGating(st) ? gateLabel(st.type, st.gate, st.params) : "",
+      gateText: gates && isGating(st) ? gateLabel(st.type, st.gate, st.params) : "",
       lines: o.lines, lanes: o.lanes || null, map, range: D.range || null, auto: D.auto || null, guides,
     });
   }
@@ -766,8 +868,13 @@ function studyOverlays(res) {
 const TV_WARMUP_MIN = 21 * 1440;     // three weeks: a 10-session average, and a slow EMA settled
 const TV_MINUTES = [1, 2, 3, 5, 10, 15, 30, 60];
 const OPEN_TV = new Set();           // cards shown expanded, this visit
-const tvWarmupMin = () => (S.tv.length ? TV_WARMUP_MIN : 0);
-const tvFocused = () => S.tv.length > 0 && S.tvFocus;
+// Indicators drawn on any chart on screen need the warm-up. The main window's own, in a
+// pop-out, are carried for its address but neither drawn nor run.
+const tvWarmupMin = () => (drawnSets().some((s) => s.tv.length) ? TV_WARMUP_MIN : 0);
+// Given over to them, the chart shows them alone: the main window's choice, for its own. A
+// plain chart has nothing else to show, so its candles stay the ones picked.
+const tvFocused = () => !POP && !plainChart() && S.tv.length > 0 && S.tvFocus;
+let tvSeq = 0;                       // each one's own id, for its card: two charts may run the same file
 
 // An indicator from its file, with `props` over its defaults. Read fresh each time.
 async function tvMake({ name, minutes, props = {}, hidden = false }) {
@@ -778,7 +885,7 @@ async function tvMake({ name, minutes, props = {}, hidden = false }) {
     if (!(k in d0)) throw new Error(`${name} has no setting "${k}"`);
     set[k] = typeof v === "string" ? coerceLike(d0[k], v) : v;
   }
-  return { name, source: src.source, mod, minutes: Number(minutes) || src.minutes, props: { ...d0, ...set }, hidden, plot: plotters(mod), key: "" };
+  return { uid: ++tvSeq, name, source: src.source, mod, minutes: Number(minutes) || src.minutes, props: { ...d0, ...set }, hidden, plot: plotters(mod), key: "" };
 }
 
 // Its bars, built clock-aligned from the window's 1-minute bars once per size.
@@ -815,7 +922,7 @@ function tvRun(ind) {
 let tvFormingTimer = 0;
 function tvCheckForming() {
   clearTimeout(tvFormingTimer);
-  for (const ind of S.tv) {
+  for (const ind of drawnSets().flatMap((s) => s.tv)) {
     if (!ind.key || ind.formingKey === ind.key) continue;
     const { rows } = tvBars(ind.minutes), problems = new Problems();
     formingProblems(ind.mod, rows.slice(Math.max(0, rows.length - 4000)), { props: ind.props, minutes: ind.minutes, problems });
@@ -828,8 +935,8 @@ function tvCheckForming() {
 
 // On the chart each one is a study, so panes, the crosshair and the price scale
 // take it as they take any other; `tv` tells the chart to draw it through the mock.
-function tvOverlays() {
-  return S.tv.map((ind) => {
+function tvOverlays(list) {
+  return list.map((ind) => {
     tvRun(ind);
     return { key: `tv:${ind.name}`, name: `${ind.name} · ${ind.minutes}m`, color: "#9fb3c8", pane: ind.mod.areaChoice === "new" ? "sub" : "price",
              hidden: ind.hidden, lines: ind.lines, map: { localIdx: centresOf(ind.tf), stride: ind.minutes }, tv: ind };
@@ -847,27 +954,31 @@ function saveTv() {
   try { saveLocal("mnq.tv", JSON.stringify({ focus: S.tvFocus, list: tvConfig() })); } catch { /* private mode */ }
 }
 // What identifies each one: its name, its bars, and the settings changed.
-function tvConfig() {
-  return S.tv.map((ind) => {
+function tvConfig(list = S.tv) {
+  return list.map((ind) => {
     const d0 = defaultProps(ind.mod), props = {};
     for (const [k, v] of Object.entries(ind.props)) if (v !== d0[k]) props[k] = v;
     return { name: ind.name, minutes: ind.minutes, props, ...(ind.hidden ? { hidden: true } : {}) };
   });
 }
-async function tvChanged({ day = false } = {}) {
-  saveTv();
+// The main chart's are re-run with the strategy (the focus can hide its trades); another
+// chart's only need drawing again.
+async function tvChanged({ day = false, set = MAIN_SET } = {}) {
+  saveSet(set);
   renderSidebar();
+  paintIndicatorCount();
   if (warmupGrew()) await loadWindow(S.windowStart);
-  else recompute();
-  if (day) tvShowDay();
+  else if (set === MAIN_SET) recompute();
+  else repaint();
+  if (day && set === MAIN_SET) tvShowDay();
 }
-async function addTv(name) {
-  if (S.tv.some((x) => x.name === name)) return;
+async function addTv(name, set) {
+  if (set.tv.some((x) => x.name === name)) return;
   try {
-    S.tv.push(await tvMake({ name }));
+    set.tv.push(await tvMake({ name }));
   } catch (e) { toast(`${name}: ${e.message}`, true); return; }
   OPEN_TV.add(name);
-  await tvChanged({ day: true });
+  await tvChanged({ day: true, set });
 }
 
 // Numbers get a slider's range from the indicator's own restrictions.
@@ -880,7 +991,7 @@ function tvParamDesc(key, spec) {
   return { key, label: key, type: Number.isInteger(step) ? "int" : "float", step, min: r.min ?? 0, max: r.max ?? Math.max(10, Math.abs(s.def) * 4) };
 }
 
-function tvPaintChecks(ind, box = document.querySelector(`.tv-checks[data-name="${ind.name}"]`)) {
+function tvPaintChecks(ind, box = document.querySelector(`.tv-checks[data-uid="${ind.uid}"]`)) {
   if (!box) return;
   box.innerHTML = "";
   if (!ind.problems || !ind.problems.length) {
@@ -893,18 +1004,18 @@ function tvPaintChecks(ind, box = document.querySelector(`.tv-checks[data-name="
     b.title = "Show the first bar it happened on";
     b.innerHTML = `<i>${p.level}</i><span></span>`;
     b.lastChild.textContent = p.text + (p.count > 1 ? ` (${p.count} times)` : "");
-    b.onclick = () => { const c = ind.tf.srcFirst[p.bar]; S.chart.zoomTo(c - 60 * ind.minutes, c + 60 * ind.minutes); };
+    b.onclick = () => { const c = ind.tf.srcFirst[p.bar]; for (const k of charts()) k.zoomTo(c - 60 * ind.minutes, c + 60 * ind.minutes); };
     box.appendChild(b);
   }
 }
 
 // How it fits at this zoom, from what the chart just drew.
 function tvPaintFit(ind, f) {
-  const el = document.querySelector(`.tv-fit[data-name="${ind.name}"]`);
+  const el = document.querySelector(`.tv-fit[data-uid="${ind.uid}"]`);
   if (el) el.textContent = `${f.barW.toFixed(1)} px a bar · ${f.labels} labels` + (f.clash ? ` · ${f.clash.length} overlapping` : "");
 }
 
-function buildTvCard(ind) {
+function buildTvCard(ind, set) {
   const card = document.createElement("div");
   card.className = "st-card" + (OPEN_TV.has(ind.name) ? " open" : "") + (ind.hidden ? " hidden-st" : "");
   const head = document.createElement("div");
@@ -921,47 +1032,50 @@ function buildTvCard(ind) {
   };
   head.querySelector(".st-re").onclick = async () => {
     try {
-      const fresh = await tvMake({ ...tvConfig().find((c) => c.name === ind.name) });
-      S.tv[S.tv.indexOf(ind)] = fresh;
-      await tvChanged();
+      const fresh = await tvMake({ ...tvConfig([ind])[0] });
+      const list = set.tv.slice();
+      list[list.indexOf(ind)] = fresh;
+      set.tv = list;
+      await tvChanged({ set });
       toast(`${ind.name} read again`);
     } catch (e) { toast(`${ind.name}: ${e.message}`, true); }
   };
-  head.querySelector(".st-eye").onclick = () => { ind.hidden = !ind.hidden; tvChanged(); };
-  head.querySelector(".st-x").onclick = () => { S.tv = S.tv.filter((x) => x !== ind); OPEN_TV.delete(ind.name); tvChanged(); };
+  head.querySelector(".st-eye").onclick = () => { ind.hidden = !ind.hidden; tvChanged({ set }); };
+  head.querySelector(".st-x").onclick = () => { set.tv = set.tv.filter((x) => x !== ind); OPEN_TV.delete(ind.name); tvChanged({ set }); };
   card.appendChild(head);
 
   const body = document.createElement("div");
   body.className = "st-body";
-  body.insertAdjacentHTML("beforeend", `<div class="tv-checks" data-name="${ind.name}"></div><div class="tv-fit" data-name="${ind.name}"></div>`);
+  body.insertAdjacentHTML("beforeend", `<div class="tv-checks" data-uid="${ind.uid}"></div><div class="tv-fit" data-uid="${ind.uid}"></div>`);
   const tfDesc = { key: "minutes", label: "Chart bars", type: "select", options: TV_MINUTES.map((m) => [String(m), `${m} min`]) };
-  body.appendChild(buildParamControl(tfDesc, String(ind.minutes), (v) => { ind.minutes = Number(v); tvChanged(); }));
+  body.appendChild(buildParamControl(tfDesc, String(ind.minutes), (v) => { ind.minutes = Number(v); tvChanged({ set }); }));
   for (const [k, spec] of Object.entries(ind.mod.params || {})) {
     const d = tvParamDesc(k, spec), v = ind.props[k];
-    body.appendChild(buildParamControl(d, d.bool ? (v ? "on" : "off") : v, (x) => { ind.props[k] = d.bool ? x === "on" : x; saveTv(); tvRepaint(); }));
+    body.appendChild(buildParamControl(d, d.bool ? (v ? "on" : "off") : v, (x) => { ind.props[k] = d.bool ? x === "on" : x; saveSet(set); tvRepaint(); }));
   }
   card.appendChild(body);
   tvPaintChecks(ind, body.querySelector(".tv-checks"));
   return card;
 }
 
-function buildTvGroup() {
+function buildTvGroup(set) {
   const g = buildGroup("Tradovate indicators");
   const pick = document.createElement("select");
   pick.className = "st-pick";
   const opts = (list) => list.map((x) => `<option value="${x.name}">${x.name.replace("builtin:", "")}</option>`).join("");
   pick.innerHTML = `<option value="">＋ Add a Tradovate indicator…</option>` +
     `<optgroup label="Yours">${opts(S.tvLib.mine)}</optgroup><optgroup label="Tradovate's own">${opts(S.tvLib.builtin)}</optgroup>`;
-  pick.onchange = () => { const v = pick.value; pick.value = ""; if (v) addTv(v); };
+  pick.onchange = () => { const v = pick.value; pick.value = ""; if (v) addTv(v, set); };
   g.body.appendChild(pick);
-  if (S.tv.length) {
+  // The main chart can be given over to them; a plain chart has no strategy to hide.
+  if (set === MAIN_SET && !POP && S.tv.length && !plainChart()) {
     const d = { key: "focus", label: "Chart shows", type: "select", options: [["on", "The indicator only"], ["off", "The indicator and the strategy"]] };
     g.body.appendChild(buildParamControl(d, S.tvFocus ? "on" : "off", (v) => { S.tvFocus = v === "on"; tvChanged({ day: true }); }));
   }
-  for (const ind of S.tv) { tvRunSafe(ind); g.body.appendChild(buildTvCard(ind)); }
+  for (const ind of set.tv) { tvRunSafe(ind); g.body.appendChild(buildTvCard(ind, set)); }
   const h = document.createElement("div");
   h.className = "hint";
-  h.textContent = S.tv.length
+  h.textContent = set.tv.length
     ? "Runs the file on this window's bars, here in the page. Edit the file, then ↻ reads it again. Day arrows walk the chart a day at a time."
     : "Try an indicator on the backtest's bars before it goes to Tradovate: how it looks, its settings, and what would go wrong there.";
   g.body.appendChild(h);
@@ -1103,7 +1217,7 @@ function markToLocal(m, tf) {
 function whyLayer(res, trades) {
   const card = $("whyCard");
   const hide = () => { if (card) card.classList.add("hidden"); return null; };
-  if (!S.why || !res.explain) return hide();
+  if (!S.why || !res.explain || plainChart()) return hide();
   const tf = res.tf, k = indexAtOrAfter(tf.ts, S.why.ts);
   if (k >= tf.ts.length || tf.ts[k] !== S.why.ts) { S.why = null; return hide(); }
   const e = res.explain(k);
@@ -1476,7 +1590,8 @@ function paintHouse() {
   line.classList.toggle("stale", !!S.sweepStale);
   if (!sw) {
     chip.innerHTML = `<div class="tstat-k">2026 pass</div><div class="tstat-v">${S.sweeping ? "…" : "—"}</div>`;
-    line.innerHTML = `<span class="k">${S.sweeping ? `sweeping all ${S.rules.windowDays}-day windows…` : "Every start date, coloured by outcome. Click to jump."}</span>`;
+    line.innerHTML = `<span class="k">${plainChart() ? "A plain chart: no trades, so nothing to sweep. Click a date to go to it."
+      : S.sweeping ? `sweeping all ${S.rules.windowDays}-day windows…` : "Every start date, coloured by outcome. Click to jump."}</span>`;
     return;
   }
   const { y2026: h, q1, q2, fwd } = houseRates(sw.windows, S.rules.windowDays), s = sw.summary;
@@ -1719,25 +1834,30 @@ function paintChart(res, replay) {
   const subOverlays = (res.overlays || []).filter((o) => o.pane === "sub");
   const why = whyLayer(res, trades);
 
-  // Given over to Tradovate indicators, the chart is theirs, with candles of their size.
+  // Given over to Tradovate indicators, the chart is theirs, with candles of their size. A
+  // plain chart is bare the same way, with the candles picked.
   const focus = tvFocused(), candleMin = focus ? S.tv[0].minutes : S.chartTf;
+  const bare = focus || plainChart();
   S.chart.setTimeframe(candleMin);
   $("chartTf").value = String(candleMin);
   $("chartTf").disabled = focus;
 
+  // Each chart draws its own indicators (leftSet, RIGHT_SET).
+  const own = leftSet();
   const data = {
     token: `${S.windowStart}:${blob.count}`,
     bars: blob,
-    trades: focus ? [] : trades,
-    replay: focus ? null : replay,
+    trades: bare ? [] : trades,
+    replay: bare ? null : replay,
     equityPts,
     dayBars,
-    priceOverlays: focus ? [] : priceOverlays,
-    subOverlays: focus ? [] : subOverlays,
-    studyOverlays: [...studyOverlays(res), ...tvOverlays()],
-    focus,
-    why: focus ? null : why,
-    signalMarks: !focus && S.showSignals ? signalMarks(res) : null,
+    priceOverlays: bare ? [] : priceOverlays,
+    subOverlays: bare ? [] : subOverlays,
+    studyOverlays: [...studyOverlays(res, own.studies), ...tvOverlays(own.tv)],
+    focus: bare,
+    why: bare ? null : why,
+    signalMarks: !bare && S.showSignals ? signalMarks(res) : null,
+    // The news marks are the market's, so a plain chart keeps them.
     ...chartNews(blob, focus),
     // Overlays are indexed in signal-timeframe space; stride lets the renderer
     // convert a 1-minute pixel budget into a sane sampling step.
@@ -1748,15 +1868,14 @@ function paintChart(res, replay) {
     tfToLocal: { localIdx: centresOf(tf), stride: S.params.timeframeMin || 1 },
     lockX: replay.lockMs ? indexAtOrAfter(blob.ts, replay.lockMs) : null,
     // Where the evaluation actually ended — pass or breach, whichever came first.
-    resolveX: !focus && (replay.passMs ?? replay.failMs) != null
+    resolveX: !bare && (replay.passMs ?? replay.failMs) != null
       ? indexAtOrAfter(blob.ts, replay.passMs ?? replay.failMs) : null,
-    title: focus ? `MNQ · ${S.tv.map((x) => x.name).join(" + ")}` : `MNQ · ${S.strategyDesc.name}`,
+    title: focus ? `MNQ · ${S.tv.map((x) => x.name).join(" + ")}` : plainChart() ? "MNQ" : `MNQ · ${S.strategyDesc.name}`,
     initialView: (focus && tvDayView()) || presetView(S.winStartLocal),
   };
   S.chart.setData(data);
-  // The right-hand chart: the same data and its own candles. A study pane keeps its scale on
-  // its overlay (st.y), so each chart gets overlays of its own.
-  if (S.split && S.chart2) S.chart2.setData({ ...data, studyOverlays: data.studyOverlays.map((o) => ({ ...o })) });
+  // The right-hand chart: the same data and trades, its own candles and its own indicators.
+  if (S.split && S.chart2) S.chart2.setData({ ...data, studyOverlays: [...studyOverlays(res, RIGHT_SET.studies), ...tvOverlays(RIGHT_SET.tv)] });
 }
 
 // ──────────────────────────── the zoom presets ────────────────────────────
@@ -1870,7 +1989,8 @@ async function loadWindow(startMs, { keepTail = false } = {}) {
   // window for the strategy's indicators to match the full-history run, and
   // enough after it for the window's last trade to finish. test.mjs checks the
   // result against the sweep for every strategy.
-  const span = windowSpan(S.strategyMod, S.params, { tailMin: S.tailMin, filter: S.filter, exec: S.exec, studies: S.studies });
+  // The studies the other charts only draw need their warm-up too.
+  const span = windowSpan(S.strategyMod, S.params, { tailMin: S.tailMin, filter: S.filter, exec: S.exec, studies: [...S.studies, ...lookStudies()] });
   const warmupMin = Math.max(span.warmupMin, tvWarmupMin()), tailMin = span.tailMin;
   S.loadedWarmupMin = warmupMin;
 
@@ -1892,7 +2012,14 @@ async function loadWindow(startMs, { keepTail = false } = {}) {
   const end = new Date(startMs + S.rules.windowDays * DAY);
   $("winRange").textContent = `→ ${end.toISOString().slice(0, 10)}`;
   $("winRange").title = `${(S.winEndLocal - S.winStartLocal).toLocaleString()} 1-minute bars in this window`;
-  if (S.nav) { S.nav.cursorMs = startMs; S.nav.draw(); }
+  if (S.nav) {
+    // A plain chart has no sweep to colour the strip, which still picks the date.
+    if (plainChart()) S.nav.set([], [S.meta.startMs, S.meta.endMs], startMs);
+    else {
+      if (S.nav.windows && !S.nav.windows.length) S.nav.windows = null;    // back from one: its sweep is coming
+      S.nav.cursorMs = startMs; S.nav.draw();
+    }
+  }
 
   const settled = recompute();   // a promise while a longer tail is still loading
   scheduleSweep();
@@ -1901,7 +2028,7 @@ async function loadWindow(startMs, { keepTail = false } = {}) {
 
 // The current settings need more history before the window than is loaded.
 function warmupGrew() {
-  const need = windowSpan(S.strategyMod, S.params, { filter: S.filter, exec: S.exec, studies: S.studies }).warmupMin;
+  const need = windowSpan(S.strategyMod, S.params, { filter: S.filter, exec: S.exec, studies: [...S.studies, ...lookStudies()] }).warmupMin;
   return Math.max(need, tvWarmupMin()) > (S.loadedWarmupMin || 0);
 }
 
@@ -1920,6 +2047,7 @@ function sweepKey() {
 
 function scheduleSweep() {
   clearTimeout(S.sweepTimer);
+  if (plainChart()) return;          // no trades, nothing to sweep
   // The window panel updates instantly, but the sweep needs the server and all
   // 1.77M bars — so flag the numbers as stale the moment they stop being true.
   if (S.sweep && sweepKey() !== S.lastSweepKey && !S.sweepStale) {
@@ -1931,7 +2059,7 @@ function scheduleSweep() {
 }
 
 async function runSweep() {
-  if (POP) return;          // a pop-out has no sidebar to sweep for
+  if (POP || plainChart()) return;   // a pop-out has no sidebar to sweep for, a plain chart no trades
   const key = sweepKey(), strategyId = S.strategyDesc.id;
   if (S.sweeping) return;
   if (key === S.lastSweepKey) {
@@ -1977,7 +2105,7 @@ async function runSweep() {
     $("navSummary").innerHTML = `<span class="k">sweep failed</span>`;
   } finally {
     S.sweeping = false;
-    $("runSweep").disabled = false;
+    $("runSweep").disabled = plainChart();
     // A timer that fired while this ran found a sweep going and gave up, so the
     // newest settings are still owed one.
     const now = sweepKey();
@@ -2024,6 +2152,9 @@ function chartSnapshot(appliedId, applyError) {
     tradovate: { chartOnly: S.tvFocus, indicators: S.tv.map((ind, k) => ({ ...tvConfig()[k], problems: ind.problems || [] })) },
     window: { start: isoMin(S.windowStart), tradingDay: $("startDate").value, end: isoMin(S.windowStart + S.rules.windowDays * DAY) },
     view: cb && cb.count ? { from: isoMin(cb.ts[Math.max(0, Math.floor(c.i0))]), to: isoMin(cb.ts[Math.min(cb.count - 1, Math.ceil(c.i1) - 1)]), candleMin: c.candleMin(), zoom: S.zoom } : null,
+    // Split: the right-hand chart's candles and its own indicators, which gate nothing.
+    rightChart: S.split && S.chart2 ? { candleMin: S.chart2.candleMin(), studies: RIGHT_SET.studies.map((st) => ({ type: st.type, tf: st.tf, params: st.params, label: studyLabel(st) })),
+                                        tradovate: tvConfig(RIGHT_SET.tv) } : null,
     result: rp ? { outcome: rp.outcome, net: Math.round(st.netPnl), trades: st.trades, skipped: st.skipped, winRate: +st.winRate.toFixed(1),
                    bestDay: Math.round(st.bestDay), profitNeeded: Math.round(st.profitNeeded),
                    closestToBreach: st.minCushion == null ? null : Math.round(st.minCushion), resolvedAt: isoMin(rp.passMs ?? rp.failMs) } : null,
@@ -2336,7 +2467,7 @@ function paintPicker() {
     const b = s.book;
     return `<div class="pk-row${s.id === S.strategyDesc.id ? " current" : ""}" role="option" data-id="${s.id}" title="${esc(s.description || s.name)}">` +
       `<button class="pk-star${s.fav ? " on" : ""}" data-star="${s.id}" tabindex="-1" title="${s.fav ? "Remove from favourites" : "Add to favourites"}">★</button>` +
-      `<span class="pk-name">${esc(s.name)}</span><span class="pk-rate">${b ? b.rate.toFixed(1) : "—"}</span>` +
+      `<span class="pk-name">${esc(s.name)}</span><span class="pk-rate">${b ? b.rate.toFixed(1) : s.chartOnly ? "" : "—"}</span>` +
       `<span class="pk-q">${b && b.q1 != null ? `${whole(b.q1)}·${whole(b.q2)}` : ""}</span></div>`;
   }).join("")).join("") || `<div class="sweep-empty">Nothing matches.</div>`;
   pickAt = -1;
@@ -2416,6 +2547,12 @@ async function selectStrategy(id) {
   S.run = null;
   S.sweepStale = false;
   S.lastSweepKey = "";
+  // A plain chart: the figures a strategy has step aside (style.css), and the sidebar opens on
+  // the indicators, which are what it is for.
+  const plain = plainChart();
+  document.body.classList.toggle("plainchart", plain);
+  $("runSweep").disabled = plain;
+  if (plain && S.booted) showTab("indicators");
   renderSidebar();
   await loadWindow(S.windowStart);
 }
@@ -2464,6 +2601,8 @@ async function boot() {
   S.strategyList = await fetch("/api/strategies").then((r) => r.json());
   if (!S.strategyList.length) { toast("No strategies found in strategies/", true); return; }
   S.tvLib = await fetch("/api/tradovate").then((r) => r.json());
+  // A pop-out's own indicators, from its address: at first, the chart's it was popped from.
+  if (POP) await loadSet(POP_SET, { studies: studiesFromUrl(QS.get("pst")), tv: tvFromUrl(QS.get("ptv")) });
   S.strategyTable = await fetch("/api/strategies/table").then((r) => r.json()).catch(() => ({ rows: [] }));
   loadRuns();
   bindPicker();
@@ -2582,6 +2721,7 @@ async function boot() {
       c.onHoverNews = (nw) => { if (!nw && !window._hoverTrade && !c.hoverSignal) tradeTooltip(null); };
       c.onClick = (hit) => { if (hit) selectWhy(hit.trade || hit.signal); };
       c.onHoverMove = (pt) => linkHover(c, pt);
+      c.onTradovateDrawn = tvPaintFit;
       $("chartWrap2").addEventListener("mousemove", (e) => { S.hoverChart = c; tradeTooltip(window._hoverTrade, e); });
       $("chartWrap2").addEventListener("mouseleave", () => tradeTooltip(null));
       S.chart2 = c;
@@ -2593,22 +2733,34 @@ async function boot() {
     if (S.split) {
       S.chart2.setShowBook(S.showBook);
       S.chart2.setTimeframe(S.chartTf2);
-      repaint();
+      // its own indicators may want more history than is loaded
+      if (S.blob && warmupGrew()) loadWindow(S.windowStart); else repaint();
       if (S.chart.data) S.chart2.zoomTo(S.chart.i0, S.chart.i1);      // opening on what the left shows
     } else if (S.chart2) S.chart.showLinked(null);
+    if (S.booted) renderSidebar();      // the Indicators tab's Left / Right, and its count
     saveSplit();
   };
   splitBtn.onclick = () => setSplit(!S.split);
-  tfSel2.addEventListener("change", () => { S.chartTf2 = Number(tfSel2.value) || 0; if (S.chart2) S.chart2.setTimeframe(S.chartTf2); saveSplit(); });
-  if (split.on) setSplit(true);
+  tfSel2.addEventListener("change", () => {
+    S.chartTf2 = Number(tfSel2.value) || 0;
+    if (S.chart2) S.chart2.setTimeframe(S.chartTf2);
+    saveSplit();
+    if (S.split && !POP) renderSidebar();      // the Left / Right switch names the candles
+  });
+  // A pop-out is one chart.
+  if (split.on && !POP) setSplit(true);
 
   // Pop out: this page in a window of its own, for a second monitor. It follows this one
   // over the channel (the day, the strategy, every setting) with candles of its own, and
-  // the crosshairs follow each other. Chrome and Edge can put it on the other screen (they
-  // ask once for leave to place windows); otherwise it opens here, to be dragged across.
+  // the crosshairs follow each other. Its indicators are its own, starting from the popped
+  // chart's: the right-hand one's when split. Chrome and Edge can put it on the other screen
+  // (they ask once for leave to place windows); otherwise it opens here, to be dragged across.
   $("popBtn").onclick = () => {
     const tf = S.split ? S.chartTf2 : S.chartTf === 1 ? 5 : 1;
-    const url = `${location.origin}${location.pathname}?pop=1&tf=${tf}${urlHash()}`;
+    const from = S.split ? RIGHT_SET : MAIN_SET, q = new URLSearchParams({ pop: "1", tf: String(tf) }), tvList = tvConfig(from.tv);
+    if (from.studies.length) q.set("pst", studiesToUrl(from.studies.map((st) => ({ ...st, gate: "off" }))));
+    if (tvList.length) q.set("ptv", tvToUrl(tvList));
+    const url = `${location.origin}${location.pathname}?${q}${urlHash()}`;
     const w = window.open(url, `mnq-pop-${Date.now()}`, "popup,width=1280,height=800");
     if (!w) { toast("The browser blocked the new window: allow pop-ups for this page", true); return; }
     if (window.getScreenDetails) window.getScreenDetails().then((d) => {
@@ -2662,6 +2814,16 @@ async function boot() {
   const first = S.strategyList.find((s) => s.id === FIRST_BOOK) || S.strategyList[0];
   await selectStrategy(fromUrl && S.strategyList.some((s) => s.id === fromUrl.strategy) ? fromUrl.strategy : first.id);
   if (fromUrl) await applySettings(fromUrl).catch((e) => toast(`The link's settings: ${e.message}`, true));
+  // The right-hand chart's own indicators, as last left. The first time, it takes a copy of the
+  // left's (gates off) and keeps its own from then on.
+  if (!POP) {
+    let right = null;
+    try { right = JSON.parse(localStorage.getItem("mnq.right") || "null"); } catch { /* private mode, or an older format */ }
+    await loadSet(RIGHT_SET, right || { studies: S.studies, tv: tvConfig(S.tv) });
+    if (!right) saveSet(RIGHT_SET);
+    paintIndicatorCount();
+    if (S.split && (RIGHT_SET.studies.length || RIGHT_SET.tv.length)) { if (warmupGrew()) await loadWindow(S.windowStart); else repaint(); }
+  }
   if (resumed) restoreView();
   S.booted = true;
   queueHash();
@@ -2703,8 +2865,24 @@ async function boot() {
   // browser refuses, the chart still fills the window. The chart re-sizes itself (its
   // ResizeObserver).
   const fullBtn = $("fullBtn"), isFull = () => document.body.classList.contains("chartfull");
+  // ƒx (I): this chart's indicators. In full screen and in a pop-out the sidebar is away, so
+  // they open beside the chart on their own (style.css body.indside); otherwise the sidebar
+  // turns to its Indicators tab.
+  const indBtn = $("indBtn");
+  const setIndSide = (on) => {
+    document.body.classList.toggle("indside", on);
+    indBtn.classList.toggle("on", on);
+    indBtn.setAttribute("aria-pressed", String(on));
+  };
+  const toggleInd = () => {
+    if (isFull()) { setIndSide(!document.body.classList.contains("indside")); return; }
+    showTab("indicators");
+    document.body.classList.add("side-open");       // a narrow window's drawer
+  };
+  indBtn.onclick = toggleInd;
   const setFull = (on) => {
     document.body.classList.toggle("chartfull", on || POP);
+    if (!on && !POP) setIndSide(false);
     fullBtn.setAttribute("aria-pressed", String(on));
     fullBtn.title = on ? "Leave full screen (F or Esc)" : "Full screen: just the chart and its panes (F). Esc or F again returns.";
     const root = document.documentElement;
@@ -2726,7 +2904,8 @@ async function boot() {
     if (e.key === "Escape" && isFull()) { setFull(false); return; }
     if (e.key === "f") { setFull(!isFull()); e.preventDefault(); return; }
     if (e.key === "p") { toggleBook(); return; }
-    if (e.key === "v") { setSplit(!S.split); return; }
+    if (e.key === "v") { if (!POP) setSplit(!S.split); return; }
+    if (e.key === "i") { toggleInd(); return; }
     if (e.key === "/") { showTab("settings"); $("setSearch").focus(); e.preventDefault(); return; }
     if (e.key === "?") { toggleHelp(); return; }
     if (e.key === "s") { openPicker(); e.preventDefault(); return; }

@@ -363,6 +363,17 @@ t("a book the table has not measured still lists, last in its family", () => {
   const don = groups.find((g) => g.title === "Donchian").books;
   eq([don.at(-1).id, don.at(-1).book], ["donchian_new", null]);
 });
+t("the plain chart lists first, above the favourites, once, and a search finds it", () => {
+  const plain = { id: "plain_chart", name: "Plain chart (no strategy)", description: "The price alone", chartOnly: true };
+  eq(familyOf("plain_chart"), "Chart");
+  const groups = pickerRows([...books, plain], table.rows, "1250", new Set(["orb", "plain_chart"]));
+  eq(groups.slice(0, 2).map((g) => g.title), ["Chart", "Favourites"]);
+  eq(groups[0].books.map((b) => [b.id, b.book, b.chartOnly]), [["plain_chart", null, true]]);
+  eq(groups[1].books.map((b) => b.id), ["orb"], "starred, it stays in its own place:");
+  eq(groups.flatMap((g) => g.books).filter((b) => b.id === "plain_chart").length, 1);
+  eq(pickerRows([...books, plain], table.rows, "1250", new Set(), "plain").map((g) => g.title), ["Chart"]);
+  eq(pickerRows(books, table.rows, "1250", new Set())[0].title, "Donchian", "with no plain chart, the books lead as before:");
+});
 
 console.log(`\n${"=".repeat(64)}\n  ${pass} passed, ${fail} failed`);
 if (fail) { console.log("\nFailures:"); for (const f of failures) console.log("  - " + f); }
