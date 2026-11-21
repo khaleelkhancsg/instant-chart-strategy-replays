@@ -479,6 +479,12 @@ The VXN comes from FRED's VXNCLS, saved to `data/raw/fred/` (git-ignored: it is 
 - **The last half hour following the day** (Baltussen et al.) shows on 2020-2025 pooled only
   because the high-VXN days are 2020's and 2022's. Inside each year it runs from +12.4 to -13.1
   points, none significant.
+- **The VIX term structure does no better** (VIX over VIX3M, FRED's VIXCLS and VXVCLS, saved beside
+  the VXN).
+  - Flattest third less steepest, 2026: +0.031, z 0.5.
+  - Only 10 of 2026's sessions opened inverted.
+- **Every free daily index left is another reading of implied volatility.** VVIX, SKEW and VIX9D
+  are on Cboe's site only.
 - **So dealer gamma would have to carry something the VXN does not.**
   - Cboe's delayed quote pages forbid automated download.
   - Daily options open interest comes legitimately from Databento's statistics schema: OPRA for

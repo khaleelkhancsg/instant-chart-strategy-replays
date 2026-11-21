@@ -36,13 +36,22 @@
 // 2026, with the same sign in each of its three parts. Everything else is read through the count
 // of gaps beyond 1.96 sd against the count each placebo market gets.
 //
+// Added after that run: the VIX term structure, the 1-month VIX over the 3-month (FRED VIXCLS and
+// VXVCLS, saved beside the VXN). It is the shape of fear rather than its level: near or above 1
+// the near term is priced as the danger, as in a sell-off, when dealers are said to be short gamma.
+// Its thirds are cut inside each period like the VXN's. Named before its run: the 15-minute
+// variance ratio, the flattest third (highest ratio) less the steepest, in 2026, with the same
+// sign in each of its three parts.
+//
 // RESULT (run 2026-11-21: data/mnq_1m_beta.bin to Oct 30, VXN to Nov 19, 100 placebo markets): the
 // VXN does not tell MNQ's trend days from its chop days.
 //   - The test named first, the 15-minute variance ratio, high-VXN third less low, 2026: +0.088,
 //     z 1.5, p 0.13. Not steady inside the year: Jan-Mar -0.004, Apr-Jul 14 +0.043, Jul 15-Oct 30
 //     +0.093.
-//   - Of all 160 gaps (4 labels, 5 periods, 8 measures), 10 sit beyond 1.96 sd. A placebo market
-//     judged the same way gets 1-21, median 8, and 28% of them get at least 10.
+//   - Of the VXN labels' gaps, the level's has 3 of 40 beyond 1.96 sd, where placebo markets get a
+//     median of 2 (39% get at least 3). Of all 200 gaps (5 labels with the term structure, 5
+//     periods, 8 measures), 11 sit beyond 1.96 sd. A placebo market judged the same way gets 3-24,
+//     median 10, and 38% of them get at least 11.
 //   - EMA 12/26 crosses in 2026:
 //       - after a 1-minute cross, the next 30 minutes went +1.3 points the cross's way on high-VXN
 //         days and -1.8 on low ones (gap z 1.4);
@@ -58,6 +67,12 @@
 //   - The standing among the 252 closes before, the label a trader has at the open, can hardly
 //     split 2026: 116 of its 208 days are in the top third and none of Apr-Jul 14's in the bottom.
 //   - The realised range does no better than the VXN: 3 of 40 gaps each, placebo median 2.
+//   - Nor does the VIX term structure.
+//       - Its named test, the flattest third less the steepest, 2026: +0.031, z 0.5, p 0.64 (parts
+//         +0.085, +0.092, +0.008).
+//       - 1 of its 40 gaps beyond 1.96 sd, placebo median 2.
+//       - Only 10 of 2026's sessions opened inverted (VIX at or above VIX3M), 9 of them in Jan-Mar;
+//         2020-2025 had 103. Too few to judge an inverted-day rule on 2026.
 
 import fs from "node:fs";
 import { loadBars } from "../src/data.mjs";
@@ -70,6 +85,7 @@ const args = process.argv.slice(2), pi = args.indexOf("--placebo");
 const PLACEBOS = pi >= 0 ? Number(args[pi + 1]) || 100 : 100;
 const pos = args.filter((a, k) => !a.startsWith("--") && (pi < 0 || k !== pi + 1));
 const VXN_FILE = pos[0] || "data/raw/fred/VXNCLS.csv", BARS_FILE = pos[1] || "data/mnq_1m_beta.bin";
+const VIX_FILE = "data/raw/fred/VIXCLS.csv", VIX3M_FILE = "data/raw/fred/VXVCLS.csv";
 const DAY = 86400000, LOOK = 252, FULL_RTH = 385, FWD1 = 30, FWD5 = 6;
 const t0 = Date.now();
 
@@ -99,11 +115,17 @@ const vxn = readVxn(VXN_FILE), vv = vxn.map((x) => x.v);
 const vs = standing(vv, LOOK);
 const vchg = vv.map((v, k) => { if (k < 19) return NaN; let s = 0; for (let j = k - 19; j <= k; j++) s += vv[j]; return v / (s / 20) - 1; });
 // the last close strictly before a trading day's date
-function vxnBefore(ms) {
-  let lo = 0, hi = vxn.length - 1, at = -1;
-  while (lo <= hi) { const m = (lo + hi) >> 1; if (vxn[m].ms < ms) { at = m; lo = m + 1; } else hi = m - 1; }
+function lastBefore(series, ms) {
+  let lo = 0, hi = series.length - 1, at = -1;
+  while (lo <= hi) { const m = (lo + hi) >> 1; if (series[m].ms < ms) { at = m; lo = m + 1; } else hi = m - 1; }
   return at;
 }
+const vxnBefore = (ms) => lastBefore(vxn, ms);
+// The VIX term structure, the 1-month VIX over the 3-month, on the dates both closed.
+const term = fs.existsSync(VIX_FILE) && fs.existsSync(VIX3M_FILE) ? (() => {
+  const v3 = new Map(readVxn(VIX3M_FILE).map((x) => [x.ms, x.v]));
+  return readVxn(VIX_FILE).filter((x) => v3.has(x.ms)).map((x) => ({ ms: x.ms, v: x.v / v3.get(x.ms) }));
+})() : null;
 
 // ── the bars, the sessions and the days scored ──
 const { bars } = loadBars(BARS_FILE);
@@ -115,13 +137,15 @@ sessions.forEach((s, k) => {
   let l30 = -1;                                    // the bar that closes at 14:30
   for (let i = s.rthA; i < s.rthZ; i++) if (bars.ctMin[i] < 870) l30 = i;
   if (l30 < 0 || bars.ctMin[s.rthZ - 1] !== 899) return;
-  const vk = vxnBefore(ms);
+  const vk = vxnBefore(ms), tk = term ? lastBefore(term, ms) : -1;
   days.push({ td: s.td, ms, a: s.rthA, z: s.rthZ, pc: prev.rthZ - 1, l30, vxn: vk >= 0 ? vv[vk] : NaN,
-              raw: { level: vk >= 0 ? vv[vk] : NaN, stand: vk >= 0 ? vs[vk] : NaN, rising: vk >= 0 ? vchg[vk] : NaN, range: adr[k] } });
+              raw: { level: vk >= 0 ? vv[vk] : NaN, stand: vk >= 0 ? vs[vk] : NaN, rising: vk >= 0 ? vchg[vk] : NaN, range: adr[k],
+                     term: tk >= 0 ? term[tk].v : NaN } });
 });
 const dayOf = new Map(days.map((d, j) => [d.td, j]));
 const LABELS = [["level", "VXN level, thirds of each period"], ["stand", "VXN standing among the 252 closes before (known at the open)"],
-                ["rising", "VXN against its 20-day mean, thirds of each period"], ["range", "10-session average range (realised), thirds of each period"]];
+                ["rising", "VXN against its 20-day mean, thirds of each period"], ["range", "10-session average range (realised), thirds of each period"],
+                ...(term ? [["term", "VIX over VIX3M (term structure; high = flat or inverted), thirds of each period"]] : [])];
 const PERIODS = [
   ["2020-2025", Date.UTC(2020, 0, 1), Date.UTC(2026, 0, 1)],
   ["2026 Jan-Mar", Date.UTC(2026, 0, 1), Date.UTC(2026, 3, 1)],
@@ -275,6 +299,15 @@ for (const [lab, c] of Object.entries(counts))
   console.log(`  ${lab.padEnd(8)} ${String(c.real).padStart(3)} of ${c.cells}; placebo markets ${c.placeboRange[0]}-${c.placeboRange[1]}, median ${c.placeboMedian}; ${(100 * c.pAtLeast).toFixed(0)}% have at least as many`);
 const prim = results["level|2026"].vr15;
 console.log(`\nThe test named first: VR 15 min, high-VXN third less low, 2026: ${f(prim.gap - prim.placeboGap, 3)}, z ${f(prim.z, 2)}, p ${prim.p.toFixed(3)} (placebo rank ${prim.pRank.toFixed(3)})`);
+if (term) {
+  const tp = results["term|2026"].vr15, parts = ["2026 Jan-Mar", "2026 Apr-Jul 14", "2026 Jul 15-Oct 30"].map((p) => { const r = results[`term|${p}`].vr15; return f(r.gap - r.placeboGap, 3); });
+  console.log(`The term structure's named test: VR 15 min, flattest third less steepest, 2026: ${f(tp.gap - tp.placeboGap, 3)}, z ${f(tp.z, 2)}, p ${tp.p.toFixed(3)}; parts ${parts.join(", ")}`);
+  for (const [p, from, to] of PERIODS.filter(([q]) => MAIN.has(q))) {
+    const ds = days.filter((d) => d.ms >= from && d.ms < to && Number.isFinite(d.raw.term)), inv = ds.filter((d) => d.raw.term >= 1).length;
+    const c = ds.map((d) => d.raw.term).sort((a, b) => a - b);
+    console.log(`  ${p.padEnd(20)} VIX/VIX3M before the open: ${c.length} days, ${inv} at or above 1 (inverted); thirds cut at ${c[Math.floor(c.length / 3)].toFixed(3)} and ${c[Math.floor((2 * c.length) / 3)].toFixed(3)}`);
+  }
+}
 
 fs.writeFileSync("research/vxn_regime_results.json", JSON.stringify({ run: new Date().toISOString(), bars: BARS_FILE, vxn: VXN_FILE, placebos: PLACEBOS, days: days.length, counts, results }, null, 1));
 console.log(`\nwrote research/vxn_regime_results.json`);
