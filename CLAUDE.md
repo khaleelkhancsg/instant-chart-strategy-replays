@@ -463,6 +463,27 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
   only) or Databento 1-second data (paid). Add one to `TFS` to run the other four
   combinations.
 
+## The VXN as a stand-in for dealer gamma
+
+`research/vxn_regime.mjs` labels each RTH session by the VXN close before it and asks whether
+moves carry on more on high-VXN days. Each measure is judged against 100 placebo markets:
+- variance ratios;
+- EMA 12/26 crosses and their next 30 minutes;
+- the last half hour against the day.
+
+The VXN comes from FRED's VXNCLS, saved to `data/raw/fred/` (git-ignored: it is Cboe's data).
+- **Result: no.**
+  - The test named first (15-minute variance ratio, high third less low, 2026) gives +0.088,
+    z 1.5, p 0.13, and its sign is not steady inside 2026.
+  - 10 of 160 gaps sit beyond 1.96 sd, where placebo markets get a median of 8.
+- **The last half hour following the day** (Baltussen et al.) shows on 2020-2025 pooled only
+  because the high-VXN days are 2020's and 2022's. Inside each year it runs from +12.4 to -13.1
+  points, none significant.
+- **So dealer gamma would have to carry something the VXN does not.**
+  - Cboe's delayed quote pages forbid automated download.
+  - Daily options open interest comes legitimately from Databento's statistics schema: OPRA for
+    QQQ, NDX and SPX; GLBX for NQ options.
+
 ## Papers
 
 - `papers/<id>.md` holds one summary per paper (front matter: title, authors,
