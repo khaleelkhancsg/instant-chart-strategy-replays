@@ -8,10 +8,19 @@
 //
 // The second is easy to overlook and easy to fix, so it is worth ruling in or out
 // before redesigning any signal.
+//
+// ATR(%px) corrected 2026-11-21: it had divided by the back-adjusted close, which sits
+// thousands of points above the real one before 2025, so it read low for every year but
+// 2026. The 5-minute ATR in % of the real price:
+//   2019 0.073 (was 0.051), 2020 0.140 (0.105), 2021 0.084 (0.068), 2022 0.147 (0.117),
+//   2023 0.083 (0.069), 2024 0.078 (0.071), 2025 0.092 (0.088), 2026 0.104 (0.103).
+// In points 2026 is the widest year (28.1, against 18.8 in 2022): the price is highest.
+// In percent, 2020 and 2022 moved about 1.4 times as much as 2026.
 
 import { loadBars } from "../src/data.mjs";
 import { resample } from "../src/resample.mjs";
 import { atr, adx } from "../src/indicators.mjs";
+import { rawOffsets } from "../src/levels.mjs";
 import strat from "../strategies/trend_neutev.mjs";
 import { runStrategy, resolveParams } from "../src/run.mjs";
 import { resolveExec } from "../src/engine.mjs";
@@ -26,6 +35,9 @@ const yearOf = (ms) => new Date(ms).getUTCFullYear();
 // ───────────────── price-action character, per year ─────────────────
 const tf = resample(bars, params.timeframeMin);
 const A = atr(tf.high, tf.low, tf.close, 14);
+// ATR(%px) is of the contract's real price: the bars are back-adjusted at every roll, and the
+// adjusted close sits about 3,600 points above the real one in 2020-2022 (fixed 2026-11-21).
+const OFF = rawOffsets(tf);
 const { adx: ADX } = adx(tf.high, tf.low, tf.close, 14);
 
 const Y = new Map();
@@ -38,7 +50,7 @@ for (let i = 1; i < tf.close.length; i++) {
   const r = get(y);
   r.n++;
   r.atr += A[i];
-  r.px += tf.close[i];
+  r.px += tf.close[i] - OFF[i];
   r.adx += ADX[i];
   if (ADX[i] >= 25) r.trending++;
   const d = tf.close[i] - tf.close[i - 1];

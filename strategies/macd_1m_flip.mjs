@@ -8,9 +8,9 @@
 //
 // It exists to answer "what does the raw signal do", so every result from it is
 // a baseline rather than a candidate. If something more elaborate cannot beat
-// this, the elaboration is not earning its keep — which is a live question in
-// this project, where `momentum_roc` at its crudest already beat every ornate
-// book in the library.
+// this, the elaboration is not earning its keep. `momentum_roc` is the crudest
+// book here; once its percentage was taken of the contract's real price
+// (2026-11-21) it came out about break-even over 2019-2026 (PF 1.002).
 //
 // ── HOW "NO RULES" IS EXPRESSED, since the engine always has an opinion ──
 // The execution layer is built to bracket every trade, so switching it off

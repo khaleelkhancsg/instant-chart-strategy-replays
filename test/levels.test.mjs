@@ -12,6 +12,9 @@
 import * as Lab from "../research/lib_levels.mjs";
 import { loadBars } from "../src/data.mjs";
 import { rawOffsets } from "../src/levels.mjs";
+import { roc } from "../src/indicators.mjs";
+import { resample } from "../src/resample.mjs";
+import momentumRoc from "../strategies/momentum_roc.mjs";
 
 let pass = 0, fail = 0;
 const failures = [];
@@ -134,6 +137,23 @@ t("raw prices: each contract's offset is the rolls still to come", () => {
   eq(Lab.rawOffset(meta, Date.UTC(2026, 1, 2)), 503.5, "on MNQH6:");
   eq(Lab.rawOffset(meta, Date.UTC(2026, 3, 1)), 294.75, "on MNQM6:");
   eq(Lab.rawOffset(meta, Date.UTC(2026, 6, 1)), 0, "on MNQU6:");
+});
+t("ROC is a percentage of the contract's real price, in the indicator and in momentum_roc", () => {
+  // 2022: the back-adjusted close sat thousands of points above the price that traded
+  const a = bars.ts.findIndex((ts) => ts >= Date.UTC(2022, 5, 1)), z = a + 20000;
+  const B = { ...bars, ts: bars.ts.subarray(0, z), open: bars.open.subarray(0, z), high: bars.high.subarray(0, z), low: bars.low.subarray(0, z),
+              close: bars.close.subarray(0, z), volume: bars.volume.subarray(0, z), tday: bars.tday.subarray(0, z), ctMin: bars.ctMin.subarray(0, z), count: z };
+  const off = rawOffsets(B), C = B.close, p = 12, r = roc(C, p, off);
+  if (!(off[a] > 2000)) throw new Error(`expected a 2022 offset in the thousands, got ${off[a]}`);
+  let i = a + p;
+  while (Math.abs(C[i] - C[i - p]) < 5) i++;
+  near(r[i], (100 * (C[i] - C[i - p])) / (C[i - p] - off[i - p]), 1e-9, "the real price's percentage:");
+  if (!(Math.abs(r[i]) > Math.abs(roc(C, p)[i]) * 1.1)) throw new Error("the real price's ROC should be well above the adjusted one in 2022");
+  const tf = resample(B, 5), want = roc(tf.close, 12, rawOffsets(tf));
+  const got = momentumRoc.compute(tf, { lookback: 12, threshold: 0.25, atrPeriod: 14, direction: "follow", adxMin: 0, adxMax: 0, adxPeriod: 14, cooldown: 0 })
+    .overlays.find((o) => /^ROC/.test(o.name)).data;
+  const k = tf.close.length - 5;
+  near(got[k], want[k], 1e-12, "momentum_roc's ROC:");
 });
 const sample = Lab.loadSample({ to: Date.UTC(2026, 6, 15) });
 t("flipping whole days keeps every day's range in percent, whatever price the path is at", () => {

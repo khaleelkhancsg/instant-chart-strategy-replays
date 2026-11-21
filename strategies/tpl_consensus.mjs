@@ -24,6 +24,7 @@
 // UNVALIDATED. A design worth searching, not a result.
 
 import { ema, atr, adx, zscore, roc, rsi } from "../src/indicators.mjs";
+import { rawOffsets } from "../src/levels.mjs";
 import { consensusExplain, adxAtLeast, adxAtMost } from "../src/explain.mjs";
 
 export default {
@@ -109,7 +110,8 @@ export default {
       members = periods.map((per) => zscore(C, Math.max(5, Math.round(per * zMult))));
     } else if (p.family === "roc") {
       priceScaled = false;
-      members = periods.map((per) => roc(C, per));
+      const off = rawOffsets(bars);                     // % of the contract's real price
+      members = periods.map((per) => roc(C, per, off));
     } else if (p.family === "rsi") {
       priceScaled = false;
       // Centred on zero, and held while the close is unchanged: an RSI stands exactly still

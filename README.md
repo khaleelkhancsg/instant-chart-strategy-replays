@@ -240,8 +240,7 @@ The rest:
 - **Levels:** `pct_levels` (any percent level; see "Do percentages work?"),
   `noise_area` (the published noise-area breakout) and `cammy_value_levels`
   (Cammy Capital's volume profile strategy; see "Cammy Capital's volume profile
-  strategy" below). The tables below were measured before `cammy_value_levels`
-  was added.
+  strategy" below).
 
 `momentum_roc` is deliberately crude — bare rate-of-change, no smoothing. It is
 the baseline: if an elaborate book cannot beat it, the elaboration is not paying
@@ -254,7 +253,9 @@ differ.
 
 ### Every strategy at its defaults, under the real rules
 
-*Measured 2026-10-31 by `research/strategy_table.mjs`; every number is in
+*Measured 2026-10-31 by `research/strategy_table.mjs` and re-run 2026-11-21, when
+`momentum_roc` changed (ROC now takes its percentage of the contract's real price, not the
+back-adjusted one) and `cammy_value_levels` joined. Nothing else moved. Every number is in
 `research/strategy_table_results.json`.*
 
 How to read the tables:
@@ -289,7 +290,7 @@ The five books built for the $1,250 eval (below) run here with this eval's $1,00
 | `macd_momentum` | 5m | 1,508 | 1.043 | +$8.77 | 9.2% | 35.8% | 41.1 · 29.3 | 35.8% | 72.6% |
 | `donchian_shipped` | 2m | 2,945 | 1.176 | +$40.01 | 35.5% | 32.1% | 31.1 · 33.3 | 32.1% | 55.1% |
 | `donchian_eff_rth` | 2m | 5,590 | 1.079 | +$28.01 | 42.0% | 31.5% | 33.3 · 29.3 | 29.7% | 51.7% |
-| `momentum_roc` | 5m | 12,401 | 1.018 | +$7.76 | 21.3% | 26.7% | 6.7 · 50.7 | 26.7% | 27.1% |
+| `momentum_roc` | 5m | 15,307 | 1.002 | +$0.92 | 17.4% | 27.3% | 7.8 · 50.7 | 26.7% | 25.1% |
 | `macd_5m_quiet_anticipate`† | 5m | 7,589 | 1.047 | +$8.65 | 26.3% | 26.1% | 23.3 · 29.3 | 23.6% | 38.6% |
 | `triple_ema` | 5m | 16,045 | 0.994 | −$1.79 | 14.8% | 24.8% | 7.8 · 45.3 | 23.6% | 26.0% |
 | `prior_day_break` | 5m | 1,397 | 1.008 | +$3.27 | 15.5% | 22.4% | 13.3 · 33.3 | 22.4% | 38.0% |
@@ -298,6 +299,7 @@ The five books built for the $1,250 eval (below) run here with this eval's $1,00
 | `macd_1m_quiet_anticipate`† | 1m | 29,169 | 0.854 | −$12.00 | 10.3% | 27.9% | 35.6 · 18.7 | 20.6% | 18.9% |
 | `trend_vol_adaptive` | 3m | 17,711 | 0.996 | −$0.76 | 5.1% | 20.0% | 14.4 · 26.7 | 19.4% | 22.3% |
 | `macd_5m_anticipate`† | 5m | 22,092 | 0.939 | −$14.91 | 12.6% | 16.4% | 20.0 · 12.0 | 15.8% | 15.1% |
+| `cammy_value_levels` | 1m | 2,177 | 1.216 | +$35.01 | 9.5% | 15.2% | 27.8 · 0.0 | 15.2% | 82.9% |
 | `noise_area` | 1m | 2,029 | 1.161 | +$14.92 | 5.7% | 14.5% | 26.7 · 0.0 | 14.5% | 69.7% |
 | `gap_fade` | 5m | 1,572 | 1.002 | +$0.53 | 15.2% | 13.9% | 16.7 · 10.7 | 13.9% | 54.6% |
 | `session_range_fade` | 5m | 2,276 | 0.884 | −$47.94 | 14.1% | 13.3% | 23.3 · 1.3 | 13.3% | 34.6% |
@@ -331,13 +333,14 @@ block) and the five built for this eval. Every other book trades its $3,000 size
 | `macd_fade_1250` | 33.4% | 55.8% | 60.0 · 50.7 | 55.8% | 48.0% |
 | `macd_momentum` | 35.1% | 54.5% | 57.8 · 50.7 | 54.5% | 49.4% |
 | `donchian_shipped` (4 lots) | 42.1% | 44.2% | 45.6 · 42.7 | 44.2% | 56.3% |
+| `cammy_value_levels` | 31.5% | 34.5% | 40.0 · 28.0 | 34.5% | 68.3% |
 | `trend_neutev` | 15.4% | 30.3% | 36.7 · 22.7 | 30.9% | 20.9% |
 | `donchian_eff_rth` | 36.8% | 31.5% | 33.3 · 29.3 | 29.7% | 35.1% |
 | `noise_area` | 18.1% | 30.9% | 51.1 · 6.7 | 29.1% | 48.0% |
-| `momentum_roc` | 20.9% | 24.8% | 14.4 · 37.3 | 24.2% | 25.7% |
 | `tpl_channel` | 20.1% | 26.1% | 31.1 · 20.0 | 24.2% | 24.3% |
 | `macd_angle_v4` | 8.2% | 24.8% | 45.6 · 0.0 | 24.2% | 28.0% |
 | `macd_cross` | 14.7% | 25.5% | 30.0 · 20.0 | 23.6% | 13.4% |
+| `momentum_roc` | 19.2% | 22.4% | 10.0 · 37.3 | 21.8% | 22.0% |
 | `tpl_consensus` | 20.8% | 20.6% | 13.3 · 29.3 | 20.0% | 20.9% |
 | `supertrend` | 13.6% | 19.4% | 12.2 · 28.0 | 19.4% | 19.1% |
 | `triple_ema` | 16.1% | 18.2% | 10.0 · 28.0 | 18.2% | 21.7% |
@@ -380,7 +383,7 @@ What the tables say:
     history, and it lost forward.
 - **Neither eval is easier across the board.** Among the 29 books that keep their
   $3,000 size:
-  - the $1,250 target is less than half the $3,000 one, so on all history 18 of
+  - the $1,250 target is less than half the $3,000 one, so on all history 19 of
     them pass it more often;
   - but its drawdown and daily limit shrink with the target, while they keep
     their 8–10 lots. So in 2026, at a tick of slippage, 17 of 29 pass it less

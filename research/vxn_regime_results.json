@@ -1,5 +1,6 @@
 {
- "run": "2026-11-21T19:41:06.716Z",
+ "unit": "pts",
+ "run": "2026-11-21T19:57:20.510Z",
  "bars": "data/mnq_1m_beta.bin",
  "vxn": "data/raw/fred/VXNCLS.csv",
  "placebos": 100,

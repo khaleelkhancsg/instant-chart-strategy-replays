@@ -700,7 +700,7 @@ export const STUDIES = {
     params: [int("length", "Length", 10, 1, 500), LO(-0.2, -10, 10, 0.05), HI(0.2, -10, 10, 0.05)],
     label: (p) => `ROC ${p.length}`, warmup: (p) => p.length + 2, gates: OSC_GATES,
     levels: (p) => ({ lo: p.lo, hi: p.hi, mid: 0 }), auto: "sym",
-    compute: (b, p) => valueOnly(`ROC ${p.length}`, roc(b.close, p.length)),
+    compute: (b, p) => valueOnly(`ROC ${p.length}`, roc(b.close, p.length, rawOffsets(b))),
   },
   zscore: {
     name: "Z-score of close", group: "Oscillators", pane: "sub", kind: "osc",

@@ -310,7 +310,7 @@ export function stepDays(bars, i, days) {
 // ── the strategy picker ──────────────────────────────────────────────────
 // A new strategy file lands in the family its id names, or under Other.
 const FAMILIES = [
-  ["Chart", /^plain/], ["Templates", /^tpl_/], ["Donchian", /donchian/], ["Breakouts", /^orb|prior_day|breakout|noise_area/], ["MACD", /macd/], ["Levels", /^pct_/],
+  ["Chart", /^plain/], ["Templates", /^tpl_/], ["Donchian", /donchian/], ["Breakouts", /^orb|prior_day|breakout|noise_area/], ["MACD", /macd/], ["Levels", /^pct_|_levels$/],
   ["Mean reversion", /fade|zscore|reversion/], ["Trend", /trend|ema|adx|momentum/],
 ];
 // The plain chart heads the list, apart from the books: it is where a chart of your own starts.

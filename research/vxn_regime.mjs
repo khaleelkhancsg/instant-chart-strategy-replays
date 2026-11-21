@@ -84,6 +84,13 @@
 //         there. 2026 was unchanged; fixed 2026-11-21.
 //     So for sizing and stop width the VXN is the better gauge. For which way, or whether moves
 //     carry on, it says nothing.
+//   - The same in basis points of the real price (--bps, 2026-11-21): the cross +30 and last-30
+//     measures were in points, and 2020-2025 pools years whose price ran from 7,000 to 23,000.
+//     Nothing changes:
+//       - 12 of 200 gaps beyond 1.96 sd; placebo median 9, 31% of placebo markets get as many.
+//       - 2026: 1-minute cross +30 z 1.2 (was 1.4), 5-minute -0.4, last 30 +1.3.
+//       - 2020-2025's late half hour: +7.4 bps, z 3.5. Still 2020's: +15.5 bps inside 2020
+//         (z 1.9). The other years run -6.4 to +5.1, none beyond 1.96 sd.
 
 import fs from "node:fs";
 import { loadBars } from "../src/data.mjs";
@@ -94,6 +101,10 @@ import { placeboBars, zToP } from "./lib_levels.mjs";
 
 const args = process.argv.slice(2), pi = args.indexOf("--placebo");
 const PLACEBOS = pi >= 0 ? Number(args[pi + 1]) || 100 : 100;
+// --bps: the three measures in points (cross +30, last 30) in basis points of the session's real
+// prior close instead, so years at different prices compare like with like. Writes
+// research/vxn_regime_bps_results.json.
+const BPS = args.includes("--bps"), UNIT = BPS ? "bps" : "pts";
 const pos = args.filter((a, k) => !a.startsWith("--") && (pi < 0 || k !== pi + 1));
 const VXN_FILE = pos[0] || "data/raw/fred/VXNCLS.csv", BARS_FILE = pos[1] || "data/mnq_1m_beta.bin";
 const VIX_FILE = "data/raw/fred/VIXCLS.csv", VIX3M_FILE = "data/raw/fred/VXVCLS.csv";
@@ -179,11 +190,14 @@ for (const [lab] of LABELS) for (const [pname, from, to] of PERIODS) {
   GROUP[`${lab}|${pname}`] = Int8Array.from(days, (d) => (!inP(d) ? -1 : lab === "stand" ? third(d.raw[lab]) : d.raw[lab] < c1 ? 0 : d.raw[lab] < c2 ? 1 : 2));
 }
 const MEASURES = [["vr5", "VR 5 min"], ["vr15", "VR 15 min"], ["vr30", "VR 30 min"], ["x1", "1m crosses a session"], ["x5", "5m crosses a session"],
-                  ["f1", "1m cross +30 min, pts"], ["f5", "5m cross +30 min, pts"], ["lh", "last 30 min with the day, pts"]];
+                  ["f1", `1m cross +30 min, ${UNIT}`], ["f5", `5m cross +30 min, ${UNIT}`], ["lh", `last 30 min with the day, ${UNIT}`]];
 
 // ── everything measured on one set of bars (the real ones, or a placebo market) ──
 function measure(b) {
   const C = b.close, e12 = ema(C, 12), e26 = ema(C, 26);
+  // what one point is worth in each session's unit: 1, or 10,000 over the real prior close (a
+  // placebo market's own, from its rawOff)
+  const off = BPS ? rawOffsets(b) : null, unit = days.map((d) => (BPS ? 1e4 / (C[d.pc] - off[d.pc]) : 1));
   const t5 = resample(b, 5), c5 = t5.close, g12 = ema(c5, 12), g26 = ema(c5, 26);
   const per = days.map(() => ({ vr5: NaN, vr15: NaN, vr30: NaN, x1: 0, x5: 0, f1s: 0, f1n: 0, f5s: 0, f5n: 0, lh: NaN }));
   days.forEach((d, j) => {
@@ -202,10 +216,10 @@ function measure(b) {
       const u = e12[t] - e26[t], w = e12[t - 1] - e26[t - 1];
       if (!(u * w < 0)) continue;
       p.x1++;
-      if (t + FWD1 < d.z) { p.f1s += Math.sign(u) * (C[t + FWD1] - C[t]); p.f1n++; }
+      if (t + FWD1 < d.z) { p.f1s += Math.sign(u) * (C[t + FWD1] - C[t]) * unit[j]; p.f1n++; }
     }
     const rod = C[d.l30] - C[d.pc];
-    if (rod !== 0) p.lh = Math.sign(rod) * (C[d.z - 1] - C[d.l30]);
+    if (rod !== 0) p.lh = Math.sign(rod) * (C[d.z - 1] - C[d.l30]) * unit[j];
   });
   for (let k = 1; k < c5.length; k++) {
     const ct = t5.ctMin[k];
@@ -216,7 +230,7 @@ function measure(b) {
     if (!(u * w < 0)) continue;
     per[j].x5++;
     const f = k + FWD5;
-    if (f < c5.length && t5.tday[f] === t5.tday[k] && t5.ctMin[f] < 900) { per[j].f5s += Math.sign(u) * (c5[f] - c5[k]); per[j].f5n++; }
+    if (f < c5.length && t5.tday[f] === t5.tday[k] && t5.ctMin[f] < 900) { per[j].f5s += Math.sign(u) * (c5[f] - c5[k]) * unit[j]; per[j].f5n++; }
   }
   return per;
 }
@@ -352,5 +366,5 @@ for (const [p, from, to] of PERIODS.filter(([q]) => q === "2026" || q === "2020-
   console.log(`  ${"".padEnd(10)} median range by VXN third: ${thirds.map((g, i) => `${["low", "mid", "high"][i]} (${g.vxn[0].toFixed(1)}-${g.vxn[1].toFixed(1)}) ${g.medianRangePct.toFixed(2)}%, ${g.medianRangePts.toFixed(0)} pts`).join("; ")}`);
 }
 
-fs.writeFileSync("research/vxn_regime_results.json", JSON.stringify({ run: new Date().toISOString(), bars: BARS_FILE, vxn: VXN_FILE, placebos: PLACEBOS, days: days.length, counts, rangeCall, results }, null, 1));
-console.log(`\nwrote research/vxn_regime_results.json`);
+fs.writeFileSync(BPS ? "research/vxn_regime_bps_results.json" : "research/vxn_regime_results.json", JSON.stringify({ unit: UNIT, run: new Date().toISOString(), bars: BARS_FILE, vxn: VXN_FILE, placebos: PLACEBOS, days: days.length, counts, rangeCall, results }, null, 1));
+console.log(`\nwrote research/vxn_regime${BPS ? "_bps" : ""}_results.json`);

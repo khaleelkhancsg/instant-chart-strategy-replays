@@ -242,8 +242,8 @@ const table = JSON.parse(fs.readFileSync(new URL("../research/strategy_table_res
 const books = table.rows.map((r) => ({ id: r.id, name: r.name, description: "" }));
 t("every book has a family, and the obvious ones are where they should be", () => {
   eq(books.filter((b) => familyOf(b.id) === "Other").map((b) => b.id), []);
-  eq(["donchian_1250", "orb_trend", "macd_fade_1250", "vwap_fade", "trend_pullback", "tpl_ma_cross", "ema_cross_macd_fade", "supertrend"].map(familyOf),
-     ["Donchian", "Breakouts", "MACD", "Mean reversion", "Trend", "Templates", "MACD", "Trend"]);
+  eq(["donchian_1250", "orb_trend", "macd_fade_1250", "vwap_fade", "trend_pullback", "tpl_ma_cross", "ema_cross_macd_fade", "supertrend", "cammy_value_levels"].map(familyOf),
+     ["Donchian", "Breakouts", "MACD", "Mean reversion", "Trend", "Templates", "MACD", "Trend", "Levels"]);
   eq(familyOf("something_new"), "Other");
 });
 t("the rate shown includes a tick of slippage, and halves show only when they are that run", () => {

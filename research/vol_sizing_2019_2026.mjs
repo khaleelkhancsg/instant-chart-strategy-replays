@@ -1,6 +1,7 @@
 // Can sizing by volatility keep the strategies' results steady across regimes?
 //
-// 2026 is the most volatile year in the data, and the strategies were tuned on
+// 2026 is the most volatile year in the data in points and dollars a contract (in percent
+// of price 2020 and 2022 moved more: NQ's price is what made 2026 the widest), and the strategies were tuned on
 // it: on calmer years each trade moves fewer dollars against the same fixed
 // target and day rules (research/years_2019_2026.mjs). Lot size is the one lever
 // that changes nothing else, so:

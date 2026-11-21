@@ -365,11 +365,17 @@ export function keltner(H, L, C, period = 20, mult = 2, atrPeriod = 14) {
   return { mid, upper, lower };
 }
 
-// Rate of change, in percent, over `p` bars.
-export function roc(C, p = 10) {
+// Rate of change, in percent, over `p` bars. On back-adjusted bars pass `off`, each bar's
+// offset from its own contract's price (src/levels.mjs rawOffsets): the move in points is
+// the same on either price, but the percentage is of the price that really traded. The
+// adjusted close sits about 3,600 points above it in 2020-2022, a quarter of the price.
+export function roc(C, p = 10, off = null) {
   const n = C.length;
   const out = new Float64Array(n).fill(NaN);
-  for (let i = p; i < n; i++) out[i] = C[i - p] === 0 ? 0 : ((C[i] - C[i - p]) / C[i - p]) * 100;
+  for (let i = p; i < n; i++) {
+    const base = off ? C[i - p] - off[i - p] : C[i - p];
+    out[i] = base === 0 ? 0 : ((C[i] - C[i - p]) / base) * 100;
+  }
   return out;
 }
 

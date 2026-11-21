@@ -1,5 +1,5 @@
 {
- "measured": "2026-10-31",
+ "measured": "2026-11-21",
  "data": "2019-05-05 to 2026-07-14",
  "method": "calendar windows (the chart's sweep), flat by 15:05 CT, each strategy's own defaults under the eval",
  "rows": [
@@ -38,6 +38,44 @@
      "pass2026OneTick": 12.7,
      "passAllOneTick": 9.9,
      "reachPayout": 18
+    }
+   }
+  },
+  {
+   "id": "cammy_value_levels",
+   "name": "Cammy Capital value levels",
+   "tf": 1,
+   "overnightByDefault": false,
+   "evals": {
+    "1250": {
+     "contracts": 4,
+     "slippageTicks": 1,
+     "trades": 2177,
+     "profitFactor": 1.211,
+     "expectancy": 19.04,
+     "net": 41459,
+     "passAll": 31.5,
+     "pass2026": 34.5,
+     "passJanMar": 40,
+     "passAprJul": 28,
+     "pass2026OneTick": 34.5,
+     "passAllOneTick": 31.5,
+     "reachPayout": 68.3
+    },
+    "3000": {
+     "contracts": 4,
+     "slippageTicks": 1,
+     "trades": 2177,
+     "profitFactor": 1.216,
+     "expectancy": 35.01,
+     "net": 76217,
+     "passAll": 9.5,
+     "pass2026": 15.2,
+     "passJanMar": 27.8,
+     "passAprJul": 0,
+     "pass2026OneTick": 15.2,
+     "passAllOneTick": 9.5,
+     "reachPayout": 82.9
     }
    }
   },
@@ -734,32 +772,32 @@
     "1250": {
      "contracts": 8,
      "slippageTicks": 0,
-     "trades": 12401,
-     "profitFactor": 1.018,
-     "expectancy": 7.76,
-     "net": 96226,
-     "passAll": 20.9,
-     "pass2026": 24.8,
-     "passJanMar": 14.4,
+     "trades": 15307,
+     "profitFactor": 1.002,
+     "expectancy": 0.92,
+     "net": 14151,
+     "passAll": 19.2,
+     "pass2026": 22.4,
+     "passJanMar": 10,
      "passAprJul": 37.3,
-     "pass2026OneTick": 24.2,
-     "passAllOneTick": 20.1,
-     "reachPayout": 25.7
+     "pass2026OneTick": 21.8,
+     "passAllOneTick": 18.3,
+     "reachPayout": 22
     },
     "3000": {
      "contracts": 8,
      "slippageTicks": 0,
-     "trades": 12401,
-     "profitFactor": 1.018,
-     "expectancy": 7.76,
-     "net": 96226,
-     "passAll": 21.3,
-     "pass2026": 26.7,
-     "passJanMar": 6.7,
+     "trades": 15307,
+     "profitFactor": 1.002,
+     "expectancy": 0.92,
+     "net": 14151,
+     "passAll": 17.4,
+     "pass2026": 27.3,
+     "passJanMar": 7.8,
      "passAprJul": 50.7,
      "pass2026OneTick": 26.7,
-     "passAllOneTick": 19.8,
-     "reachPayout": 27.1
+     "passAllOneTick": 15.8,
+     "reachPayout": 25.1
     }
    }
   },

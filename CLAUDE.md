@@ -389,6 +389,18 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
   the rally that really happened, and the same points then read as a different percentage.
   `placeboBars` carries `rawOff`, so `rawOffsets` gives the real price on a path. Flipping whole
   days must leave every day's range alone (`test/levels.test.mjs`). Use it on any percentage.
+- **Four places had missed it (fixed 2026-11-21).** The back-adjusted close sits about 3,600
+  points above the real one in 2020-2022, so a percentage of it read about a quarter low there.
+  - `roc` in `src/indicators.mjs` takes the offsets as a third argument. It feeds
+    `momentum_roc`, the ROC study and `tpl_consensus`'s ROC family. `momentum_roc`, 2019-2026:
+    12,401 trades become 15,307, PF 1.018 becomes 1.002. On the $1,250 eval its 2026 rate
+    goes from 24.8% to 22.4%.
+  - `research/vxn_regime.mjs`'s range percentages and `research/regime_by_year.mjs`'s ATR %.
+  - `research/anticipate_gates.mjs`'s ATR% and ADR% gates. Nothing there passes.
+- **2026 is the widest year in points, not in percent.** The 5-minute ATR in % of the real price
+  was 0.140 in 2020, 0.147 in 2022 and 0.104 in 2026. Points (and dollars a contract) are what
+  the evals feel, so 2026's sizes fit 2026. But a 2022-sized move at today's price would be
+  about 1.4 times the 2026 swing.
 - **A rate means nothing without its placebo rate.** Most of what traders quote about ranges and
   gaps is geometry: `research/lib_pct.mjs` `testRates` sets any rule beside noise.
 - **The footprint test sees what a bounce test cannot** (`research/pct_footprint.mjs`): volume and

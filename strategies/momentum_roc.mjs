@@ -12,6 +12,7 @@
 // exactly what the year-by-year panel is for.
 
 import { atr, adx, roc } from "../src/indicators.mjs";
+import { rawOffsets } from "../src/levels.mjs";
 import { trig, verdict, cooldown, spark, mark, num, px, adxAtLeast, adxAtMost, COLOR } from "../src/explain.mjs";
 
 export default {
@@ -39,7 +40,7 @@ export default {
     const { high: H, low: L, close: C, tday } = bars;
     const n = C.length;
     const a = atr(H, L, C, p.atrPeriod);
-    const r = roc(C, p.lookback);
+    const r = roc(C, p.lookback, rawOffsets(bars));   // % of the contract's real price
     const adxArr = (p.adxMin > 0 || p.adxMax > 0) ? adx(H, L, C, Math.max(2, Math.trunc(p.adxPeriod) || 14)).adx : null;
     const follow = p.direction === "follow";
 

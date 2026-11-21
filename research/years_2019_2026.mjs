@@ -2,7 +2,9 @@
 // (May 2019, when MNQ began trading, to December 2025). EVERY parameter exactly
 // as shipped -- signals, filters, exits, the 40-minute rule, the day rules in
 // dollars, the costs. The ONLY thing allowed to change outside 2026 is the lot
-// size, and only DOWN (2026 is the most volatile year in the data).
+// size, and only DOWN (2026 is the most volatile year in the data in points and dollars a
+// contract, because NQ's price is highest; in percent of price 2020 and 2022 moved about 1.4
+// times as much: research/regime_by_year.mjs).
 //
 //   $1,250 combine ($1,000 trailing, $600 daily limit, 50% consistency)
 //     Donchian (the TopstepX bot)  4 lots, 2 late in the day   -$300 / +$250

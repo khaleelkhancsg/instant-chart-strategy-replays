@@ -17,11 +17,23 @@
 // the next open, so no gate sees its own outcome.
 //
 //   node research/anticipate_gates.mjs
+//
+// Corrected 2026-11-21: the ATR% and ADR% gates had divided by the back-adjusted close, which
+// sits thousands of points above the real one before 2025, so a fixed % cut meant a different
+// cut in each year. On the real price:
+//   - "regime atr% > 0.18" moved from z +1.6 to +2.9 (3.01 points a trade, both halves now
+//     positive). It keeps 9% of the trades; 56% of the 5-minute bars it allows are 2020's and
+//     2022's.
+//   - On the tighter trigger it went from z +2.0 to +1.6.
+//   - It is the best of 42 gates. Had they been independent, one would reach z 2.9 by luck
+//     about one time in seven, and the tighter trigger does not confirm it. Not a finding.
+//   - The other % gates stay inside noise.
 
 import { loadBars } from "../src/data.mjs";
 import { resample } from "../src/resample.mjs";
 import { resolveParams } from "../src/run.mjs";
 import { adx, atr, efficiencyRatio, sma, choppiness } from "../src/indicators.mjs";
+import { rawOffsets } from "../src/levels.mjs";
 import ant from "../strategies/macd_5m_anticipate.mjs";
 
 const { bars } = loadBars();
@@ -53,8 +65,11 @@ const ADX = adx(H, L, C, 14).adx;
 const EFF = efficiencyRatio(C, 20);
 const CHOP = choppiness(H, L, C, 14);
 const ATR = atr(H, L, C, 14);
+// Percentages are of the contract's real price: the bars are back-adjusted at every roll, and
+// the adjusted close sits about 3,600 points above the real one in 2020-2022 (fixed 2026-11-21).
+const OFF = rawOffsets(tf), RAW = Float64Array.from(C, (c, i) => c - OFF[i]);
 const atrPct = new Float64Array(n).fill(NaN);
-for (let i = 0; i < n; i++) if (C[i] > 0) atrPct[i] = (100 * ATR[i]) / C[i];
+for (let i = 0; i < n; i++) if (RAW[i] > 0) atrPct[i] = (100 * ATR[i]) / RAW[i];
 
 // ADR: mean true daily range over the previous 14 COMPLETED days, plus how much
 // of it the current day has already spent. A day that has covered its whole
@@ -79,7 +94,7 @@ const adrUsed = new Float64Array(n).fill(NaN);
     if (H[i] > dHi) dHi = H[i];
     if (L[i] < dLo) dLo = L[i];
     if (Number.isFinite(adr) && adr > 0) {
-      adrPct[i] = (100 * adr) / C[i];
+      adrPct[i] = (100 * adr) / RAW[i];
       adrUsed[i] = (dHi - dLo) / adr;
     }
   }
