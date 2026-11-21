@@ -1,0 +1,873 @@
+{
+ "run": "2026-11-21T22:48:50.985Z",
+ "fee": 58,
+ "sizes": {
+  "1": {
+   "lots": 1,
+   "trades": 337,
+   "net": 3403,
+   "limitDays": 0
+  },
+  "2": {
+   "lots": 1.7,
+   "trades": 276,
+   "net": 7161,
+   "limitDays": 9
+  },
+  "3": {
+   "lots": 2.74,
+   "trades": 219,
+   "net": 7419,
+   "limitDays": 22
+  },
+  "4": {
+   "lots": 3.48,
+   "trades": 198,
+   "net": 12517,
+   "limitDays": 27
+  },
+  "cut": {
+   "lots": 3.3,
+   "trades": 201,
+   "net": 12625,
+   "limitDays": 24
+  }
+ },
+ "results": {
+  "1": {
+   "30 calendar days (the lab's)": {
+    "closed": {
+     "pass": 11.4,
+     "fail": 14.3,
+     "out": 74.3,
+     "n": 272,
+     "daysToPass": 25,
+     "feesPerPass": 509
+    },
+    "live": {
+     "pass": 11.4,
+     "fail": 15.1,
+     "out": 73.5,
+     "n": 272,
+     "daysToPass": 25,
+     "feesPerPass": 509
+    },
+    "byStart": {
+     "janMar": {
+      "pass": 4.4,
+      "fail": 26.7,
+      "out": 68.9,
+      "n": 90,
+      "daysToPass": 24,
+      "feesPerPass": 1305
+     },
+     "aprJul": {
+      "pass": 21,
+      "fail": 14.3,
+      "out": 64.8,
+      "n": 105,
+      "daysToPass": 27,
+      "feesPerPass": 277
+     },
+     "fwd": {
+      "pass": 6.5,
+      "fail": 2.6,
+      "out": 90.9,
+      "n": 77,
+      "daysToPass": 12,
+      "feesPerPass": 893
+     }
+    },
+    "backToBack": {
+     "pass": 2.4,
+     "fail": 15.3,
+     "out": 82.3,
+     "n": 294,
+     "daysToPass": 22,
+     "feesPerPass": 2436,
+     "evalsPerAccount": 10,
+     "passesPerAccount": 0
+    },
+    "boot": 13.2
+   },
+   "30 trading days": {
+    "closed": {
+     "pass": 31.3,
+     "fail": 22,
+     "out": 46.7,
+     "n": 259,
+     "daysToPass": 35,
+     "feesPerPass": 321
+    },
+    "live": {
+     "pass": 31.3,
+     "fail": 28.2,
+     "out": 40.5,
+     "n": 259,
+     "daysToPass": 35,
+     "feesPerPass": 319
+    },
+    "byStart": {
+     "janMar": {
+      "pass": 4.4,
+      "fail": 50,
+      "out": 45.6,
+      "n": 90,
+      "daysToPass": 24,
+      "feesPerPass": 2204
+     },
+     "aprJul": {
+      "pass": 53.3,
+      "fail": 14.3,
+      "out": 32.4,
+      "n": 105,
+      "daysToPass": 35,
+      "feesPerPass": 179
+     },
+     "fwd": {
+      "pass": 32.8,
+      "fail": 20.3,
+      "out": 46.9,
+      "n": 64,
+      "daysToPass": 36,
+      "feesPerPass": 334
+     }
+    },
+    "backToBack": {
+     "pass": 47,
+     "fail": 26.5,
+     "out": 26.5,
+     "n": 234,
+     "daysToPass": 32,
+     "feesPerPass": 209,
+     "evalsPerAccount": 8,
+     "passesPerAccount": 4
+    },
+    "boot": 25.7
+   },
+   "45 trading days": {
+    "closed": {
+     "pass": 40.3,
+     "fail": 38.7,
+     "out": 21,
+     "n": 238,
+     "daysToPass": 40,
+     "feesPerPass": 283
+    },
+    "live": {
+     "pass": 40.3,
+     "fail": 45.8,
+     "out": 13.9,
+     "n": 238,
+     "daysToPass": 40,
+     "feesPerPass": 272
+    },
+    "byStart": {
+     "janMar": {
+      "pass": 4.4,
+      "fail": 90,
+      "out": 5.6,
+      "n": 90,
+      "daysToPass": 24,
+      "feesPerPass": 2364
+     },
+     "aprJul": {
+      "pass": 76.2,
+      "fail": 14.3,
+      "out": 9.5,
+      "n": 105,
+      "daysToPass": 40,
+      "feesPerPass": 133
+     },
+     "fwd": {
+      "pass": 27.9,
+      "fail": 30.2,
+      "out": 41.9,
+      "n": 43,
+      "daysToPass": 62,
+      "feesPerPass": 503
+     }
+    },
+    "backToBack": {
+     "pass": 41.6,
+     "fail": 55.2,
+     "out": 3.2,
+     "n": 154,
+     "daysToPass": 47,
+     "feesPerPass": 277,
+     "evalsPerAccount": 5,
+     "passesPerAccount": 2
+    },
+    "boot": 43
+   }
+  },
+  "2": {
+   "30 calendar days (the lab's)": {
+    "closed": {
+     "pass": 48.9,
+     "fail": 27.9,
+     "out": 23.2,
+     "n": 272,
+     "daysToPass": 19,
+     "feesPerPass": 119
+    },
+    "live": {
+     "pass": 47.4,
+     "fail": 43.4,
+     "out": 9.2,
+     "n": 272,
+     "daysToPass": 19,
+     "feesPerPass": 122
+    },
+    "byStart": {
+     "janMar": {
+      "pass": 21.1,
+      "fail": 62.2,
+      "out": 16.7,
+      "n": 90,
+      "daysToPass": 20,
+      "feesPerPass": 275
+     },
+     "aprJul": {
+      "pass": 64.8,
+      "fail": 32.4,
+      "out": 2.9,
+      "n": 105,
+      "daysToPass": 21,
+      "feesPerPass": 90
+     },
+     "fwd": {
+      "pass": 54.5,
+      "fail": 36.4,
+      "out": 9.1,
+      "n": 77,
+      "daysToPass": 14,
+      "feesPerPass": 106
+     }
+    },
+    "backToBack": {
+     "pass": 50.4,
+     "fail": 40.1,
+     "out": 9.4,
+     "n": 446,
+     "daysToPass": 21,
+     "feesPerPass": 115,
+     "evalsPerAccount": 15,
+     "passesPerAccount": 8
+    },
+    "boot": 41.2
+   },
+   "30 trading days": {
+    "closed": {
+     "pass": 57.9,
+     "fail": 33.6,
+     "out": 8.5,
+     "n": 259,
+     "daysToPass": 21,
+     "feesPerPass": 122
+    },
+    "live": {
+     "pass": 50.2,
+     "fail": 47.9,
+     "out": 1.9,
+     "n": 259,
+     "daysToPass": 19,
+     "feesPerPass": 124
+    },
+    "byStart": {
+     "janMar": {
+      "pass": 25.6,
+      "fail": 68.9,
+      "out": 5.6,
+      "n": 90,
+      "daysToPass": 21,
+      "feesPerPass": 265
+     },
+     "aprJul": {
+      "pass": 67.6,
+      "fail": 32.4,
+      "out": 0,
+      "n": 105,
+      "daysToPass": 21,
+      "feesPerPass": 88
+     },
+     "fwd": {
+      "pass": 56.3,
+      "fail": 43.8,
+      "out": 0,
+      "n": 64,
+      "daysToPass": 13,
+      "feesPerPass": 105
+     }
+    },
+    "backToBack": {
+     "pass": 48.2,
+     "fail": 50.6,
+     "out": 1.2,
+     "n": 413,
+     "daysToPass": 21,
+     "feesPerPass": 133,
+     "evalsPerAccount": 14,
+     "passesPerAccount": 7
+    },
+    "boot": 55.2
+   },
+   "45 trading days": {
+    "closed": {
+     "pass": 56.3,
+     "fail": 43.7,
+     "out": 0,
+     "n": 238,
+     "daysToPass": 23,
+     "feesPerPass": 128
+    },
+    "live": {
+     "pass": 45.8,
+     "fail": 54.2,
+     "out": 0,
+     "n": 238,
+     "daysToPass": 20,
+     "feesPerPass": 137
+    },
+    "byStart": {
+     "janMar": {
+      "pass": 25.6,
+      "fail": 74.4,
+      "out": 0,
+      "n": 90,
+      "daysToPass": 21,
+      "feesPerPass": 265
+     },
+     "aprJul": {
+      "pass": 67.6,
+      "fail": 32.4,
+      "out": 0,
+      "n": 105,
+      "daysToPass": 21,
+      "feesPerPass": 88
+     },
+     "fwd": {
+      "pass": 34.9,
+      "fail": 65.1,
+      "out": 0,
+      "n": 43,
+      "daysToPass": 8,
+      "feesPerPass": 170
+     }
+    },
+    "backToBack": {
+     "pass": 44.6,
+     "fail": 55.4,
+     "out": 0,
+     "n": 379,
+     "daysToPass": 21,
+     "feesPerPass": 144,
+     "evalsPerAccount": 13,
+     "passesPerAccount": 6
+    },
+    "boot": 64.1
+   }
+  },
+  "3": {
+   "30 calendar days (the lab's)": {
+    "closed": {
+     "pass": 62.5,
+     "fail": 35.3,
+     "out": 2.2,
+     "n": 272,
+     "daysToPass": 15,
+     "feesPerPass": 93
+    },
+    "live": {
+     "pass": 59.6,
+     "fail": 38.2,
+     "out": 2.2,
+     "n": 272,
+     "daysToPass": 15,
+     "feesPerPass": 97
+    },
+    "byStart": {
+     "janMar": {
+      "pass": 48.9,
+      "fail": 44.4,
+      "out": 6.7,
+      "n": 90,
+      "daysToPass": 19,
+      "feesPerPass": 119
+     },
+     "aprJul": {
+      "pass": 73.3,
+      "fail": 26.7,
+      "out": 0,
+      "n": 105,
+      "daysToPass": 14,
+      "feesPerPass": 79
+     },
+     "fwd": {
+      "pass": 53.2,
+      "fail": 46.8,
+      "out": 0,
+      "n": 77,
+      "daysToPass": 13,
+      "feesPerPass": 109
+     }
+    },
+    "backToBack": {
+     "pass": 54.7,
+     "fail": 44.4,
+     "out": 0.9,
+     "n": 541,
+     "daysToPass": 19,
+     "feesPerPass": 106,
+     "evalsPerAccount": 18,
+     "passesPerAccount": 10
+    },
+    "boot": 47.7
+   },
+   "30 trading days": {
+    "closed": {
+     "pass": 63.7,
+     "fail": 36.3,
+     "out": 0,
+     "n": 259,
+     "daysToPass": 15,
+     "feesPerPass": 93
+    },
+    "live": {
+     "pass": 60.6,
+     "fail": 39.4,
+     "out": 0,
+     "n": 259,
+     "daysToPass": 15,
+     "feesPerPass": 98
+    },
+    "byStart": {
+     "janMar": {
+      "pass": 55.6,
+      "fail": 44.4,
+      "out": 0,
+      "n": 90,
+      "daysToPass": 20,
+      "feesPerPass": 111
+     },
+     "aprJul": {
+      "pass": 73.3,
+      "fail": 26.7,
+      "out": 0,
+      "n": 105,
+      "daysToPass": 14,
+      "feesPerPass": 79
+     },
+     "fwd": {
+      "pass": 46.9,
+      "fail": 53.1,
+      "out": 0,
+      "n": 64,
+      "daysToPass": 11,
+      "feesPerPass": 124
+     }
+    },
+    "backToBack": {
+     "pass": 52.8,
+     "fail": 47.2,
+     "out": 0,
+     "n": 509,
+     "daysToPass": 20,
+     "feesPerPass": 111,
+     "evalsPerAccount": 17,
+     "passesPerAccount": 9
+    },
+    "boot": 54.4
+   },
+   "45 trading days": {
+    "closed": {
+     "pass": 62.6,
+     "fail": 37.4,
+     "out": 0,
+     "n": 238,
+     "daysToPass": 16,
+     "feesPerPass": 95
+    },
+    "live": {
+     "pass": 59.2,
+     "fail": 40.8,
+     "out": 0,
+     "n": 238,
+     "daysToPass": 15,
+     "feesPerPass": 100
+    },
+    "byStart": {
+     "janMar": {
+      "pass": 55.6,
+      "fail": 44.4,
+      "out": 0,
+      "n": 90,
+      "daysToPass": 20,
+      "feesPerPass": 111
+     },
+     "aprJul": {
+      "pass": 73.3,
+      "fail": 26.7,
+      "out": 0,
+      "n": 105,
+      "daysToPass": 14,
+      "feesPerPass": 79
+     },
+     "fwd": {
+      "pass": 32.6,
+      "fail": 67.4,
+      "out": 0,
+      "n": 43,
+      "daysToPass": 9,
+      "feesPerPass": 178
+     }
+    },
+    "backToBack": {
+     "pass": 49.9,
+     "fail": 50.1,
+     "out": 0,
+     "n": 479,
+     "daysToPass": 11,
+     "feesPerPass": 117,
+     "evalsPerAccount": 16,
+     "passesPerAccount": 8
+    },
+    "boot": 56.6
+   }
+  },
+  "4": {
+   "30 calendar days (the lab's)": {
+    "closed": {
+     "pass": 63.2,
+     "fail": 34.9,
+     "out": 1.8,
+     "n": 272,
+     "daysToPass": 13,
+     "feesPerPass": 92
+    },
+    "live": {
+     "pass": 57.7,
+     "fail": 41.9,
+     "out": 0.4,
+     "n": 272,
+     "daysToPass": 13,
+     "feesPerPass": 100
+    },
+    "byStart": {
+     "janMar": {
+      "pass": 75.6,
+      "fail": 23.3,
+      "out": 1.1,
+      "n": 90,
+      "daysToPass": 16,
+      "feesPerPass": 77
+     },
+     "aprJul": {
+      "pass": 52.4,
+      "fail": 47.6,
+      "out": 0,
+      "n": 105,
+      "daysToPass": 9,
+      "feesPerPass": 111
+     },
+     "fwd": {
+      "pass": 44.2,
+      "fail": 55.8,
+      "out": 0,
+      "n": 77,
+      "daysToPass": 10,
+      "feesPerPass": 131
+     }
+    },
+    "backToBack": {
+     "pass": 52,
+     "fail": 47.8,
+     "out": 0.2,
+     "n": 573,
+     "daysToPass": 16,
+     "feesPerPass": 112,
+     "evalsPerAccount": 19,
+     "passesPerAccount": 10
+    },
+    "boot": 57.2
+   },
+   "30 trading days": {
+    "closed": {
+     "pass": 64.1,
+     "fail": 35.9,
+     "out": 0,
+     "n": 259,
+     "daysToPass": 14,
+     "feesPerPass": 92
+    },
+    "live": {
+     "pass": 56.8,
+     "fail": 43.2,
+     "out": 0,
+     "n": 259,
+     "daysToPass": 13,
+     "feesPerPass": 103
+    },
+    "byStart": {
+     "janMar": {
+      "pass": 76.7,
+      "fail": 23.3,
+      "out": 0,
+      "n": 90,
+      "daysToPass": 16,
+      "feesPerPass": 76
+     },
+     "aprJul": {
+      "pass": 52.4,
+      "fail": 47.6,
+      "out": 0,
+      "n": 105,
+      "daysToPass": 9,
+      "feesPerPass": 111
+     },
+     "fwd": {
+      "pass": 35.9,
+      "fail": 64.1,
+      "out": 0,
+      "n": 64,
+      "daysToPass": 9,
+      "feesPerPass": 161
+     }
+    },
+    "backToBack": {
+     "pass": 49.5,
+     "fail": 50.5,
+     "out": 0,
+     "n": 543,
+     "daysToPass": 16,
+     "feesPerPass": 117,
+     "evalsPerAccount": 18,
+     "passesPerAccount": 9
+    },
+    "boot": 61.2
+   },
+   "45 trading days": {
+    "closed": {
+     "pass": 63,
+     "fail": 37,
+     "out": 0,
+     "n": 238,
+     "daysToPass": 14,
+     "feesPerPass": 94
+    },
+    "live": {
+     "pass": 55,
+     "fail": 45,
+     "out": 0,
+     "n": 238,
+     "daysToPass": 13,
+     "feesPerPass": 106
+    },
+    "byStart": {
+     "janMar": {
+      "pass": 76.7,
+      "fail": 23.3,
+      "out": 0,
+      "n": 90,
+      "daysToPass": 16,
+      "feesPerPass": 76
+     },
+     "aprJul": {
+      "pass": 52.4,
+      "fail": 47.6,
+      "out": 0,
+      "n": 105,
+      "daysToPass": 9,
+      "feesPerPass": 111
+     },
+     "fwd": {
+      "pass": 16.3,
+      "fail": 83.7,
+      "out": 0,
+      "n": 43,
+      "daysToPass": 5,
+      "feesPerPass": 356
+     }
+    },
+    "backToBack": {
+     "pass": 46.6,
+     "fail": 53.4,
+     "out": 0,
+     "n": 513,
+     "daysToPass": 16,
+     "feesPerPass": 125,
+     "evalsPerAccount": 17,
+     "passesPerAccount": 8
+    },
+    "boot": 62.2
+   }
+  },
+  "cut": {
+   "30 calendar days (the lab's)": {
+    "closed": {
+     "pass": 71.3,
+     "fail": 26.8,
+     "out": 1.8,
+     "n": 272,
+     "daysToPass": 14,
+     "feesPerPass": 81
+    },
+    "live": {
+     "pass": 65.1,
+     "fail": 34.6,
+     "out": 0.4,
+     "n": 272,
+     "daysToPass": 13,
+     "feesPerPass": 89
+    },
+    "byStart": {
+     "janMar": {
+      "pass": 75.6,
+      "fail": 23.3,
+      "out": 1.1,
+      "n": 90,
+      "daysToPass": 16,
+      "feesPerPass": 77
+     },
+     "aprJul": {
+      "pass": 64.8,
+      "fail": 35.2,
+      "out": 0,
+      "n": 105,
+      "daysToPass": 11,
+      "feesPerPass": 90
+     },
+     "fwd": {
+      "pass": 53.2,
+      "fail": 46.8,
+      "out": 0,
+      "n": 77,
+      "daysToPass": 10,
+      "feesPerPass": 109
+     }
+    },
+    "backToBack": {
+     "pass": 60.4,
+     "fail": 39.4,
+     "out": 0.2,
+     "n": 543,
+     "daysToPass": 16,
+     "feesPerPass": 96,
+     "evalsPerAccount": 18,
+     "passesPerAccount": 11
+    },
+    "boot": 59.9
+   },
+   "30 trading days": {
+    "closed": {
+     "pass": 72.6,
+     "fail": 27.4,
+     "out": 0,
+     "n": 259,
+     "daysToPass": 14,
+     "feesPerPass": 81
+    },
+    "live": {
+     "pass": 64.5,
+     "fail": 35.5,
+     "out": 0,
+     "n": 259,
+     "daysToPass": 13,
+     "feesPerPass": 90
+    },
+    "byStart": {
+     "janMar": {
+      "pass": 76.7,
+      "fail": 23.3,
+      "out": 0,
+      "n": 90,
+      "daysToPass": 16,
+      "feesPerPass": 76
+     },
+     "aprJul": {
+      "pass": 64.8,
+      "fail": 35.2,
+      "out": 0,
+      "n": 105,
+      "daysToPass": 11,
+      "feesPerPass": 90
+     },
+     "fwd": {
+      "pass": 46.9,
+      "fail": 53.1,
+      "out": 0,
+      "n": 64,
+      "daysToPass": 10,
+      "feesPerPass": 124
+     }
+    },
+    "backToBack": {
+     "pass": 58.3,
+     "fail": 41.7,
+     "out": 0,
+     "n": 513,
+     "daysToPass": 20,
+     "feesPerPass": 100,
+     "evalsPerAccount": 17,
+     "passesPerAccount": 10
+    },
+    "boot": 64.3
+   },
+   "45 trading days": {
+    "closed": {
+     "pass": 72.3,
+     "fail": 27.7,
+     "out": 0,
+     "n": 238,
+     "daysToPass": 14,
+     "feesPerPass": 82
+    },
+    "live": {
+     "pass": 63.4,
+     "fail": 36.6,
+     "out": 0,
+     "n": 238,
+     "daysToPass": 13,
+     "feesPerPass": 92
+    },
+    "byStart": {
+     "janMar": {
+      "pass": 76.7,
+      "fail": 23.3,
+      "out": 0,
+      "n": 90,
+      "daysToPass": 16,
+      "feesPerPass": 76
+     },
+     "aprJul": {
+      "pass": 64.8,
+      "fail": 35.2,
+      "out": 0,
+      "n": 105,
+      "daysToPass": 11,
+      "feesPerPass": 90
+     },
+     "fwd": {
+      "pass": 32.6,
+      "fail": 67.4,
+      "out": 0,
+      "n": 43,
+      "daysToPass": 9,
+      "feesPerPass": 178
+     }
+    },
+    "backToBack": {
+     "pass": 55.7,
+     "fail": 44.3,
+     "out": 0,
+     "n": 483,
+     "daysToPass": 16,
+     "feesPerPass": 104,
+     "evalsPerAccount": 16,
+     "passesPerAccount": 9
+    },
+    "boot": 65.9
+   }
+  }
+ }
+}

@@ -460,6 +460,15 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
   - dollars back per dollar of fees come out even.
   - Best sizes: 1–4 lots on the $1,250 eval, 2–6 on the $3,000 eval. 1 lot is the $3,000
     eval's worst.
+- **A longer eval does not let a smaller size pass more** (`research/eval_45_days.mjs`,
+  `donchian_1250`, 2026 Jan–Oct, live equity, every day, 30 calendar days against 45 trading
+  days):
+  - 4 lots 57.7% → 55.0%; 3 lots 59.6% → 59.2%; 2 lots 47.4% → 45.8%; 1 lot 11.4% → 40.3%.
+  - At 2–4 lots the extra days turn running out of time into failures.
+  - The bootstrap reads long windows kinder (2 lots 41% → 64%), because its shuffled blocks
+    break up the bad stretches.
+  - The cut-only dollar rule (3.3 lots a trade) gave 65.1% at 30 days and 60.4% back to back,
+    against 57.7% and 52.0%. Only Jul 15 on is out of sample for it.
 
 ## The EMA + MACD databox
 
