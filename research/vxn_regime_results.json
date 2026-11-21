@@ -1,5 +1,5 @@
 {
- "run": "2026-11-21T17:37:03.719Z",
+ "run": "2026-11-21T17:46:36.449Z",
  "bars": "data/mnq_1m_beta.bin",
  "vxn": "data/raw/fred/VXNCLS.csv",
  "placebos": 100,
@@ -64,6 +64,76 @@
     24
    ],
    "pAtLeast": 0.38
+  }
+ },
+ "rangeCall": {
+  "2026": {
+   "sessions": 208,
+   "corrVxn": 0.4519237249473901,
+   "corrAvgRange": 0.3178445900175174,
+   "r2AvgRange": 0.1010251834034046,
+   "r2Vxn": 0.20423505317032453,
+   "r2Both": 0.20425196577888483,
+   "thirds": [
+    {
+     "vxn": [
+      19.06,
+      22.51
+     ],
+     "medianRangePct": 0.9462576355387332,
+     "medianRangePts": 276.75
+    },
+    {
+     "vxn": [
+      22.52,
+      25.64
+     ],
+     "medianRangePct": 1.314741710858479,
+     "medianRangePts": 388
+    },
+    {
+     "vxn": [
+      25.65,
+      33.54
+     ],
+     "medianRangePct": 1.575493064854767,
+     "medianRangePts": 440.25
+    }
+   ]
+  },
+  "2020-2025": {
+   "sessions": 1487,
+   "corrVxn": 0.5586434382967655,
+   "corrAvgRange": 0.5577467761193908,
+   "r2AvgRange": 0.31108146627157496,
+   "r2Vxn": 0.3120824911520318,
+   "r2Both": 0.35494703837257846,
+   "thirds": [
+    {
+     "vxn": [
+      13.59,
+      20.61
+     ],
+     "medianRangePct": 0.8856761878026528,
+     "medianRangePts": 183
+    },
+    {
+     "vxn": [
+      20.62,
+      27.39
+     ],
+     "medianRangePct": 1.1643640911933595,
+     "medianRangePts": 223.5
+    },
+    {
+     "vxn": [
+      27.4,
+      80.08
+     ],
+     "medianRangePct": 1.6360198822919525,
+     "medianRangePts": 257.5
+    }
+   ]
   }
  },
  "results": {

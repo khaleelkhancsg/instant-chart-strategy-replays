@@ -485,6 +485,11 @@ The VXN comes from FRED's VXNCLS, saved to `data/raw/fred/` (git-ignored: it is 
   - Only 10 of 2026's sessions opened inverted.
 - **Every free daily index left is another reading of implied volatility.** VVIX, SKEW and VIX9D
   are on Cboe's site only.
+- **What the VXN does call is the session's size.**
+  - In 2026 the VXN before the open explains 20% of the RTH range (% of price). The 10-session
+    average range explains 10%, and adds nothing once the VXN is in.
+  - Median range: 277 / 388 / 440 points by VXN third.
+  - It is a sizing and stop-width input, untested in the engine; not a trend filter.
 - **So dealer gamma would have to carry something the VXN does not.**
   - Cboe's delayed quote pages forbid automated download.
   - Daily options open interest comes legitimately from Databento's statistics schema: OPRA for

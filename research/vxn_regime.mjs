@@ -73,6 +73,13 @@
 //       - 1 of its 40 gaps beyond 1.96 sd, placebo median 2.
 //       - Only 10 of 2026's sessions opened inverted (VIX at or above VIX3M), 9 of them in Jan-Mar;
 //         2020-2025 had 103. Too few to judge an inverted-day rule on 2026.
+//   - What the VXN does call is how big the session is. Its RTH range, in % of the prior close:
+//       - 2026: correlation 0.45 with the VXN before the open, 0.32 with the 10-session average
+//         range. R2: average range 0.10, VXN 0.20, both 0.20. Median range by VXN third: 277,
+//         388, 440 points.
+//       - 2020-2025: 0.56 with each; R2 0.31, 0.31, both 0.36.
+//     So for sizing and stop width the VXN is the better gauge in 2026. For which way, or whether
+//     moves carry on, it says nothing.
 
 import fs from "node:fs";
 import { loadBars } from "../src/data.mjs";
@@ -138,7 +145,7 @@ sessions.forEach((s, k) => {
   for (let i = s.rthA; i < s.rthZ; i++) if (bars.ctMin[i] < 870) l30 = i;
   if (l30 < 0 || bars.ctMin[s.rthZ - 1] !== 899) return;
   const vk = vxnBefore(ms), tk = term ? lastBefore(term, ms) : -1;
-  days.push({ td: s.td, ms, a: s.rthA, z: s.rthZ, pc: prev.rthZ - 1, l30, vxn: vk >= 0 ? vv[vk] : NaN,
+  days.push({ td: s.td, ms, k, a: s.rthA, z: s.rthZ, pc: prev.rthZ - 1, l30, vxn: vk >= 0 ? vv[vk] : NaN,
               raw: { level: vk >= 0 ? vv[vk] : NaN, stand: vk >= 0 ? vs[vk] : NaN, rising: vk >= 0 ? vchg[vk] : NaN, range: adr[k],
                      term: tk >= 0 ? term[tk].v : NaN } });
 });
@@ -309,5 +316,35 @@ if (term) {
   }
 }
 
-fs.writeFileSync("research/vxn_regime_results.json", JSON.stringify({ run: new Date().toISOString(), bars: BARS_FILE, vxn: VXN_FILE, placebos: PLACEBOS, days: days.length, counts, results }, null, 1));
+// ── what the VXN does call: how big the session is ──
+// The RTH range in % of the prior close, against the VXN before the open and the 10-session
+// average range: correlation, and the share each explains (least squares, alone and together).
+const corr = (a, b) => { const n = a.length, ma = a.reduce((x, y) => x + y, 0) / n, mb = b.reduce((x, y) => x + y, 0) / n; let ab = 0, aa = 0, bb = 0; for (let i = 0; i < n; i++) { ab += (a[i] - ma) * (b[i] - mb); aa += (a[i] - ma) ** 2; bb += (b[i] - mb) ** 2; } return ab / Math.sqrt(aa * bb); };
+function rSquared(y, xs) {
+  const X = y.map((_, i) => [1, ...xs.map((x) => x[i])]), k = X[0].length;
+  const A = Array.from({ length: k }, (_, r) => Array.from({ length: k }, (__, c) => X.reduce((s, row) => s + row[r] * row[c], 0)));
+  const b = Array.from({ length: k }, (_, r) => X.reduce((s, row, i) => s + row[r] * y[i], 0));
+  for (let c = 0; c < k; c++) for (let r = 0; r < k; r++) if (r !== c) { const g = A[r][c] / A[c][c]; for (let q = c; q < k; q++) A[r][q] -= g * A[c][q]; b[r] -= g * b[c]; }
+  const beta = b.map((v, i) => v / A[i][i]), my = y.reduce((s, v) => s + v, 0) / y.length;
+  let res = 0, tot = 0;
+  X.forEach((row, i) => { const fit = row.reduce((s, v, j) => s + v * beta[j], 0); res += (y[i] - fit) ** 2; tot += (y[i] - my) ** 2; });
+  return 1 - res / tot;
+}
+const rangeCall = {};
+console.log("\nHow big the session is: the RTH range (% of the prior close) against what was known before the open");
+for (const [p, from, to] of PERIODS.filter(([q]) => q === "2026" || q === "2020-2025")) {
+  const R = days.filter((d) => d.ms >= from && d.ms < to && Number.isFinite(d.raw.level) && Number.isFinite(d.raw.range)).map((d) => {
+    const s = sessions[d.k], px = bars.close[d.pc];
+    return { rng: (100 * (s.hi - s.lo)) / px, adr: (100 * d.raw.range) / px, vxn: d.raw.level, pts: s.hi - s.lo };
+  });
+  const rng = R.map((r) => r.rng), a = R.map((r) => r.adr), v = R.map((r) => r.vxn);
+  const by = [...R].sort((x, y) => x.vxn - y.vxn), t = Math.floor(R.length / 3), med = (xs) => [...xs].sort((x, y) => x - y)[Math.floor(xs.length / 2)];
+  const thirds = [by.slice(0, t), by.slice(t, 2 * t), by.slice(2 * t)].map((g) => ({ vxn: [g[0].vxn, g[g.length - 1].vxn], medianRangePct: med(g.map((r) => r.rng)), medianRangePts: med(g.map((r) => r.pts)) }));
+  rangeCall[p] = { sessions: R.length, corrVxn: corr(rng, v), corrAvgRange: corr(rng, a), r2AvgRange: rSquared(rng, [a]), r2Vxn: rSquared(rng, [v]), r2Both: rSquared(rng, [a, v]), thirds };
+  const c = rangeCall[p];
+  console.log(`  ${p.padEnd(10)} ${R.length} sessions: correlation with the VXN ${c.corrVxn.toFixed(2)}, with the average range ${c.corrAvgRange.toFixed(2)}; R2 average range ${c.r2AvgRange.toFixed(3)}, VXN ${c.r2Vxn.toFixed(3)}, both ${c.r2Both.toFixed(3)}`);
+  console.log(`  ${"".padEnd(10)} median range by VXN third: ${thirds.map((g, i) => `${["low", "mid", "high"][i]} (${g.vxn[0].toFixed(1)}-${g.vxn[1].toFixed(1)}) ${g.medianRangePct.toFixed(2)}%, ${g.medianRangePts.toFixed(0)} pts`).join("; ")}`);
+}
+
+fs.writeFileSync("research/vxn_regime_results.json", JSON.stringify({ run: new Date().toISOString(), bars: BARS_FILE, vxn: VXN_FILE, placebos: PLACEBOS, days: days.length, counts, rangeCall, results }, null, 1));
 console.log(`\nwrote research/vxn_regime_results.json`);
