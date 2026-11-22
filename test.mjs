@@ -7,7 +7,7 @@
 
 import fs from "node:fs";
 import { ema, sma, wma, atr, adx, rsi, donchian, rollingMeanStd, trueRange, efficiencyRatio, rthRangeUsed, rthAtrRatio, vwma, hma, kama, mfi, williamsR, cmf, obv,
-         cvdEstimate, vortex, psar, ichimoku, linreg, chandelier, heikinAshi, squeeze, bollinger, keltner } from "./src/indicators.mjs";
+         cvdEstimate, vortex, psar, ichimoku, linreg, chandelier, heikinAshi, squeeze, bollinger, keltner, zigzagPivots } from "./src/indicators.mjs";
 import { Profile, developingProfile, priorProfile, compositeLevels, nakedPocs, periodLevels, pivotLevels, rangeLevels, firstRange, initialBalance, clockRange,
          clockOpens, CLOCK_SPANS, adrProjections, swingLevels, swingVwap, volumeShelf, gaussianSmooth, findPeaks, weekOf, periodKey, sessionsOf, adrOf,
          rawOffsets, anchorOf, percentLadder, adrLadder, sessionReach, reachLevels, conformalLevels, noiseArea, moveFan } from "./src/levels.mjs";
@@ -2665,6 +2665,7 @@ if (bars_) {
   const randomStudy = (gating) => randomStudyOf(pick(Object.keys(STUDIES)), gating);
   t(`every study type reads causally on the signal bars (${6 * SCALE} random settings each)`, () => {
     for (const type of Object.keys(STUDIES)) {
+      if (STUDIES[type].hindsight) continue;      // drawn with hindsight, never gates: tested below
       for (let c = 0; c < 6 * SCALE; c++) {
         const st = randomStudyOf(type, false);
         const sigTf = pick([1, 2, 3, 5]);
@@ -2690,6 +2691,7 @@ if (bars_) {
     const sigs = new Map(), sigOf = (tf) => sigs.get(tf) || sigs.set(tf, resample(H, tf)).get(tf);
     for (const type of Object.keys(STUDIES)) {
       const D = STUDIES[type];
+      if (D.hindsight) continue;
       for (let c = 0; c < 4 * SCALE; c++) {
         // the defaults, then random settings, every other case at the ends of the ranges
         const params = {};
@@ -2813,6 +2815,34 @@ t("resolveStudy fills defaults, clamps or refuses, and the warm-up grows with th
   const span = (st) => windowSpan({ params: [], warmupBars: 300 }, { timeframeMin: 2 }, { studies: st }).warmupMin;
   if (!(span([resolveStudy({ type: "ema", tf: 60, params: { length: 200 } })]) > span([]))) throw new Error("windowSpan ignores a study's warm-up");
   eq(Object.keys(STUDIES).every((k) => STUDY_TFS.length && STUDIES[k].gates.every((g) => typeof g === "string")), true);
+});
+t("a hindsight study draws and never gates, and says so", () => {
+  const hs = Object.keys(STUDIES).filter((k) => STUDIES[k].hindsight);
+  eq(JSON.stringify(hs), JSON.stringify(["zigzag"]), "hindsight studies:");
+  for (const k of hs) {
+    eq(STUDIES[k].gates.length, 0, `${k} gates:`);
+    let refused = false;
+    try { resolveStudy({ type: k, gate: "with" }); } catch { refused = true; }
+    if (!refused) throw new Error(`${k} accepted a gate`);
+    if (!/hindsight/i.test(STUDIES[k].name) || !/hindsight/i.test(STUDIES[k].hint)) throw new Error(`${k} must say it is drawn with hindsight`);
+  }
+});
+t("the swing line: pivots alternate at the real extremes, each swing at least the size", () => {
+  // 100 up to 110 (bar 3), down to 104 (bar 5), up to 112 (bar 8), down to 100 (bar 11): swings of
+  // 5 points (5% at 100) or more. The 1.5-point wiggle at bar 6 is too small to count.
+  const C = Float64Array.from([100, 103, 107, 110, 106, 104, 105.5, 109, 112, 107, 103, 100, 101]);
+  const H = C.map((c) => c + 0.2), L = C.map((c) => c - 0.2);
+  const z = zigzagPivots(H, L, C, 0.05);
+  eq(String([...z.I]), "0,3,5,8", "pivot bars:");
+  eq(String([...z.K]), "-1,1,-1,1", "kinds:");
+  for (let k = 1; k < z.I.length; k++) if (!(Math.abs(z.P[k] - z.P[k - 1]) >= 0.05 * 100)) throw new Error(`swing ${k} smaller than the size`);
+  eq(z.last.i, 11, "the last leg's running extreme:"); close(z.last.p, 99.8, 1e-9, "its price:");
+  // the study draws through them, joined bar by bar
+  const bars = { open: C, high: H, low: L, close: C, ts: Float64Array.from(C, (_, i) => i * 60000), tday: new Int32Array(C.length), ctMin: new Int16Array(C.length).fill(600), volume: new Float64Array(C.length), tfMin: 1 };
+  const v = STUDIES.zigzag.compute(bars, { size: 5 }).line;
+  eq(String([v[0], v[3], v[5], v[8], v[11]].map((x) => Math.round(x * 10) / 10)), "99.8,110.2,103.8,112.2,99.8", "the line at the pivots:");
+  close(v[4], (110.2 + 103.8) / 2, 1e-9, "the line between them:");
+  if (!Number.isNaN(v[12])) throw new Error("the line should stop at the last extreme");
 });
 
 // ══════════════════════════ 14b. LEVELS, AND THE ADDED INDICATORS ═══════════════════════════

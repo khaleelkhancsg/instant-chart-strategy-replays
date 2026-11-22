@@ -37,7 +37,7 @@
 
 import { ema, sma, atr, adx, rsi, macd, stochastic, cci, roc, zscore, efficiencyRatio, choppiness, aroon,
          bollinger, keltner, donchian, supertrend, rthRangeUsed, rthAtrRatio, vwma, hma, kama, mfi, williamsR, cmf,
-         obv, cvdEstimate, vortex, psar, ichimoku, linreg, chandelier, heikinAshi, squeeze } from "./indicators.mjs";
+         obv, cvdEstimate, vortex, psar, ichimoku, linreg, chandelier, heikinAshi, squeeze, zigzagPivots } from "./indicators.mjs";
 import { periodKey, developingProfile, priorProfile, compositeLevels, nakedPocs, periodLevels, pivotLevels, rangeLevels,
          firstRange, initialBalance, IB_EXTENSIONS, clockRange, clockOpens, CLOCK_SPANS, adrProjections, swingLevels,
          swingVwap, volumeShelf, PCT_ANCHORS, anchorOf, rawOffsets, percentLadder, adrLadder, reachLevels, conformalLevels,
@@ -257,6 +257,17 @@ const PAST_GATES = ["beyond"];
 const BAND_GATES = ["with", "against", "nochase", "fade", "inside", "outside"];
 const LEVEL_GATES = ["above", "below", "inside", "outside"];
 
+// The swings as a line: zigzagPivots joined bar by bar, the last leg drawn to its running extreme.
+function zigzagLine(b, pct) {
+  const n = b.close.length, out = nanArr(n), z = zigzagPivots(b.high, b.low, b.close, pct / 100, rawOffsets(b));
+  const I = [...z.I], P = [...z.P];
+  if (z.last) { I.push(z.last.i); P.push(z.last.p); }
+  for (let k = 0; k + 1 < I.length; k++) {
+    const a = I[k], e = I[k + 1];
+    for (let i = a; i <= e; i++) out[i] = e > a ? P[k] + ((P[k + 1] - P[k]) * (i - a)) / (e - a) : P[k];
+  }
+  return out;
+}
 export const STUDIES = {
   ema: {
     name: "EMA", group: "Price", pane: "price", kind: "price",
@@ -851,6 +862,14 @@ export const STUDIES = {
       for (let i = 0; i < n; i++) if (avg[i] > 0) v[i] = b.volume[i] / avg[i];
       return valueOnly(`RelVol ${p.length}`, v);
     },
+  },
+  zigzag: {
+    name: "Swing line (zig-zag, hindsight)", group: "Price", pane: "price", kind: "price", hindsight: true,
+    params: [num("size", "Swing size (% of price)", 0.13, 0.02, 2, 0.01,
+                 "A swing ends when price comes back this share of the price from its extreme: 0.13% is about 37 points at 29,000, 0.064% about 18.")],
+    label: (p) => `Swings ${p.size}%`, warmup: () => 2000, gates: [],
+    hint: "The real swing highs and lows joined as a line. Drawn with hindsight, as every zig-zag is: a high or low is known only once price has come back from it, and the last leg moves until it does. So it draws and never gates. research/databox_swings.mjs places the databox's turns on it.",
+    compute: (b, p) => { const v = zigzagLine(b, p.size); return { line: v, lines: [{ name: `Swings ${p.size}%`, data: v }] }; },
   },
 };
 

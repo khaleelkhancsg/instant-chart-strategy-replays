@@ -379,6 +379,35 @@ export function roc(C, p = 10, off = null) {
   return out;
 }
 
+// The swings of a series as zig-zag pivots: through the bars' real highs and lows, a swing ending
+// when price comes back `share` of the price (0.001 = 0.1%) from its extreme. Pass `off` (src/
+// levels.mjs rawOffsets) on back-adjusted bars so the share is of the contract's own price.
+// Returns the pivots' bar indices, prices and kinds (1 a high, -1 a low) in time order, and the
+// last leg's running extreme, not yet confirmed. HINDSIGHT: a pivot is known only once price has
+// come back from it, so nothing that trades may read this (research/databox_swings.mjs).
+export function zigzagPivots(H, L, C, share, off = null) {
+  const n = C.length, I = [], P = [], K = [];
+  let dir = 0, exI = 0, exP = 0, hiI = 0, hiP = H[0], loI = 0, loP = L[0];
+  for (let i = 1; i < n; i++) {
+    const th = share * (off ? C[i] - off[i] : C[i]);
+    if (dir === 0) {
+      if (H[i] > hiP) { hiP = H[i]; hiI = i; }
+      if (L[i] < loP) { loP = L[i]; loI = i; }
+      if (hiP - loP >= th) {
+        if (hiI > loI) { I.push(loI); P.push(loP); K.push(-1); dir = 1; exI = hiI; exP = hiP; }
+        else { I.push(hiI); P.push(hiP); K.push(1); dir = -1; exI = loI; exP = loP; }
+      }
+    } else if (dir === 1) {
+      if (H[i] > exP) { exP = H[i]; exI = i; }
+      else if (exP - L[i] >= th) { I.push(exI); P.push(exP); K.push(1); dir = -1; exI = i; exP = L[i]; }
+    } else {
+      if (L[i] < exP) { exP = L[i]; exI = i; }
+      else if (H[i] - exP >= th) { I.push(exI); P.push(exP); K.push(-1); dir = 1; exI = i; exP = H[i]; }
+    }
+  }
+  return { I: Int32Array.from(I), P: Float64Array.from(P), K: Int8Array.from(K), last: dir ? { i: exI, p: exP } : null };
+}
+
 // Supertrend: ATR-banded trend state, +1 up / -1 down.
 export function supertrend(H, L, C, period = 10, mult = 3) {
   const n = C.length;

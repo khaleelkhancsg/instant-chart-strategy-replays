@@ -165,7 +165,7 @@ rule logic into a script: that is a second engine, and it drifts.
 
 ## Tests
 
-- `npm run check`: test.mjs (502), audit, legacy parity (15), MCP end to end (19),
+- `npm run check`: test.mjs (504), audit, legacy parity (15), MCP end to end (19),
   chart link (13), the indicator mock (101, `npm run test:mock`), the page's arithmetic
   (42, `npm run test:ui`), the level study's engine (23, `npm run test:levels`), the raw
   store (36, `npm run test:store`), the Data panel's routes (21, `npm run test:data`), the
@@ -536,6 +536,17 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
     stayed calmer in 2026 (0.88 of the heat, 1 of 100 placebo picks as calm). But they also
     reached the target less often (66% against 72%) and more slowly. Their target-first edge was
     about 0: quieter entries, not better ones.
+- **The box's flips come late, by the arithmetic** (`research/databox_swings.mjs`). Measured on
+  the swing line (the `zigzag` study, below):
+  - When the 1m box turns both Long in 2026, two-thirds of the up-swing is done: 68% on a
+    37-point line, against 66% on placebo markets. 26.5 points are left, 8 minutes after the low.
+  - The Potentially warnings do not call the turn. 1m EMA Pot. long fires after the low 60% of
+    the time, MACD 46%. Before it, price falls a further 35-39 points, as from any minute.
+- **The swing line** (`zigzag`, "Swing line (zig-zag, hindsight)") joins the real swing highs and
+  lows, a swing ending when price comes back a set share of the price (src/indicators.mjs
+  `zigzagPivots`).
+  - Drawn with hindsight, it is `hindsight: true` with `gates: []`: it draws and never gates.
+  - The causal-reading tests skip it, and test.mjs checks it cannot gate.
 - **The `databox` study** (src/studies.mjs) is the box on the chart, a lane a row.
   - `lanes` are drawn by chart.js `_drawLanes`, a block a run or a pixel column.
   - The crosshair names each lane's state.
