@@ -68,9 +68,9 @@
 //       - 2025: 29.2; 71.3%; 37.9 (17); 30.5 (17.0, 72.5); 47.3% [71.9%; 37.2; 30.5; 47.5%]
 //       - 2026: 37.2; 71.4%; 34.0 (16); 36.2 (20.8, 88.8); 47.6% [71.5%; 34.4; 35.6; 48.0%]
 //   - In the target's own size, price went about half a target against first (median 0.55-0.78)
-//     and one target on average (0.96-1.04). It went more in 2020 and 2022 (1.34, 1.51), with 1
-//     in 10 past 2.4 targets. About 7 alerts in 10 reach it by 15:05: 81-85% in 2020 and 2022,
-//     67% in 2019.
+//     and one target on average (0.96-1.04), more in 2020 and 2022 (1.34, 1.51). 1 in 10 went
+//     past about 2.4 targets: 3.3 in 2020, 3.8 in 2022. About 7 alerts in 10 reach it by 15:05:
+//     81-85% in 2020 and 2022, 67% in 2019.
 //   - The other kinds read the same against any minute. 2026's 5m lean is gone at this size (5m
 //     both rows 47.7% against 48.0%): it was a few-minute effect, visible only on a 10-point
 //     target.
