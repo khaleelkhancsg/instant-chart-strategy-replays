@@ -47,6 +47,19 @@
 //   - Everything was picked on the data that judges it, apart from those two picks. The CSV holds
 //     every cell: read a single cell with the count in mind, since about 750 of 6,550 sit past
 //     1.96 sd on a market with nothing in it.
+//
+// The same in money (added 2026-11-22). Every entry gets the identical exit, the symmetric
+// bracket: out at the target or the stop, both 0.1275% of the price away, whichever comes first,
+// else at 15:05. Net of 1.25 points; net_pts_per_trade in the CSV.
+//   - From every minute the bracket nets -0.4 to -2.1 points a trade in every year: a fair bet
+//     less the costs.
+//   - 2026's 822 signals with 100+ firings run -12.9 to +10.4 points a trade, median -1.27, 5-95%
+//     -5.4 to +2.9. That is the spread their counts give on a fair bet.
+//   - The 10 best by net P&L on 2019-2025, read on 2026: -2.03 a trade against -1.48 from every
+//     minute (t -2.4). Placebo markets' picks give t -6.9 to 6.0, median 0.3, and 85 of 100 do
+//     better.
+//   - Inside 2026, the 10 best on Jan-Jun read on Jul-Oct: -1.24 against -2.06 (t 1.3). 19 of 100
+//     placebo picks do as well. Not established.
 
 import fs from "node:fs";
 import { loadBars } from "../src/data.mjs";
@@ -58,7 +71,7 @@ import { loadTools, readIndicator } from "../tradovate/mock/library.mjs";
 
 const args = process.argv.slice(2), pi = args.indexOf("--placebos");
 const PLACEBOS = pi >= 0 ? Number(args[pi + 1]) : 100;
-const MIN = 60000, PCT = 10 / 7844, FLAT = 15 * 60 + 5, FIRST = 8 * 60 + 30, LAST = 14 * 60 + 55;
+const MIN = 60000, PCT = 10 / 7844, COST_PTS = 1.25, FLAT = 15 * 60 + 5, FIRST = 8 * 60 + 30, LAST = 14 * 60 + 55;
 // Slots: the years 2019-2026 (0-7), then 2026's halves, Jan-Jun (8) and Jul-Oct (9).
 const Y0 = 2019, NY = 8, NS = 10, H2 = Date.UTC(2026, 6, 1), MIN_N = 100, PICK = 10;
 const slotName = (s) => (s < NY ? String(Y0 + s) : s === 8 ? "2026 Jan-Jun" : "2026 Jul-Oct");
@@ -103,38 +116,43 @@ function measure(b) {
     const e1 = s1.ema[i], m1 = s1.macd[i], e5 = k5 >= 0 ? s5.ema[k5] : 0, m5 = k5 >= 0 ? s5.macd[k5] : 0;
     cell[i] = e1 + 5 * m1 + 25 * e5 + 125 * m5;
   }
-  const size = NC * NS * 2, A = { n: new Float64Array(size), reached: new Float64Array(size), minutes: new Float64Array(size), against: new Float64Array(size), wins: new Float64Array(size) };
-  const B = { n: new Float64Array(NS * 2), reached: new Float64Array(NS * 2), minutes: new Float64Array(NS * 2), against: new Float64Array(NS * 2), wins: new Float64Array(NS * 2) };
+  // per signal-slot-direction (A) and every minute (B): counts and sums, and the bracket's net P&L
+  // (points, and basis points of the real price with their squares)
+  const fields = ["n", "reached", "minutes", "against", "wins", "pts", "bp", "bpSq"];
+  const size = NC * NS * 2, A = Object.fromEntries(fields.map((f) => [f, new Float64Array(size)]));
+  const B = Object.fromEntries(fields.map((f) => [f, new Float64Array(NS * 2)]));
   const cache = new Map();
   for (let i = 1; i + 1 < N; i++) {
     const closeCt = (CT[i] + 1) % 1440;
     if (closeCt < FIRST || closeCt > LAST || TD[i + 1] !== TD[i]) continue;
     const y = new Date(TS[i]).getUTCFullYear() - Y0;
     if (y < 0 || y >= NY) continue;
-    const P = C[i], tg = PCT * (C[i] - off[i]);
-    // follow long and short from the next minute
+    const P = C[i], raw = C[i] - off[i], tg = PCT * raw;
+    // follow long and short from the next minute. The bracket, the same for every entry: out at
+    // the target or the stop, both tg away, whichever comes first (a minute touching both is the
+    // stop), else at 15:05.
     const res = [1, -1].map((d) => {
-      let worst = 0, race = 0;
+      let worst = 0, race = 0, last = i;
+      const out = (o) => { const net = o.p - COST_PTS; return { ...o, pts: net, bp: (net / raw) * 1e4 }; };
       for (let j = i + 1; j < N && TD[j] === TD[i] && CT[j] < FLAT; j++) {
+        last = j;
         const fav = d > 0 ? H[j] - P : P - L[j], adv = d > 0 ? P - L[j] : H[j] - P;
         if (race === 0) race = adv >= tg ? -1 : fav >= tg ? 1 : 0;
-        if (fav >= tg) return { r: 1, m: (TS[j] - TS[i + 1]) / MIN + 1, a: Math.max(worst, adv), w: race === 1 ? 1 : 0 };
+        if (fav >= tg) return out({ r: 1, m: (TS[j] - TS[i + 1]) / MIN + 1, a: Math.max(worst, adv), w: race === 1 ? 1 : 0, p: race === 1 ? tg : -tg });
         worst = Math.max(worst, adv);
       }
-      return { r: 0, m: 0, a: 0, w: race === 1 ? 1 : 0 };
+      return out({ r: 0, m: 0, a: 0, w: race === 1 ? 1 : 0, p: race === -1 ? -tg : d * (C[last] - P) });
     });
     const slots = y === NY - 1 ? [y, TS[i] < H2 ? 8 : 9] : [y];
-    for (const s of slots) for (let d = 0; d < 2; d++) { const x = s * 2 + d, o = res[d]; B.n[x]++; B.reached[x] += o.r; B.minutes[x] += o.m; B.against[x] += o.a; B.wins[x] += o.w; }
+    const add = (T, x, o) => { T.n[x]++; T.reached[x] += o.r; T.minutes[x] += o.m; T.against[x] += o.a; T.wins[x] += o.w; T.pts[x] += o.pts; T.bp[x] += o.bp; T.bpSq[x] += o.bp * o.bp; };
+    for (const s of slots) for (let d = 0; d < 2; d++) add(B, s * 2 + d, res[d]);
     // the combinations that become true at this minute
     const c0 = cell[i - 1], c1 = cell[i];
     if (c0 === c1) continue;
     const key = c0 * NCELL + c1;
     let on = cache.get(key);
     if (!on) { on = []; for (let k = 0; k < NC; k++) if (MATCH[k * NCELL + c1] && !MATCH[k * NCELL + c0]) on.push(k); cache.set(key, on); }
-    for (const k of on) for (const s of slots) for (let d = 0; d < 2; d++) {
-      const x = (k * NS + s) * 2 + d, o = res[d];
-      A.n[x]++; A.reached[x] += o.r; A.minutes[x] += o.m; A.against[x] += o.a; A.wins[x] += o.w;
-    }
+    for (const k of on) for (const s of slots) for (let d = 0; d < 2; d++) add(A, (k * NS + s) * 2 + d, res[d]);
   }
   return { A, B };
 }
@@ -163,7 +181,31 @@ function read({ A, B }) {
     return { picks, z: v > 0 ? ex / Math.sqrt(v) : NaN };
   };
   const p1 = pick([0, 1, 2, 3, 4, 5, 6], [7], 2000, MIN_N), p2 = pick([8], [9], MIN_N, MIN_N / 2);
-  return { z, beyond, picks: p1.picks, pickZ2026: p1.z, picksH: p2.picks, pickZH2: p2.z };
+  // the same on the bracket's net P&L: each signal's net bp a trade over every minute's in the
+  // same direction and slot, and the t of that excess
+  const pooledPnl = (k, d, ss) => {
+    let ex = 0, v = 0, n = 0, pts = 0, base = 0;
+    for (const s of ss) {
+      const x = (k * NS + s) * 2 + d, bx = s * 2 + d, m = A.n[x];
+      if (!m) continue;
+      ex += A.bp[x] - (m * B.bp[bx]) / B.n[bx]; v += A.bpSq[x] - (A.bp[x] * A.bp[x]) / m; n += m;
+      pts += A.pts[x]; base += (m * B.pts[bx]) / B.n[bx];
+    }
+    return { t: v > 0 ? ex / Math.sqrt(v) : NaN, ex, v, n, pts, base };
+  };
+  const pickPnl = (early, late, minEarly, minLate) => {
+    const cand = [];
+    for (let k = 0; k < NC; k++) for (let d = 0; d < 2; d++) {
+      const e = pooledPnl(k, d, early), l = pooledPnl(k, d, late);
+      if (e.n >= minEarly && l.n >= minLate) cand.push({ k, d, tEarly: e.t, l });
+    }
+    cand.sort((a, b) => b.tEarly - a.tEarly);
+    const picks = cand.slice(0, PICK), ex = picks.reduce((s, p) => s + p.l.ex, 0), v = picks.reduce((s, p) => s + p.l.v, 0);
+    const n = picks.reduce((s, p) => s + p.l.n, 0), pts = picks.reduce((s, p) => s + p.l.pts, 0), base = picks.reduce((s, p) => s + p.l.base, 0);
+    return { picks, t: v > 0 ? ex / Math.sqrt(v) : NaN, ptsPerTrade: n ? pts / n : NaN, basePerTrade: n ? base / n : NaN };
+  };
+  const q1 = pickPnl([0, 1, 2, 3, 4, 5, 6], [7], 2000, MIN_N), q2 = pickPnl([8], [9], MIN_N, MIN_N / 2);
+  return { z, beyond, picks: p1.picks, pickZ2026: p1.z, picksH: p2.picks, pickZH2: p2.z, pnl: q1, pnlH: q2, pooledPnl };
 }
 
 const { bars } = loadBars("data/mnq_1m_beta.bin");
@@ -172,20 +214,21 @@ process.stderr.write(`  real market: ${((Date.now() - t0) / 1000).toFixed(0)}s\n
 const pl = [];
 for (let p = 0; p < PLACEBOS; p++) {
   const r = read(measure(placeboBars(bars, 9100 + p)));
-  pl.push({ beyond: r.beyond, pickZ2026: r.pickZ2026, pickZH2: r.pickZH2 });
+  pl.push({ beyond: r.beyond, pickZ2026: r.pickZ2026, pickZH2: r.pickZH2, pnlT: r.pnl.t, pnlPts: r.pnl.ptsPerTrade, pnlHT: r.pnlH.t });
   if ((p + 1) % 10 === 0) process.stderr.write(`  ${p + 1}/${PLACEBOS} placebo markets, ${((Date.now() - t0) / 1000).toFixed(0)}s\n`);
 }
 
 // ── write every signal and slot: each year, then 2026's halves ──
 const r1 = (x) => (Number.isFinite(x) ? Math.round(x * 10) / 10 : "");
-const lines = ["signal,direction,period,firings,reached_pct,minutes_avg,against_avg,target_first_pct,every_minute_target_first_pct,edge_pts,z"];
+const lines = ["signal,direction,period,firings,reached_pct,minutes_avg,against_avg,target_first_pct,every_minute_target_first_pct,edge_pts,z,net_pts_per_trade,every_minute_net_pts,net_bp_per_trade,every_minute_net_bp"];
 const { A, B } = real;
 for (let k = 0; k < NC; k++) for (let d = 0; d < 2; d++) for (let s = 0; s < NS; s++) {
   const x = (k * NS + s) * 2 + d, n = A.n[x], bx = s * 2 + d;
   if (!n) continue;
   const p = (100 * A.wins[x]) / n, pb = (100 * B.wins[bx]) / B.n[bx];
   lines.push([`"${labelOf(COMBOS[k])}"`, d ? "short" : "long", slotName(s), n, r1((100 * A.reached[x]) / n), r1(A.reached[x] ? A.minutes[x] / A.reached[x] : NaN),
-              r1(A.reached[x] ? A.against[x] / A.reached[x] : NaN), r1(p), r1(pb), r1(p - pb), r1(R.z[x])].join(","));
+              r1(A.reached[x] ? A.against[x] / A.reached[x] : NaN), r1(p), r1(pb), r1(p - pb), r1(R.z[x]),
+              (A.pts[x] / n).toFixed(2), (B.pts[bx] / B.n[bx]).toFixed(2), (A.bp[x] / n).toFixed(3), (B.bp[bx] / B.n[bx]).toFixed(3)].join(","));
 }
 fs.writeFileSync("research/databox_combos.csv", lines.join("\n"));
 
@@ -215,7 +258,26 @@ for (const s of [...z26.slice(0, 10), ...z26.slice(-10)]) {
   console.log(`${labelOf(COMBOS[s.k]).padEnd(64)}${(s.d ? "short" : "long").padEnd(6)} n ${String(s.n).padStart(5)}  target first ${(100 * A.wins[s.x] / s.n).toFixed(1)}% vs ${(100 * pb).toFixed(1)}%  z ${s.z.toFixed(2).padStart(6)}  halves ${half(s.k, s.d, 8)} / ${half(s.k, s.d, 9)}   by year ${yrs(s.k, s.d)}`);
 }
 console.log(`\nEvery minute, target first (long / short): ${Array.from({ length: NS }, (_, s) => `${slotName(s)} ${(100 * B.wins[s * 2] / B.n[s * 2]).toFixed(1)}/${(100 * B.wins[s * 2 + 1] / B.n[s * 2 + 1]).toFixed(1)}`).join(", ")}`);
+// ── the same bracket's net P&L: every minute, the signals' spread, and the pick ──
+const f2 = (x) => (Number.isFinite(x) ? x.toFixed(2) : "—");
+console.log(`\nThe bracket's net points a trade from every minute (long / short): ${Array.from({ length: NS }, (_, s) => `${slotName(s)} ${f2(B.pts[s * 2] / B.n[s * 2])}/${f2(B.pts[s * 2 + 1] / B.n[s * 2 + 1])}`).join(", ")}`);
+{
+  const v = [];
+  for (let k = 0; k < NC; k++) for (let d = 0; d < 2; d++) { const x = (k * NS + 7) * 2 + d; if (A.n[x] >= MIN_N) v.push(A.pts[x] / A.n[x]); }
+  v.sort((a, b) => a - b);
+  const q = (p) => v[Math.min(v.length - 1, Math.floor(p * v.length))];
+  console.log(`2026, the ${v.length} signals with ${MIN_N}+ firings: net points a trade from ${f2(q(0))} (5% ${f2(q(0.05))}, median ${f2(q(0.5))}, 95% ${f2(q(0.95))}) to ${f2(q(1))}`);
+}
+const tz = sorted(pl.map((p) => p.pnlT)), th = sorted(pl.map((p) => p.pnlHT));
+for (const [title, P, zs, key, late] of [[`The ${PICK} best by net P&L on 2019-2025, read on 2026`, R.pnl, tz, "pnlT", 7], [`Inside 2026: the ${PICK} best on Jan-Jun, read on Jul-Oct`, R.pnlH, th, "pnlHT", 9]]) {
+  console.log(`\n${title}: ${f2(P.ptsPerTrade)} net points a trade against ${f2(P.basePerTrade)} from every minute, t of the excess ${r1(P.t)}. ` +
+              `Placebo markets' picks t ${r1(zs[0])} to ${r1(zs[zs.length - 1])}, median ${r1(zs[zs.length >> 1])}; ${pl.filter((p) => p[key] >= P.t).length} of ${PLACEBOS} as high`);
+  for (const p of P.picks) console.log(`  ${labelOf(COMBOS[p.k]).padEnd(64)}${(p.d ? "short" : "long").padEnd(6)} t picked ${r1(p.tEarly)}, read: ${f2(p.l.n ? p.l.pts / p.l.n : NaN)} net pts a trade (every minute ${f2(p.l.n ? p.l.base / p.l.n : NaN)}), ${p.l.n} trades`);
+}
 console.log(`\n${((Date.now() - t0) / 1000).toFixed(0)}s; wrote research/databox_combos.csv (${lines.length - 1} rows)`);
 const pk = (ps) => ps.map((p) => ({ signal: labelOf(COMBOS[p.k]), dir: p.d ? "short" : "long", zPicked: p.zEarly, zRead: p.l.ex / Math.sqrt(p.l.v), nRead: p.l.n }));
+const pkP = (ps) => ps.map((p) => ({ signal: labelOf(COMBOS[p.k]), dir: p.d ? "short" : "long", tPicked: p.tEarly, netPtsRead: p.l.n ? p.l.pts / p.l.n : null, everyMinutePts: p.l.n ? p.l.base / p.l.n : null, nRead: p.l.n }));
 fs.writeFileSync("research/databox_combos_results.json", JSON.stringify({ run: new Date().toISOString(), placebos: PLACEBOS, beyond: R.beyond, tested, placeboBeyond: cnt,
-  pick: { z: R.pickZ2026, placebo: pz, picks: pk(R.picks) }, pickInside2026: { z: R.pickZH2, placebo: ph, picks: pk(R.picksH) } }, null, 1));
+  pick: { z: R.pickZ2026, placebo: pz, picks: pk(R.picks) }, pickInside2026: { z: R.pickZH2, placebo: ph, picks: pk(R.picksH) },
+  pnlPick: { t: R.pnl.t, ptsPerTrade: R.pnl.ptsPerTrade, basePerTrade: R.pnl.basePerTrade, placebo: tz, picks: pkP(R.pnl.picks) },
+  pnlPickInside2026: { t: R.pnlH.t, ptsPerTrade: R.pnlH.ptsPerTrade, basePerTrade: R.pnlH.basePerTrade, placebo: th, picks: pkP(R.pnlH.picks) } }, null, 1));
