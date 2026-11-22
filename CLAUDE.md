@@ -511,6 +511,15 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
     - about 7 in 10 reach it, with a median 7-25 minutes;
     - price goes about one target against first on average (half a target at the median).
     - The alerts still match any minute, and the 2026 5m lean is gone at this size.
+- **Every combination of states as an entry** (`research/databox_combos.mjs`, CSV beside it).
+  - The set: 624 combinations of the four rows' states, each long and short, 2019-2026, on the
+    price-scaled target, against 100 placebo markets.
+  - More strong cells than chance (1,030 of 6,550 against a median 753, p about 0.02). But they
+    turn over:
+    - 2019-2025 favoured trend-following shorts, and those failed in 2026 (picked z -2.0);
+    - 2026 favoured shorts on a 1m turn inside a bullish 5m, which were flat or negative before;
+    - picked on Jan-Jun and read on Jul-Oct, they give z 2.4, p 0.12.
+  - No combination is an entry that holds.
 - **The `databox` study** (src/studies.mjs) is the box on the chart, a lane a row.
   - `lanes` are drawn by chart.js `_drawLanes`, a block a run or a pixel column.
   - The crosshair names each lane's state.
