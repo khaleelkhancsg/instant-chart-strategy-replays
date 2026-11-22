@@ -557,6 +557,14 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
   - A logistic model fitted on 2019-2025 scores AUC 0.494-0.502 on 2026, against placebo markets'
     0.48-0.51.
   - Volume adds nothing. Its calls come during the fall or late in the rise, as the box's do.
+- **Better filters move along the lag-noise line, never off it** (`research/filter_frontier.mjs`).
+  - It tests 104 turn detectors: EMA, Hull, zero-lag EMA, Super Smoother and alpha-beta at 4
+    speeds and 4 hysteresis levels, and the MACD histogram's cross and turn at 3 scales.
+  - Hysteresis cuts false turns and adds lag, and no smoother beats an EMA with hysteresis.
+    Placebo markets reproduce every detector's lag and false-turn share.
+  - One sliver held out of sample: the fastest, unfiltered MACD 6/13/5 histogram turn, +0.6
+    points of win rate on an 18-point bracket in 2026 (z 2.0, beyond all 30 placebo picks). That
+    is about +0.2 points a trade against 1.25 of costs, and any filtering removes it.
 - **The `databox` study** (src/studies.mjs) is the box on the chart, a lane a row.
   - `lanes` are drawn by chart.js `_drawLanes`, a block a run or a pixel column.
   - The crosshair names each lane's state.
