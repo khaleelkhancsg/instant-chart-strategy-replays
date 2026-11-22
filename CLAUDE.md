@@ -528,6 +528,14 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
   - Picked on 2019-2025 and read on 2026: t 0.6, matched by 44 of 100 placebo picks. Picked on
     Jan-Jun 2026 and read on Jul-Oct: t 1.5, matched by 13 of 100.
   - With no stop, the picks' running totals fell 549-2,198 points a contract in 2026.
+- **Heat before the target is set by the entry** (`research/databox_heat.mjs`): exits cannot
+  change the path to the target.
+  - Counting every firing, a 10-point target in 2026 averages 31 points against first (80%
+    touch it before 40 against). The price-scaled target averages 65.
+  - Some entries are calmer for their times than chance gives, and the calmest from 2019-2025
+    stayed calmer in 2026 (0.88 of the heat, 1 of 100 placebo picks as calm). But they also
+    reached the target less often (66% against 72%) and more slowly. Their target-first edge was
+    about 0: quieter entries, not better ones.
 - **The `databox` study** (src/studies.mjs) is the box on the chart, a lane a row.
   - `lanes` are drawn by chart.js `_drawLanes`, a block a run or a pixel column.
   - The crosshair names each lane's state.
