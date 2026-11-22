@@ -495,6 +495,17 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
   - Under the new rule, the 5m EMA "Potentially long" was followed by −2.65 points over 15
     minutes (z −3.3, all three periods, shrinking). That is reversal, found after the fact:
     a lead.
+- **Read as a bot's alerts, its flips reach 10 points no faster than any minute does**
+  (`research/databox_ten_points.mjs`). It covers the EMA row, the MACD row and both rows, on 1m
+  and 5m, 2019-2026.
+  - Each alert is followed from its bar's close to 15:05 CT, against every New York minute
+    entered both ways.
+  - 2026, 1m both rows: 92% reach +10, in 11 minutes on average (median 2). They go 18-20
+    points against first (median 10, 1 in 10 past 50), and +10 comes first 45.5% of the time.
+    Every minute: 92%, 11.1, 17.5-20.1, 46.0%.
+  - Every year and kind matches its baseline, long against random longs and short against random
+    shorts. The exception is 2026's 5m alerts, a little worse (+10 first 41%): the reversal
+    lean again.
 - **The `databox` study** (src/studies.mjs) is the box on the chart, a lane a row.
   - `lanes` are drawn by chart.js `_drawLanes`, a block a run or a pixel column.
   - The crosshair names each lane's state.
