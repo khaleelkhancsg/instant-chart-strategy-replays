@@ -506,6 +506,11 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
   - Every year and kind matches its baseline, long against random longs and short against random
     shorts. The exception is 2026's 5m alerts, a little worse (+10 first 41%): the reversal
     lean again.
+  - `--pct` holds the target to the same share of the price, 0.1275% (10 points at 2019's 7,844,
+    37 in 2026). The years then look alike:
+    - about 7 in 10 reach it, with a median 7-25 minutes;
+    - price goes about one target against first on average (half a target at the median).
+    - The alerts still match any minute, and the 2026 5m lean is gone at this size.
 - **The `databox` study** (src/studies.mjs) is the box on the chart, a lane a row.
   - `lanes` are drawn by chart.js `_drawLanes`, a block a run or a pixel column.
   - The crosshair names each lane's state.

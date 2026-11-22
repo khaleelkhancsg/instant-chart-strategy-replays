@@ -1,0 +1,2159 @@
+{
+ "run": "2026-11-22T15:48:41.890Z",
+ "target": 10,
+ "pct": {
+  "anchorYear": 2019,
+  "anchorPrice": 7843.75,
+  "pct": 0.12749003984063745
+ },
+ "results": {
+  "alerts": {
+   "1m": {
+    "EMA row": {
+     "2019": {
+      "all": {
+       "target": 10,
+       "alerts": 2357,
+       "reachedPct": 66.6,
+       "minutesAvg": 47.9,
+       "minutesMedian": 24,
+       "againstAvg": 9.3,
+       "againstMedian": 5.3,
+       "against90": 23,
+       "againstOpenAvg": 9.2,
+       "tenFirstPct": 46.8
+      },
+      "long": {
+       "target": 10,
+       "alerts": 1181,
+       "reachedPct": 69.6,
+       "minutesAvg": 51.1,
+       "minutesMedian": 28,
+       "againstAvg": 10,
+       "againstMedian": 5.3,
+       "against90": 25,
+       "againstOpenAvg": 9.9,
+       "tenFirstPct": 48.1
+      },
+      "short": {
+       "target": 10,
+       "alerts": 1176,
+       "reachedPct": 63.5,
+       "minutesAvg": 44.4,
+       "minutesMedian": 21,
+       "againstAvg": 8.6,
+       "againstMedian": 5.5,
+       "against90": 20.8,
+       "againstOpenAvg": 8.4,
+       "tenFirstPct": 45.4
+      }
+     },
+     "2020": {
+      "all": {
+       "target": 13.2,
+       "alerts": 3400,
+       "reachedPct": 81.3,
+       "minutesAvg": 30,
+       "minutesMedian": 10,
+       "againstAvg": 17.9,
+       "againstMedian": 8.8,
+       "against90": 43.8,
+       "againstOpenAvg": 17.4,
+       "tenFirstPct": 49.2
+      },
+      "long": {
+       "target": 13.2,
+       "alerts": 1703,
+       "reachedPct": 83.8,
+       "minutesAvg": 30.3,
+       "minutesMedian": 11,
+       "againstAvg": 17.9,
+       "againstMedian": 8.5,
+       "against90": 45.8,
+       "againstOpenAvg": 17.4,
+       "tenFirstPct": 51.1
+      },
+      "short": {
+       "target": 13.2,
+       "alerts": 1697,
+       "reachedPct": 78.8,
+       "minutesAvg": 29.6,
+       "minutesMedian": 9,
+       "againstAvg": 17.8,
+       "againstMedian": 9.3,
+       "against90": 42.3,
+       "againstOpenAvg": 17.3,
+       "tenFirstPct": 47.3
+      }
+     },
+     "2021": {
+      "all": {
+       "target": 18.7,
+       "alerts": 3591,
+       "reachedPct": 70.5,
+       "minutesAvg": 38.9,
+       "minutesMedian": 18,
+       "againstAvg": 18.5,
+       "againstMedian": 11.3,
+       "against90": 45.8,
+       "againstOpenAvg": 18.3,
+       "tenFirstPct": 46.8
+      },
+      "long": {
+       "target": 18.7,
+       "alerts": 1783,
+       "reachedPct": 73.9,
+       "minutesAvg": 42.1,
+       "minutesMedian": 21,
+       "againstAvg": 19.1,
+       "againstMedian": 11.5,
+       "against90": 44.5,
+       "againstOpenAvg": 18.8,
+       "tenFirstPct": 48.5
+      },
+      "short": {
+       "target": 18.7,
+       "alerts": 1808,
+       "reachedPct": 67.1,
+       "minutesAvg": 35.5,
+       "minutesMedian": 16,
+       "againstAvg": 18,
+       "againstMedian": 11,
+       "against90": 46,
+       "againstOpenAvg": 17.8,
+       "tenFirstPct": 45.1
+      }
+     },
+     "2022": {
+      "all": {
+       "target": 15.8,
+       "alerts": 3433,
+       "reachedPct": 84.3,
+       "minutesAvg": 20.7,
+       "minutesMedian": 7,
+       "againstAvg": 24.1,
+       "againstMedian": 12.5,
+       "against90": 61.8,
+       "againstOpenAvg": 23.3,
+       "tenFirstPct": 49.2
+      },
+      "long": {
+       "target": 15.7,
+       "alerts": 1723,
+       "reachedPct": 84.6,
+       "minutesAvg": 21.3,
+       "minutesMedian": 7,
+       "againstAvg": 24.1,
+       "againstMedian": 12.5,
+       "against90": 61,
+       "againstOpenAvg": 23.4,
+       "tenFirstPct": 49.4
+      },
+      "short": {
+       "target": 15.8,
+       "alerts": 1710,
+       "reachedPct": 84,
+       "minutesAvg": 20.2,
+       "minutesMedian": 7,
+       "againstAvg": 24,
+       "againstMedian": 12.5,
+       "against90": 62,
+       "againstOpenAvg": 23.2,
+       "tenFirstPct": 48.9
+      }
+     },
+     "2023": {
+      "all": {
+       "target": 18.9,
+       "alerts": 3451,
+       "reachedPct": 74.7,
+       "minutesAvg": 33.1,
+       "minutesMedian": 14,
+       "againstAvg": 19.6,
+       "againstMedian": 10.8,
+       "against90": 50,
+       "againstOpenAvg": 19.4,
+       "tenFirstPct": 49.5
+      },
+      "long": {
+       "target": 18.9,
+       "alerts": 1728,
+       "reachedPct": 76,
+       "minutesAvg": 34.8,
+       "minutesMedian": 15,
+       "againstAvg": 19.4,
+       "againstMedian": 10.8,
+       "against90": 49.8,
+       "againstOpenAvg": 19.2,
+       "tenFirstPct": 50.1
+      },
+      "short": {
+       "target": 18.9,
+       "alerts": 1723,
+       "reachedPct": 73.4,
+       "minutesAvg": 31.3,
+       "minutesMedian": 13,
+       "againstAvg": 19.8,
+       "againstMedian": 10.5,
+       "against90": 50.5,
+       "againstOpenAvg": 19.5,
+       "tenFirstPct": 48.9
+      }
+     },
+     "2024": {
+      "all": {
+       "target": 24.3,
+       "alerts": 3513,
+       "reachedPct": 70.9,
+       "minutesAvg": 38,
+       "minutesMedian": 18,
+       "againstAvg": 24.9,
+       "againstMedian": 14.5,
+       "against90": 61.3,
+       "againstOpenAvg": 24.5,
+       "tenFirstPct": 47.1
+      },
+      "long": {
+       "target": 24.3,
+       "alerts": 1755,
+       "reachedPct": 72.5,
+       "minutesAvg": 41.7,
+       "minutesMedian": 20,
+       "againstAvg": 26.6,
+       "againstMedian": 14.8,
+       "against90": 71.3,
+       "againstOpenAvg": 26.4,
+       "tenFirstPct": 47.7
+      },
+      "short": {
+       "target": 24.3,
+       "alerts": 1758,
+       "reachedPct": 69.2,
+       "minutesAvg": 34.1,
+       "minutesMedian": 16,
+       "againstAvg": 23.1,
+       "againstMedian": 14.5,
+       "against90": 52,
+       "againstOpenAvg": 22.5,
+       "tenFirstPct": 46.5
+      }
+     },
+     "2025": {
+      "all": {
+       "target": 29.2,
+       "alerts": 3653,
+       "reachedPct": 71,
+       "minutesAvg": 36.1,
+       "minutesMedian": 16,
+       "againstAvg": 30.1,
+       "againstMedian": 16.8,
+       "against90": 72,
+       "againstOpenAvg": 29.6,
+       "tenFirstPct": 47.6
+      },
+      "long": {
+       "target": 29.2,
+       "alerts": 1831,
+       "reachedPct": 72.1,
+       "minutesAvg": 38.3,
+       "minutesMedian": 18,
+       "againstAvg": 32.4,
+       "againstMedian": 17,
+       "against90": 78.8,
+       "againstOpenAvg": 32,
+       "tenFirstPct": 47.7
+      },
+      "short": {
+       "target": 29.2,
+       "alerts": 1822,
+       "reachedPct": 69.8,
+       "minutesAvg": 33.8,
+       "minutesMedian": 15,
+       "againstAvg": 27.8,
+       "againstMedian": 16.5,
+       "against90": 65.3,
+       "againstOpenAvg": 27.2,
+       "tenFirstPct": 47.5
+      }
+     },
+     "2026": {
+      "all": {
+       "target": 37.2,
+       "alerts": 2949,
+       "reachedPct": 71.3,
+       "minutesAvg": 33,
+       "minutesMedian": 15,
+       "againstAvg": 36.8,
+       "againstMedian": 21,
+       "against90": 89.3,
+       "againstOpenAvg": 36.5,
+       "tenFirstPct": 47.3
+      },
+      "long": {
+       "target": 37.2,
+       "alerts": 1478,
+       "reachedPct": 72.4,
+       "minutesAvg": 33.9,
+       "minutesMedian": 15,
+       "againstAvg": 37.5,
+       "againstMedian": 21.3,
+       "against90": 90.8,
+       "againstOpenAvg": 37.1,
+       "tenFirstPct": 47.6
+      },
+      "short": {
+       "target": 37.2,
+       "alerts": 1471,
+       "reachedPct": 70.2,
+       "minutesAvg": 32,
+       "minutesMedian": 15,
+       "againstAvg": 36,
+       "againstMedian": 20.8,
+       "against90": 87.5,
+       "againstOpenAvg": 35.8,
+       "tenFirstPct": 47
+      }
+     }
+    },
+    "MACD row": {
+     "2019": {
+      "all": {
+       "target": 10,
+       "alerts": 5377,
+       "reachedPct": 67.1,
+       "minutesAvg": 50.6,
+       "minutesMedian": 25,
+       "againstAvg": 9.5,
+       "againstMedian": 5.5,
+       "against90": 23,
+       "againstOpenAvg": 9.4,
+       "tenFirstPct": 46.5
+      },
+      "long": {
+       "target": 10,
+       "alerts": 2686,
+       "reachedPct": 69.6,
+       "minutesAvg": 52,
+       "minutesMedian": 27,
+       "againstAvg": 10,
+       "againstMedian": 5.5,
+       "against90": 25.3,
+       "againstOpenAvg": 9.9,
+       "tenFirstPct": 48
+      },
+      "short": {
+       "target": 10,
+       "alerts": 2691,
+       "reachedPct": 64.5,
+       "minutesAvg": 49.1,
+       "minutesMedian": 23,
+       "againstAvg": 8.9,
+       "againstMedian": 5.3,
+       "against90": 21.5,
+       "againstOpenAvg": 8.9,
+       "tenFirstPct": 45
+      }
+     },
+     "2020": {
+      "all": {
+       "target": 13.4,
+       "alerts": 8006,
+       "reachedPct": 80.6,
+       "minutesAvg": 30.1,
+       "minutesMedian": 10,
+       "againstAvg": 17.6,
+       "againstMedian": 9.5,
+       "against90": 42.8,
+       "againstOpenAvg": 17.1,
+       "tenFirstPct": 48
+      },
+      "long": {
+       "target": 13.4,
+       "alerts": 4007,
+       "reachedPct": 82.9,
+       "minutesAvg": 32.4,
+       "minutesMedian": 12,
+       "againstAvg": 18.8,
+       "againstMedian": 9.8,
+       "against90": 45.8,
+       "againstOpenAvg": 18.3,
+       "tenFirstPct": 47.9
+      },
+      "short": {
+       "target": 13.4,
+       "alerts": 3999,
+       "reachedPct": 78.3,
+       "minutesAvg": 27.8,
+       "minutesMedian": 9,
+       "againstAvg": 16.4,
+       "againstMedian": 9,
+       "against90": 38.3,
+       "againstOpenAvg": 15.8,
+       "tenFirstPct": 48.2
+      }
+     },
+     "2021": {
+      "all": {
+       "target": 18.6,
+       "alerts": 7924,
+       "reachedPct": 71.1,
+       "minutesAvg": 38.4,
+       "minutesMedian": 18,
+       "againstAvg": 18.5,
+       "againstMedian": 10.8,
+       "against90": 44.3,
+       "againstOpenAvg": 18.3,
+       "tenFirstPct": 47.5
+      },
+      "long": {
+       "target": 18.6,
+       "alerts": 3950,
+       "reachedPct": 73.9,
+       "minutesAvg": 42.6,
+       "minutesMedian": 20,
+       "againstAvg": 19.8,
+       "againstMedian": 11.5,
+       "against90": 45.8,
+       "againstOpenAvg": 19.6,
+       "tenFirstPct": 47.8
+      },
+      "short": {
+       "target": 18.6,
+       "alerts": 3974,
+       "reachedPct": 68.2,
+       "minutesAvg": 33.9,
+       "minutesMedian": 16,
+       "againstAvg": 17.1,
+       "againstMedian": 10.3,
+       "against90": 43,
+       "againstOpenAvg": 17,
+       "tenFirstPct": 47.3
+      }
+     },
+     "2022": {
+      "all": {
+       "target": 15.8,
+       "alerts": 7936,
+       "reachedPct": 84.5,
+       "minutesAvg": 20.8,
+       "minutesMedian": 7,
+       "againstAvg": 23.5,
+       "againstMedian": 12,
+       "against90": 57.8,
+       "againstOpenAvg": 22.7,
+       "tenFirstPct": 49.9
+      },
+      "long": {
+       "target": 15.8,
+       "alerts": 3970,
+       "reachedPct": 85,
+       "minutesAvg": 21.5,
+       "minutesMedian": 7,
+       "againstAvg": 23.6,
+       "againstMedian": 11.8,
+       "against90": 57.3,
+       "againstOpenAvg": 23,
+       "tenFirstPct": 50.3
+      },
+      "short": {
+       "target": 15.9,
+       "alerts": 3966,
+       "reachedPct": 83.9,
+       "minutesAvg": 20,
+       "minutesMedian": 7,
+       "againstAvg": 23.3,
+       "againstMedian": 12,
+       "against90": 58.5,
+       "againstOpenAvg": 22.5,
+       "tenFirstPct": 49.5
+      }
+     },
+     "2023": {
+      "all": {
+       "target": 18.9,
+       "alerts": 7870,
+       "reachedPct": 74.6,
+       "minutesAvg": 33.3,
+       "minutesMedian": 15,
+       "againstAvg": 19.5,
+       "againstMedian": 11.3,
+       "against90": 48.5,
+       "againstOpenAvg": 19.2,
+       "tenFirstPct": 48.3
+      },
+      "long": {
+       "target": 18.9,
+       "alerts": 3944,
+       "reachedPct": 77.4,
+       "minutesAvg": 34.2,
+       "minutesMedian": 15,
+       "againstAvg": 19.4,
+       "againstMedian": 11,
+       "against90": 49.8,
+       "againstOpenAvg": 19.2,
+       "tenFirstPct": 50.1
+      },
+      "short": {
+       "target": 18.9,
+       "alerts": 3926,
+       "reachedPct": 71.9,
+       "minutesAvg": 32.2,
+       "minutesMedian": 15,
+       "againstAvg": 19.5,
+       "againstMedian": 11.5,
+       "against90": 47,
+       "againstOpenAvg": 19.3,
+       "tenFirstPct": 46.6
+      }
+     },
+     "2024": {
+      "all": {
+       "target": 24.3,
+       "alerts": 7983,
+       "reachedPct": 70.9,
+       "minutesAvg": 36.9,
+       "minutesMedian": 18,
+       "againstAvg": 24,
+       "againstMedian": 14,
+       "against90": 56.8,
+       "againstOpenAvg": 23.7,
+       "tenFirstPct": 47.5
+      },
+      "long": {
+       "target": 24.3,
+       "alerts": 3998,
+       "reachedPct": 72.2,
+       "minutesAvg": 38.4,
+       "minutesMedian": 19,
+       "againstAvg": 24.6,
+       "againstMedian": 14,
+       "against90": 60,
+       "againstOpenAvg": 24.5,
+       "tenFirstPct": 47.5
+      },
+      "short": {
+       "target": 24.3,
+       "alerts": 3985,
+       "reachedPct": 69.5,
+       "minutesAvg": 35.4,
+       "minutesMedian": 17,
+       "againstAvg": 23.3,
+       "againstMedian": 14.3,
+       "against90": 55.3,
+       "againstOpenAvg": 23,
+       "tenFirstPct": 47.4
+      }
+     },
+     "2025": {
+      "all": {
+       "target": 29.1,
+       "alerts": 7868,
+       "reachedPct": 71.8,
+       "minutesAvg": 37.8,
+       "minutesMedian": 17,
+       "againstAvg": 30.8,
+       "againstMedian": 17.3,
+       "against90": 73.3,
+       "againstOpenAvg": 30.3,
+       "tenFirstPct": 46.9
+      },
+      "long": {
+       "target": 29.1,
+       "alerts": 3948,
+       "reachedPct": 72.7,
+       "minutesAvg": 38.8,
+       "minutesMedian": 18,
+       "againstAvg": 32.7,
+       "againstMedian": 18.3,
+       "against90": 77.5,
+       "againstOpenAvg": 32.2,
+       "tenFirstPct": 46.8
+      },
+      "short": {
+       "target": 29.1,
+       "alerts": 3920,
+       "reachedPct": 70.8,
+       "minutesAvg": 36.8,
+       "minutesMedian": 16,
+       "againstAvg": 28.9,
+       "againstMedian": 16,
+       "against90": 68.5,
+       "againstOpenAvg": 28.3,
+       "tenFirstPct": 47
+      }
+     },
+     "2026": {
+      "all": {
+       "target": 37.2,
+       "alerts": 6619,
+       "reachedPct": 71.2,
+       "minutesAvg": 35.3,
+       "minutesMedian": 16,
+       "againstAvg": 36.4,
+       "againstMedian": 20.5,
+       "against90": 88.3,
+       "againstOpenAvg": 36.1,
+       "tenFirstPct": 47.8
+      },
+      "long": {
+       "target": 37.2,
+       "alerts": 3307,
+       "reachedPct": 70.7,
+       "minutesAvg": 36.2,
+       "minutesMedian": 16,
+       "againstAvg": 38.1,
+       "againstMedian": 21.3,
+       "against90": 91.5,
+       "againstOpenAvg": 37.8,
+       "tenFirstPct": 45.9
+      },
+      "short": {
+       "target": 37.2,
+       "alerts": 3312,
+       "reachedPct": 71.7,
+       "minutesAvg": 34.3,
+       "minutesMedian": 16,
+       "againstAvg": 34.8,
+       "againstMedian": 20,
+       "against90": 85.8,
+       "againstOpenAvg": 34.4,
+       "tenFirstPct": 49.8
+      }
+     }
+    },
+    "both rows": {
+     "2019": {
+      "all": {
+       "target": 10,
+       "alerts": 3877,
+       "reachedPct": 67.2,
+       "minutesAvg": 50.4,
+       "minutesMedian": 25,
+       "againstAvg": 9.6,
+       "againstMedian": 5.5,
+       "against90": 23.5,
+       "againstOpenAvg": 9.5,
+       "tenFirstPct": 46.4
+      },
+      "long": {
+       "target": 10,
+       "alerts": 1993,
+       "reachedPct": 69.4,
+       "minutesAvg": 55,
+       "minutesMedian": 30,
+       "againstAvg": 10.1,
+       "againstMedian": 5.5,
+       "against90": 25.8,
+       "againstOpenAvg": 10,
+       "tenFirstPct": 47.7
+      },
+      "short": {
+       "target": 10,
+       "alerts": 1884,
+       "reachedPct": 64.9,
+       "minutesAvg": 45.1,
+       "minutesMedian": 21,
+       "againstAvg": 9,
+       "againstMedian": 5.5,
+       "against90": 22,
+       "againstOpenAvg": 8.9,
+       "tenFirstPct": 45
+      }
+     },
+     "2020": {
+      "all": {
+       "target": 13.3,
+       "alerts": 5725,
+       "reachedPct": 81,
+       "minutesAvg": 30.5,
+       "minutesMedian": 10,
+       "againstAvg": 17.8,
+       "againstMedian": 9,
+       "against90": 43.3,
+       "againstOpenAvg": 17.3,
+       "tenFirstPct": 48.9
+      },
+      "long": {
+       "target": 13.4,
+       "alerts": 3066,
+       "reachedPct": 82.5,
+       "minutesAvg": 33.7,
+       "minutesMedian": 13,
+       "againstAvg": 17.9,
+       "againstMedian": 9,
+       "against90": 43.8,
+       "againstOpenAvg": 17.5,
+       "tenFirstPct": 49.2
+      },
+      "short": {
+       "target": 13.2,
+       "alerts": 2659,
+       "reachedPct": 79.4,
+       "minutesAvg": 26.6,
+       "minutesMedian": 8,
+       "againstAvg": 17.6,
+       "againstMedian": 9,
+       "against90": 41,
+       "againstOpenAvg": 17,
+       "tenFirstPct": 48.5
+      }
+     },
+     "2021": {
+      "all": {
+       "target": 18.6,
+       "alerts": 5778,
+       "reachedPct": 70.8,
+       "minutesAvg": 39.2,
+       "minutesMedian": 18,
+       "againstAvg": 18.7,
+       "againstMedian": 11.3,
+       "against90": 45.8,
+       "againstOpenAvg": 18.6,
+       "tenFirstPct": 46.8
+      },
+      "long": {
+       "target": 18.6,
+       "alerts": 3029,
+       "reachedPct": 73.1,
+       "minutesAvg": 44.7,
+       "minutesMedian": 22,
+       "againstAvg": 19.2,
+       "againstMedian": 11.3,
+       "against90": 45,
+       "againstOpenAvg": 19,
+       "tenFirstPct": 47.9
+      },
+      "short": {
+       "target": 18.7,
+       "alerts": 2749,
+       "reachedPct": 68.4,
+       "minutesAvg": 32.6,
+       "minutesMedian": 14,
+       "againstAvg": 18.2,
+       "againstMedian": 11,
+       "against90": 46.3,
+       "againstOpenAvg": 18,
+       "tenFirstPct": 45.5
+      }
+     },
+     "2022": {
+      "all": {
+       "target": 15.8,
+       "alerts": 5700,
+       "reachedPct": 84.8,
+       "minutesAvg": 21.2,
+       "minutesMedian": 7,
+       "againstAvg": 23.9,
+       "againstMedian": 12.3,
+       "against90": 60.8,
+       "againstOpenAvg": 23.2,
+       "tenFirstPct": 49.6
+      },
+      "long": {
+       "target": 15.8,
+       "alerts": 2838,
+       "reachedPct": 85.4,
+       "minutesAvg": 21.8,
+       "minutesMedian": 7,
+       "againstAvg": 23.3,
+       "againstMedian": 12,
+       "against90": 58.5,
+       "againstOpenAvg": 22.6,
+       "tenFirstPct": 50.7
+      },
+      "short": {
+       "target": 15.8,
+       "alerts": 2862,
+       "reachedPct": 84.1,
+       "minutesAvg": 20.6,
+       "minutesMedian": 6,
+       "againstAvg": 24.6,
+       "againstMedian": 12.8,
+       "against90": 64,
+       "againstOpenAvg": 23.9,
+       "tenFirstPct": 48.5
+      }
+     },
+     "2023": {
+      "all": {
+       "target": 18.9,
+       "alerts": 5671,
+       "reachedPct": 75.4,
+       "minutesAvg": 32.7,
+       "minutesMedian": 15,
+       "againstAvg": 19.5,
+       "againstMedian": 11,
+       "against90": 49.3,
+       "againstOpenAvg": 19.3,
+       "tenFirstPct": 49.3
+      },
+      "long": {
+       "target": 18.9,
+       "alerts": 3009,
+       "reachedPct": 76.8,
+       "minutesAvg": 34.8,
+       "minutesMedian": 16,
+       "againstAvg": 19.1,
+       "againstMedian": 10.8,
+       "against90": 49,
+       "againstOpenAvg": 18.9,
+       "tenFirstPct": 50.5
+      },
+      "short": {
+       "target": 18.9,
+       "alerts": 2662,
+       "reachedPct": 73.8,
+       "minutesAvg": 30.1,
+       "minutesMedian": 13,
+       "againstAvg": 20,
+       "againstMedian": 11.3,
+       "against90": 49.3,
+       "againstOpenAvg": 19.8,
+       "tenFirstPct": 47.9
+      }
+     },
+     "2024": {
+      "all": {
+       "target": 24.3,
+       "alerts": 5769,
+       "reachedPct": 70.9,
+       "minutesAvg": 37.9,
+       "minutesMedian": 18,
+       "againstAvg": 24.3,
+       "againstMedian": 14.5,
+       "against90": 57.8,
+       "againstOpenAvg": 24,
+       "tenFirstPct": 47.2
+      },
+      "long": {
+       "target": 24.3,
+       "alerts": 2999,
+       "reachedPct": 71.4,
+       "minutesAvg": 40.7,
+       "minutesMedian": 20,
+       "againstAvg": 24.6,
+       "againstMedian": 13.8,
+       "against90": 60.8,
+       "againstOpenAvg": 24.5,
+       "tenFirstPct": 47.9
+      },
+      "short": {
+       "target": 24.3,
+       "alerts": 2770,
+       "reachedPct": 70.4,
+       "minutesAvg": 34.8,
+       "minutesMedian": 15,
+       "againstAvg": 23.9,
+       "againstMedian": 15.3,
+       "against90": 55.5,
+       "againstOpenAvg": 23.4,
+       "tenFirstPct": 46.4
+      }
+     },
+     "2025": {
+      "all": {
+       "target": 29.2,
+       "alerts": 5772,
+       "reachedPct": 71.3,
+       "minutesAvg": 37.9,
+       "minutesMedian": 17,
+       "againstAvg": 30.5,
+       "againstMedian": 17,
+       "against90": 72.5,
+       "againstOpenAvg": 29.9,
+       "tenFirstPct": 47.3
+      },
+      "long": {
+       "target": 29.2,
+       "alerts": 2897,
+       "reachedPct": 71.5,
+       "minutesAvg": 41.1,
+       "minutesMedian": 19,
+       "againstAvg": 32,
+       "againstMedian": 17.3,
+       "against90": 75.3,
+       "againstOpenAvg": 31.6,
+       "tenFirstPct": 47.2
+      },
+      "short": {
+       "target": 29.2,
+       "alerts": 2875,
+       "reachedPct": 71.1,
+       "minutesAvg": 34.6,
+       "minutesMedian": 14,
+       "againstAvg": 28.9,
+       "againstMedian": 16.5,
+       "against90": 68.3,
+       "againstOpenAvg": 28.3,
+       "tenFirstPct": 47.4
+      }
+     },
+     "2026": {
+      "all": {
+       "target": 37.2,
+       "alerts": 4783,
+       "reachedPct": 71.4,
+       "minutesAvg": 34,
+       "minutesMedian": 16,
+       "againstAvg": 36.2,
+       "againstMedian": 20.8,
+       "against90": 88.8,
+       "againstOpenAvg": 35.9,
+       "tenFirstPct": 47.6
+      },
+      "long": {
+       "target": 37.2,
+       "alerts": 2419,
+       "reachedPct": 70.9,
+       "minutesAvg": 36.4,
+       "minutesMedian": 17,
+       "againstAvg": 36.6,
+       "againstMedian": 21.3,
+       "against90": 89.8,
+       "againstOpenAvg": 36.3,
+       "tenFirstPct": 46.5
+      },
+      "short": {
+       "target": 37.2,
+       "alerts": 2364,
+       "reachedPct": 72,
+       "minutesAvg": 31.6,
+       "minutesMedian": 14,
+       "againstAvg": 35.8,
+       "againstMedian": 20.5,
+       "against90": 88.3,
+       "againstOpenAvg": 35.5,
+       "tenFirstPct": 48.8
+      }
+     }
+    }
+   },
+   "5m": {
+    "EMA row": {
+     "2019": {
+      "all": {
+       "target": 10,
+       "alerts": 465,
+       "reachedPct": 69.2,
+       "minutesAvg": 43.8,
+       "minutesMedian": 19,
+       "againstAvg": 9.2,
+       "againstMedian": 5.3,
+       "against90": 22.8,
+       "againstOpenAvg": 9.1,
+       "tenFirstPct": 50.3
+      },
+      "long": {
+       "target": 10,
+       "alerts": 236,
+       "reachedPct": 69.1,
+       "minutesAvg": 42.3,
+       "minutesMedian": 18,
+       "againstAvg": 9.3,
+       "againstMedian": 4.8,
+       "against90": 23.8,
+       "againstOpenAvg": 9.3,
+       "tenFirstPct": 49.2
+      },
+      "short": {
+       "target": 10,
+       "alerts": 229,
+       "reachedPct": 69.4,
+       "minutesAvg": 45.2,
+       "minutesMedian": 22,
+       "againstAvg": 9.1,
+       "againstMedian": 5.8,
+       "against90": 21.5,
+       "againstOpenAvg": 8.8,
+       "tenFirstPct": 51.5
+      }
+     },
+     "2020": {
+      "all": {
+       "target": 13.5,
+       "alerts": 722,
+       "reachedPct": 82.1,
+       "minutesAvg": 25,
+       "minutesMedian": 8,
+       "againstAvg": 16.5,
+       "againstMedian": 9.3,
+       "against90": 39.5,
+       "againstOpenAvg": 15.9,
+       "tenFirstPct": 51
+      },
+      "long": {
+       "target": 13.5,
+       "alerts": 371,
+       "reachedPct": 83.6,
+       "minutesAvg": 26.8,
+       "minutesMedian": 11,
+       "againstAvg": 18.4,
+       "againstMedian": 9.5,
+       "against90": 47.8,
+       "againstOpenAvg": 17.7,
+       "tenFirstPct": 50.7
+      },
+      "short": {
+       "target": 13.5,
+       "alerts": 351,
+       "reachedPct": 80.6,
+       "minutesAvg": 23.1,
+       "minutesMedian": 6,
+       "againstAvg": 14.5,
+       "againstMedian": 9.3,
+       "against90": 37.8,
+       "againstOpenAvg": 13.9,
+       "tenFirstPct": 51.3
+      }
+     },
+     "2021": {
+      "all": {
+       "target": 18.6,
+       "alerts": 697,
+       "reachedPct": 70.4,
+       "minutesAvg": 32.4,
+       "minutesMedian": 15,
+       "againstAvg": 17.9,
+       "againstMedian": 11.3,
+       "against90": 40.3,
+       "againstOpenAvg": 17.6,
+       "tenFirstPct": 48.1
+      },
+      "long": {
+       "target": 18.6,
+       "alerts": 357,
+       "reachedPct": 70.9,
+       "minutesAvg": 36.5,
+       "minutesMedian": 19,
+       "againstAvg": 17.2,
+       "againstMedian": 11.3,
+       "against90": 37.5,
+       "againstOpenAvg": 16.9,
+       "tenFirstPct": 48.5
+      },
+      "short": {
+       "target": 18.5,
+       "alerts": 340,
+       "reachedPct": 70,
+       "minutesAvg": 28,
+       "minutesMedian": 13,
+       "againstAvg": 18.6,
+       "againstMedian": 11.5,
+       "against90": 42.8,
+       "againstOpenAvg": 18.4,
+       "tenFirstPct": 47.6
+      }
+     },
+     "2022": {
+      "all": {
+       "target": 15.9,
+       "alerts": 678,
+       "reachedPct": 86.9,
+       "minutesAvg": 19.7,
+       "minutesMedian": 6,
+       "againstAvg": 24.6,
+       "againstMedian": 13.8,
+       "against90": 54.5,
+       "againstOpenAvg": 23.4,
+       "tenFirstPct": 48.2
+      },
+      "long": {
+       "target": 15.9,
+       "alerts": 354,
+       "reachedPct": 87.3,
+       "minutesAvg": 21,
+       "minutesMedian": 6,
+       "againstAvg": 24.4,
+       "againstMedian": 13.3,
+       "against90": 53.8,
+       "againstOpenAvg": 23.2,
+       "tenFirstPct": 48.6
+      },
+      "short": {
+       "target": 15.8,
+       "alerts": 324,
+       "reachedPct": 86.4,
+       "minutesAvg": 18.3,
+       "minutesMedian": 6,
+       "againstAvg": 24.9,
+       "againstMedian": 14,
+       "against90": 60,
+       "againstOpenAvg": 23.7,
+       "tenFirstPct": 47.8
+      }
+     },
+     "2023": {
+      "all": {
+       "target": 18.9,
+       "alerts": 677,
+       "reachedPct": 78.4,
+       "minutesAvg": 29.5,
+       "minutesMedian": 13,
+       "againstAvg": 20.9,
+       "againstMedian": 12,
+       "against90": 53,
+       "againstOpenAvg": 20.6,
+       "tenFirstPct": 49.6
+      },
+      "long": {
+       "target": 19,
+       "alerts": 343,
+       "reachedPct": 81,
+       "minutesAvg": 31.1,
+       "minutesMedian": 16,
+       "againstAvg": 21,
+       "againstMedian": 12.8,
+       "against90": 51.8,
+       "againstOpenAvg": 20.8,
+       "tenFirstPct": 49
+      },
+      "short": {
+       "target": 18.9,
+       "alerts": 334,
+       "reachedPct": 75.7,
+       "minutesAvg": 27.9,
+       "minutesMedian": 10,
+       "againstAvg": 20.9,
+       "againstMedian": 11.3,
+       "against90": 54.5,
+       "againstOpenAvg": 20.5,
+       "tenFirstPct": 50.3
+      }
+     },
+     "2024": {
+      "all": {
+       "target": 24.3,
+       "alerts": 740,
+       "reachedPct": 71.5,
+       "minutesAvg": 40,
+       "minutesMedian": 17,
+       "againstAvg": 25.4,
+       "againstMedian": 14.3,
+       "against90": 66.5,
+       "againstOpenAvg": 25.2,
+       "tenFirstPct": 47
+      },
+      "long": {
+       "target": 24.2,
+       "alerts": 373,
+       "reachedPct": 72.1,
+       "minutesAvg": 41.6,
+       "minutesMedian": 21,
+       "againstAvg": 26.2,
+       "againstMedian": 14.8,
+       "against90": 68.3,
+       "againstOpenAvg": 26,
+       "tenFirstPct": 46.6
+      },
+      "short": {
+       "target": 24.3,
+       "alerts": 367,
+       "reachedPct": 70.8,
+       "minutesAvg": 38.4,
+       "minutesMedian": 13,
+       "againstAvg": 24.6,
+       "againstMedian": 14,
+       "against90": 65.3,
+       "againstOpenAvg": 24.4,
+       "tenFirstPct": 47.4
+      }
+     },
+     "2025": {
+      "all": {
+       "target": 28.9,
+       "alerts": 660,
+       "reachedPct": 74.2,
+       "minutesAvg": 32.5,
+       "minutesMedian": 11,
+       "againstAvg": 30.4,
+       "againstMedian": 14.8,
+       "against90": 73.5,
+       "againstOpenAvg": 29.8,
+       "tenFirstPct": 49.4
+      },
+      "long": {
+       "target": 29.1,
+       "alerts": 329,
+       "reachedPct": 76,
+       "minutesAvg": 36.9,
+       "minutesMedian": 14,
+       "againstAvg": 34.3,
+       "againstMedian": 14.8,
+       "against90": 82,
+       "againstOpenAvg": 34.1,
+       "tenFirstPct": 48.3
+      },
+      "short": {
+       "target": 28.3,
+       "alerts": 331,
+       "reachedPct": 72.5,
+       "minutesAvg": 27.9,
+       "minutesMedian": 8,
+       "againstAvg": 26.4,
+       "againstMedian": 15.3,
+       "against90": 62.5,
+       "againstOpenAvg": 25.3,
+       "tenFirstPct": 50.5
+      }
+     },
+     "2026": {
+      "all": {
+       "target": 37.2,
+       "alerts": 579,
+       "reachedPct": 69.6,
+       "minutesAvg": 27.7,
+       "minutesMedian": 12,
+       "againstAvg": 36.5,
+       "againstMedian": 19.5,
+       "against90": 93,
+       "againstOpenAvg": 35.6,
+       "tenFirstPct": 47.7
+      },
+      "long": {
+       "target": 37.2,
+       "alerts": 295,
+       "reachedPct": 69.5,
+       "minutesAvg": 29.3,
+       "minutesMedian": 13,
+       "againstAvg": 40.4,
+       "againstMedian": 21.3,
+       "against90": 101.8,
+       "againstOpenAvg": 39.4,
+       "tenFirstPct": 45.8
+      },
+      "short": {
+       "target": 37.2,
+       "alerts": 284,
+       "reachedPct": 69.7,
+       "minutesAvg": 26.1,
+       "minutesMedian": 11,
+       "againstAvg": 32.5,
+       "againstMedian": 18.5,
+       "against90": 81.5,
+       "againstOpenAvg": 31.7,
+       "tenFirstPct": 49.6
+      }
+     }
+    },
+    "MACD row": {
+     "2019": {
+      "all": {
+       "target": 10,
+       "alerts": 1024,
+       "reachedPct": 69.2,
+       "minutesAvg": 48.8,
+       "minutesMedian": 24,
+       "againstAvg": 10,
+       "againstMedian": 6,
+       "against90": 23,
+       "againstOpenAvg": 9.8,
+       "tenFirstPct": 46.5
+      },
+      "long": {
+       "target": 10,
+       "alerts": 510,
+       "reachedPct": 68.6,
+       "minutesAvg": 49.2,
+       "minutesMedian": 26,
+       "againstAvg": 10.9,
+       "againstMedian": 6,
+       "against90": 26,
+       "againstOpenAvg": 10.8,
+       "tenFirstPct": 45.5
+      },
+      "short": {
+       "target": 10,
+       "alerts": 514,
+       "reachedPct": 69.8,
+       "minutesAvg": 48.4,
+       "minutesMedian": 22,
+       "againstAvg": 9.1,
+       "againstMedian": 6.3,
+       "against90": 20,
+       "againstOpenAvg": 8.9,
+       "tenFirstPct": 47.5
+      }
+     },
+     "2020": {
+      "all": {
+       "target": 13.2,
+       "alerts": 1644,
+       "reachedPct": 80.8,
+       "minutesAvg": 28.7,
+       "minutesMedian": 10,
+       "againstAvg": 17.5,
+       "againstMedian": 9.8,
+       "against90": 42.8,
+       "againstOpenAvg": 16.8,
+       "tenFirstPct": 47.2
+      },
+      "long": {
+       "target": 13.1,
+       "alerts": 825,
+       "reachedPct": 82.8,
+       "minutesAvg": 30.7,
+       "minutesMedian": 12,
+       "againstAvg": 18.3,
+       "againstMedian": 10,
+       "against90": 46,
+       "againstOpenAvg": 17.7,
+       "tenFirstPct": 48.4
+      },
+      "short": {
+       "target": 13.2,
+       "alerts": 819,
+       "reachedPct": 78.9,
+       "minutesAvg": 26.5,
+       "minutesMedian": 8,
+       "againstAvg": 16.7,
+       "againstMedian": 9.8,
+       "against90": 38.5,
+       "againstOpenAvg": 16,
+       "tenFirstPct": 46
+      }
+     },
+     "2021": {
+      "all": {
+       "target": 18.5,
+       "alerts": 1615,
+       "reachedPct": 69.5,
+       "minutesAvg": 37.6,
+       "minutesMedian": 16,
+       "againstAvg": 19.2,
+       "againstMedian": 10.8,
+       "against90": 45.5,
+       "againstOpenAvg": 18.9,
+       "tenFirstPct": 45.6
+      },
+      "long": {
+       "target": 18.5,
+       "alerts": 798,
+       "reachedPct": 73.7,
+       "minutesAvg": 40.3,
+       "minutesMedian": 20,
+       "againstAvg": 19.3,
+       "againstMedian": 10.3,
+       "against90": 44,
+       "againstOpenAvg": 19.1,
+       "tenFirstPct": 49.2
+      },
+      "short": {
+       "target": 18.5,
+       "alerts": 817,
+       "reachedPct": 65.5,
+       "minutesAvg": 34.6,
+       "minutesMedian": 14,
+       "againstAvg": 19.1,
+       "againstMedian": 11.5,
+       "against90": 46.8,
+       "againstOpenAvg": 18.7,
+       "tenFirstPct": 42.1
+      }
+     },
+     "2022": {
+      "all": {
+       "target": 15.8,
+       "alerts": 1609,
+       "reachedPct": 83.2,
+       "minutesAvg": 20.1,
+       "minutesMedian": 7,
+       "againstAvg": 22.9,
+       "againstMedian": 12.5,
+       "against90": 54,
+       "againstOpenAvg": 21.9,
+       "tenFirstPct": 48.6
+      },
+      "long": {
+       "target": 15.8,
+       "alerts": 807,
+       "reachedPct": 84.4,
+       "minutesAvg": 22.2,
+       "minutesMedian": 7,
+       "againstAvg": 24.2,
+       "againstMedian": 13.5,
+       "against90": 58.5,
+       "againstOpenAvg": 23.2,
+       "tenFirstPct": 47.3
+      },
+      "short": {
+       "target": 15.8,
+       "alerts": 802,
+       "reachedPct": 81.9,
+       "minutesAvg": 17.9,
+       "minutesMedian": 6,
+       "againstAvg": 21.5,
+       "againstMedian": 11.3,
+       "against90": 49.8,
+       "againstOpenAvg": 20.4,
+       "tenFirstPct": 49.9
+      }
+     },
+     "2023": {
+      "all": {
+       "target": 18.9,
+       "alerts": 1613,
+       "reachedPct": 74.4,
+       "minutesAvg": 33.7,
+       "minutesMedian": 14,
+       "againstAvg": 19.7,
+       "againstMedian": 11,
+       "against90": 52.5,
+       "againstOpenAvg": 19.4,
+       "tenFirstPct": 48.7
+      },
+      "long": {
+       "target": 18.9,
+       "alerts": 798,
+       "reachedPct": 77.8,
+       "minutesAvg": 35.6,
+       "minutesMedian": 15,
+       "againstAvg": 19.9,
+       "againstMedian": 11,
+       "against90": 52.5,
+       "againstOpenAvg": 19.7,
+       "tenFirstPct": 51.5
+      },
+      "short": {
+       "target": 18.9,
+       "alerts": 815,
+       "reachedPct": 71,
+       "minutesAvg": 31.7,
+       "minutesMedian": 13,
+       "againstAvg": 19.4,
+       "againstMedian": 11,
+       "against90": 52.3,
+       "againstOpenAvg": 19,
+       "tenFirstPct": 45.9
+      }
+     },
+     "2024": {
+      "all": {
+       "target": 24.3,
+       "alerts": 1562,
+       "reachedPct": 71.6,
+       "minutesAvg": 37,
+       "minutesMedian": 17,
+       "againstAvg": 23.8,
+       "againstMedian": 13.8,
+       "against90": 58.8,
+       "againstOpenAvg": 23.6,
+       "tenFirstPct": 49.4
+      },
+      "long": {
+       "target": 24.3,
+       "alerts": 779,
+       "reachedPct": 73.6,
+       "minutesAvg": 39,
+       "minutesMedian": 18,
+       "againstAvg": 24.9,
+       "againstMedian": 13.5,
+       "against90": 64.5,
+       "againstOpenAvg": 24.8,
+       "tenFirstPct": 49.6
+      },
+      "short": {
+       "target": 24.3,
+       "alerts": 783,
+       "reachedPct": 69.7,
+       "minutesAvg": 34.9,
+       "minutesMedian": 16,
+       "againstAvg": 22.7,
+       "againstMedian": 13.8,
+       "against90": 53.8,
+       "againstOpenAvg": 22.3,
+       "tenFirstPct": 49.3
+      }
+     },
+     "2025": {
+      "all": {
+       "target": 29.2,
+       "alerts": 1663,
+       "reachedPct": 71,
+       "minutesAvg": 35.9,
+       "minutesMedian": 16,
+       "againstAvg": 30,
+       "againstMedian": 17.5,
+       "against90": 74.3,
+       "againstOpenAvg": 29.3,
+       "tenFirstPct": 46.7
+      },
+      "long": {
+       "target": 29.2,
+       "alerts": 828,
+       "reachedPct": 72,
+       "minutesAvg": 37.9,
+       "minutesMedian": 17,
+       "againstAvg": 31.6,
+       "againstMedian": 18,
+       "against90": 83.8,
+       "againstOpenAvg": 31.1,
+       "tenFirstPct": 46.6
+      },
+      "short": {
+       "target": 29.2,
+       "alerts": 835,
+       "reachedPct": 70.1,
+       "minutesAvg": 33.8,
+       "minutesMedian": 15,
+       "againstAvg": 28.4,
+       "againstMedian": 17,
+       "against90": 68.3,
+       "againstOpenAvg": 27.5,
+       "tenFirstPct": 46.8
+      }
+     },
+     "2026": {
+      "all": {
+       "target": 37.3,
+       "alerts": 1337,
+       "reachedPct": 72.7,
+       "minutesAvg": 34.1,
+       "minutesMedian": 15,
+       "againstAvg": 37.9,
+       "againstMedian": 22,
+       "against90": 96.8,
+       "againstOpenAvg": 37.3,
+       "tenFirstPct": 47.6
+      },
+      "long": {
+       "target": 37.3,
+       "alerts": 674,
+       "reachedPct": 71.8,
+       "minutesAvg": 34.5,
+       "minutesMedian": 15,
+       "againstAvg": 38.3,
+       "againstMedian": 21,
+       "against90": 98,
+       "againstOpenAvg": 37.6,
+       "tenFirstPct": 46.4
+      },
+      "short": {
+       "target": 37.3,
+       "alerts": 663,
+       "reachedPct": 73.6,
+       "minutesAvg": 33.8,
+       "minutesMedian": 15,
+       "againstAvg": 37.6,
+       "againstMedian": 23.3,
+       "against90": 90,
+       "againstOpenAvg": 37,
+       "tenFirstPct": 48.7
+      }
+     }
+    },
+    "both rows": {
+     "2019": {
+      "all": {
+       "target": 10,
+       "alerts": 747,
+       "reachedPct": 68.8,
+       "minutesAvg": 47.5,
+       "minutesMedian": 21,
+       "againstAvg": 9.2,
+       "againstMedian": 5.5,
+       "against90": 21.5,
+       "againstOpenAvg": 9.1,
+       "tenFirstPct": 49
+      },
+      "long": {
+       "target": 10,
+       "alerts": 386,
+       "reachedPct": 67.1,
+       "minutesAvg": 50,
+       "minutesMedian": 25,
+       "againstAvg": 9.3,
+       "againstMedian": 5.3,
+       "against90": 23,
+       "againstOpenAvg": 9.3,
+       "tenFirstPct": 47.4
+      },
+      "short": {
+       "target": 9.9,
+       "alerts": 361,
+       "reachedPct": 70.6,
+       "minutesAvg": 45,
+       "minutesMedian": 17,
+       "againstAvg": 9.1,
+       "againstMedian": 5.8,
+       "against90": 19.5,
+       "againstOpenAvg": 8.8,
+       "tenFirstPct": 50.7
+      }
+     },
+     "2020": {
+      "all": {
+       "target": 13.4,
+       "alerts": 1189,
+       "reachedPct": 81.8,
+       "minutesAvg": 28.4,
+       "minutesMedian": 10,
+       "againstAvg": 17.5,
+       "againstMedian": 9.8,
+       "against90": 43.5,
+       "againstOpenAvg": 16.8,
+       "tenFirstPct": 48.4
+      },
+      "long": {
+       "target": 12.9,
+       "alerts": 654,
+       "reachedPct": 81,
+       "minutesAvg": 33,
+       "minutesMedian": 13,
+       "againstAvg": 18.3,
+       "againstMedian": 9.8,
+       "against90": 47.5,
+       "againstOpenAvg": 17.8,
+       "tenFirstPct": 48.2
+      },
+      "short": {
+       "target": 13.5,
+       "alerts": 535,
+       "reachedPct": 82.8,
+       "minutesAvg": 22.7,
+       "minutesMedian": 6,
+       "againstAvg": 16.4,
+       "againstMedian": 10.3,
+       "against90": 38.8,
+       "againstOpenAvg": 15.7,
+       "tenFirstPct": 48.6
+      }
+     },
+     "2021": {
+      "all": {
+       "target": 18.5,
+       "alerts": 1153,
+       "reachedPct": 69.1,
+       "minutesAvg": 33.8,
+       "minutesMedian": 16,
+       "againstAvg": 18.5,
+       "againstMedian": 10.8,
+       "against90": 42.8,
+       "againstOpenAvg": 18.2,
+       "tenFirstPct": 47.2
+      },
+      "long": {
+       "target": 18.5,
+       "alerts": 583,
+       "reachedPct": 70.5,
+       "minutesAvg": 38.2,
+       "minutesMedian": 22,
+       "againstAvg": 17.7,
+       "againstMedian": 10.5,
+       "against90": 37.5,
+       "againstOpenAvg": 17.5,
+       "tenFirstPct": 48.4
+      },
+      "short": {
+       "target": 18.5,
+       "alerts": 570,
+       "reachedPct": 67.7,
+       "minutesAvg": 29,
+       "minutesMedian": 12,
+       "againstAvg": 19.3,
+       "againstMedian": 11.3,
+       "against90": 48.3,
+       "againstOpenAvg": 19,
+       "tenFirstPct": 46
+      }
+     },
+     "2022": {
+      "all": {
+       "target": 15.9,
+       "alerts": 1137,
+       "reachedPct": 86.5,
+       "minutesAvg": 21.6,
+       "minutesMedian": 7,
+       "againstAvg": 24.2,
+       "againstMedian": 13,
+       "against90": 55.3,
+       "againstOpenAvg": 23.1,
+       "tenFirstPct": 49.4
+      },
+      "long": {
+       "target": 15.9,
+       "alerts": 562,
+       "reachedPct": 86.7,
+       "minutesAvg": 23.4,
+       "minutesMedian": 7,
+       "againstAvg": 23.7,
+       "againstMedian": 13.3,
+       "against90": 54.8,
+       "againstOpenAvg": 22.6,
+       "tenFirstPct": 49.5
+      },
+      "short": {
+       "target": 15.9,
+       "alerts": 575,
+       "reachedPct": 86.3,
+       "minutesAvg": 19.8,
+       "minutesMedian": 7,
+       "againstAvg": 24.7,
+       "againstMedian": 13,
+       "against90": 59,
+       "againstOpenAvg": 23.7,
+       "tenFirstPct": 49.4
+      }
+     },
+     "2023": {
+      "all": {
+       "target": 18.9,
+       "alerts": 1124,
+       "reachedPct": 78.5,
+       "minutesAvg": 31.8,
+       "minutesMedian": 13,
+       "againstAvg": 19.5,
+       "againstMedian": 11,
+       "against90": 49.3,
+       "againstOpenAvg": 19.2,
+       "tenFirstPct": 51.6
+      },
+      "long": {
+       "target": 19,
+       "alerts": 631,
+       "reachedPct": 79.9,
+       "minutesAvg": 35.1,
+       "minutesMedian": 16,
+       "againstAvg": 20.1,
+       "againstMedian": 11.5,
+       "against90": 51.5,
+       "againstOpenAvg": 19.9,
+       "tenFirstPct": 52.5
+      },
+      "short": {
+       "target": 18.8,
+       "alerts": 493,
+       "reachedPct": 76.7,
+       "minutesAvg": 27.3,
+       "minutesMedian": 10,
+       "againstAvg": 18.7,
+       "againstMedian": 10.8,
+       "against90": 48.3,
+       "againstOpenAvg": 18.4,
+       "tenFirstPct": 50.5
+      }
+     },
+     "2024": {
+      "all": {
+       "target": 24.3,
+       "alerts": 1131,
+       "reachedPct": 72,
+       "minutesAvg": 39.2,
+       "minutesMedian": 19,
+       "againstAvg": 24.7,
+       "againstMedian": 13.8,
+       "against90": 63.8,
+       "againstOpenAvg": 24.6,
+       "tenFirstPct": 48.2
+      },
+      "long": {
+       "target": 24.1,
+       "alerts": 584,
+       "reachedPct": 71.2,
+       "minutesAvg": 42.9,
+       "minutesMedian": 22,
+       "againstAvg": 26.2,
+       "againstMedian": 14.3,
+       "against90": 68.3,
+       "againstOpenAvg": 26,
+       "tenFirstPct": 45.7
+      },
+      "short": {
+       "target": 24.4,
+       "alerts": 547,
+       "reachedPct": 72.8,
+       "minutesAvg": 35.4,
+       "minutesMedian": 14,
+       "againstAvg": 23.2,
+       "againstMedian": 13.3,
+       "against90": 62.8,
+       "againstOpenAvg": 23,
+       "tenFirstPct": 50.8
+      }
+     },
+     "2025": {
+      "all": {
+       "target": 29.1,
+       "alerts": 1153,
+       "reachedPct": 72.3,
+       "minutesAvg": 33.9,
+       "minutesMedian": 13,
+       "againstAvg": 29.8,
+       "againstMedian": 16.5,
+       "against90": 71.3,
+       "againstOpenAvg": 29.1,
+       "tenFirstPct": 48
+      },
+      "long": {
+       "target": 29.2,
+       "alerts": 612,
+       "reachedPct": 70.9,
+       "minutesAvg": 39,
+       "minutesMedian": 18,
+       "againstAvg": 31.8,
+       "againstMedian": 17.5,
+       "against90": 72.8,
+       "againstOpenAvg": 31.5,
+       "tenFirstPct": 46.4
+      },
+      "short": {
+       "target": 29.1,
+       "alerts": 541,
+       "reachedPct": 73.9,
+       "minutesAvg": 28.4,
+       "minutesMedian": 10,
+       "againstAvg": 27.6,
+       "againstMedian": 16.3,
+       "against90": 67.3,
+       "againstOpenAvg": 26.6,
+       "tenFirstPct": 49.7
+      }
+     },
+     "2026": {
+      "all": {
+       "target": 37.3,
+       "alerts": 950,
+       "reachedPct": 70,
+       "minutesAvg": 29.8,
+       "minutesMedian": 13,
+       "againstAvg": 35.9,
+       "againstMedian": 20.5,
+       "against90": 91.5,
+       "againstOpenAvg": 35.2,
+       "tenFirstPct": 47.7
+      },
+      "long": {
+       "target": 37.3,
+       "alerts": 496,
+       "reachedPct": 69.6,
+       "minutesAvg": 32.7,
+       "minutesMedian": 14,
+       "againstAvg": 37.7,
+       "againstMedian": 19.5,
+       "against90": 95.8,
+       "againstOpenAvg": 37,
+       "tenFirstPct": 46.2
+      },
+      "short": {
+       "target": 37.2,
+       "alerts": 454,
+       "reachedPct": 70.5,
+       "minutesAvg": 26.6,
+       "minutesMedian": 11,
+       "againstAvg": 33.9,
+       "againstMedian": 20.5,
+       "against90": 82.5,
+       "againstOpenAvg": 33.2,
+       "tenFirstPct": 49.3
+      }
+     }
+    }
+   }
+  },
+  "baseline": {
+   "2019": {
+    "all": {
+     "target": 10,
+     "alerts": 129564,
+     "reachedPct": 67.6,
+     "minutesAvg": 49.9,
+     "minutesMedian": 25,
+     "againstAvg": 9.1,
+     "againstMedian": 5.5,
+     "against90": 22.3,
+     "againstOpenAvg": 9.1,
+     "tenFirstPct": 47.3
+    },
+    "long": {
+     "target": 10,
+     "alerts": 64782,
+     "reachedPct": 69.5,
+     "minutesAvg": 51.7,
+     "minutesMedian": 27,
+     "againstAvg": 9.6,
+     "againstMedian": 5.5,
+     "against90": 24,
+     "againstOpenAvg": 9.5,
+     "tenFirstPct": 48
+    },
+    "short": {
+     "target": 10,
+     "alerts": 64782,
+     "reachedPct": 65.7,
+     "minutesAvg": 48.1,
+     "minutesMedian": 23,
+     "againstAvg": 8.6,
+     "againstMedian": 5.3,
+     "against90": 20.5,
+     "againstOpenAvg": 8.6,
+     "tenFirstPct": 46.5
+    }
+   },
+   "2020": {
+    "all": {
+     "target": 13.2,
+     "alerts": 195790,
+     "reachedPct": 80.8,
+     "minutesAvg": 29.9,
+     "minutesMedian": 10,
+     "againstAvg": 17.3,
+     "againstMedian": 9.3,
+     "against90": 42.3,
+     "againstOpenAvg": 16.8,
+     "tenFirstPct": 48.9
+    },
+    "long": {
+     "target": 13.2,
+     "alerts": 97895,
+     "reachedPct": 82.9,
+     "minutesAvg": 30.8,
+     "minutesMedian": 11,
+     "againstAvg": 18.1,
+     "againstMedian": 9.3,
+     "against90": 45,
+     "againstOpenAvg": 17.6,
+     "tenFirstPct": 49.4
+    },
+    "short": {
+     "target": 13.2,
+     "alerts": 97895,
+     "reachedPct": 78.6,
+     "minutesAvg": 28.9,
+     "minutesMedian": 9,
+     "againstAvg": 16.5,
+     "againstMedian": 9,
+     "against90": 39.5,
+     "againstOpenAvg": 16,
+     "tenFirstPct": 48.3
+    }
+   },
+   "2021": {
+    "all": {
+     "target": 18.5,
+     "alerts": 196742,
+     "reachedPct": 71.3,
+     "minutesAvg": 38.7,
+     "minutesMedian": 18,
+     "againstAvg": 18.2,
+     "againstMedian": 10.8,
+     "against90": 44,
+     "againstOpenAvg": 18,
+     "tenFirstPct": 47.9
+    },
+    "long": {
+     "target": 18.5,
+     "alerts": 98371,
+     "reachedPct": 74.1,
+     "minutesAvg": 41.8,
+     "minutesMedian": 20,
+     "againstAvg": 19,
+     "againstMedian": 11.3,
+     "against90": 45.5,
+     "againstOpenAvg": 18.9,
+     "tenFirstPct": 48.9
+    },
+    "short": {
+     "target": 18.5,
+     "alerts": 98371,
+     "reachedPct": 68.4,
+     "minutesAvg": 35.2,
+     "minutesMedian": 16,
+     "againstAvg": 17.2,
+     "againstMedian": 10.3,
+     "against90": 42.5,
+     "againstOpenAvg": 17,
+     "tenFirstPct": 47
+    }
+   },
+   "2022": {
+    "all": {
+     "target": 15.8,
+     "alerts": 196390,
+     "reachedPct": 84.8,
+     "minutesAvg": 21.6,
+     "minutesMedian": 7,
+     "againstAvg": 23.3,
+     "againstMedian": 12.3,
+     "against90": 57.8,
+     "againstOpenAvg": 22.7,
+     "tenFirstPct": 49.4
+    },
+    "long": {
+     "target": 15.8,
+     "alerts": 98195,
+     "reachedPct": 85.4,
+     "minutesAvg": 22.6,
+     "minutesMedian": 7,
+     "againstAvg": 23.6,
+     "againstMedian": 12.5,
+     "against90": 58,
+     "againstOpenAvg": 23,
+     "tenFirstPct": 49.3
+    },
+    "short": {
+     "target": 15.8,
+     "alerts": 98195,
+     "reachedPct": 84.3,
+     "minutesAvg": 20.5,
+     "minutesMedian": 7,
+     "againstAvg": 23.1,
+     "againstMedian": 12.3,
+     "against90": 57.8,
+     "againstOpenAvg": 22.4,
+     "tenFirstPct": 49.5
+    }
+   },
+   "2023": {
+    "all": {
+     "target": 18.9,
+     "alerts": 195296,
+     "reachedPct": 74.9,
+     "minutesAvg": 34.4,
+     "minutesMedian": 15,
+     "againstAvg": 19.6,
+     "againstMedian": 11.3,
+     "against90": 48.3,
+     "againstOpenAvg": 19.4,
+     "tenFirstPct": 48.5
+    },
+    "long": {
+     "target": 18.9,
+     "alerts": 97648,
+     "reachedPct": 77.5,
+     "minutesAvg": 35.3,
+     "minutesMedian": 16,
+     "againstAvg": 19.6,
+     "againstMedian": 11,
+     "against90": 49.3,
+     "againstOpenAvg": 19.4,
+     "tenFirstPct": 50.3
+    },
+    "short": {
+     "target": 18.9,
+     "alerts": 97648,
+     "reachedPct": 72.3,
+     "minutesAvg": 33.3,
+     "minutesMedian": 15,
+     "againstAvg": 19.7,
+     "againstMedian": 11.3,
+     "against90": 47.5,
+     "againstOpenAvg": 19.4,
+     "tenFirstPct": 46.7
+    }
+   },
+   "2024": {
+    "all": {
+     "target": 24.3,
+     "alerts": 196518,
+     "reachedPct": 71.8,
+     "minutesAvg": 37.9,
+     "minutesMedian": 18,
+     "againstAvg": 24.6,
+     "againstMedian": 14.5,
+     "against90": 59.3,
+     "againstOpenAvg": 24.3,
+     "tenFirstPct": 48
+    },
+    "long": {
+     "target": 24.3,
+     "alerts": 98259,
+     "reachedPct": 73,
+     "minutesAvg": 39.5,
+     "minutesMedian": 20,
+     "againstAvg": 25.4,
+     "againstMedian": 14.8,
+     "against90": 63,
+     "againstOpenAvg": 25.3,
+     "tenFirstPct": 48.2
+    },
+    "short": {
+     "target": 24.3,
+     "alerts": 98259,
+     "reachedPct": 70.6,
+     "minutesAvg": 36.1,
+     "minutesMedian": 17,
+     "againstAvg": 23.7,
+     "againstMedian": 14.3,
+     "against90": 55.8,
+     "againstOpenAvg": 23.4,
+     "tenFirstPct": 47.9
+    }
+   },
+   "2025": {
+    "all": {
+     "target": 29.1,
+     "alerts": 194974,
+     "reachedPct": 71.9,
+     "minutesAvg": 37.2,
+     "minutesMedian": 17,
+     "againstAvg": 30.5,
+     "againstMedian": 17,
+     "against90": 73.3,
+     "againstOpenAvg": 30,
+     "tenFirstPct": 47.5
+    },
+    "long": {
+     "target": 29.1,
+     "alerts": 97487,
+     "reachedPct": 72.8,
+     "minutesAvg": 39.1,
+     "minutesMedian": 18,
+     "againstAvg": 32.8,
+     "againstMedian": 18,
+     "against90": 80.5,
+     "againstOpenAvg": 32.3,
+     "tenFirstPct": 47
+    },
+    "short": {
+     "target": 29.1,
+     "alerts": 97487,
+     "reachedPct": 71.1,
+     "minutesAvg": 35.4,
+     "minutesMedian": 15,
+     "againstAvg": 28.1,
+     "againstMedian": 16.3,
+     "against90": 66.8,
+     "againstOpenAvg": 27.6,
+     "tenFirstPct": 48.1
+    }
+   },
+   "2026": {
+    "all": {
+     "target": 37.1,
+     "alerts": 163868,
+     "reachedPct": 71.5,
+     "minutesAvg": 34.4,
+     "minutesMedian": 16,
+     "againstAvg": 35.6,
+     "againstMedian": 20.5,
+     "against90": 86.8,
+     "againstOpenAvg": 35.3,
+     "tenFirstPct": 48
+    },
+    "long": {
+     "target": 37.1,
+     "alerts": 81934,
+     "reachedPct": 71.5,
+     "minutesAvg": 35.1,
+     "minutesMedian": 16,
+     "againstAvg": 37.5,
+     "againstMedian": 21.8,
+     "against90": 90.5,
+     "againstOpenAvg": 37.2,
+     "tenFirstPct": 46.8
+    },
+    "short": {
+     "target": 37.1,
+     "alerts": 81934,
+     "reachedPct": 71.6,
+     "minutesAvg": 33.7,
+     "minutesMedian": 15,
+     "againstAvg": 33.6,
+     "againstMedian": 19.5,
+     "against90": 83.3,
+     "againstOpenAvg": 33.3,
+     "tenFirstPct": 49.2
+    }
+   }
+  }
+ }
+}

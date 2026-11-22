@@ -1,12 +1,14 @@
 {
- "run": "2026-11-22T15:44:01.326Z",
+ "run": "2026-11-22T15:48:37.623Z",
  "target": 10,
+ "pct": null,
  "results": {
   "alerts": {
    "1m": {
     "EMA row": {
      "2019": {
       "all": {
+       "target": 10,
        "alerts": 2357,
        "reachedPct": 67.6,
        "minutesAvg": 47.9,
@@ -18,6 +20,7 @@
        "tenFirstPct": 47.4
       },
       "long": {
+       "target": 10,
        "alerts": 1181,
        "reachedPct": 70.7,
        "minutesAvg": 50.2,
@@ -29,6 +32,7 @@
        "tenFirstPct": 48.9
       },
       "short": {
+       "target": 10,
        "alerts": 1176,
        "reachedPct": 64.5,
        "minutesAvg": 45.3,
@@ -42,6 +46,7 @@
      },
      "2020": {
       "all": {
+       "target": 10,
        "alerts": 3400,
        "reachedPct": 85.8,
        "minutesAvg": 23,
@@ -53,6 +58,7 @@
        "tenFirstPct": 50
       },
       "long": {
+       "target": 10,
        "alerts": 1703,
        "reachedPct": 87.8,
        "minutesAvg": 23,
@@ -64,6 +70,7 @@
        "tenFirstPct": 52
       },
       "short": {
+       "target": 10,
        "alerts": 1697,
        "reachedPct": 83.7,
        "minutesAvg": 23.1,
@@ -77,6 +84,7 @@
      },
      "2021": {
       "all": {
+       "target": 10,
        "alerts": 3591,
        "reachedPct": 83.8,
        "minutesAvg": 22.2,
@@ -88,6 +96,7 @@
        "tenFirstPct": 48.6
       },
       "long": {
+       "target": 10,
        "alerts": 1783,
        "reachedPct": 85.3,
        "minutesAvg": 23.1,
@@ -99,6 +108,7 @@
        "tenFirstPct": 49.1
       },
       "short": {
+       "target": 10,
        "alerts": 1808,
        "reachedPct": 82.4,
        "minutesAvg": 21.2,
@@ -112,6 +122,7 @@
      },
      "2022": {
       "all": {
+       "target": 10,
        "alerts": 3433,
        "reachedPct": 89.9,
        "minutesAvg": 13.5,
@@ -123,6 +134,7 @@
        "tenFirstPct": 46.2
       },
       "long": {
+       "target": 10,
        "alerts": 1723,
        "reachedPct": 90,
        "minutesAvg": 14,
@@ -134,6 +146,7 @@
        "tenFirstPct": 45.7
       },
       "short": {
+       "target": 10,
        "alerts": 1710,
        "reachedPct": 89.8,
        "minutesAvg": 13,
@@ -147,6 +160,7 @@
      },
      "2023": {
       "all": {
+       "target": 10,
        "alerts": 3451,
        "reachedPct": 85.3,
        "minutesAvg": 19,
@@ -158,6 +172,7 @@
        "tenFirstPct": 50.3
       },
       "long": {
+       "target": 10,
        "alerts": 1728,
        "reachedPct": 86.7,
        "minutesAvg": 19.4,
@@ -169,6 +184,7 @@
        "tenFirstPct": 51
       },
       "short": {
+       "target": 10,
        "alerts": 1723,
        "reachedPct": 83.7,
        "minutesAvg": 18.6,
@@ -182,6 +198,7 @@
      },
      "2024": {
       "all": {
+       "target": 10,
        "alerts": 3513,
        "reachedPct": 88,
        "minutesAvg": 16.1,
@@ -193,6 +210,7 @@
        "tenFirstPct": 48.7
       },
       "long": {
+       "target": 10,
        "alerts": 1755,
        "reachedPct": 89.5,
        "minutesAvg": 16.8,
@@ -204,6 +222,7 @@
        "tenFirstPct": 50.2
       },
       "short": {
+       "target": 10,
        "alerts": 1758,
        "reachedPct": 86.6,
        "minutesAvg": 15.3,
@@ -217,6 +236,7 @@
      },
      "2025": {
       "all": {
+       "target": 10,
        "alerts": 3653,
        "reachedPct": 90.3,
        "minutesAvg": 14.9,
@@ -228,6 +248,7 @@
        "tenFirstPct": 46.9
       },
       "long": {
+       "target": 10,
        "alerts": 1831,
        "reachedPct": 91.2,
        "minutesAvg": 15.5,
@@ -239,6 +260,7 @@
        "tenFirstPct": 47.1
       },
       "short": {
+       "target": 10,
        "alerts": 1822,
        "reachedPct": 89.5,
        "minutesAvg": 14.2,
@@ -252,6 +274,7 @@
      },
      "2026": {
       "all": {
+       "target": 10,
        "alerts": 2949,
        "reachedPct": 91.5,
        "minutesAvg": 10.9,
@@ -263,6 +286,7 @@
        "tenFirstPct": 44.4
       },
       "long": {
+       "target": 10,
        "alerts": 1478,
        "reachedPct": 92.4,
        "minutesAvg": 11.6,
@@ -274,6 +298,7 @@
        "tenFirstPct": 44.1
       },
       "short": {
+       "target": 10,
        "alerts": 1471,
        "reachedPct": 90.6,
        "minutesAvg": 10.2,
@@ -289,6 +314,7 @@
     "MACD row": {
      "2019": {
       "all": {
+       "target": 10,
        "alerts": 5377,
        "reachedPct": 67.9,
        "minutesAvg": 50.4,
@@ -300,6 +326,7 @@
        "tenFirstPct": 47
       },
       "long": {
+       "target": 10,
        "alerts": 2686,
        "reachedPct": 70.5,
        "minutesAvg": 51.5,
@@ -311,6 +338,7 @@
        "tenFirstPct": 48.6
       },
       "short": {
+       "target": 10,
        "alerts": 2691,
        "reachedPct": 65.4,
        "minutesAvg": 49.2,
@@ -324,6 +352,7 @@
      },
      "2020": {
       "all": {
+       "target": 10,
        "alerts": 8006,
        "reachedPct": 85.1,
        "minutesAvg": 23.5,
@@ -335,6 +364,7 @@
        "tenFirstPct": 47.9
       },
       "long": {
+       "target": 10,
        "alerts": 4007,
        "reachedPct": 86.9,
        "minutesAvg": 24.6,
@@ -346,6 +376,7 @@
        "tenFirstPct": 48.4
       },
       "short": {
+       "target": 10,
        "alerts": 3999,
        "reachedPct": 83.3,
        "minutesAvg": 22.3,
@@ -359,6 +390,7 @@
      },
      "2021": {
       "all": {
+       "target": 10,
        "alerts": 7924,
        "reachedPct": 83.6,
        "minutesAvg": 22.2,
@@ -370,6 +402,7 @@
        "tenFirstPct": 48.7
       },
       "long": {
+       "target": 10,
        "alerts": 3950,
        "reachedPct": 84.7,
        "minutesAvg": 24,
@@ -381,6 +414,7 @@
        "tenFirstPct": 48.1
       },
       "short": {
+       "target": 10,
        "alerts": 3974,
        "reachedPct": 82.6,
        "minutesAvg": 20.3,
@@ -394,6 +428,7 @@
      },
      "2022": {
       "all": {
+       "target": 10,
        "alerts": 7936,
        "reachedPct": 90.2,
        "minutesAvg": 13.1,
@@ -405,6 +440,7 @@
        "tenFirstPct": 48.5
       },
       "long": {
+       "target": 10,
        "alerts": 3970,
        "reachedPct": 90.8,
        "minutesAvg": 13.7,
@@ -416,6 +452,7 @@
        "tenFirstPct": 48.8
       },
       "short": {
+       "target": 10,
        "alerts": 3966,
        "reachedPct": 89.6,
        "minutesAvg": 12.4,
@@ -429,6 +466,7 @@
      },
      "2023": {
       "all": {
+       "target": 10,
        "alerts": 7870,
        "reachedPct": 86.1,
        "minutesAvg": 18.9,
@@ -440,6 +478,7 @@
        "tenFirstPct": 49.3
       },
       "long": {
+       "target": 10,
        "alerts": 3944,
        "reachedPct": 88.3,
        "minutesAvg": 18.8,
@@ -451,6 +490,7 @@
        "tenFirstPct": 50.5
       },
       "short": {
+       "target": 10,
        "alerts": 3926,
        "reachedPct": 83.8,
        "minutesAvg": 19,
@@ -464,6 +504,7 @@
      },
      "2024": {
       "all": {
+       "target": 10,
        "alerts": 7983,
        "reachedPct": 87.9,
        "minutesAvg": 15.9,
@@ -475,6 +516,7 @@
        "tenFirstPct": 49.4
       },
       "long": {
+       "target": 10,
        "alerts": 3998,
        "reachedPct": 89.3,
        "minutesAvg": 16.3,
@@ -486,6 +528,7 @@
        "tenFirstPct": 49.9
       },
       "short": {
+       "target": 10,
        "alerts": 3985,
        "reachedPct": 86.6,
        "minutesAvg": 15.6,
@@ -499,6 +542,7 @@
      },
      "2025": {
       "all": {
+       "target": 10,
        "alerts": 7868,
        "reachedPct": 90.5,
        "minutesAvg": 14.2,
@@ -510,6 +554,7 @@
        "tenFirstPct": 47.8
       },
       "long": {
+       "target": 10,
        "alerts": 3948,
        "reachedPct": 91.2,
        "minutesAvg": 13.9,
@@ -521,6 +566,7 @@
        "tenFirstPct": 47.4
       },
       "short": {
+       "target": 10,
        "alerts": 3920,
        "reachedPct": 89.8,
        "minutesAvg": 14.4,
@@ -534,6 +580,7 @@
      },
      "2026": {
       "all": {
+       "target": 10,
        "alerts": 6619,
        "reachedPct": 92.2,
        "minutesAvg": 11.5,
@@ -545,6 +592,7 @@
        "tenFirstPct": 46.1
       },
       "long": {
+       "target": 10,
        "alerts": 3307,
        "reachedPct": 91.5,
        "minutesAvg": 11.6,
@@ -556,6 +604,7 @@
        "tenFirstPct": 44.9
       },
       "short": {
+       "target": 10,
        "alerts": 3312,
        "reachedPct": 92.9,
        "minutesAvg": 11.4,
@@ -571,6 +620,7 @@
     "both rows": {
      "2019": {
       "all": {
+       "target": 10,
        "alerts": 3877,
        "reachedPct": 68.1,
        "minutesAvg": 50,
@@ -582,6 +632,7 @@
        "tenFirstPct": 46.8
       },
       "long": {
+       "target": 10,
        "alerts": 1993,
        "reachedPct": 70.4,
        "minutesAvg": 54,
@@ -593,6 +644,7 @@
        "tenFirstPct": 48.4
       },
       "short": {
+       "target": 10,
        "alerts": 1884,
        "reachedPct": 65.6,
        "minutesAvg": 45.5,
@@ -606,6 +658,7 @@
      },
      "2020": {
       "all": {
+       "target": 10,
        "alerts": 5725,
        "reachedPct": 85.6,
        "minutesAvg": 23.7,
@@ -617,6 +670,7 @@
        "tenFirstPct": 49.3
       },
       "long": {
+       "target": 10,
        "alerts": 3066,
        "reachedPct": 86.7,
        "minutesAvg": 25.8,
@@ -628,6 +682,7 @@
        "tenFirstPct": 50.2
       },
       "short": {
+       "target": 10,
        "alerts": 2659,
        "reachedPct": 84.3,
        "minutesAvg": 21.2,
@@ -641,6 +696,7 @@
      },
      "2021": {
       "all": {
+       "target": 10,
        "alerts": 5778,
        "reachedPct": 83.8,
        "minutesAvg": 23,
@@ -652,6 +708,7 @@
        "tenFirstPct": 48.2
       },
       "long": {
+       "target": 10,
        "alerts": 3029,
        "reachedPct": 84.5,
        "minutesAvg": 26,
@@ -663,6 +720,7 @@
        "tenFirstPct": 48
       },
       "short": {
+       "target": 10,
        "alerts": 2749,
        "reachedPct": 83,
        "minutesAvg": 19.6,
@@ -676,6 +734,7 @@
      },
      "2022": {
       "all": {
+       "target": 10,
        "alerts": 5700,
        "reachedPct": 90.5,
        "minutesAvg": 13.7,
@@ -687,6 +746,7 @@
        "tenFirstPct": 48.3
       },
       "long": {
+       "target": 10,
        "alerts": 2838,
        "reachedPct": 91.3,
        "minutesAvg": 14,
@@ -698,6 +758,7 @@
        "tenFirstPct": 49
       },
       "short": {
+       "target": 10,
        "alerts": 2862,
        "reachedPct": 89.7,
        "minutesAvg": 13.3,
@@ -711,6 +772,7 @@
      },
      "2023": {
       "all": {
+       "target": 10,
        "alerts": 5671,
        "reachedPct": 86.2,
        "minutesAvg": 18.8,
@@ -722,6 +784,7 @@
        "tenFirstPct": 50.1
       },
       "long": {
+       "target": 10,
        "alerts": 3009,
        "reachedPct": 87.6,
        "minutesAvg": 19.7,
@@ -733,6 +796,7 @@
        "tenFirstPct": 50.9
       },
       "short": {
+       "target": 10,
        "alerts": 2662,
        "reachedPct": 84.6,
        "minutesAvg": 17.8,
@@ -746,6 +810,7 @@
      },
      "2024": {
       "all": {
+       "target": 10,
        "alerts": 5769,
        "reachedPct": 87.6,
        "minutesAvg": 15.8,
@@ -757,6 +822,7 @@
        "tenFirstPct": 48.6
       },
       "long": {
+       "target": 10,
        "alerts": 2999,
        "reachedPct": 88.4,
        "minutesAvg": 16.9,
@@ -768,6 +834,7 @@
        "tenFirstPct": 49.9
       },
       "short": {
+       "target": 10,
        "alerts": 2770,
        "reachedPct": 86.8,
        "minutesAvg": 14.5,
@@ -781,6 +848,7 @@
      },
      "2025": {
       "all": {
+       "target": 10,
        "alerts": 5772,
        "reachedPct": 90.3,
        "minutesAvg": 14.4,
@@ -792,6 +860,7 @@
        "tenFirstPct": 47.5
       },
       "long": {
+       "target": 10,
        "alerts": 2897,
        "reachedPct": 90.8,
        "minutesAvg": 15.3,
@@ -803,6 +872,7 @@
        "tenFirstPct": 47.7
       },
       "short": {
+       "target": 10,
        "alerts": 2875,
        "reachedPct": 89.7,
        "minutesAvg": 13.4,
@@ -816,6 +886,7 @@
      },
      "2026": {
       "all": {
+       "target": 10,
        "alerts": 4783,
        "reachedPct": 92,
        "minutesAvg": 11,
@@ -827,6 +898,7 @@
        "tenFirstPct": 45.5
       },
       "long": {
+       "target": 10,
        "alerts": 2419,
        "reachedPct": 91.8,
        "minutesAvg": 12.1,
@@ -838,6 +910,7 @@
        "tenFirstPct": 45.1
       },
       "short": {
+       "target": 10,
        "alerts": 2364,
        "reachedPct": 92.2,
        "minutesAvg": 10,
@@ -855,6 +928,7 @@
     "EMA row": {
      "2019": {
       "all": {
+       "target": 10,
        "alerts": 465,
        "reachedPct": 69.5,
        "minutesAvg": 43.2,
@@ -866,6 +940,7 @@
        "tenFirstPct": 50.5
       },
       "long": {
+       "target": 10,
        "alerts": 236,
        "reachedPct": 69.5,
        "minutesAvg": 42.1,
@@ -877,6 +952,7 @@
        "tenFirstPct": 49.6
       },
       "short": {
+       "target": 10,
        "alerts": 229,
        "reachedPct": 69.4,
        "minutesAvg": 44.4,
@@ -890,6 +966,7 @@
      },
      "2020": {
       "all": {
+       "target": 10,
        "alerts": 722,
        "reachedPct": 86.3,
        "minutesAvg": 19.5,
@@ -901,6 +978,7 @@
        "tenFirstPct": 48.6
       },
       "long": {
+       "target": 10,
        "alerts": 371,
        "reachedPct": 86.8,
        "minutesAvg": 21,
@@ -912,6 +990,7 @@
        "tenFirstPct": 48.2
       },
       "short": {
+       "target": 10,
        "alerts": 351,
        "reachedPct": 85.8,
        "minutesAvg": 17.9,
@@ -925,6 +1004,7 @@
      },
      "2021": {
       "all": {
+       "target": 10,
        "alerts": 697,
        "reachedPct": 82.9,
        "minutesAvg": 21.5,
@@ -936,6 +1016,7 @@
        "tenFirstPct": 44.6
       },
       "long": {
+       "target": 10,
        "alerts": 357,
        "reachedPct": 84.9,
        "minutesAvg": 26.4,
@@ -947,6 +1028,7 @@
        "tenFirstPct": 44.8
       },
       "short": {
+       "target": 10,
        "alerts": 340,
        "reachedPct": 80.9,
        "minutesAvg": 16.2,
@@ -960,6 +1042,7 @@
      },
      "2022": {
       "all": {
+       "target": 10,
        "alerts": 678,
        "reachedPct": 91.6,
        "minutesAvg": 13,
@@ -971,6 +1054,7 @@
        "tenFirstPct": 44.2
       },
       "long": {
+       "target": 10,
        "alerts": 354,
        "reachedPct": 91.8,
        "minutesAvg": 12.8,
@@ -982,6 +1066,7 @@
        "tenFirstPct": 42.9
       },
       "short": {
+       "target": 10,
        "alerts": 324,
        "reachedPct": 91.4,
        "minutesAvg": 13.3,
@@ -995,6 +1080,7 @@
      },
      "2023": {
       "all": {
+       "target": 10,
        "alerts": 677,
        "reachedPct": 86.7,
        "minutesAvg": 18.4,
@@ -1006,6 +1092,7 @@
        "tenFirstPct": 48
       },
       "long": {
+       "target": 10,
        "alerts": 343,
        "reachedPct": 87.8,
        "minutesAvg": 19.1,
@@ -1017,6 +1104,7 @@
        "tenFirstPct": 46.9
       },
       "short": {
+       "target": 10,
        "alerts": 334,
        "reachedPct": 85.6,
        "minutesAvg": 17.8,
@@ -1030,6 +1118,7 @@
      },
      "2024": {
       "all": {
+       "target": 10,
        "alerts": 740,
        "reachedPct": 86.5,
        "minutesAvg": 15.8,
@@ -1041,6 +1130,7 @@
        "tenFirstPct": 47
       },
       "long": {
+       "target": 10,
        "alerts": 373,
        "reachedPct": 87.1,
        "minutesAvg": 17.6,
@@ -1052,6 +1142,7 @@
        "tenFirstPct": 49.1
       },
       "short": {
+       "target": 10,
        "alerts": 367,
        "reachedPct": 85.8,
        "minutesAvg": 13.9,
@@ -1065,6 +1156,7 @@
      },
      "2025": {
       "all": {
+       "target": 10,
        "alerts": 660,
        "reachedPct": 90.2,
        "minutesAvg": 11.4,
@@ -1076,6 +1168,7 @@
        "tenFirstPct": 52.4
       },
       "long": {
+       "target": 10,
        "alerts": 329,
        "reachedPct": 90.3,
        "minutesAvg": 11.3,
@@ -1087,6 +1180,7 @@
        "tenFirstPct": 55.6
       },
       "short": {
+       "target": 10,
        "alerts": 331,
        "reachedPct": 90,
        "minutesAvg": 11.5,
@@ -1100,6 +1194,7 @@
      },
      "2026": {
       "all": {
+       "target": 10,
        "alerts": 579,
        "reachedPct": 91,
        "minutesAvg": 10.7,
@@ -1111,6 +1206,7 @@
        "tenFirstPct": 42.3
       },
       "long": {
+       "target": 10,
        "alerts": 295,
        "reachedPct": 90.5,
        "minutesAvg": 10.9,
@@ -1122,6 +1218,7 @@
        "tenFirstPct": 42.7
       },
       "short": {
+       "target": 10,
        "alerts": 284,
        "reachedPct": 91.5,
        "minutesAvg": 10.5,
@@ -1137,6 +1234,7 @@
     "MACD row": {
      "2019": {
       "all": {
+       "target": 10,
        "alerts": 1024,
        "reachedPct": 69.5,
        "minutesAvg": 47.4,
@@ -1148,6 +1246,7 @@
        "tenFirstPct": 46.9
       },
       "long": {
+       "target": 10,
        "alerts": 510,
        "reachedPct": 68.6,
        "minutesAvg": 47.4,
@@ -1159,6 +1258,7 @@
        "tenFirstPct": 45.7
       },
       "short": {
+       "target": 10,
        "alerts": 514,
        "reachedPct": 70.4,
        "minutesAvg": 47.4,
@@ -1172,6 +1272,7 @@
      },
      "2020": {
       "all": {
+       "target": 10,
        "alerts": 1644,
        "reachedPct": 85.4,
        "minutesAvg": 22,
@@ -1183,6 +1284,7 @@
        "tenFirstPct": 47.4
       },
       "long": {
+       "target": 10,
        "alerts": 825,
        "reachedPct": 87.4,
        "minutesAvg": 23.8,
@@ -1194,6 +1296,7 @@
        "tenFirstPct": 49.3
       },
       "short": {
+       "target": 10,
        "alerts": 819,
        "reachedPct": 83.4,
        "minutesAvg": 20,
@@ -1207,6 +1310,7 @@
      },
      "2021": {
       "all": {
+       "target": 10,
        "alerts": 1615,
        "reachedPct": 83,
        "minutesAvg": 21.3,
@@ -1218,6 +1322,7 @@
        "tenFirstPct": 48.5
       },
       "long": {
+       "target": 10,
        "alerts": 798,
        "reachedPct": 85.6,
        "minutesAvg": 22.3,
@@ -1229,6 +1334,7 @@
        "tenFirstPct": 52.1
       },
       "short": {
+       "target": 10,
        "alerts": 817,
        "reachedPct": 80.5,
        "minutesAvg": 20.2,
@@ -1242,6 +1348,7 @@
      },
      "2022": {
       "all": {
+       "target": 10,
        "alerts": 1609,
        "reachedPct": 89.6,
        "minutesAvg": 13.3,
@@ -1253,6 +1360,7 @@
        "tenFirstPct": 45.2
       },
       "long": {
+       "target": 10,
        "alerts": 807,
        "reachedPct": 89,
        "minutesAvg": 14.6,
@@ -1264,6 +1372,7 @@
        "tenFirstPct": 42.4
       },
       "short": {
+       "target": 10,
        "alerts": 802,
        "reachedPct": 90.1,
        "minutesAvg": 12.1,
@@ -1277,6 +1386,7 @@
      },
      "2023": {
       "all": {
+       "target": 10,
        "alerts": 1613,
        "reachedPct": 85.6,
        "minutesAvg": 18.5,
@@ -1288,6 +1398,7 @@
        "tenFirstPct": 50
       },
       "long": {
+       "target": 10,
        "alerts": 798,
        "reachedPct": 87.5,
        "minutesAvg": 18.6,
@@ -1299,6 +1410,7 @@
        "tenFirstPct": 53.1
       },
       "short": {
+       "target": 10,
        "alerts": 815,
        "reachedPct": 83.8,
        "minutesAvg": 18.4,
@@ -1312,6 +1424,7 @@
      },
      "2024": {
       "all": {
+       "target": 10,
        "alerts": 1562,
        "reachedPct": 87.5,
        "minutesAvg": 14.6,
@@ -1323,6 +1436,7 @@
        "tenFirstPct": 49.8
       },
       "long": {
+       "target": 10,
        "alerts": 779,
        "reachedPct": 89.3,
        "minutesAvg": 15.9,
@@ -1334,6 +1448,7 @@
        "tenFirstPct": 51.6
       },
       "short": {
+       "target": 10,
        "alerts": 783,
        "reachedPct": 85.7,
        "minutesAvg": 13.2,
@@ -1347,6 +1462,7 @@
      },
      "2025": {
       "all": {
+       "target": 10,
        "alerts": 1663,
        "reachedPct": 90.3,
        "minutesAvg": 14.1,
@@ -1358,6 +1474,7 @@
        "tenFirstPct": 45.8
       },
       "long": {
+       "target": 10,
        "alerts": 828,
        "reachedPct": 90.8,
        "minutesAvg": 14.6,
@@ -1369,6 +1486,7 @@
        "tenFirstPct": 45.7
       },
       "short": {
+       "target": 10,
        "alerts": 835,
        "reachedPct": 89.8,
        "minutesAvg": 13.5,
@@ -1382,6 +1500,7 @@
      },
      "2026": {
       "all": {
+       "target": 10,
        "alerts": 1337,
        "reachedPct": 92.1,
        "minutesAvg": 11.7,
@@ -1393,6 +1512,7 @@
        "tenFirstPct": 41.7
       },
       "long": {
+       "target": 10,
        "alerts": 674,
        "reachedPct": 92.3,
        "minutesAvg": 11.5,
@@ -1404,6 +1524,7 @@
        "tenFirstPct": 40.4
       },
       "short": {
+       "target": 10,
        "alerts": 663,
        "reachedPct": 91.9,
        "minutesAvg": 11.9,
@@ -1419,6 +1540,7 @@
     "both rows": {
      "2019": {
       "all": {
+       "target": 10,
        "alerts": 747,
        "reachedPct": 68.9,
        "minutesAvg": 46.7,
@@ -1430,6 +1552,7 @@
        "tenFirstPct": 49.1
       },
       "long": {
+       "target": 10,
        "alerts": 386,
        "reachedPct": 67.4,
        "minutesAvg": 47.9,
@@ -1441,6 +1564,7 @@
        "tenFirstPct": 47.9
       },
       "short": {
+       "target": 10,
        "alerts": 361,
        "reachedPct": 70.6,
        "minutesAvg": 45.5,
@@ -1454,6 +1578,7 @@
      },
      "2020": {
       "all": {
+       "target": 10,
        "alerts": 1189,
        "reachedPct": 86.5,
        "minutesAvg": 22.1,
@@ -1465,6 +1590,7 @@
        "tenFirstPct": 47.3
       },
       "long": {
+       "target": 10,
        "alerts": 654,
        "reachedPct": 85.8,
        "minutesAvg": 26.6,
@@ -1476,6 +1602,7 @@
        "tenFirstPct": 47.6
       },
       "short": {
+       "target": 10,
        "alerts": 535,
        "reachedPct": 87.3,
        "minutesAvg": 16.7,
@@ -1489,6 +1616,7 @@
      },
      "2021": {
       "all": {
+       "target": 10,
        "alerts": 1153,
        "reachedPct": 81.3,
        "minutesAvg": 20.6,
@@ -1500,6 +1628,7 @@
        "tenFirstPct": 45.6
       },
       "long": {
+       "target": 10,
        "alerts": 583,
        "reachedPct": 82.5,
        "minutesAvg": 24.7,
@@ -1511,6 +1640,7 @@
        "tenFirstPct": 47.3
       },
       "short": {
+       "target": 10,
        "alerts": 570,
        "reachedPct": 80,
        "minutesAvg": 16.2,
@@ -1524,6 +1654,7 @@
      },
      "2022": {
       "all": {
+       "target": 10,
        "alerts": 1137,
        "reachedPct": 91.6,
        "minutesAvg": 14.1,
@@ -1535,6 +1666,7 @@
        "tenFirstPct": 46.4
       },
       "long": {
+       "target": 10,
        "alerts": 562,
        "reachedPct": 91.1,
        "minutesAvg": 14.3,
@@ -1546,6 +1678,7 @@
        "tenFirstPct": 45.2
       },
       "short": {
+       "target": 10,
        "alerts": 575,
        "reachedPct": 92,
        "minutesAvg": 13.9,
@@ -1559,6 +1692,7 @@
      },
      "2023": {
       "all": {
+       "target": 10,
        "alerts": 1124,
        "reachedPct": 86.9,
        "minutesAvg": 16.9,
@@ -1570,6 +1704,7 @@
        "tenFirstPct": 51.6
       },
       "long": {
+       "target": 10,
        "alerts": 631,
        "reachedPct": 88.1,
        "minutesAvg": 17.3,
@@ -1581,6 +1716,7 @@
        "tenFirstPct": 52.8
       },
       "short": {
+       "target": 10,
        "alerts": 493,
        "reachedPct": 85.4,
        "minutesAvg": 16.3,
@@ -1594,6 +1730,7 @@
      },
      "2024": {
       "all": {
+       "target": 10,
        "alerts": 1131,
        "reachedPct": 87,
        "minutesAvg": 15.9,
@@ -1605,6 +1742,7 @@
        "tenFirstPct": 48.3
       },
       "long": {
+       "target": 10,
        "alerts": 584,
        "reachedPct": 87.7,
        "minutesAvg": 18.9,
@@ -1616,6 +1754,7 @@
        "tenFirstPct": 49.3
       },
       "short": {
+       "target": 10,
        "alerts": 547,
        "reachedPct": 86.3,
        "minutesAvg": 12.6,
@@ -1629,6 +1768,7 @@
      },
      "2025": {
       "all": {
+       "target": 10,
        "alerts": 1153,
        "reachedPct": 90.5,
        "minutesAvg": 12.2,
@@ -1640,6 +1780,7 @@
        "tenFirstPct": 49
       },
       "long": {
+       "target": 10,
        "alerts": 612,
        "reachedPct": 89.5,
        "minutesAvg": 13.4,
@@ -1651,6 +1792,7 @@
        "tenFirstPct": 50.2
       },
       "short": {
+       "target": 10,
        "alerts": 541,
        "reachedPct": 91.5,
        "minutesAvg": 10.9,
@@ -1664,6 +1806,7 @@
      },
      "2026": {
       "all": {
+       "target": 10,
        "alerts": 950,
        "reachedPct": 92,
        "minutesAvg": 11.4,
@@ -1675,6 +1818,7 @@
        "tenFirstPct": 41.2
       },
       "long": {
+       "target": 10,
        "alerts": 496,
        "reachedPct": 92.1,
        "minutesAvg": 12.7,
@@ -1686,6 +1830,7 @@
        "tenFirstPct": 41.3
       },
       "short": {
+       "target": 10,
        "alerts": 454,
        "reachedPct": 91.9,
        "minutesAvg": 10,
@@ -1703,6 +1848,7 @@
   "baseline": {
    "2019": {
     "all": {
+     "target": 10,
      "alerts": 129564,
      "reachedPct": 68.2,
      "minutesAvg": 49.5,
@@ -1714,6 +1860,7 @@
      "tenFirstPct": 47.6
     },
     "long": {
+     "target": 10,
      "alerts": 64782,
      "reachedPct": 70.1,
      "minutesAvg": 51,
@@ -1725,6 +1872,7 @@
      "tenFirstPct": 48.3
     },
     "short": {
+     "target": 10,
      "alerts": 64782,
      "reachedPct": 66.3,
      "minutesAvg": 48,
@@ -1738,6 +1886,7 @@
    },
    "2020": {
     "all": {
+     "target": 10,
      "alerts": 195790,
      "reachedPct": 85.3,
      "minutesAvg": 23.3,
@@ -1749,6 +1898,7 @@
      "tenFirstPct": 48.9
     },
     "long": {
+     "target": 10,
      "alerts": 97895,
      "reachedPct": 87.2,
      "minutesAvg": 23.6,
@@ -1760,6 +1910,7 @@
      "tenFirstPct": 49.7
     },
     "short": {
+     "target": 10,
      "alerts": 97895,
      "reachedPct": 83.3,
      "minutesAvg": 23,
@@ -1773,6 +1924,7 @@
    },
    "2021": {
     "all": {
+     "target": 10,
      "alerts": 196742,
      "reachedPct": 84,
      "minutesAvg": 22.6,
@@ -1784,6 +1936,7 @@
      "tenFirstPct": 49.2
     },
     "long": {
+     "target": 10,
      "alerts": 98371,
      "reachedPct": 85.8,
      "minutesAvg": 23.4,
@@ -1795,6 +1948,7 @@
      "tenFirstPct": 49.7
     },
     "short": {
+     "target": 10,
      "alerts": 98371,
      "reachedPct": 82.3,
      "minutesAvg": 21.8,
@@ -1808,6 +1962,7 @@
    },
    "2022": {
     "all": {
+     "target": 10,
      "alerts": 196390,
      "reachedPct": 90.6,
      "minutesAvg": 13.8,
@@ -1819,6 +1974,7 @@
      "tenFirstPct": 48.2
     },
     "long": {
+     "target": 10,
      "alerts": 98195,
      "reachedPct": 91,
      "minutesAvg": 14.4,
@@ -1830,6 +1986,7 @@
      "tenFirstPct": 48.3
     },
     "short": {
+     "target": 10,
      "alerts": 98195,
      "reachedPct": 90.1,
      "minutesAvg": 13.2,
@@ -1843,6 +2000,7 @@
    },
    "2023": {
     "all": {
+     "target": 10,
      "alerts": 195296,
      "reachedPct": 85.8,
      "minutesAvg": 19.9,
@@ -1854,6 +2012,7 @@
      "tenFirstPct": 49.4
     },
     "long": {
+     "target": 10,
      "alerts": 97648,
      "reachedPct": 87.5,
      "minutesAvg": 20,
@@ -1865,6 +2024,7 @@
      "tenFirstPct": 50.4
     },
     "short": {
+     "target": 10,
      "alerts": 97648,
      "reachedPct": 84.1,
      "minutesAvg": 19.9,
@@ -1878,6 +2038,7 @@
    },
    "2024": {
     "all": {
+     "target": 10,
      "alerts": 196518,
      "reachedPct": 88.4,
      "minutesAvg": 16.6,
@@ -1889,6 +2050,7 @@
      "tenFirstPct": 49
     },
     "long": {
+     "target": 10,
      "alerts": 98259,
      "reachedPct": 89.3,
      "minutesAvg": 16.9,
@@ -1900,6 +2062,7 @@
      "tenFirstPct": 49.5
     },
     "short": {
+     "target": 10,
      "alerts": 98259,
      "reachedPct": 87.4,
      "minutesAvg": 16.4,
@@ -1913,6 +2076,7 @@
    },
    "2025": {
     "all": {
+     "target": 10,
      "alerts": 194974,
      "reachedPct": 90.4,
      "minutesAvg": 14.5,
@@ -1924,6 +2088,7 @@
      "tenFirstPct": 47.3
     },
     "long": {
+     "target": 10,
      "alerts": 97487,
      "reachedPct": 90.8,
      "minutesAvg": 14.6,
@@ -1935,6 +2100,7 @@
      "tenFirstPct": 46.8
     },
     "short": {
+     "target": 10,
      "alerts": 97487,
      "reachedPct": 90,
      "minutesAvg": 14.5,
@@ -1948,6 +2114,7 @@
    },
    "2026": {
     "all": {
+     "target": 10,
      "alerts": 163868,
      "reachedPct": 92,
      "minutesAvg": 11.1,
@@ -1959,6 +2126,7 @@
      "tenFirstPct": 46
     },
     "long": {
+     "target": 10,
      "alerts": 81934,
      "reachedPct": 92.1,
      "minutesAvg": 11.3,
@@ -1970,6 +2138,7 @@
      "tenFirstPct": 45.5
     },
     "short": {
+     "target": 10,
      "alerts": 81934,
      "reachedPct": 91.8,
      "minutesAvg": 11,
