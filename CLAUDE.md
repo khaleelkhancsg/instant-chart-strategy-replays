@@ -520,6 +520,14 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
     - 2026 favoured shorts on a 1m turn inside a bullish 5m, which were flat or negative before;
     - picked on Jan-Jun and read on Jul-Oct, they give z 2.4, p 0.12.
   - No combination is an entry that holds.
+- **Exits from the box as well** (`research/databox_entry_exit.mjs`): every entry x every exit
+  combination (or 15:05 alone), long and short, 780,000 strategies, P&L in bp after costs, one
+  position at a time.
+  - Even in-sample nothing stands out: the best of 2019-2025 has t 3.3, where placebo markets'
+    best is a median 3.1.
+  - Picked on 2019-2025 and read on 2026: t 0.6, matched by 44 of 100 placebo picks. Picked on
+    Jan-Jun 2026 and read on Jul-Oct: t 1.5, matched by 13 of 100.
+  - With no stop, the picks' running totals fell 549-2,198 points a contract in 2026.
 - **The `databox` study** (src/studies.mjs) is the box on the chart, a lane a row.
   - `lanes` are drawn by chart.js `_drawLanes`, a block a run or a pixel column.
   - The crosshair names each lane's state.
