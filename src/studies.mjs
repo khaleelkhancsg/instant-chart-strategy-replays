@@ -257,6 +257,18 @@ const PAST_GATES = ["beyond"];
 const BAND_GATES = ["with", "against", "nochase", "fade", "inside", "outside"];
 const LEVEL_GATES = ["above", "below", "inside", "outside"];
 
+// The curve an EMA of `len` would draw if it could see ahead: the EMA run forward, then run
+// backward over that (a zero-phase filter). No lag, because every point uses the bars after it.
+function zeroLagLine(C, len) {
+  const f = ema(C, len), n = C.length, out = nanArr(n), a = 2 / (len + 1);
+  let prev = NaN;
+  for (let i = n - 1; i >= 0; i--) {
+    if (!Number.isFinite(f[i])) continue;
+    prev = Number.isFinite(prev) ? prev + a * (f[i] - prev) : f[i];
+    out[i] = prev;
+  }
+  return out;
+}
 // The swings as a line: zigzagPivots joined bar by bar, the last leg drawn to its running extreme.
 function zigzagLine(b, pct) {
   const n = b.close.length, out = nanArr(n), z = zigzagPivots(b.high, b.low, b.close, pct / 100, rawOffsets(b));
@@ -870,6 +882,13 @@ export const STUDIES = {
     label: (p) => `Swings ${p.size}%`, warmup: () => 2000, gates: [],
     hint: "The real swing highs and lows joined as a line. Drawn with hindsight, as every zig-zag is: a high or low is known only once price has come back from it, and the last leg moves until it does. So it draws and never gates. research/databox_swings.mjs places the databox's turns on it.",
     compute: (b, p) => { const v = zigzagLine(b, p.size); return { line: v, lines: [{ name: `Swings ${p.size}%`, data: v }] }; },
+  },
+  zerolag: {
+    name: "Smooth price (zero-lag, hindsight)", group: "Price", pane: "price", kind: "price", hindsight: true,
+    params: [int("length", "Smoothing (bars)", 20, 2, 500, "As an EMA's length: the curve's smoothness.")],
+    label: (p) => `Zero-lag ${p.length}`, warmup: (p) => 10 * p.length, gates: [],
+    hint: "The curve an EMA of this length would draw if it could see ahead: the EMA run forward, then back. It has no lag because each point uses the bars after it, so it is drawn with hindsight and never gates. Put an EMA of the same length beside it: the gap between them is the EMA's lag.",
+    compute: (b, p) => { const v = zeroLagLine(b.close, p.length); return { line: v, lines: [{ name: `Zero-lag ${p.length}`, data: v }] }; },
   },
 };
 

@@ -2818,7 +2818,7 @@ t("resolveStudy fills defaults, clamps or refuses, and the warm-up grows with th
 });
 t("a hindsight study draws and never gates, and says so", () => {
   const hs = Object.keys(STUDIES).filter((k) => STUDIES[k].hindsight);
-  eq(JSON.stringify(hs), JSON.stringify(["zigzag"]), "hindsight studies:");
+  eq(JSON.stringify(hs), JSON.stringify(["zigzag", "zerolag"]), "hindsight studies:");
   for (const k of hs) {
     eq(STUDIES[k].gates.length, 0, `${k} gates:`);
     let refused = false;
@@ -2843,6 +2843,15 @@ t("the swing line: pivots alternate at the real extremes, each swing at least th
   eq(String([v[0], v[3], v[5], v[8], v[11]].map((x) => Math.round(x * 10) / 10)), "99.8,110.2,103.8,112.2,99.8", "the line at the pivots:");
   close(v[4], (110.2 + 103.8) / 2, 1e-9, "the line between them:");
   if (!Number.isNaN(v[12])) throw new Error("the line should stop at the last extreme");
+});
+t("the zero-lag line turns where price turns; an EMA of the same length turns later", () => {
+  // a smooth hump: up for 60 bars, down for 60
+  const C = Float64Array.from({ length: 121 }, (_, i) => 100 + 20 * Math.sin((Math.PI * i) / 120));
+  const bars = { open: C, high: C, low: C, close: C, ts: Float64Array.from(C, (_, i) => i * 60000), tday: new Int32Array(C.length), ctMin: new Int16Array(C.length).fill(600), volume: new Float64Array(C.length), tfMin: 1 };
+  const z = STUDIES.zerolag.compute(bars, { length: 10 }).line, e = ema(C, 10);
+  const peak = (a) => a.reduce((k, x, i) => (x > a[k] ? i : k), 0);
+  if (Math.abs(peak(z) - 60) > 1) throw new Error(`the zero-lag line peaks at bar ${peak(z)}, price at 60`);
+  if (!(peak(e) >= 63)) throw new Error(`the EMA should peak several bars late, peaked at ${peak(e)}`);
 });
 
 // ══════════════════════════ 14b. LEVELS, AND THE ADDED INDICATORS ═══════════════════════════

@@ -165,7 +165,7 @@ rule logic into a script: that is a second engine, and it drifts.
 
 ## Tests
 
-- `npm run check`: test.mjs (504), audit, legacy parity (15), MCP end to end (19),
+- `npm run check`: test.mjs (505), audit, legacy parity (15), MCP end to end (19),
   chart link (13), the indicator mock (101, `npm run test:mock`), the page's arithmetic
   (42, `npm run test:ui`), the level study's engine (23, `npm run test:levels`), the raw
   store (36, `npm run test:store`), the Data panel's routes (21, `npm run test:data`), the
@@ -547,6 +547,16 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
   `zigzagPivots`).
   - Drawn with hindsight, it is `hindsight: true` with `gates: []`: it draws and never gates.
   - The causal-reading tests skip it, and test.mjs checks it cannot gate.
+  - So does `zerolag` ("Smooth price (zero-lag, hindsight)"), an EMA run forward then back. It
+    turns where price turns. Beside an EMA of the same length, the gap between them is the EMA's
+    lag.
+- **Tuning on what the chart shows does not find the turn** (`research/turn_predict.mjs`).
+  - The features: price against EMA 9 / 21, EMA slope and curve, the MACD histogram and its
+    changes, RSI and its change, recent moves, 5m context, the day's range, time of day, volume
+    and the box.
+  - A logistic model fitted on 2019-2025 scores AUC 0.494-0.502 on 2026, against placebo markets'
+    0.48-0.51.
+  - Volume adds nothing. Its calls come during the fall or late in the rise, as the box's do.
 - **The `databox` study** (src/studies.mjs) is the box on the chart, a lane a row.
   - `lanes` are drawn by chart.js `_drawLanes`, a block a run or a pixel column.
   - The crosshair names each lane's state.
