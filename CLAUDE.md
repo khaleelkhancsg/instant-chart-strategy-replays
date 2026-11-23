@@ -543,6 +543,21 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
     the noise doubles, so an edge needs about 2 points to show.
   - Room buys win rate, not edge: a 0.5-ATR target with a 3-ATR stop wins 84% from any minute and
     still loses money.
+- **Reading the box live adds nothing** (`research/databox_live.mjs`, JSON beside it).
+  - Every room strategy is read five ways:
+    - at the close;
+    - the 5m rows from the forming 5-minute bar, read each minute (exact);
+    - tick by tick inside each minute, three ways.
+  - Each row's histogram is a straight line in the forming bar's price, so the price where a
+    combination turns true is exact. Whether the minute's high or low came after the entry is not
+    known: the run reads it worst, middle (likelier order) and best.
+  - 60% of live flips undo themselves by the minute's close.
+  - Live against close, strategy by strategy, gains what random markets gain: 5m live +0.0003
+    points a trade (placebo median +0.0011), middle +0.0007 (+0.0008).
+  - Only the best reading's picks sit beyond placebo (t 7.6, 96th percentile). On random markets
+    they score t 5.9 at the median: assuming the minute's unknown wick came after the entry makes
+    the edge. The middle reading: 53 of 100 placebo picks as high.
+  - Settling the order inside the minute needs second-by-second bars.
 - **Heat before the target is set by the entry** (`research/databox_heat.mjs`): exits cannot
   change the path to the target.
   - Counting every firing, a 10-point target in 2026 averages 31 points against first (80%

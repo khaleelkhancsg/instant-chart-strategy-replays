@@ -1,0 +1,6077 @@
+{
+ "run": "2026-11-23T03:02:01.036Z",
+ "placebos": 100,
+ "readings": [
+  "close",
+  "5m live",
+  "live worst",
+  "live middle",
+  "live best"
+ ],
+ "strategies": 179712,
+ "trades": [
+  1278060480,
+  1430252352,
+  4155837120,
+  4155837120,
+  4155837120
+ ],
+ "checks": {
+  "bad1": 0,
+  "checked1": 2641986,
+  "bad5": 0,
+  "checked5": 529287,
+  "scanChecks": 7572
+ },
+ "live2026": {
+  "n": 1637077,
+  "flicker": 984239,
+  "open": 371227,
+  "up": 634932,
+  "down": 630918
+ },
+ "real": [
+  {
+   "all": {
+    "t": -1.7010171820903583,
+    "netPts": -2.820940342584325,
+    "everyMinutePts": -0.9746166612564477,
+    "sePts": 1.0854232989339676,
+    "trades": 11722,
+    "picks": [
+     {
+      "entry": "1m MACD Long + 5m EMA Pot. short",
+      "dir": "long",
+      "exit": "target 0.5 ATR, stop 0.5 ATR, 15 min",
+      "tPicked": 4.65964830324519,
+      "netPtsRead": -1.8137747436638374,
+      "everyMinutePtsRead": -1.5423871397003142,
+      "winsRead": 0.48348745046235136,
+      "tRead": -0.32208865102443585,
+      "nRead": 757
+     },
+     {
+      "entry": "1m MACD Long + 5m EMA Pot. short",
+      "dir": "long",
+      "exit": "target 0.5 ATR, stop 0.5 ATR, 120 min",
+      "tPicked": 4.629601050987962,
+      "netPtsRead": -2.086346126823849,
+      "everyMinutePtsRead": -1.5506032235101648,
+      "winsRead": 0.47820343461030385,
+      "tRead": -0.6123702581027974,
+      "nRead": 757
+     },
+     {
+      "entry": "1m MACD Long + 5m EMA Pot. short",
+      "dir": "long",
+      "exit": "target 0.5 ATR, stop 0.5 ATR, to 15:05",
+      "tPicked": 4.629601050987962,
+      "netPtsRead": -2.086346126823849,
+      "everyMinutePtsRead": -1.5506032235101648,
+      "winsRead": 0.47820343461030385,
+      "tRead": -0.6123702581027974,
+      "nRead": 757
+     },
+     {
+      "entry": "1m MACD Long + 5m EMA Pot. short",
+      "dir": "long",
+      "exit": "target 0.5 ATR, stop 0.5 ATR, 40 min",
+      "tPicked": 4.627282555524204,
+      "netPtsRead": -2.086346126823849,
+      "everyMinutePtsRead": -1.5487775249694458,
+      "winsRead": 0.47820343461030385,
+      "tRead": -0.6143393408157547,
+      "nRead": 757
+     },
+     {
+      "entry": "1m MACD Long + 5m EMA Pot. short",
+      "dir": "long",
+      "exit": "target 1 ATR, stop 0.5 ATR, 15 min",
+      "tPicked": 4.229697435865829,
+      "netPtsRead": -2.2318939751950366,
+      "everyMinutePtsRead": -1.7210402416590376,
+      "winsRead": 0.3513870541611625,
+      "tRead": -0.4510427410942791,
+      "nRead": 757
+     },
+     {
+      "entry": "1m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 4.052524508492373,
+      "netPtsRead": -3.7411973512479735,
+      "everyMinutePtsRead": -0.024139503317808775,
+      "winsRead": 0.6939639957642075,
+      "tRead": -1.5525877215517463,
+      "nRead": 2833
+     },
+     {
+      "entry": "1m MACD Long + 5m EMA Pot. short",
+      "dir": "long",
+      "exit": "target 1 ATR, stop 0.5 ATR, 40 min",
+      "tPicked": 4.044315359318084,
+      "netPtsRead": -2.5013145119692806,
+      "everyMinutePtsRead": -1.9168501176521342,
+      "winsRead": 0.3130779392338177,
+      "tRead": -0.4487462762845009,
+      "nRead": 757
+     },
+     {
+      "entry": "1m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.9811991396523547,
+      "netPtsRead": -3.122432091795088,
+      "everyMinutePtsRead": -0.31934174506519836,
+      "winsRead": 0.8238616307800918,
+      "tRead": -1.8868234992356576,
+      "nRead": 2833
+     },
+     {
+      "entry": "1m MACD Long + 5m EMA Pot. short",
+      "dir": "long",
+      "exit": "target 1 ATR, stop 0.5 ATR, 120 min",
+      "tPicked": 3.921010726505416,
+      "netPtsRead": -2.59461170228137,
+      "everyMinutePtsRead": -1.9867153090335532,
+      "winsRead": 0.30779392338177014,
+      "tRead": -0.4620948760330508,
+      "nRead": 757
+     },
+     {
+      "entry": "1m MACD Long + 5m EMA Pot. short",
+      "dir": "long",
+      "exit": "target 1 ATR, stop 0.5 ATR, to 15:05",
+      "tPicked": 3.916404747765029,
+      "netPtsRead": -2.59461170228137,
+      "everyMinutePtsRead": -1.9893298600959943,
+      "winsRead": 0.30779392338177014,
+      "tRead": -0.4601696126314529,
+      "nRead": 757
+     }
+    ]
+   },
+   "room": {
+    "t": -0.8614702066721103,
+    "netPts": -1.7405740303992434,
+    "everyMinutePts": -0.2837289909980703,
+    "sePts": 1.6911148268597873,
+    "trades": 19880,
+    "picks": [
+     {
+      "entry": "1m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 4.052524508492373,
+      "netPtsRead": -3.7411973512479735,
+      "everyMinutePtsRead": -0.024139503317808775,
+      "winsRead": 0.6939639957642075,
+      "tRead": -1.5525877215517463,
+      "nRead": 2833
+     },
+     {
+      "entry": "1m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.9811991396523547,
+      "netPtsRead": -3.122432091795088,
+      "everyMinutePtsRead": -0.31934174506519836,
+      "winsRead": 0.8238616307800918,
+      "tRead": -1.8868234992356576,
+      "nRead": 2833
+     },
+     {
+      "entry": "1m EMA Pot. long + 5m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 2 ATR, 120 min",
+      "tPicked": 3.783826511122377,
+      "netPtsRead": -0.7970228440269397,
+      "everyMinutePtsRead": -0.16949547237398754,
+      "winsRead": 0.6376423308774279,
+      "tRead": -0.23026711597546487,
+      "nRead": 1493
+     },
+     {
+      "entry": "1m MACD Pot. short + 5m EMA Short",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 2 ATR, to 15:05",
+      "tPicked": 3.764911247232491,
+      "netPtsRead": -0.1717842846639294,
+      "everyMinutePtsRead": -0.40204406315166735,
+      "winsRead": 0.8017795353435492,
+      "tRead": 0.18129791539681442,
+      "nRead": 2023
+     },
+     {
+      "entry": "1m MACD Pot. short + 5m EMA Short",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.7531488675780884,
+      "netPtsRead": 0.4249606082109501,
+      "everyMinutePtsRead": -0.31934174506519836,
+      "winsRead": 0.8487394957983193,
+      "tRead": 0.43401562391046417,
+      "nRead": 2023
+     },
+     {
+      "entry": "1m MACD Pot. short + 5m EMA Short",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 2 ATR, 120 min",
+      "tPicked": 3.7227558296974985,
+      "netPtsRead": -0.6277401026972532,
+      "everyMinutePtsRead": -0.47386327765475267,
+      "winsRead": 0.7909045971329708,
+      "tRead": -0.12088260139938238,
+      "nRead": 2023
+     },
+     {
+      "entry": "1m EMA Pot. long + 5m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 3 ATR, 120 min",
+      "tPicked": 3.6986691091568797,
+      "netPtsRead": -1.6060467852692575,
+      "everyMinutePtsRead": -0.42362004947524207,
+      "winsRead": 0.6751507032819826,
+      "tRead": -0.39044974052203574,
+      "nRead": 1493
+     },
+     {
+      "entry": "1m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 3 ATR, 120 min",
+      "tPicked": 3.6567104701377104,
+      "netPtsRead": -2.95064402031319,
+      "everyMinutePtsRead": -0.42362004947524207,
+      "winsRead": 0.6717260854218143,
+      "tRead": -1.1237331704285605,
+      "nRead": 2833
+     },
+     {
+      "entry": "1m EMA Pot. long + 1m MACD Long + 5m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 2 ATR, to 15:05",
+      "tPicked": 3.6561110183470715,
+      "netPtsRead": -1.2057946266469308,
+      "everyMinutePtsRead": 0.028632196905311415,
+      "winsRead": 0.6440240756663801,
+      "tRead": -0.4459349826720389,
+      "nRead": 1163
+     },
+     {
+      "entry": "1m EMA Pot. long + 1m MACD Long + 5m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 2 ATR, 120 min",
+      "tPicked": 3.655224064648042,
+      "netPtsRead": -0.9036203236593457,
+      "everyMinutePtsRead": -0.16949547237398752,
+      "winsRead": 0.6362854686156492,
+      "tRead": -0.2728783782432432,
+      "nRead": 1163
+     }
+    ]
+   },
+   "inside": {
+    "t": -0.42680230251009493,
+    "netPts": -1.551426846437708,
+    "everyMinutePts": 0.48947388991341884,
+    "sePts": 4.781840970276526,
+    "trades": 1614,
+    "picks": [
+     {
+      "entry": "1m EMA Long + 1m MACD Long + 5m EMA Short + 5m MACD Long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 1 ATR, 40 min",
+      "tPicked": 4.134937402315603,
+      "netPtsRead": -1.4028004983447138,
+      "everyMinutePtsRead": 0.3419106692104764,
+      "winsRead": 0.4720496894409938,
+      "tRead": -0.47870636879686823,
+      "nRead": 161
+     },
+     {
+      "entry": "1m EMA Pot. short + 1m MACD Pot. short + 5m EMA Pot. long + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop none, to 15:05",
+      "tPicked": 4.124573522257694,
+      "netPtsRead": 11.293955282290723,
+      "everyMinutePtsRead": 1.735081019262927,
+      "winsRead": 0.8925619834710744,
+      "tRead": 2.424462654154653,
+      "nRead": 121
+     },
+     {
+      "entry": "1m EMA Pot. short + 5m EMA Pot. long + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop none, to 15:05",
+      "tPicked": 4.10605925365483,
+      "netPtsRead": 11.417220578860938,
+      "everyMinutePtsRead": 1.7350810192629267,
+      "winsRead": 0.896,
+      "tRead": 2.535923102892683,
+      "nRead": 125
+     },
+     {
+      "entry": "1m MACD Long + 5m EMA Short + 5m MACD Long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop none, 120 min",
+      "tPicked": 3.9777078027421506,
+      "netPtsRead": -5.9030259928061595,
+      "everyMinutePtsRead": 1.301373054606977,
+      "winsRead": 0.6949152542372882,
+      "tRead": -0.8038691411884631,
+      "nRead": 177
+     },
+     {
+      "entry": "1m MACD Long + 5m EMA Short + 5m MACD Long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop none, 40 min",
+      "tPicked": 3.915748534237951,
+      "netPtsRead": -3.91751930117933,
+      "everyMinutePtsRead": -0.24828350833071638,
+      "winsRead": 0.5706214689265536,
+      "tRead": -0.6376441173439151,
+      "nRead": 177
+     },
+     {
+      "entry": "1m MACD Long + 5m EMA Short + 5m MACD Long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 5 ATR, 40 min",
+      "tPicked": 3.9111600495651198,
+      "netPtsRead": -3.9603416271889498,
+      "everyMinutePtsRead": -0.261695214060134,
+      "winsRead": 0.5706214689265536,
+      "tRead": -0.642083597642594,
+      "nRead": 177
+     },
+     {
+      "entry": "1m MACD Long + 5m EMA Short + 5m MACD Long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 5 ATR, 120 min",
+      "tPicked": 3.8658904520228776,
+      "netPtsRead": -5.4809233563331015,
+      "everyMinutePtsRead": 1.071440106729427,
+      "winsRead": 0.6949152542372882,
+      "tRead": -0.752878097595681,
+      "nRead": 177
+     },
+     {
+      "entry": "1m EMA Long + 1m MACD Long + 5m EMA Short + 5m MACD Long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop none, 40 min",
+      "tPicked": 3.8125680213370696,
+      "netPtsRead": -4.660837735735725,
+      "everyMinutePtsRead": -0.24828350833071636,
+      "winsRead": 0.5652173913043478,
+      "tRead": -0.7574912818894761,
+      "nRead": 161
+     },
+     {
+      "entry": "1m MACD Long + 5m EMA Short + 5m MACD Long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 1 ATR, 40 min",
+      "tPicked": 3.812353269127827,
+      "netPtsRead": -0.8709806286907322,
+      "everyMinutePtsRead": 0.34191066921047647,
+      "winsRead": 0.480225988700565,
+      "tRead": -0.3103093712777776,
+      "nRead": 177
+     },
+     {
+      "entry": "1m EMA Long + 1m MACD Long + 5m EMA Short + 5m MACD Long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 5 ATR, 40 min",
+      "tPicked": 3.8068528096587873,
+      "netPtsRead": -4.707915696628287,
+      "everyMinutePtsRead": -0.26169521406013396,
+      "winsRead": 0.5652173913043478,
+      "tRead": -0.7622839963955718,
+      "nRead": 161
+     }
+    ]
+   },
+   "persist": {
+    "r": 0.07511791106360859,
+    "n": 93312
+   },
+   "persistInside": {
+    "r": -0.17226029635061987,
+    "n": 105984
+   },
+   "gainPts": null
+  },
+  {
+   "all": {
+    "t": -0.7491276075964319,
+    "netPts": -1.9532676580374764,
+    "everyMinutePts": -0.962734514185945,
+    "sePts": 1.322248884979215,
+    "trades": 20026,
+    "picks": [
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 3 ATR, 120 min",
+      "tPicked": 3.7920417477360653,
+      "netPtsRead": -4.898313139851148,
+      "everyMinutePtsRead": -0.423620049475242,
+      "winsRead": 0.648444070647603,
+      "tRead": -1.173764232971136,
+      "nRead": 1189
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.7415671688580177,
+      "netPtsRead": -3.7701834079959946,
+      "everyMinutePtsRead": -0.024139503317808775,
+      "winsRead": 0.6829268292682927,
+      "tRead": -0.9491774539024026,
+      "nRead": 1189
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m EMA Short",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 3 ATR, 120 min",
+      "tPicked": 3.7317877823575385,
+      "netPtsRead": -1.2985914609244276,
+      "everyMinutePtsRead": -0.423620049475242,
+      "winsRead": 0.678011885467315,
+      "tRead": -0.2679948997818309,
+      "nRead": 1851
+     },
+     {
+      "entry": "1m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 0.5 ATR, 15 min",
+      "tPicked": 3.7206047413276315,
+      "netPtsRead": -2.0544825009873735,
+      "everyMinutePtsRead": -1.2994359257571246,
+      "winsRead": 0.4834553440702782,
+      "tRead": -1.703919456501422,
+      "nRead": 3415
+     },
+     {
+      "entry": "1m EMA Long + 1m MACD Long + 5m EMA Long + 5m MACD Pot. long",
+      "dir": "long",
+      "exit": "target 2 ATR, stop 0.5 ATR, to 15:05",
+      "tPicked": 3.705147551820992,
+      "netPtsRead": -1.0335185512687062,
+      "everyMinutePtsRead": -2.2321180348081575,
+      "winsRead": 0.21405405405405406,
+      "tRead": 0.7542272554950686,
+      "nRead": 925
+     },
+     {
+      "entry": "1m EMA Long + 1m MACD Long + 5m EMA Long + 5m MACD Pot. long",
+      "dir": "long",
+      "exit": "target 2 ATR, stop 0.5 ATR, 120 min",
+      "tPicked": 3.6801302125855546,
+      "netPtsRead": -1.0246716679750743,
+      "everyMinutePtsRead": -2.160298820305072,
+      "winsRead": 0.22486486486486487,
+      "tRead": 0.7270973973930434,
+      "nRead": 925
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m EMA Short",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.640643809723381,
+      "netPtsRead": -0.7332985756590893,
+      "everyMinutePtsRead": -0.024139503317808775,
+      "winsRead": 0.7088060507833603,
+      "tRead": -0.20767760191618592,
+      "nRead": 1851
+     },
+     {
+      "entry": "1m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 0.5 ATR, 120 min",
+      "tPicked": 3.6283812242125673,
+      "netPtsRead": -2.0838982557246863,
+      "everyMinutePtsRead": -1.292367714940104,
+      "winsRead": 0.4857979502196193,
+      "tRead": -1.7823638344912773,
+      "nRead": 3415
+     },
+     {
+      "entry": "1m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 0.5 ATR, to 15:05",
+      "tPicked": 3.6283812242125673,
+      "netPtsRead": -2.0838982557246863,
+      "everyMinutePtsRead": -1.292367714940104,
+      "winsRead": 0.4857979502196193,
+      "tRead": -1.7823638344912773,
+      "nRead": 3415
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m EMA Short",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.626730606995646,
+      "netPtsRead": -1.0239645831596447,
+      "everyMinutePtsRead": -0.31934174506519836,
+      "winsRead": 0.8363047001620746,
+      "tRead": -0.32018243459008905,
+      "nRead": 1851
+     }
+    ]
+   },
+   "room": {
+    "t": -0.4600948923662162,
+    "netPts": -1.7241434299608787,
+    "everyMinutePts": -0.43765116820247335,
+    "sePts": 2.7961454975996767,
+    "trades": 13973,
+    "picks": [
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 3 ATR, 120 min",
+      "tPicked": 3.7920417477360653,
+      "netPtsRead": -4.898313139851148,
+      "everyMinutePtsRead": -0.423620049475242,
+      "winsRead": 0.648444070647603,
+      "tRead": -1.173764232971136,
+      "nRead": 1189
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.7415671688580177,
+      "netPtsRead": -3.7701834079959946,
+      "everyMinutePtsRead": -0.024139503317808775,
+      "winsRead": 0.6829268292682927,
+      "tRead": -0.9491774539024026,
+      "nRead": 1189
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m EMA Short",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 3 ATR, 120 min",
+      "tPicked": 3.7317877823575385,
+      "netPtsRead": -1.2985914609244276,
+      "everyMinutePtsRead": -0.423620049475242,
+      "winsRead": 0.678011885467315,
+      "tRead": -0.2679948997818309,
+      "nRead": 1851
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m EMA Short",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.640643809723381,
+      "netPtsRead": -0.7332985756590893,
+      "everyMinutePtsRead": -0.024139503317808775,
+      "winsRead": 0.7088060507833603,
+      "tRead": -0.20767760191618592,
+      "nRead": 1851
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m EMA Short",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.626730606995646,
+      "netPtsRead": -1.0239645831596447,
+      "everyMinutePtsRead": -0.31934174506519836,
+      "winsRead": 0.8363047001620746,
+      "tRead": -0.32018243459008905,
+      "nRead": 1851
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m EMA Short",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 3 ATR, 120 min",
+      "tPicked": 3.6239009853933353,
+      "netPtsRead": -1.193917474914332,
+      "everyMinutePtsRead": -0.4962958175871938,
+      "winsRead": 0.8190167477039438,
+      "tRead": -0.32879513206739186,
+      "nRead": 1851
+     },
+     {
+      "entry": "1m EMA Pot. short + 5m EMA Long + 5m MACD Pot. long",
+      "dir": "long",
+      "exit": "target 2 ATR, stop 5 ATR, to 15:05",
+      "tPicked": 3.620592956478488,
+      "netPtsRead": -4.957393970185313,
+      "everyMinutePtsRead": -3.291139930502555,
+      "winsRead": 0.5681818181818182,
+      "tRead": -0.21394985188467272,
+      "nRead": 308
+     },
+     {
+      "entry": "1m EMA Short + 5m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 2 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.6205233081609447,
+      "netPtsRead": 0.29342168770154625,
+      "everyMinutePtsRead": -0.23293821487291458,
+      "winsRead": 0.5446113074204947,
+      "tRead": 0.11326134535903792,
+      "nRead": 2264
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 3 ATR, 120 min",
+      "tPicked": 3.6129649399176946,
+      "netPtsRead": -3.123067853839099,
+      "everyMinutePtsRead": -0.4962958175871939,
+      "winsRead": 0.7981497056349874,
+      "tRead": -0.9980333034590357,
+      "nRead": 1189
+     },
+     {
+      "entry": "1m MACD Long + 5m EMA Pot. short",
+      "dir": "long",
+      "exit": "target 2 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.5622084992474483,
+      "netPtsRead": -3.121831246915268,
+      "everyMinutePtsRead": -2.588899209661592,
+      "winsRead": 0.5279069767441861,
+      "tRead": -0.09034322243532183,
+      "nRead": 430
+     }
+    ]
+   },
+   "inside": {
+    "t": -0.2891261666546192,
+    "netPts": -1.0962174874911415,
+    "everyMinutePts": -0.6974099577928499,
+    "sePts": 1.3793546752020354,
+    "trades": 3684,
+    "picks": [
+     {
+      "entry": "1m EMA Pot. long + 5m EMA Pot. short + 5m MACD Short",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 5 ATR, 40 min",
+      "tPicked": 3.9922556098334554,
+      "netPtsRead": -6.142930597557017,
+      "everyMinutePtsRead": -0.26169521406013396,
+      "winsRead": 0.6551724137931034,
+      "tRead": -0.8039163692997086,
+      "nRead": 87
+     },
+     {
+      "entry": "1m EMA Pot. long + 5m EMA Pot. short + 5m MACD Short",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 5 ATR, to 15:05",
+      "tPicked": 3.797970634731464,
+      "netPtsRead": 0.7295169150431917,
+      "everyMinutePtsRead": 3.1282345702748016,
+      "winsRead": 0.7701149425287356,
+      "tRead": -0.3047430543293001,
+      "nRead": 87
+     },
+     {
+      "entry": "1m MACD Pot. long + 5m EMA Short",
+      "dir": "long",
+      "exit": "target 3 ATR, stop 0.5 ATR, 40 min",
+      "tPicked": 3.767134508442939,
+      "netPtsRead": -0.4292121429304434,
+      "everyMinutePtsRead": -1.6205507807949338,
+      "winsRead": 0.2219343696027634,
+      "tRead": 0.8262900739834519,
+      "nRead": 1158
+     },
+     {
+      "entry": "1m EMA Pot. long + 5m EMA Pot. short + 5m MACD Short",
+      "dir": "short",
+      "exit": "target 2 ATR, stop none, to 15:05",
+      "tPicked": 3.6262931963243985,
+      "netPtsRead": -7.245038906944947,
+      "everyMinutePtsRead": 6.695394799604144,
+      "winsRead": 0.5862068965517241,
+      "tRead": -1.1289986876063058,
+      "nRead": 87
+     },
+     {
+      "entry": "1m EMA Pot. long + 5m EMA Pot. short + 5m MACD Short",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 5 ATR, to 15:05",
+      "tPicked": 3.5431092617333118,
+      "netPtsRead": 1.1465231770915503,
+      "everyMinutePtsRead": 1.2489405745837423,
+      "winsRead": 0.8850574712643678,
+      "tRead": -0.01611575230045045,
+      "nRead": 87
+     },
+     {
+      "entry": "1m MACD Pot. long + 5m EMA Short",
+      "dir": "long",
+      "exit": "target 2 ATR, stop 0.5 ATR, 40 min",
+      "tPicked": 3.5317418802907,
+      "netPtsRead": -0.4546689285281157,
+      "everyMinutePtsRead": -1.8159831922977039,
+      "winsRead": 0.24093264248704663,
+      "tRead": 1.0723987979315261,
+      "nRead": 1158
+     },
+     {
+      "entry": "1m MACD Pot. short + 5m EMA Pot. long + 5m MACD Long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 3 ATR, 120 min",
+      "tPicked": 3.5178814919365435,
+      "netPtsRead": -1.3768492412793196,
+      "everyMinutePtsRead": 0.05864255731388695,
+      "winsRead": 0.8263665594855305,
+      "tRead": -0.3866988815709312,
+      "nRead": 311
+     },
+     {
+      "entry": "1m EMA Pot. long + 5m EMA Pot. short + 5m MACD Short",
+      "dir": "short",
+      "exit": "target 2 ATR, stop 5 ATR, to 15:05",
+      "tPicked": 3.492197983398126,
+      "netPtsRead": -10.676277109469234,
+      "everyMinutePtsRead": 4.734814972084792,
+      "winsRead": 0.5747126436781609,
+      "tRead": -1.188624153554733,
+      "nRead": 87
+     },
+     {
+      "entry": "1m MACD Pot. short + 5m EMA Pot. long + 5m MACD Long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop none, 120 min",
+      "tPicked": 3.479068673097974,
+      "netPtsRead": -1.1129543378704716,
+      "everyMinutePtsRead": 0.14384797372174724,
+      "winsRead": 0.8263665594855305,
+      "tRead": -0.34504545105288975,
+      "nRead": 311
+     },
+     {
+      "entry": "1m MACD Pot. short + 5m EMA Pot. long + 5m MACD Long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 5 ATR, 120 min",
+      "tPicked": 3.4549892887460745,
+      "netPtsRead": -0.9975176186559626,
+      "everyMinutePtsRead": -0.016725089826570005,
+      "winsRead": 0.8263665594855305,
+      "tRead": -0.2727175385725162,
+      "nRead": 311
+     }
+    ]
+   },
+   "persist": {
+    "r": 0.008335563601738689,
+    "n": 95616
+   },
+   "persistInside": {
+    "r": -0.1684472133436775,
+    "n": 106272
+   },
+   "gainPts": 0.0003344187739419388
+  },
+  {
+   "all": {
+    "t": -0.1213334158173018,
+    "netPts": -0.6990303455884003,
+    "everyMinutePts": -0.3811928471013853,
+    "sePts": 2.6195380418993897,
+    "trades": 36984,
+    "picks": [
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.762369672868718,
+      "netPtsRead": -1.8253604425330416,
+      "everyMinutePtsRead": -0.3193417450651984,
+      "winsRead": 0.8319800124921923,
+      "tRead": -0.9519953908990766,
+      "nRead": 4803
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 2 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.7250116419675394,
+      "netPtsRead": -0.4205110807730457,
+      "everyMinutePtsRead": -0.23293821487291458,
+      "winsRead": 0.5550697480741204,
+      "tRead": -0.04909573308661348,
+      "nRead": 4803
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.651483515385726,
+      "netPtsRead": -0.3476270129595274,
+      "everyMinutePtsRead": -0.31934174506519836,
+      "winsRead": 0.8365019011406845,
+      "tRead": -0.01553873119096531,
+      "nRead": 3682
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 2 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.604587495515949,
+      "netPtsRead": 3.1995601886865113,
+      "everyMinutePtsRead": -0.23293821487291463,
+      "winsRead": 0.5632808256382401,
+      "tRead": 0.7023332282740985,
+      "nRead": 3682
+     },
+     {
+      "entry": "1m EMA Pot. short + 1m MACD Pot. long + 5m EMA Pot. short + 5m MACD Short",
+      "dir": "long",
+      "exit": "target 2 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.5454671828851407,
+      "netPtsRead": -11.266317433921381,
+      "everyMinutePtsRead": -2.5888992096615926,
+      "winsRead": 0.5187032418952618,
+      "tRead": -1.020056358053267,
+      "nRead": 401
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 2 ATR, stop 3 ATR, 120 min",
+      "tPicked": 3.5391660676600667,
+      "netPtsRead": -0.533837550626325,
+      "everyMinutePtsRead": -1.4943795195014145,
+      "winsRead": 0.539454507599417,
+      "tRead": 0.2695255246951905,
+      "nRead": 4803
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.528187203990842,
+      "netPtsRead": -2.9211135129912558,
+      "everyMinutePtsRead": -0.02413950331780878,
+      "winsRead": 0.6991463668540495,
+      "tRead": -1.0559115312157692,
+      "nRead": 4803
+     },
+     {
+      "entry": "1m EMA Pot. short + 1m MACD Pot. long + 5m EMA Pot. short + 5m MACD Short",
+      "dir": "long",
+      "exit": "target 2 ATR, stop 2 ATR, to 15:05",
+      "tPicked": 3.4969371175017927,
+      "netPtsRead": -4.6194195453726214,
+      "everyMinutePtsRead": -2.329635472145024,
+      "winsRead": 0.49875311720698257,
+      "tRead": -0.34332439178960483,
+      "nRead": 401
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 3 ATR, 120 min",
+      "tPicked": 3.4902017165768124,
+      "netPtsRead": -1.9881083513356075,
+      "everyMinutePtsRead": -0.4962958175871939,
+      "winsRead": 0.8149073495731834,
+      "tRead": -0.978728220013847,
+      "nRead": 4803
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 2 ATR, stop 5 ATR, to 15:05",
+      "tPicked": 3.488199607345608,
+      "netPtsRead": 1.4462541127009445,
+      "everyMinutePtsRead": 0.46586451983214944,
+      "winsRead": 0.58192796169061,
+      "tRead": 0.25407578942537856,
+      "nRead": 4803
+     }
+    ]
+   },
+   "room": {
+    "t": -0.1213334158173018,
+    "netPts": -0.6990303455884003,
+    "everyMinutePts": -0.3811928471013853,
+    "sePts": 2.6195380418993897,
+    "trades": 36984,
+    "picks": [
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.762369672868718,
+      "netPtsRead": -1.8253604425330416,
+      "everyMinutePtsRead": -0.3193417450651984,
+      "winsRead": 0.8319800124921923,
+      "tRead": -0.9519953908990766,
+      "nRead": 4803
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 2 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.7250116419675394,
+      "netPtsRead": -0.4205110807730457,
+      "everyMinutePtsRead": -0.23293821487291458,
+      "winsRead": 0.5550697480741204,
+      "tRead": -0.04909573308661348,
+      "nRead": 4803
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.651483515385726,
+      "netPtsRead": -0.3476270129595274,
+      "everyMinutePtsRead": -0.31934174506519836,
+      "winsRead": 0.8365019011406845,
+      "tRead": -0.01553873119096531,
+      "nRead": 3682
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 2 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.604587495515949,
+      "netPtsRead": 3.1995601886865113,
+      "everyMinutePtsRead": -0.23293821487291463,
+      "winsRead": 0.5632808256382401,
+      "tRead": 0.7023332282740985,
+      "nRead": 3682
+     },
+     {
+      "entry": "1m EMA Pot. short + 1m MACD Pot. long + 5m EMA Pot. short + 5m MACD Short",
+      "dir": "long",
+      "exit": "target 2 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.5454671828851407,
+      "netPtsRead": -11.266317433921381,
+      "everyMinutePtsRead": -2.5888992096615926,
+      "winsRead": 0.5187032418952618,
+      "tRead": -1.020056358053267,
+      "nRead": 401
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 2 ATR, stop 3 ATR, 120 min",
+      "tPicked": 3.5391660676600667,
+      "netPtsRead": -0.533837550626325,
+      "everyMinutePtsRead": -1.4943795195014145,
+      "winsRead": 0.539454507599417,
+      "tRead": 0.2695255246951905,
+      "nRead": 4803
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.528187203990842,
+      "netPtsRead": -2.9211135129912558,
+      "everyMinutePtsRead": -0.02413950331780878,
+      "winsRead": 0.6991463668540495,
+      "tRead": -1.0559115312157692,
+      "nRead": 4803
+     },
+     {
+      "entry": "1m EMA Pot. short + 1m MACD Pot. long + 5m EMA Pot. short + 5m MACD Short",
+      "dir": "long",
+      "exit": "target 2 ATR, stop 2 ATR, to 15:05",
+      "tPicked": 3.4969371175017927,
+      "netPtsRead": -4.6194195453726214,
+      "everyMinutePtsRead": -2.329635472145024,
+      "winsRead": 0.49875311720698257,
+      "tRead": -0.34332439178960483,
+      "nRead": 401
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 3 ATR, 120 min",
+      "tPicked": 3.4902017165768124,
+      "netPtsRead": -1.9881083513356075,
+      "everyMinutePtsRead": -0.4962958175871939,
+      "winsRead": 0.8149073495731834,
+      "tRead": -0.978728220013847,
+      "nRead": 4803
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 2 ATR, stop 5 ATR, to 15:05",
+      "tPicked": 3.488199607345608,
+      "netPtsRead": 1.4462541127009445,
+      "everyMinutePtsRead": 0.46586451983214944,
+      "winsRead": 0.58192796169061,
+      "tRead": 0.25407578942537856,
+      "nRead": 4803
+     }
+    ]
+   },
+   "inside": {
+    "t": -0.7136938222129056,
+    "netPts": -1.221764980568013,
+    "everyMinutePts": -0.819829108212805,
+    "sePts": 0.5631768972147608,
+    "trades": 29364,
+    "picks": [
+     {
+      "entry": "1m EMA Long + 1m MACD Long + 5m EMA Pot. short + 5m MACD Pot. short",
+      "dir": "long",
+      "exit": "target 0.5 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 5.047980581279526,
+      "netPtsRead": -8.496116678074081,
+      "everyMinutePtsRead": -2.118397602309928,
+      "winsRead": 0.7763157894736842,
+      "tRead": -0.7727397218910088,
+      "nRead": 76
+     },
+     {
+      "entry": "1m EMA Long + 1m MACD Long + 5m EMA Pot. short + 5m MACD Pot. short",
+      "dir": "long",
+      "exit": "target 0.5 ATR, stop 3 ATR, 120 min",
+      "tPicked": 4.689028995756892,
+      "netPtsRead": -9.265333823512574,
+      "everyMinutePtsRead": -1.881760691562025,
+      "winsRead": 0.7763157894736842,
+      "tRead": -0.8605108578048737,
+      "nRead": 76
+     },
+     {
+      "entry": "1m EMA Long + 1m MACD Long + 5m EMA Pot. short + 5m MACD Pot. short",
+      "dir": "long",
+      "exit": "target 0.5 ATR, stop 5 ATR, to 15:05",
+      "tPicked": 4.559376949322891,
+      "netPtsRead": -5.4891720310227425,
+      "everyMinutePtsRead": -1.8678162839621444,
+      "winsRead": 0.8421052631578947,
+      "tRead": -0.43823312240978146,
+      "nRead": 76
+     },
+     {
+      "entry": "1m EMA Long + 1m MACD Long + 5m EMA Pot. short + 5m MACD Pot. short",
+      "dir": "long",
+      "exit": "target 0.5 ATR, stop 5 ATR, 120 min",
+      "tPicked": 4.372367491655816,
+      "netPtsRead": -11.067119992815408,
+      "everyMinutePtsRead": -1.4614437025784857,
+      "winsRead": 0.7763157894736842,
+      "tRead": -1.0623390211144204,
+      "nRead": 76
+     },
+     {
+      "entry": "1m EMA Long + 1m MACD Long + 5m EMA Pot. short + 5m MACD Pot. short",
+      "dir": "long",
+      "exit": "target 0.5 ATR, stop none, 120 min",
+      "tPicked": 4.311692631792681,
+      "netPtsRead": -10.845993314312944,
+      "everyMinutePtsRead": -1.0659617350481259,
+      "winsRead": 0.7763157894736842,
+      "tRead": -1.065434162701614,
+      "nRead": 76
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 5 ATR, 15 min",
+      "tPicked": 3.8382763044129042,
+      "netPtsRead": -0.9892475851675457,
+      "everyMinutePtsRead": -0.7952816082243863,
+      "winsRead": 0.5298216276477146,
+      "tRead": -0.33841749725874876,
+      "nRead": 7176
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 3 ATR, 15 min",
+      "tPicked": 3.8086434546014982,
+      "netPtsRead": -0.9785603991985541,
+      "everyMinutePtsRead": -0.7776860339916782,
+      "winsRead": 0.5289855072463768,
+      "tRead": -0.36095222230670915,
+      "nRead": 7176
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 2 ATR, stop 3 ATR, 15 min",
+      "tPicked": 3.790419556375801,
+      "netPtsRead": -1.3227188807999188,
+      "everyMinutePtsRead": -0.8959263627022332,
+      "winsRead": 0.4875975473801561,
+      "tRead": -0.6787475196308849,
+      "nRead": 7176
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 2 ATR, stop 5 ATR, 15 min",
+      "tPicked": 3.752468601650401,
+      "netPtsRead": -1.3511495671510065,
+      "everyMinutePtsRead": -0.9189709242989214,
+      "winsRead": 0.4882943143812709,
+      "tRead": -0.6532278954961743,
+      "nRead": 7176
+     },
+     {
+      "entry": "1m EMA Pot. long + 1m MACD Pot. long + 5m EMA Pot. short + 5m MACD Short",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 5 ATR, to 15:05",
+      "tPicked": 3.680263727290505,
+      "netPtsRead": 3.090022983775928,
+      "everyMinutePtsRead": 3.1282345702748016,
+      "winsRead": 0.7785714285714286,
+      "tRead": -0.007368392110943719,
+      "nRead": 280
+     }
+    ]
+   },
+   "persist": {
+    "r": 0.23794875924681447,
+    "n": 129024
+   },
+   "persistInside": {
+    "r": -0.10096853633741919,
+    "n": 137376
+   },
+   "gainPts": -0.11072999967935693
+  },
+  {
+   "all": {
+    "t": 0.11995078772050283,
+    "netPts": -0.8267445107012472,
+    "everyMinutePts": -0.9862825772763777,
+    "sePts": 1.330029336254719,
+    "trades": 51262,
+    "picks": [
+     {
+      "entry": "5m EMA Short",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 0.5 ATR, 40 min",
+      "tPicked": 3.984947071480696,
+      "netPtsRead": -1.2222713234321694,
+      "everyMinutePtsRead": -1.2941934134808235,
+      "winsRead": 0.5053630363036303,
+      "tRead": 0.1725812346253307,
+      "nRead": 7272
+     },
+     {
+      "entry": "5m EMA Short",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 0.5 ATR, 120 min",
+      "tPicked": 3.9813338916866248,
+      "netPtsRead": -1.2222713234321694,
+      "everyMinutePtsRead": -1.2923677149401043,
+      "winsRead": 0.5053630363036303,
+      "tRead": 0.16818245207978175,
+      "nRead": 7272
+     },
+     {
+      "entry": "5m EMA Short",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 0.5 ATR, to 15:05",
+      "tPicked": 3.9813338916866248,
+      "netPtsRead": -1.2222713234321694,
+      "everyMinutePtsRead": -1.2923677149401043,
+      "winsRead": 0.5053630363036303,
+      "tRead": 0.16818245207978175,
+      "nRead": 7272
+     },
+     {
+      "entry": "5m EMA Short",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 0.5 ATR, 15 min",
+      "tPicked": 3.9527599136831255,
+      "netPtsRead": -1.147908113459973,
+      "everyMinutePtsRead": -1.2994359257571246,
+      "winsRead": 0.5044004400440044,
+      "tRead": 0.3720871766248934,
+      "nRead": 7272
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.768293807883708,
+      "netPtsRead": -1.8253604425330416,
+      "everyMinutePtsRead": -0.3193417450651984,
+      "winsRead": 0.8319800124921923,
+      "tRead": -0.9519953908990766,
+      "nRead": 4803
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 2 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.7250116419675394,
+      "netPtsRead": -0.4205110807730457,
+      "everyMinutePtsRead": -0.23293821487291458,
+      "winsRead": 0.5550697480741204,
+      "tRead": -0.04909573308661348,
+      "nRead": 4803
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.657645188871888,
+      "netPtsRead": -0.3476270129595274,
+      "everyMinutePtsRead": -0.31934174506519836,
+      "winsRead": 0.8365019011406845,
+      "tRead": -0.01553873119096531,
+      "nRead": 3682
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 2 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.604587495515949,
+      "netPtsRead": 3.1995601886865113,
+      "everyMinutePtsRead": -0.23293821487291463,
+      "winsRead": 0.5632808256382401,
+      "tRead": 0.7023332282740985,
+      "nRead": 3682
+     },
+     {
+      "entry": "1m EMA Pot. short + 1m MACD Pot. long + 5m EMA Pot. short + 5m MACD Short",
+      "dir": "long",
+      "exit": "target 2 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.5454671828851407,
+      "netPtsRead": -11.266317433921381,
+      "everyMinutePtsRead": -2.5888992096615926,
+      "winsRead": 0.5187032418952618,
+      "tRead": -1.020056358053267,
+      "nRead": 401
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 2 ATR, stop 3 ATR, 120 min",
+      "tPicked": 3.5391660676600667,
+      "netPtsRead": -0.533837550626325,
+      "everyMinutePtsRead": -1.4943795195014145,
+      "winsRead": 0.539454507599417,
+      "tRead": 0.2695255246951905,
+      "nRead": 4803
+     }
+    ]
+   },
+   "room": {
+    "t": -0.1213334158173018,
+    "netPts": -0.6990303455884003,
+    "everyMinutePts": -0.3811928471013853,
+    "sePts": 2.6195380418993897,
+    "trades": 36984,
+    "picks": [
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.768293807883708,
+      "netPtsRead": -1.8253604425330416,
+      "everyMinutePtsRead": -0.3193417450651984,
+      "winsRead": 0.8319800124921923,
+      "tRead": -0.9519953908990766,
+      "nRead": 4803
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 2 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.7250116419675394,
+      "netPtsRead": -0.4205110807730457,
+      "everyMinutePtsRead": -0.23293821487291458,
+      "winsRead": 0.5550697480741204,
+      "tRead": -0.04909573308661348,
+      "nRead": 4803
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.657645188871888,
+      "netPtsRead": -0.3476270129595274,
+      "everyMinutePtsRead": -0.31934174506519836,
+      "winsRead": 0.8365019011406845,
+      "tRead": -0.01553873119096531,
+      "nRead": 3682
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m EMA Short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 2 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.604587495515949,
+      "netPtsRead": 3.1995601886865113,
+      "everyMinutePtsRead": -0.23293821487291463,
+      "winsRead": 0.5632808256382401,
+      "tRead": 0.7023332282740985,
+      "nRead": 3682
+     },
+     {
+      "entry": "1m EMA Pot. short + 1m MACD Pot. long + 5m EMA Pot. short + 5m MACD Short",
+      "dir": "long",
+      "exit": "target 2 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.5454671828851407,
+      "netPtsRead": -11.266317433921381,
+      "everyMinutePtsRead": -2.5888992096615926,
+      "winsRead": 0.5187032418952618,
+      "tRead": -1.020056358053267,
+      "nRead": 401
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 2 ATR, stop 3 ATR, 120 min",
+      "tPicked": 3.5391660676600667,
+      "netPtsRead": -0.533837550626325,
+      "everyMinutePtsRead": -1.4943795195014145,
+      "winsRead": 0.539454507599417,
+      "tRead": 0.2695255246951905,
+      "nRead": 4803
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 3.5321403789634997,
+      "netPtsRead": -2.9211135129912558,
+      "everyMinutePtsRead": -0.02413950331780878,
+      "winsRead": 0.6991463668540495,
+      "tRead": -1.0559115312157692,
+      "nRead": 4803
+     },
+     {
+      "entry": "1m EMA Pot. short + 1m MACD Pot. long + 5m EMA Pot. short + 5m MACD Short",
+      "dir": "long",
+      "exit": "target 2 ATR, stop 2 ATR, to 15:05",
+      "tPicked": 3.4969371175017927,
+      "netPtsRead": -4.6194195453726214,
+      "everyMinutePtsRead": -2.329635472145024,
+      "winsRead": 0.49875311720698257,
+      "tRead": -0.34332439178960483,
+      "nRead": 401
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 3 ATR, 120 min",
+      "tPicked": 3.4962863046335313,
+      "netPtsRead": -1.9881083513356075,
+      "everyMinutePtsRead": -0.4962958175871939,
+      "winsRead": 0.8149073495731834,
+      "tRead": -0.978728220013847,
+      "nRead": 4803
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Pot. short + 5m MACD Pot. long",
+      "dir": "short",
+      "exit": "target 2 ATR, stop 5 ATR, to 15:05",
+      "tPicked": 3.488199607345608,
+      "netPtsRead": 1.4462541127009445,
+      "everyMinutePtsRead": 0.46586451983214944,
+      "winsRead": 0.58192796169061,
+      "tRead": 0.25407578942537856,
+      "nRead": 4803
+     }
+    ]
+   },
+   "inside": {
+    "t": -0.7136938222129056,
+    "netPts": -1.221764980568013,
+    "everyMinutePts": -0.819829108212805,
+    "sePts": 0.5631768972147608,
+    "trades": 29364,
+    "picks": [
+     {
+      "entry": "1m EMA Long + 1m MACD Long + 5m EMA Pot. short + 5m MACD Pot. short",
+      "dir": "long",
+      "exit": "target 0.5 ATR, stop 3 ATR, to 15:05",
+      "tPicked": 5.047980581279526,
+      "netPtsRead": -8.496116678074081,
+      "everyMinutePtsRead": -2.118397602309928,
+      "winsRead": 0.7763157894736842,
+      "tRead": -0.7727397218910088,
+      "nRead": 76
+     },
+     {
+      "entry": "1m EMA Long + 1m MACD Long + 5m EMA Pot. short + 5m MACD Pot. short",
+      "dir": "long",
+      "exit": "target 0.5 ATR, stop 3 ATR, 120 min",
+      "tPicked": 4.689028995756892,
+      "netPtsRead": -9.265333823512574,
+      "everyMinutePtsRead": -1.881760691562025,
+      "winsRead": 0.7763157894736842,
+      "tRead": -0.8605108578048737,
+      "nRead": 76
+     },
+     {
+      "entry": "1m EMA Long + 1m MACD Long + 5m EMA Pot. short + 5m MACD Pot. short",
+      "dir": "long",
+      "exit": "target 0.5 ATR, stop 5 ATR, to 15:05",
+      "tPicked": 4.559376949322891,
+      "netPtsRead": -5.4891720310227425,
+      "everyMinutePtsRead": -1.8678162839621444,
+      "winsRead": 0.8421052631578947,
+      "tRead": -0.43823312240978146,
+      "nRead": 76
+     },
+     {
+      "entry": "1m EMA Long + 1m MACD Long + 5m EMA Pot. short + 5m MACD Pot. short",
+      "dir": "long",
+      "exit": "target 0.5 ATR, stop 5 ATR, 120 min",
+      "tPicked": 4.372367491655816,
+      "netPtsRead": -11.067119992815408,
+      "everyMinutePtsRead": -1.4614437025784857,
+      "winsRead": 0.7763157894736842,
+      "tRead": -1.0623390211144204,
+      "nRead": 76
+     },
+     {
+      "entry": "1m EMA Long + 1m MACD Long + 5m EMA Pot. short + 5m MACD Pot. short",
+      "dir": "long",
+      "exit": "target 0.5 ATR, stop none, 120 min",
+      "tPicked": 4.311692631792681,
+      "netPtsRead": -10.845993314312944,
+      "everyMinutePtsRead": -1.0659617350481259,
+      "winsRead": 0.7763157894736842,
+      "tRead": -1.065434162701614,
+      "nRead": 76
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 5 ATR, 15 min",
+      "tPicked": 3.8382763044129042,
+      "netPtsRead": -0.9892475851675457,
+      "everyMinutePtsRead": -0.7952816082243863,
+      "winsRead": 0.5298216276477146,
+      "tRead": -0.33841749725874876,
+      "nRead": 7176
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 3 ATR, 15 min",
+      "tPicked": 3.8086434546014982,
+      "netPtsRead": -0.9785603991985541,
+      "everyMinutePtsRead": -0.7776860339916782,
+      "winsRead": 0.5289855072463768,
+      "tRead": -0.36095222230670915,
+      "nRead": 7176
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 2 ATR, stop 3 ATR, 15 min",
+      "tPicked": 3.790419556375801,
+      "netPtsRead": -1.3227188807999188,
+      "everyMinutePtsRead": -0.8959263627022332,
+      "winsRead": 0.4875975473801561,
+      "tRead": -0.6787475196308849,
+      "nRead": 7176
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 2 ATR, stop 5 ATR, 15 min",
+      "tPicked": 3.752468601650401,
+      "netPtsRead": -1.3511495671510065,
+      "everyMinutePtsRead": -0.9189709242989214,
+      "winsRead": 0.4882943143812709,
+      "tRead": -0.6532278954961743,
+      "nRead": 7176
+     },
+     {
+      "entry": "1m EMA Pot. long + 1m MACD Pot. long + 5m EMA Pot. short + 5m MACD Short",
+      "dir": "short",
+      "exit": "target 1 ATR, stop 5 ATR, to 15:05",
+      "tPicked": 3.680263727290505,
+      "netPtsRead": 3.090022983775928,
+      "everyMinutePtsRead": 3.1282345702748016,
+      "winsRead": 0.7785714285714286,
+      "tRead": -0.007368392110943719,
+      "nRead": 280
+     }
+    ]
+   },
+   "persist": {
+    "r": 0.019112596453751907,
+    "n": 129024
+   },
+   "persistInside": {
+    "r": -0.1614001047941537,
+    "n": 137376
+   },
+   "gainPts": 0.0006587573198509509
+  },
+  {
+   "all": {
+    "t": 7.640713284488284,
+    "netPts": 0.11331033469336711,
+    "everyMinutePts": -1.4138902091973136,
+    "sePts": 0.19987669829086654,
+    "trades": 131264,
+    "picks": [
+     {
+      "entry": "1m MACD Short + 5m MACD Short",
+      "dir": "long",
+      "exit": "target 0.5 ATR, stop 0.5 ATR, 15 min",
+      "tPicked": 14.540365382708526,
+      "netPtsRead": 0.07952423911410615,
+      "everyMinutePtsRead": -1.5423871397003142,
+      "winsRead": 0.5288765088207985,
+      "tRead": 5.2777407968784,
+      "nRead": 10770
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 0.5 ATR, 120 min",
+      "tPicked": 14.532345833813737,
+      "netPtsRead": 0.08255319111417518,
+      "everyMinutePtsRead": -1.292367714940104,
+      "winsRead": 0.5337600184512483,
+      "tRead": 6.60633838993028,
+      "nRead": 17343
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 0.5 ATR, to 15:05",
+      "tPicked": 14.532345833813737,
+      "netPtsRead": 0.08255319111417518,
+      "everyMinutePtsRead": -1.292367714940104,
+      "winsRead": 0.5337600184512483,
+      "tRead": 6.60633838993028,
+      "nRead": 17343
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 0.5 ATR, 40 min",
+      "tPicked": 14.531427405409296,
+      "netPtsRead": 0.08336555281470974,
+      "everyMinutePtsRead": -1.2941934134808233,
+      "winsRead": 0.533817678602318,
+      "tRead": 6.618995683034898,
+      "nRead": 17343
+     },
+     {
+      "entry": "1m MACD Short + 5m MACD Short",
+      "dir": "long",
+      "exit": "target 0.5 ATR, stop 0.5 ATR, 120 min",
+      "tPicked": 14.489905782330627,
+      "netPtsRead": 0.1445868039752644,
+      "everyMinutePtsRead": -1.5506032235101648,
+      "winsRead": 0.531569173630455,
+      "tRead": 5.398117587979058,
+      "nRead": 10770
+     },
+     {
+      "entry": "1m MACD Short + 5m MACD Short",
+      "dir": "long",
+      "exit": "target 0.5 ATR, stop 0.5 ATR, to 15:05",
+      "tPicked": 14.489905782330627,
+      "netPtsRead": 0.1445868039752644,
+      "everyMinutePtsRead": -1.5506032235101648,
+      "winsRead": 0.531569173630455,
+      "tRead": 5.398117587979058,
+      "nRead": 10770
+     },
+     {
+      "entry": "1m MACD Short + 5m MACD Short",
+      "dir": "long",
+      "exit": "target 0.5 ATR, stop 0.5 ATR, 40 min",
+      "tPicked": 14.484629673456999,
+      "netPtsRead": 0.14944185446000902,
+      "everyMinutePtsRead": -1.5487775249694458,
+      "winsRead": 0.5316620241411327,
+      "tRead": 5.416654339995504,
+      "nRead": 10770
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 0.5 ATR, 15 min",
+      "tPicked": 14.449771589233237,
+      "netPtsRead": 0.036873913460915134,
+      "everyMinutePtsRead": -1.2994359257571246,
+      "winsRead": 0.5304733898402814,
+      "tRead": 6.478328191360113,
+      "nRead": 17343
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Short + 5m MACD Short",
+      "dir": "long",
+      "exit": "target 0.5 ATR, stop 0.5 ATR, 15 min",
+      "tPicked": 13.497686461867687,
+      "netPtsRead": 0.19395908027227157,
+      "everyMinutePtsRead": -1.5423871397003142,
+      "winsRead": 0.5346587284711886,
+      "tRead": 5.039489740371935,
+      "nRead": 9406
+     },
+     {
+      "entry": "1m EMA Short + 1m MACD Short + 5m MACD Short",
+      "dir": "long",
+      "exit": "target 0.5 ATR, stop 0.5 ATR, 120 min",
+      "tPicked": 13.445705383945569,
+      "netPtsRead": 0.2679216646342505,
+      "everyMinutePtsRead": -1.5506032235101648,
+      "winsRead": 0.536891345949394,
+      "tRead": 5.172644880612696,
+      "nRead": 9406
+     }
+    ]
+   },
+   "room": {
+    "t": 5.830703896141067,
+    "netPts": 0.6011711496116039,
+    "everyMinutePts": -0.8883285591538099,
+    "sePts": 0.25545795761489626,
+    "trades": 177602,
+    "picks": [
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 3 ATR, 40 min",
+      "tPicked": 9.346829645651024,
+      "netPtsRead": 0.7678325934144404,
+      "everyMinutePtsRead": -0.8421044235093772,
+      "winsRead": 0.7764515943031771,
+      "tRead": 4.297571932539705,
+      "nRead": 17343
+     },
+     {
+      "entry": "1m MACD Short",
+      "dir": "long",
+      "exit": "target 0.5 ATR, stop 2 ATR, 40 min",
+      "tPicked": 9.280423584233652,
+      "netPtsRead": 0.3087831527709543,
+      "everyMinutePtsRead": -0.9424077970856314,
+      "winsRead": 0.7686826933536386,
+      "tRead": 3.809929728880738,
+      "nRead": 18386
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop none, 40 min",
+      "tPicked": 9.26974440013346,
+      "netPtsRead": 0.6647554727451742,
+      "everyMinutePtsRead": -0.9620267478805585,
+      "winsRead": 0.7786426800438218,
+      "tRead": 4.261518401507965,
+      "nRead": 17343
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 5 ATR, 40 min",
+      "tPicked": 9.249322210330195,
+      "netPtsRead": 0.7714061388218241,
+      "everyMinutePtsRead": -0.8895912418239592,
+      "winsRead": 0.7785273597416825,
+      "tRead": 4.3698230758461225,
+      "nRead": 17343
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 2 ATR, 40 min",
+      "tPicked": 9.155797022667315,
+      "netPtsRead": 0.7823324785312299,
+      "everyMinutePtsRead": -0.8048586939757129,
+      "winsRead": 0.7673989505852505,
+      "tRead": 4.518585726769837,
+      "nRead": 17343
+     },
+     {
+      "entry": "1m MACD Short",
+      "dir": "long",
+      "exit": "target 0.5 ATR, stop 3 ATR, 40 min",
+      "tPicked": 8.85488102828462,
+      "netPtsRead": 0.5404521735188399,
+      "everyMinutePtsRead": -0.8960155973148936,
+      "winsRead": 0.7828238877406722,
+      "tRead": 4.242938650664597,
+      "nRead": 18386
+     },
+     {
+      "entry": "1m MACD Short",
+      "dir": "long",
+      "exit": "target 0.5 ATR, stop 2 ATR, 120 min",
+      "tPicked": 8.5173986017044,
+      "netPtsRead": 0.06614244085612071,
+      "everyMinutePtsRead": -1.2938344625729579,
+      "winsRead": 0.801207440443816,
+      "tRead": 3.7035324998909473,
+      "nRead": 18386
+     },
+     {
+      "entry": "1m MACD Short",
+      "dir": "long",
+      "exit": "target 0.5 ATR, stop 2 ATR, to 15:05",
+      "tPicked": 8.508508690324886,
+      "netPtsRead": 0.09850814076607702,
+      "everyMinutePtsRead": -1.3223367046081498,
+      "winsRead": 0.8041988469487653,
+      "tRead": 3.8186736889301747,
+      "nRead": 18386
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 2 ATR, 120 min",
+      "tPicked": 8.100556257763651,
+      "netPtsRead": 0.965939301877813,
+      "everyMinutePtsRead": -0.47386327765475267,
+      "winsRead": 0.8086259586000115,
+      "tRead": 3.8314458711213537,
+      "nRead": 17343
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 2 ATR, to 15:05",
+      "tPicked": 7.80685035142007,
+      "netPtsRead": 1.1292014504098655,
+      "everyMinutePtsRead": -0.40204406315166735,
+      "winsRead": 0.8167560399008246,
+      "tRead": 4.010238172277799,
+      "nRead": 17343
+     }
+    ]
+   },
+   "inside": {
+    "t": 1.946283854103085,
+    "netPts": -0.16258011466699965,
+    "everyMinutePts": -0.8458706648772978,
+    "sePts": 0.35107445852248637,
+    "trades": 71760,
+    "picks": [
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 3 ATR, 15 min",
+      "tPicked": 5.795660678192666,
+      "netPtsRead": -0.05179470015697119,
+      "everyMinutePtsRead": -0.8038879177829263,
+      "winsRead": 0.6787904124860646,
+      "tRead": 1.828528594291859,
+      "nRead": 7176
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 5 ATR, 15 min",
+      "tPicked": 5.754893339773738,
+      "netPtsRead": 0.014113619005378728,
+      "everyMinutePtsRead": -0.8042905182029517,
+      "winsRead": 0.6792084726867336,
+      "tRead": 1.9935017327018902,
+      "nRead": 7176
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 3 ATR, 40 min",
+      "tPicked": 5.536582316641383,
+      "netPtsRead": -0.8023156773164373,
+      "everyMinutePtsRead": -0.8420362898408699,
+      "winsRead": 0.7721571906354515,
+      "tRead": 0.07360507658962508,
+      "nRead": 7176
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 5 ATR, 40 min",
+      "tPicked": 5.499220386632063,
+      "netPtsRead": -0.5495431404782125,
+      "everyMinutePtsRead": -0.6618068770659787,
+      "winsRead": 0.7752229654403567,
+      "tRead": 0.2058910766381289,
+      "nRead": 7176
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 2 ATR, 15 min",
+      "tPicked": 5.4864746139586895,
+      "netPtsRead": 0.04317496605915357,
+      "everyMinutePtsRead": -0.733217887324115,
+      "winsRead": 0.6769788182831661,
+      "tRead": 1.9442606490067524,
+      "nRead": 7176
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop none, 15 min",
+      "tPicked": 5.379652896364582,
+      "netPtsRead": 0.010415899098292339,
+      "everyMinutePtsRead": -0.7998513491381525,
+      "winsRead": 0.6793478260869565,
+      "tRead": 1.9717841589178018,
+      "nRead": 7176
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop none, 40 min",
+      "tPicked": 5.341689451991105,
+      "netPtsRead": -0.5607115513329732,
+      "everyMinutePtsRead": -0.6731221917556736,
+      "winsRead": 0.7753623188405797,
+      "tRead": 0.2054635517672434,
+      "nRead": 7176
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 0.5 ATR, 120 min",
+      "tPicked": 5.317335805396277,
+      "netPtsRead": 0.08963204395927993,
+      "everyMinutePtsRead": -1.044608213432722,
+      "winsRead": 0.5319119286510591,
+      "tRead": 3.907750626445852,
+      "nRead": 7176
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 0.5 ATR, to 15:05",
+      "tPicked": 5.317335805396277,
+      "netPtsRead": 0.08963204395927993,
+      "everyMinutePtsRead": -1.044608213432722,
+      "winsRead": 0.5319119286510591,
+      "tRead": 3.907750626445852,
+      "nRead": 7176
+     },
+     {
+      "entry": "1m MACD Long",
+      "dir": "short",
+      "exit": "target 0.5 ATR, stop 0.5 ATR, 40 min",
+      "tPicked": 5.313389003809149,
+      "netPtsRead": 0.09159536460760365,
+      "everyMinutePtsRead": -1.0512771907968697,
+      "winsRead": 0.532051282051282,
+      "tRead": 3.934202970480611,
+      "nRead": 7176
+     }
+    ]
+   },
+   "persist": {
+    "r": 0.20848878472941199,
+    "n": 129024
+   },
+   "persistInside": {
+    "r": -0.11097931312307012,
+    "n": 137376
+   },
+   "gainPts": 0.10387972102989697
+  }
+ ],
+ "placebo": [
+  [
+   {
+    "all": 0.12746973585292304,
+    "room": -0.34638275257797085,
+    "inside": 1.0479843013088201,
+    "persist": 0.08010420802748115,
+    "persistInside": 0.33486953755750554,
+    "gain": null
+   },
+   {
+    "all": 1.181043330634146,
+    "room": -1.432897282847886,
+    "inside": -0.07112006191693006,
+    "persist": 0.07592793660065264,
+    "persistInside": 0.30168170184134063,
+    "gain": 0.0006220910002549594
+   },
+   {
+    "all": 1.276049077241686,
+    "room": 0.6077007133311262,
+    "inside": -0.1271825232242758,
+    "persist": 0.3026005685160974,
+    "persistInside": 0.31766816360796296,
+    "gain": -0.038819155748042414
+   },
+   {
+    "all": 1.276049077241686,
+    "room": 0.6077007133311262,
+    "inside": -0.1271825232242758,
+    "persist": 0.1370189540352874,
+    "persistInside": 0.27845262747960897,
+    "gain": 0.0004537711102674183
+   },
+   {
+    "all": 6.877109532252442,
+    "room": 2.1102986064507396,
+    "inside": 3.9709206484412696,
+    "persist": 0.28153178381640886,
+    "persistInside": 0.3110133821966824,
+    "gain": 0.03712834964418059
+   }
+  ],
+  [
+   {
+    "all": 1.5996756406043429,
+    "room": 1.7434575633271447,
+    "inside": -2.5768648030498484,
+    "persist": 0.14706454584962783,
+    "persistInside": -0.17563574389086417,
+    "gain": null
+   },
+   {
+    "all": 1.0504400932161282,
+    "room": 0.3317130120028469,
+    "inside": -0.12376908899694304,
+    "persist": 0.15428764025353378,
+    "persistInside": -0.13474357164296488,
+    "gain": 0.0002853537024745322
+   },
+   {
+    "all": 1.4304284236905833,
+    "room": 1.1705055590309117,
+    "inside": -1.7515448759226218,
+    "persist": 0.300580707451249,
+    "persistInside": -0.09516065502722705,
+    "gain": -0.0377777773567687
+   },
+   {
+    "all": 1.5979438912002775,
+    "room": 1.1705055590309117,
+    "inside": -1.7515448759226218,
+    "persist": 0.14053304285882723,
+    "persistInside": -0.15851108335452763,
+    "gain": 0.0001593838343501643
+   },
+   {
+    "all": 7.109106537787829,
+    "room": 3.261941603725981,
+    "inside": 4.654072242754055,
+    "persist": 0.2828825034931895,
+    "persistInside": -0.10209724504016227,
+    "gain": 0.03525538229214191
+   }
+  ],
+  [
+   {
+    "all": 0.7585026511287704,
+    "room": 0.37213985585185283,
+    "inside": -0.5630090299597863,
+    "persist": 0.008837918563892886,
+    "persistInside": -0.17683826838491196,
+    "gain": null
+   },
+   {
+    "all": 0.5091951755117433,
+    "room": 0.6790282986194446,
+    "inside": -0.63340179663184,
+    "persist": 0.013906146355196589,
+    "persistInside": -0.16264303074632483,
+    "gain": 0.00041322262108055757
+   },
+   {
+    "all": 0.1166312538846937,
+    "room": 0.9130881829070604,
+    "inside": -0.04221546184422475,
+    "persist": 0.3077754181529725,
+    "persistInside": -0.17037490494356966,
+    "gain": -0.03739897503958234
+   },
+   {
+    "all": 0.7189195669572983,
+    "room": 0.9130881829070604,
+    "inside": 0.04561610945211497,
+    "persist": 0.07096749703441262,
+    "persistInside": -0.2476154556423263,
+    "gain": 0.0002738350511120047
+   },
+   {
+    "all": 4.882185076857618,
+    "room": 3.8399726346993517,
+    "inside": 1.8206386039935976,
+    "persist": 0.28511219410566246,
+    "persistInside": -0.17931628188415202,
+    "gain": 0.035192612055086704
+   }
+  ],
+  [
+   {
+    "all": -1.3933717722098373,
+    "room": -1.2043650082808337,
+    "inside": -1.1307634840417797,
+    "persist": -0.14233894976857428,
+    "persistInside": -0.08022570660052135,
+    "gain": null
+   },
+   {
+    "all": -1.9346429689955535,
+    "room": -1.9244931238256973,
+    "inside": -1.0865467808039244,
+    "persist": -0.11871544863014334,
+    "persistInside": -0.07708721974399861,
+    "gain": 0.000856676093625939
+   },
+   {
+    "all": -0.13873134596482484,
+    "room": -0.7079169239941404,
+    "inside": -1.2477662080355243,
+    "persist": 0.08687310160067568,
+    "persistInside": -0.08149580421560972,
+    "gain": -0.04056563209868568
+   },
+   {
+    "all": -0.13873134596482484,
+    "room": -0.7079169239941404,
+    "inside": -1.2477662080355243,
+    "persist": -0.15765192592212837,
+    "persistInside": -0.15174907876864696,
+    "gain": 0.0004617184872260705
+   },
+   {
+    "all": 3.5452986482142728,
+    "room": 3.695702880554179,
+    "inside": 1.235970097987284,
+    "persist": 0.057798144006069835,
+    "persistInside": -0.09411705532692359,
+    "gain": 0.038584676316456255
+   }
+  ],
+  [
+   {
+    "all": -0.12670536272269753,
+    "room": -0.12670536272269753,
+    "inside": 1.268148530741268,
+    "persist": -0.1517977457477667,
+    "persistInside": -0.0650112471027705,
+    "gain": null
+   },
+   {
+    "all": -0.5527231036245348,
+    "room": -0.5527231036245348,
+    "inside": 0.5362244239901838,
+    "persist": -0.10006025230455383,
+    "persistInside": -0.05489889263735034,
+    "gain": 0.00036976892988973154
+   },
+   {
+    "all": -0.24910256421811872,
+    "room": -0.24910256421811872,
+    "inside": -0.37364681329152566,
+    "persist": 0.11500555734763941,
+    "persistInside": -0.007560229867063612,
+    "gain": -0.038322973135802615
+   },
+   {
+    "all": -0.2386351083222648,
+    "room": -0.24910256421811872,
+    "inside": -0.37364681329152566,
+    "persist": -0.1495887304028644,
+    "persistInside": -0.0822628917384979,
+    "gain": 0.00004751609331623336
+   },
+   {
+    "all": 5.384631808812326,
+    "room": 5.0509417725415435,
+    "inside": 4.478385080525152,
+    "persist": 0.08644710207145564,
+    "persistInside": -0.01767880035560536,
+    "gain": 0.03538922174314767
+   }
+  ],
+  [
+   {
+    "all": 1.1558048300001758,
+    "room": 0.2842704422369893,
+    "inside": -0.2790687036919509,
+    "persist": 0.024153859888019213,
+    "persistInside": 0.03328181822021063,
+    "gain": null
+   },
+   {
+    "all": 0.9335470451565755,
+    "room": 0.08111796738952677,
+    "inside": -0.36877706049832554,
+    "persist": 0.0974014633513881,
+    "persistInside": 0.0917102714261762,
+    "gain": 0.0003253488902181869
+   },
+   {
+    "all": 0.06809862506881718,
+    "room": 1.4022845848461691,
+    "inside": 0.6313476025962342,
+    "persist": 0.30527297264601544,
+    "persistInside": 0.18658418614371053,
+    "gain": -0.036450832796157774
+   },
+   {
+    "all": 0.06809862506881707,
+    "room": 1.2489404255588483,
+    "inside": 0.6313476025962342,
+    "persist": 0.12612702193050704,
+    "persistInside": 0.13804223154762643,
+    "gain": 0.00022737239520533766
+   },
+   {
+    "all": 5.680560859079466,
+    "room": 3.380151287886917,
+    "inside": 3.1946593902317275,
+    "persist": 0.2821923091837589,
+    "persistInside": 0.1781070995420025,
+    "gain": 0.03452987335242867
+   }
+  ],
+  [
+   {
+    "all": -0.15271005692094847,
+    "room": 0.026376932658234136,
+    "inside": 0.11759062220840433,
+    "persist": 0.18338523553938327,
+    "persistInside": -0.019192610004445214,
+    "gain": null
+   },
+   {
+    "all": 1.7982530912941845,
+    "room": 0.30085646843674924,
+    "inside": 0.5616649994395532,
+    "persist": 0.19999659825390928,
+    "persistInside": -0.024549457326037704,
+    "gain": 0.00039145305260771104
+   },
+   {
+    "all": 0.5646854748339799,
+    "room": 1.6369699586305893,
+    "inside": 0.3587920496887421,
+    "persist": 0.2945754704712733,
+    "persistInside": 0.04086936766100975,
+    "gain": -0.03760686676699944
+   },
+   {
+    "all": 0.5646854748339799,
+    "room": 1.6369699586305893,
+    "inside": 0.3587920496887421,
+    "persist": 0.10095450107941953,
+    "persistInside": -0.01673275084847673,
+    "gain": 0.0006238034734932698
+   },
+   {
+    "all": 6.010654414024917,
+    "room": 5.435407335718696,
+    "inside": 2.3159879651404602,
+    "persist": 0.273190432878477,
+    "persistInside": 0.03238323132702584,
+    "gain": 0.036216133212402454
+   }
+  ],
+  [
+   {
+    "all": 0.2106314897935787,
+    "room": 0.2106314897935787,
+    "inside": -0.2881406046203084,
+    "persist": 0.11222463949964163,
+    "persistInside": 0.1516676682134487,
+    "gain": null
+   },
+   {
+    "all": 0.01297870692670768,
+    "room": 0.01297870692670768,
+    "inside": -0.7167717056739971,
+    "persist": 0.061153993489662925,
+    "persistInside": 0.018153056175744788,
+    "gain": 0.00037396304994202236
+   },
+   {
+    "all": -0.08775647017450248,
+    "room": -0.5181475810969686,
+    "inside": -1.0580592942570914,
+    "persist": 0.2801910319114466,
+    "persistInside": 0.08688970566302631,
+    "gain": -0.04034663934424409
+   },
+   {
+    "all": -0.08775647017450248,
+    "room": -0.5181475810969686,
+    "inside": -1.1489908786162704,
+    "persist": 0.09311752919172575,
+    "persistInside": 0.03655379069829959,
+    "gain": 0.00017031469074422418
+   },
+   {
+    "all": 6.294683035933865,
+    "room": 3.049556341850959,
+    "inside": 4.4104671727814,
+    "persist": 0.2558766187922082,
+    "persistInside": 0.0788899271786824,
+    "gain": 0.03809920000142319
+   }
+  ],
+  [
+   {
+    "all": 0.8767794358499452,
+    "room": 1.4566219556584734,
+    "inside": 2.785350466172456,
+    "persist": 0.08717084450181349,
+    "persistInside": 0.23207589853446345,
+    "gain": null
+   },
+   {
+    "all": -1.620278510923972,
+    "room": -1.620278510923972,
+    "inside": -1.3476919410354478,
+    "persist": 0.09867709464542862,
+    "persistInside": 0.17358819193108863,
+    "gain": 0.00012304925745405874
+   },
+   {
+    "all": 1.5929824966198711,
+    "room": 1.1379392407200433,
+    "inside": -1.0765315139109954,
+    "persist": 0.29081838331431725,
+    "persistInside": 0.20859522674734227,
+    "gain": -0.03769094248708217
+   },
+   {
+    "all": 1.5929824966198711,
+    "room": 1.1379392407200433,
+    "inside": -1.0765315139109954,
+    "persist": 0.10444835402397908,
+    "persistInside": 0.16353876392374803,
+    "gain": 0.00025168131215982557
+   },
+   {
+    "all": 6.799771160231053,
+    "room": 5.569334158400081,
+    "inside": 2.792775024625232,
+    "persist": 0.26942456015659044,
+    "persistInside": 0.20091116841521886,
+    "gain": 0.035440197083740084
+   }
+  ],
+  [
+   {
+    "all": 1.1663330302269193,
+    "room": -0.9768881006787494,
+    "inside": 0.3526850702854481,
+    "persist": 0.06785404093077105,
+    "persistInside": -0.06362943165008081,
+    "gain": null
+   },
+   {
+    "all": 0.43924435686548463,
+    "room": 1.384123898665395,
+    "inside": 0.7597655171137857,
+    "persist": 0.01715389819474,
+    "persistInside": -0.07255178053112184,
+    "gain": 0.0002757904088088968
+   },
+   {
+    "all": -0.4452697051653798,
+    "room": -2.0310945690251163,
+    "inside": -0.31527217342805836,
+    "persist": 0.2507444876183258,
+    "persistInside": 0.018486073614507725,
+    "gain": -0.03895352151896073
+   },
+   {
+    "all": 0.19604735661909653,
+    "room": -2.031094569025117,
+    "inside": -0.31527217342805836,
+    "persist": 0.0071123741711666254,
+    "persistInside": -0.03829398276917177,
+    "gain": 0.00041571362722779803
+   },
+   {
+    "all": 5.378231138553568,
+    "room": 4.3312312672624405,
+    "inside": 0.811662092609204,
+    "persist": 0.22371602785867667,
+    "persistInside": 0.00885970068033548,
+    "gain": 0.037188613160790696
+   }
+  ],
+  [
+   {
+    "all": 0.08019142859438294,
+    "room": 0.12923024469641384,
+    "inside": -0.8270616108965203,
+    "persist": 0.06121622006502646,
+    "persistInside": -0.25478386216679033,
+    "gain": null
+   },
+   {
+    "all": 1.0563023491047079,
+    "room": 0.5119128902515828,
+    "inside": -0.11663964550438641,
+    "persist": 0.10814269425508205,
+    "persistInside": -0.2838731154674057,
+    "gain": 0.0001323181827166426
+   },
+   {
+    "all": 0.35678096175439944,
+    "room": 0.35678096175439944,
+    "inside": -0.3883034856220856,
+    "persist": 0.22406438525702643,
+    "persistInside": -0.2397629618953681,
+    "gain": -0.039070128656159823
+   },
+   {
+    "all": 0.35844148778419327,
+    "room": 0.35844148778419327,
+    "inside": -0.300084235405814,
+    "persist": -0.024870243183869645,
+    "persistInside": -0.3083426349499458,
+    "gain": 0.0003448471049331709
+   },
+   {
+    "all": 6.72301688201281,
+    "room": 5.3539665953992674,
+    "inside": 0.5787288126444114,
+    "persist": 0.19519168895964545,
+    "persistInside": -0.25109438127062655,
+    "gain": 0.03690885778487849
+   }
+  ],
+  [
+   {
+    "all": 1.2513318339473105,
+    "room": 1.2513318339473105,
+    "inside": -1.512089262765433,
+    "persist": 0.3701682074902432,
+    "persistInside": -0.04328876625434679,
+    "gain": null
+   },
+   {
+    "all": 0.41280569792237093,
+    "room": -0.20660517854951954,
+    "inside": -1.0177112734437348,
+    "persist": 0.41676488165794634,
+    "persistInside": -0.01819136451648723,
+    "gain": 0.0005692225111270361
+   },
+   {
+    "all": 1.9187014225127474,
+    "room": 1.9403626910129759,
+    "inside": -1.2355957283088468,
+    "persist": 0.4753462179719571,
+    "persistInside": -0.014211693984298676,
+    "gain": -0.03814904573720871
+   },
+   {
+    "all": 1.8987623978629355,
+    "room": 1.9403626910129759,
+    "inside": -1.2355957283088468,
+    "persist": 0.36940611839857374,
+    "persistInside": -0.06526947479190057,
+    "gain": 0.00041807720741106466
+   },
+   {
+    "all": 6.719398346641306,
+    "room": 4.816369904285037,
+    "inside": 0.6318670092002129,
+    "persist": 0.46229144289866664,
+    "persistInside": -0.021002932365265264,
+    "gain": 0.03642078166898814
+   }
+  ],
+  [
+   {
+    "all": -1.036241116938658,
+    "room": -1.036241116938658,
+    "inside": 0.3961238909221815,
+    "persist": -0.008080659778133431,
+    "persistInside": 0.13458457877898214,
+    "gain": null
+   },
+   {
+    "all": -0.5100635967236358,
+    "room": -0.5313465016338381,
+    "inside": -0.48188101294196667,
+    "persist": 0.005348732505775701,
+    "persistInside": 0.1531778646399436,
+    "gain": 0.00021584921846866395
+   },
+   {
+    "all": -0.3114578598092875,
+    "room": -0.3114578598092875,
+    "inside": 1.3260301510263854,
+    "persist": 0.24779281852426296,
+    "persistInside": 0.24247133169013235,
+    "gain": -0.037489937154954606
+   },
+   {
+    "all": -0.2777109732913753,
+    "room": -0.2777109732913753,
+    "inside": 0.5870093780465916,
+    "persist": 0.06304955163894202,
+    "persistInside": 0.1967282144154959,
+    "gain": 0.0003667618985537366
+   },
+   {
+    "all": 4.992474430791317,
+    "room": 4.518888407681638,
+    "inside": 1.5607517650785327,
+    "persist": 0.223736066085211,
+    "persistInside": 0.23457369818093426,
+    "gain": 0.03559076784998358
+   }
+  ],
+  [
+   {
+    "all": -0.6948244815069468,
+    "room": -0.8509096888467413,
+    "inside": 1.2585018915193413,
+    "persist": -0.072111360996826,
+    "persistInside": 0.10419231078426376,
+    "gain": null
+   },
+   {
+    "all": -0.06095700489726937,
+    "room": 0.053928295672382304,
+    "inside": 0.7923757805457663,
+    "persist": -0.08768649381453263,
+    "persistInside": 0.19276031466544438,
+    "gain": 0.0005984079863587409
+   },
+   {
+    "all": 0.28387310269717897,
+    "room": 0.28387310269717897,
+    "inside": -0.05715070981774969,
+    "persist": 0.15128474589419347,
+    "persistInside": 0.2004691665817833,
+    "gain": -0.039769772395049106
+   },
+   {
+    "all": 0.0877756474666462,
+    "room": 0.28387310269717897,
+    "inside": -0.05715070981774969,
+    "persist": -0.14482017984120263,
+    "persistInside": 0.1357039886745938,
+    "gain": 0.00032124239917767915
+   },
+   {
+    "all": 5.8969778883343364,
+    "room": 3.240651226079164,
+    "inside": 2.8791967943927044,
+    "persist": 0.12236200138573922,
+    "persistInside": 0.1917189665528048,
+    "gain": 0.037607228728119745
+   }
+  ],
+  [
+   {
+    "all": 0.31143849466085477,
+    "room": 1.525355280641218,
+    "inside": 1.9729908304745642,
+    "persist": -0.0418685730503706,
+    "persistInside": 0.22973412741024712,
+    "gain": null
+   },
+   {
+    "all": -0.279320934873608,
+    "room": 1.2851816608857825,
+    "inside": 2.2304367651962584,
+    "persist": 0.028426543079932216,
+    "persistInside": 0.24729336233806767,
+    "gain": 0.00039730015743488686
+   },
+   {
+    "all": -0.3218443016475221,
+    "room": -1.8155128648883783,
+    "inside": 2.806306908938392,
+    "persist": 0.2160326616534687,
+    "persistInside": 0.25430234010824104,
+    "gain": -0.03976633959784566
+   },
+   {
+    "all": 0.2609499017689235,
+    "room": -1.8155128648883783,
+    "inside": 2.806306908938392,
+    "persist": 0.019527891710246496,
+    "persistInside": 0.2162807605727877,
+    "gain": 0.0003738449686386493
+   },
+   {
+    "all": 4.444404850150547,
+    "room": 2.9962125076306334,
+    "inside": 4.700761649034608,
+    "persist": 0.1909245669896885,
+    "persistInside": 0.24771569264738502,
+    "gain": 0.03785609362928582
+   }
+  ],
+  [
+   {
+    "all": -2.0169846224851242,
+    "room": -2.0777611853122218,
+    "inside": 0.3537776964271884,
+    "persist": -0.019784805275335562,
+    "persistInside": 0.09759342476838638,
+    "gain": null
+   },
+   {
+    "all": -1.413050468928484,
+    "room": -1.413050468928484,
+    "inside": 0.2514699325422502,
+    "persist": -0.061313186033709645,
+    "persistInside": 0.10118648894106226,
+    "gain": 0.0003908036518245551
+   },
+   {
+    "all": -0.4384057817902964,
+    "room": -0.4384057817902964,
+    "inside": -0.6306136065317048,
+    "persist": 0.2428905290851141,
+    "persistInside": 0.10167287727789696,
+    "gain": -0.03839022261771342
+   },
+   {
+    "all": -0.4384057817902964,
+    "room": -0.4384057817902964,
+    "inside": -0.6283383472780638,
+    "persist": 0.059348292496294204,
+    "persistInside": 0.04936547938548158,
+    "gain": 0.00034310899190843615
+   },
+   {
+    "all": 6.631158372141354,
+    "room": 3.522768305924047,
+    "inside": 0.17123081226800946,
+    "persist": 0.2212263137845725,
+    "persistInside": 0.09517519453951948,
+    "gain": 0.036454079732099846
+   }
+  ],
+  [
+   {
+    "all": -1.1597952393296096,
+    "room": -1.1167398598546405,
+    "inside": 0.8227701098052468,
+    "persist": -0.25146307811758534,
+    "persistInside": 0.02292730465261017,
+    "gain": null
+   },
+   {
+    "all": -1.1844362378931648,
+    "room": -1.1844362378931648,
+    "inside": 1.3556367737764883,
+    "persist": -0.2815099151699187,
+    "persistInside": 0.06265599496680616,
+    "gain": 0.00043851492989119474
+   },
+   {
+    "all": -1.0840805554898902,
+    "room": -0.8424366350016678,
+    "inside": 0.9143640743897529,
+    "persist": 0.10836084507844455,
+    "persistInside": 0.11940095522524585,
+    "gain": -0.04097234237152455
+   },
+   {
+    "all": -0.8459827591690194,
+    "room": -0.8424366350016679,
+    "inside": 0.9167509088621552,
+    "persist": -0.15414011183394205,
+    "persistInside": 0.0654164516651688,
+    "gain": 0.0003747455006918592
+   },
+   {
+    "all": 8.034037568990426,
+    "room": 2.965795255505762,
+    "inside": 4.632628104549447,
+    "persist": 0.08197438177512682,
+    "persistInside": 0.11215537828268934,
+    "gain": 0.03892642375334851
+   }
+  ],
+  [
+   {
+    "all": -1.2403253196098514,
+    "room": -1.2318457101805302,
+    "inside": -0.8352792649368816,
+    "persist": -0.19344053703058095,
+    "persistInside": -0.03581608886393022,
+    "gain": null
+   },
+   {
+    "all": 0.26108622533566156,
+    "room": 0.28073430158397694,
+    "inside": 0.9734500991774897,
+    "persist": -0.16438416495648478,
+    "persistInside": -0.09075648494373838,
+    "gain": 0.0007049516125130327
+   },
+   {
+    "all": 0.20467380120161976,
+    "room": 0.01663308399727974,
+    "inside": 0.8776078915649841,
+    "persist": 0.12093762145639507,
+    "persistInside": -0.06644730798172115,
+    "gain": -0.0383343316956495
+   },
+   {
+    "all": 0.2522351417747123,
+    "room": 0.01663308399727974,
+    "inside": 0.8776078915649841,
+    "persist": -0.11331770463117778,
+    "persistInside": -0.10473000134505768,
+    "gain": 0.0010979850491365417
+   },
+   {
+    "all": 5.310494955318026,
+    "room": 4.556829985816449,
+    "inside": 1.8847855921996728,
+    "persist": 0.09246321436976837,
+    "persistInside": -0.07432621188551944,
+    "gain": 0.03807510822113076
+   }
+  ],
+  [
+   {
+    "all": -1.5145691338755292,
+    "room": -2.0005378046078026,
+    "inside": 0.44384759340724417,
+    "persist": 0.03826709548395688,
+    "persistInside": 0.07634827917223226,
+    "gain": null
+   },
+   {
+    "all": 0.871468134433275,
+    "room": 0.6552950241371917,
+    "inside": -0.21288696530744705,
+    "persist": 0.032949498371144706,
+    "persistInside": 0.11535234277007946,
+    "gain": 0.0003043619504829187
+   },
+   {
+    "all": -0.9664085695167122,
+    "room": -0.5287256857134426,
+    "inside": 0.8385068017118814,
+    "persist": 0.21724194152168494,
+    "persistInside": 0.14445700821152238,
+    "gain": -0.039142873857437775
+   },
+   {
+    "all": 1.0209572758944363,
+    "room": -0.5287256857134426,
+    "inside": 1.1860698170097366,
+    "persist": 0.04837097969144937,
+    "persistInside": 0.1088018370430653,
+    "gain": 0.00009019745704305461
+   },
+   {
+    "all": 3.498848506832617,
+    "room": 2.4313672855665676,
+    "inside": 2.1429369836882843,
+    "persist": 0.18931458246169935,
+    "persistInside": 0.13517954770497811,
+    "gain": 0.03659294533533835
+   }
+  ],
+  [
+   {
+    "all": 0.022998919675975102,
+    "room": 0.01683938679512376,
+    "inside": -1.6342349767548534,
+    "persist": -0.11401160296036313,
+    "persistInside": -0.22095745520278165,
+    "gain": null
+   },
+   {
+    "all": -0.3165968436470589,
+    "room": -0.3165968436470589,
+    "inside": -0.5685919540451466,
+    "persist": -0.10792222787272684,
+    "persistInside": -0.28705943408286155,
+    "gain": 0.0004708528641851
+   },
+   {
+    "all": 1.7076387584545987,
+    "room": 1.356481306174143,
+    "inside": 0.9335573506015897,
+    "persist": 0.24795620356251144,
+    "persistInside": -0.2307057760781584,
+    "gain": -0.04071609222094696
+   },
+   {
+    "all": 1.4441584820208513,
+    "room": 1.3889977659046928,
+    "inside": 0.8765846428708041,
+    "persist": -0.004108798572576689,
+    "persistInside": -0.29599280463655175,
+    "gain": 0.000400815202014405
+   },
+   {
+    "all": 7.486013060401795,
+    "room": 6.081687983919377,
+    "inside": 2.759845864581457,
+    "persist": 0.21894943521850702,
+    "persistInside": -0.24036851015048571,
+    "gain": 0.03885430336675477
+   }
+  ],
+  [
+   {
+    "all": 1.353736684526112,
+    "room": 0.33650627587530607,
+    "inside": 2.019128694479356,
+    "persist": -0.0416798685566056,
+    "persistInside": 0.026497322939829204,
+    "gain": null
+   },
+   {
+    "all": -0.8725320849219839,
+    "room": -0.5206498520929222,
+    "inside": -0.5503109202689669,
+    "persist": -0.1055970604582291,
+    "persistInside": 0.04896539743874683,
+    "gain": 0.0001394327221734698
+   },
+   {
+    "all": 1.2650747001777694,
+    "room": 0.9238674365045039,
+    "inside": 1.7673565863567835,
+    "persist": 0.18184287509191313,
+    "persistInside": 0.07509842078146402,
+    "gain": -0.03628813658262885
+   },
+   {
+    "all": 1.3180620996440575,
+    "room": 0.9238674365045039,
+    "inside": 1.7673565863567835,
+    "persist": -0.07228980932556066,
+    "persistInside": 0.025654507001893506,
+    "gain": 0.000013344450578560737
+   },
+   {
+    "all": 7.1195042304840115,
+    "room": 4.243521481319003,
+    "inside": 2.2462546513391515,
+    "persist": 0.15387401477305654,
+    "persistInside": 0.06576667622097855,
+    "gain": 0.03391429968931304
+   }
+  ],
+  [
+   {
+    "all": -0.07774681176365514,
+    "room": -0.07774681176365514,
+    "inside": -0.055286761929560786,
+    "persist": 0.08217467168880754,
+    "persistInside": -0.08115913558650976,
+    "gain": null
+   },
+   {
+    "all": 0.24308277896614258,
+    "room": 0.24308277896614258,
+    "inside": 1.3427822637398692,
+    "persist": 0.07871655169204059,
+    "persistInside": -0.15726128035103978,
+    "gain": 0.00036990583401130426
+   },
+   {
+    "all": 1.0599813789452988,
+    "room": 1.0599813789452988,
+    "inside": 1.42389706079686,
+    "persist": 0.2901025251958499,
+    "persistInside": 0.031798574788655394,
+    "gain": -0.03822123446619892
+   },
+   {
+    "all": 1.0599813789452988,
+    "room": 1.0599813789452988,
+    "inside": 1.42389706079686,
+    "persist": 0.10066754576837268,
+    "persistInside": -0.021901853865451775,
+    "gain": 0.0002838980652591122
+   },
+   {
+    "all": 6.448137126707076,
+    "room": 4.668337869663771,
+    "inside": 1.7584322124397345,
+    "persist": 0.2681285619804312,
+    "persistInside": 0.024315400029676717,
+    "gain": 0.03621694721215497
+   }
+  ],
+  [
+   {
+    "all": -2.0339005227003346,
+    "room": -2.115133925111685,
+    "inside": -1.490284827137093,
+    "persist": -0.344061682108864,
+    "persistInside": 0.15679058713555694,
+    "gain": null
+   },
+   {
+    "all": -0.38082889151581917,
+    "room": -0.5045302587878535,
+    "inside": -1.595446993088419,
+    "persist": -0.25338432923901333,
+    "persistInside": 0.09797357167611538,
+    "gain": 0.00014483362266841995
+   },
+   {
+    "all": -1.4855363860150754,
+    "room": -0.9070398298455635,
+    "inside": 1.2918501047439772,
+    "persist": 0.09622963679133523,
+    "persistInside": 0.23649090243595594,
+    "gain": -0.03843423316612549
+   },
+   {
+    "all": -1.444554953663777,
+    "room": -0.8895616136950499,
+    "inside": 1.2918501047439772,
+    "persist": -0.15759828766665218,
+    "persistInside": 0.19193625407818224,
+    "gain": -0.00006370847934061075
+   },
+   {
+    "all": 3.6540831258982758,
+    "room": 4.683861408625975,
+    "inside": 4.342877434986129,
+    "persist": 0.06899763939949786,
+    "persistInside": 0.2299463260149266,
+    "gain": 0.03589060515291819
+   }
+  ],
+  [
+   {
+    "all": 0.3658782706415681,
+    "room": 0.049153672558382516,
+    "inside": 0.49523512801015845,
+    "persist": 0.04806888317307337,
+    "persistInside": -0.13099770784222547,
+    "gain": null
+   },
+   {
+    "all": 0.37385929663928524,
+    "room": 0.4055401470003243,
+    "inside": 2.1603561274921734,
+    "persist": 0.1157637993908792,
+    "persistInside": -0.100432404658224,
+    "gain": 0.00026254980459650807
+   },
+   {
+    "all": 0.3194248701108909,
+    "room": 0.3194248701108909,
+    "inside": 1.364227322408305,
+    "persist": 0.3303567630973839,
+    "persistInside": 0.039192667994725976,
+    "gain": -0.038485454618977
+   },
+   {
+    "all": 0.3194248701108909,
+    "room": 0.3194248701108909,
+    "inside": 1.364227322408305,
+    "persist": 0.13347104697222023,
+    "persistInside": -0.015173665266242411,
+    "gain": 0.00009323843310507647
+   },
+   {
+    "all": 5.282931615270408,
+    "room": 3.6307974251083284,
+    "inside": 3.0746506141085095,
+    "persist": 0.30998207273692724,
+    "persistInside": 0.03134672589864493,
+    "gain": 0.03596806981164903
+   }
+  ],
+  [
+   {
+    "all": 0.634883563450606,
+    "room": 0.634883563450606,
+    "inside": -1.3832379617454686,
+    "persist": 0.14369782251114352,
+    "persistInside": -0.3083954828734656,
+    "gain": null
+   },
+   {
+    "all": 1.755085367390875,
+    "room": 1.755085367390875,
+    "inside": -0.9825725377551505,
+    "persist": 0.23075526971049273,
+    "persistInside": -0.2550999954379237,
+    "gain": 0.0007127019383923286
+   },
+   {
+    "all": 1.4233350308448383,
+    "room": 1.4233350308448383,
+    "inside": -1.8014465132701847,
+    "persist": 0.3971146985696347,
+    "persistInside": -0.21406344213696626,
+    "gain": -0.03912410065327934
+   },
+   {
+    "all": 1.4238268776870429,
+    "room": 1.4238268776870429,
+    "inside": -1.8014465132701847,
+    "persist": 0.28528530824302567,
+    "persistInside": -0.2612378012843163,
+    "gain": 0.0004918331206801031
+   },
+   {
+    "all": 5.800261837090235,
+    "room": 4.402400923954299,
+    "inside": 3.7787557235747244,
+    "persist": 0.38211488777000296,
+    "persistInside": -0.2208317364762851,
+    "gain": 0.03755866992829625
+   }
+  ],
+  [
+   {
+    "all": -0.8650650948017037,
+    "room": -1.0949763298553825,
+    "inside": 2.367486581475313,
+    "persist": -0.10376033136559897,
+    "persistInside": 0.09159748820441184,
+    "gain": null
+   },
+   {
+    "all": -0.47456943006024255,
+    "room": -0.8047890133225776,
+    "inside": 0.874074432434684,
+    "persist": -0.06235257863339389,
+    "persistInside": 0.14783202605649512,
+    "gain": 0.00047636854953612306
+   },
+   {
+    "all": -0.7849266515249826,
+    "room": -0.7849266515249826,
+    "inside": -0.22518713407718882,
+    "persist": 0.17765278263750633,
+    "persistInside": 0.23404676233037897,
+    "gain": -0.038277214042131386
+   },
+   {
+    "all": -0.48868580173994136,
+    "room": -0.7849266515249826,
+    "inside": -0.22518713407718882,
+    "persist": -0.031235758092194515,
+    "persistInside": 0.19219197229605856,
+    "gain": 0.0002799143322794658
+   },
+   {
+    "all": 7.5738471217467085,
+    "room": 4.439048475280363,
+    "inside": 4.414807683190197,
+    "persist": 0.15227868948291964,
+    "persistInside": 0.2258965014628422,
+    "gain": 0.03641044522592055
+   }
+  ],
+  [
+   {
+    "all": -0.00778385630248737,
+    "room": -0.00778385630248737,
+    "inside": -0.8057175763016788,
+    "persist": -0.37349384782057793,
+    "persistInside": 0.14892088842726256,
+    "gain": null
+   },
+   {
+    "all": -1.5985301115066062,
+    "room": -0.5810625102531255,
+    "inside": -1.047584753200203,
+    "persist": -0.33771044519494514,
+    "persistInside": 0.11208549368810361,
+    "gain": 0.0003701031638843403
+   },
+   {
+    "all": -0.6101838871231754,
+    "room": -0.6101838871231754,
+    "inside": 0.7485181334396532,
+    "persist": -0.07734685517732155,
+    "persistInside": 0.16229980344393896,
+    "gain": -0.036861961155854925
+   },
+   {
+    "all": -0.6101838871231754,
+    "room": -0.6101838871231754,
+    "inside": 0.7485181334396532,
+    "persist": -0.3810631472220468,
+    "persistInside": 0.1205198157823558,
+    "gain": 0.00005830036727538879
+   },
+   {
+    "all": 6.127174464323246,
+    "room": 4.357110575318837,
+    "inside": 1.9753290291130572,
+    "persist": -0.10862090038485542,
+    "persistInside": 0.15498183303470095,
+    "gain": 0.03440384104893174
+   }
+  ],
+  [
+   {
+    "all": -0.09602906117095195,
+    "room": -0.21461306806627875,
+    "inside": -0.054353320240693684,
+    "persist": 0.2680388316168134,
+    "persistInside": -0.05799366352215692,
+    "gain": null
+   },
+   {
+    "all": 0.4426820843596377,
+    "room": 0.37431635570057226,
+    "inside": 0.849647430635975,
+    "persist": 0.2768412458057026,
+    "persistInside": -0.07320139481627574,
+    "gain": 0.0004037758269686143
+   },
+   {
+    "all": 0.37444381873740684,
+    "room": 0.06645547907222416,
+    "inside": -0.37250632840944836,
+    "persist": 0.41641480416410015,
+    "persistInside": 0.054131903883199085,
+    "gain": -0.0386019799297773
+   },
+   {
+    "all": 0.5401291588606878,
+    "room": 0.06645547907222416,
+    "inside": -0.0700388998994934,
+    "persist": 0.2944241705053207,
+    "persistInside": -0.00030100570825303784,
+    "gain": 0.0004325806059968116
+   },
+   {
+    "all": 7.396363262856787,
+    "room": 4.614178942285433,
+    "inside": 4.6784678691828985,
+    "persist": 0.40051676557945004,
+    "persistInside": 0.046025808385385725,
+    "gain": 0.03677784081773341
+   }
+  ],
+  [
+   {
+    "all": -0.18771507954380237,
+    "room": -0.5017028701162548,
+    "inside": -1.5889423368702347,
+    "persist": -0.04845122241233043,
+    "persistInside": -0.1125221146021463,
+    "gain": null
+   },
+   {
+    "all": -0.48197270144249127,
+    "room": -0.3717967189280042,
+    "inside": 1.0997310420570596,
+    "persist": -0.10642399296242269,
+    "persistInside": -0.18702201686430772,
+    "gain": 0.0004647560880578557
+   },
+   {
+    "all": 0.0719649909626872,
+    "room": -0.19530991187594846,
+    "inside": 1.2446279769464414,
+    "persist": 0.19784427838313048,
+    "persistInside": -0.13040313411791352,
+    "gain": -0.0403935742972724
+   },
+   {
+    "all": 0.07196499096268716,
+    "room": -0.19530991187594846,
+    "inside": 1.2446279769464414,
+    "persist": -0.07228956410500398,
+    "persistInside": -0.19129967525727165,
+    "gain": 0.00059148290145203
+   },
+   {
+    "all": 5.523025896550859,
+    "room": 4.113255001174415,
+    "inside": 2.1573453127973554,
+    "persist": 0.16803455928006444,
+    "persistInside": -0.14009157774737055,
+    "gain": 0.038728874266519164
+   }
+  ],
+  [
+   {
+    "all": -1.3039915545342227,
+    "room": -1.0484781070051403,
+    "inside": 0.2498499360339838,
+    "persist": -0.07109487813467713,
+    "persistInside": 0.24342444641104893,
+    "gain": null
+   },
+   {
+    "all": 3.096391462548436,
+    "room": 3.096391462548436,
+    "inside": 0.33675684297861036,
+    "persist": -0.08697135152023874,
+    "persistInside": 0.2553719295012847,
+    "gain": 0.00008679908477667835
+   },
+   {
+    "all": 0.14152628165515543,
+    "room": -0.669281523075077,
+    "inside": -0.7591787159575041,
+    "persist": 0.19385530590163116,
+    "persistInside": 0.3257373166154145,
+    "gain": -0.038305076526119884
+   },
+   {
+    "all": 0.14152628165515543,
+    "room": -0.669281523075077,
+    "inside": -0.7591787159575041,
+    "persist": -0.04051059873568482,
+    "persistInside": 0.27322426731767885,
+    "gain": -0.00011101110085165455
+   },
+   {
+    "all": 6.86459730731498,
+    "room": 4.895954058879386,
+    "inside": 2.2121393221957852,
+    "persist": 0.1739282959656181,
+    "persistInside": 0.31984308850363186,
+    "gain": 0.03527400377003264
+   }
+  ],
+  [
+   {
+    "all": -1.0640762492539069,
+    "room": 0.028086097665672893,
+    "inside": -2.1647145930113627,
+    "persist": 0.0358157862788229,
+    "persistInside": -0.08476170569992152,
+    "gain": null
+   },
+   {
+    "all": -1.173283088613808,
+    "room": 0.14529694824839615,
+    "inside": -0.8485684089539153,
+    "persist": 0.061854335193919134,
+    "persistInside": -0.12787002374762027,
+    "gain": 0.000393759150604533
+   },
+   {
+    "all": -1.2671780102988537,
+    "room": -0.3267169442799466,
+    "inside": -0.1289511770023682,
+    "persist": 0.2936444019372024,
+    "persistInside": -0.06746480556812634,
+    "gain": -0.03822286718423629
+   },
+   {
+    "all": 0.15341826790973195,
+    "room": -0.3267169442799466,
+    "inside": -0.1289511770023682,
+    "persist": 0.1127831048429601,
+    "persistInside": -0.11515353826880646,
+    "gain": -0.0000595264875927443
+   },
+   {
+    "all": 4.377094870204358,
+    "room": 3.139073936006145,
+    "inside": 1.0261077946997328,
+    "persist": 0.27169337897605134,
+    "persistInside": -0.07591534469925164,
+    "gain": 0.03552644394637077
+   }
+  ],
+  [
+   {
+    "all": 0.12916049347554256,
+    "room": -0.31857329443347177,
+    "inside": -0.7268232042382952,
+    "persist": 0.0383163301087192,
+    "persistInside": -0.16807020300785885,
+    "gain": null
+   },
+   {
+    "all": 1.199119041582091,
+    "room": 1.1717913665499742,
+    "inside": -0.5804801282279977,
+    "persist": 0.04504124240010828,
+    "persistInside": -0.20566411653746958,
+    "gain": 0.0003848807087277824
+   },
+   {
+    "all": -0.32781292245955956,
+    "room": -0.3058925467191053,
+    "inside": -1.10738489863279,
+    "persist": 0.3098489931175849,
+    "persistInside": -0.1427928488188467,
+    "gain": -0.03894594460442267
+   },
+   {
+    "all": -0.32781292245955956,
+    "room": -0.3058925467191053,
+    "inside": -1.10738489863279,
+    "persist": 0.12386497802229221,
+    "persistInside": -0.201055762387771,
+    "gain": -0.000025398335906315045
+   },
+   {
+    "all": 6.969460423360488,
+    "room": 5.524765247346968,
+    "inside": 3.4903602631329913,
+    "persist": 0.2907980272802427,
+    "persistInside": -0.14976437754738436,
+    "gain": 0.03611911670107413
+   }
+  ],
+  [
+   {
+    "all": 1.1033251116514209,
+    "room": 1.2754579421124081,
+    "inside": 0.30337070107182823,
+    "persist": 0.35179274679631356,
+    "persistInside": 0.09416800081981042,
+    "gain": null
+   },
+   {
+    "all": 1.3035675107806446,
+    "room": 1.491807574676267,
+    "inside": -0.3742207527959754,
+    "persist": 0.3215066386533602,
+    "persistInside": 0.09845871587784041,
+    "gain": 0.00031691925780647255
+   },
+   {
+    "all": 0.8240947057738511,
+    "room": 1.3969398459857345,
+    "inside": 0.20227564718306384,
+    "persist": 0.4254474752387456,
+    "persistInside": 0.19264120481157787,
+    "gain": -0.03723364068506435
+   },
+   {
+    "all": 0.8240947057738511,
+    "room": 1.3969398459857345,
+    "inside": 0.20227564718306384,
+    "persist": 0.32375335214078105,
+    "persistInside": 0.14931488242915017,
+    "gain": 0.00014166878315051968
+   },
+   {
+    "all": 5.271853102161984,
+    "room": 5.405045864147029,
+    "inside": 1.6409492185992436,
+    "persist": 0.41229856586746194,
+    "persistInside": 0.18567752510193963,
+    "gain": 0.03478106814490698
+   }
+  ],
+  [
+   {
+    "all": 0.46536216914476203,
+    "room": -0.11266898903725742,
+    "inside": -0.5542378511629665,
+    "persist": -0.08277418885451594,
+    "persistInside": -0.08752873325637647,
+    "gain": null
+   },
+   {
+    "all": 1.1298445282573204,
+    "room": 0.2526969860487777,
+    "inside": -0.1268101152417525,
+    "persist": -0.057141122889783694,
+    "persistInside": -0.09763990474356128,
+    "gain": 0.0002963991357170883
+   },
+   {
+    "all": 0.06985122044492031,
+    "room": -0.5588546519117699,
+    "inside": -0.15590056301902835,
+    "persist": 0.22401490037462365,
+    "persistInside": -0.015554176689299724,
+    "gain": -0.03793545991958291
+   },
+   {
+    "all": 0.5126012363527221,
+    "room": -0.55885465191177,
+    "inside": -0.15590056301902835,
+    "persist": 0.0038859818585367475,
+    "persistInside": -0.08016613455536456,
+    "gain": -0.00010957340401018498
+   },
+   {
+    "all": 5.414572279642927,
+    "room": 4.844526092896805,
+    "inside": -0.01687496614426718,
+    "persist": 0.197519680225049,
+    "persistInside": -0.025115249932121653,
+    "gain": 0.03491714035275029
+   }
+  ],
+  [
+   {
+    "all": -1.6771453284942028,
+    "room": -2.130717464799439,
+    "inside": -0.848215926900615,
+    "persist": -0.22328704178810316,
+    "persistInside": 0.11710751365158584,
+    "gain": null
+   },
+   {
+    "all": 0.8678915527973236,
+    "room": 0.4534950408187925,
+    "inside": 0.17373950529921817,
+    "persist": -0.24429196979322532,
+    "persistInside": 0.10170167434914669,
+    "gain": 0.00031723424697612836
+   },
+   {
+    "all": -1.3266993873936683,
+    "room": -1.6638234760974888,
+    "inside": -1.0650910210183686,
+    "persist": 0.07479326462402286,
+    "persistInside": 0.11326099224232053,
+    "gain": -0.038006981977268504
+   },
+   {
+    "all": -1.319977771989041,
+    "room": -1.6638234760974888,
+    "inside": -1.0650910210183686,
+    "persist": -0.16825758400563737,
+    "persistInside": 0.06323452919709935,
+    "gain": 0.00005265703907800483
+   },
+   {
+    "all": 6.173135808997415,
+    "room": 3.3229962322082116,
+    "inside": 2.6516254693896597,
+    "persist": 0.0501557811448941,
+    "persistInside": 0.10610005462494937,
+    "gain": 0.035233347425097566
+   }
+  ],
+  [
+   {
+    "all": 0.08854996206650967,
+    "room": -0.7397979828315249,
+    "inside": 1.1755310999023705,
+    "persist": -0.1355194619263206,
+    "persistInside": 0.31975161112170036,
+    "gain": null
+   },
+   {
+    "all": -0.3445709901810566,
+    "room": -0.37758645820183906,
+    "inside": 3.4813779902112283,
+    "persist": -0.07805854326483912,
+    "persistInside": 0.23686752922700113,
+    "gain": 0.0005144533948812645
+   },
+   {
+    "all": 0.20152119613078556,
+    "room": 0.20152119613078556,
+    "inside": 1.3972670727530632,
+    "persist": 0.2086867680586409,
+    "persistInside": 0.2979560252983778,
+    "gain": -0.040309857700060125
+   },
+   {
+    "all": 0.3812750790757617,
+    "room": 0.20152119613078545,
+    "inside": 1.3972670727530632,
+    "persist": -0.05308848215914731,
+    "persistInside": 0.2469437492672502,
+    "gain": 0.00014657557563609578
+   },
+   {
+    "all": 5.346897475391027,
+    "room": 2.454498317745618,
+    "inside": 2.4398809411579836,
+    "persist": 0.18600824997546264,
+    "persistInside": 0.29182257023026953,
+    "gain": 0.037970835034489295
+   }
+  ],
+  [
+   {
+    "all": -1.1628942184227635,
+    "room": -0.8393952309582307,
+    "inside": -1.9157863605835024,
+    "persist": -0.19580244142466488,
+    "persistInside": -0.1436996249741034,
+    "gain": null
+   },
+   {
+    "all": -0.6858527274792785,
+    "room": -0.3930842857745316,
+    "inside": -0.4438569539434125,
+    "persist": -0.30220894193220066,
+    "persistInside": -0.14776397160646337,
+    "gain": 0.0006502318977878452
+   },
+   {
+    "all": -0.9859814374833805,
+    "room": -1.561728865281482,
+    "inside": -0.8475191755758832,
+    "persist": -0.013969306544801307,
+    "persistInside": -0.10738169361655152,
+    "gain": -0.03898292934840551
+   },
+   {
+    "all": -0.9834837689421795,
+    "room": -1.561728865281482,
+    "inside": -0.8475191755758832,
+    "persist": -0.35319607672999664,
+    "persistInside": -0.1691237244308999,
+    "gain": 0.0006907979918198114
+   },
+   {
+    "all": 5.018837973669356,
+    "room": 3.2966812577783844,
+    "inside": 1.933411501728453,
+    "persist": -0.04838700273934078,
+    "persistInside": -0.11600026667524178,
+    "gain": 0.037623546456086156
+   }
+  ],
+  [
+   {
+    "all": -0.30340258917407475,
+    "room": -0.7027921545846533,
+    "inside": 0.5087873253287988,
+    "persist": -0.03509627084055241,
+    "persistInside": 0.030783668233359412,
+    "gain": null
+   },
+   {
+    "all": -1.1710219100249417,
+    "room": -2.2122209668008943,
+    "inside": 0.31071732912249767,
+    "persist": -0.07449948738892107,
+    "persistInside": 0.0741612954208996,
+    "gain": 0.0005941014530179568
+   },
+   {
+    "all": -1.4224673784576496,
+    "room": -1.4224673784576496,
+    "inside": 0.2582022740100257,
+    "persist": 0.0825278478265816,
+    "persistInside": 0.18546509629562985,
+    "gain": -0.03992505825714125
+   },
+   {
+    "all": -1.0927925986362597,
+    "room": -1.4224673784576496,
+    "inside": 0.2582022740100257,
+    "persist": -0.17944021969052182,
+    "persistInside": 0.13602331597373296,
+    "gain": 0.00006854548875248941
+   },
+   {
+    "all": 4.767868791360256,
+    "room": 3.520212582051173,
+    "inside": 0.3982216473398562,
+    "persist": 0.053388093618778644,
+    "persistInside": 0.1780583548898276,
+    "gain": 0.037228680490768294
+   }
+  ],
+  [
+   {
+    "all": -1.132083825483742,
+    "room": -1.132083825483742,
+    "inside": -0.43037644527454805,
+    "persist": -0.09082245339642833,
+    "persistInside": 0.03144509232512072,
+    "gain": null
+   },
+   {
+    "all": -0.5774529705965297,
+    "room": -0.5887478496750296,
+    "inside": -0.7143589676594702,
+    "persist": -0.03252709446144008,
+    "persistInside": 0.07149046239885884,
+    "gain": 0.0003955955497325875
+   },
+   {
+    "all": 0.8937042368682923,
+    "room": -1.5449349018524932,
+    "inside": 1.5760367577721885,
+    "persist": 0.18734871015309862,
+    "persistInside": 0.17239487613270854,
+    "gain": -0.03756728644290365
+   },
+   {
+    "all": 0.879425779566903,
+    "room": -1.5406357934735142,
+    "inside": 1.5760367577721885,
+    "persist": 0.005535735784310055,
+    "persistInside": 0.1344104556237009,
+    "gain": 0.0009220452529424224
+   },
+   {
+    "all": 3.9559670475240445,
+    "room": 3.5505850111766963,
+    "inside": 2.392352139112154,
+    "persist": 0.1665733758950406,
+    "persistInside": 0.16678404229527857,
+    "gain": 0.03685313090254044
+   }
+  ],
+  [
+   {
+    "all": -1.3836726064228346,
+    "room": -1.1141224637626221,
+    "inside": -0.40251508528951224,
+    "persist": -0.05644520751626349,
+    "persistInside": -0.18924577015124097,
+    "gain": null
+   },
+   {
+    "all": -1.3137771242532923,
+    "room": -1.126778282097916,
+    "inside": 0.3832616759081913,
+    "persist": -0.15630449246311318,
+    "persistInside": -0.10020715735655941,
+    "gain": 0.0005297583209724055
+   },
+   {
+    "all": -0.8168973738394315,
+    "room": -0.9179832102502077,
+    "inside": 0.6425073985431022,
+    "persist": 0.1881207044308146,
+    "persistInside": -0.067950095362744,
+    "gain": -0.03742242247621653
+   },
+   {
+    "all": -0.5289476778684761,
+    "room": -0.9179832102502077,
+    "inside": 0.6425073985431022,
+    "persist": -0.08691163302065652,
+    "persistInside": -0.13949936063850854,
+    "gain": 0.00015413991457468486
+   },
+   {
+    "all": 6.9152212425354485,
+    "room": 5.545244736799016,
+    "inside": 2.9725815323758003,
+    "persist": 0.15933871147448042,
+    "persistInside": -0.0781866325710214,
+    "gain": 0.035245822666382876
+   }
+  ],
+  [
+   {
+    "all": 0.22529526691710106,
+    "room": 0.500646533295047,
+    "inside": 0.042967111574662036,
+    "persist": 0.12447550377920798,
+    "persistInside": -0.07213776471458973,
+    "gain": null
+   },
+   {
+    "all": -0.9156788035039828,
+    "room": -0.9156788035039828,
+    "inside": -1.0403757987037319,
+    "persist": 0.05576590652548584,
+    "persistInside": -0.06819612522896243,
+    "gain": 0.00013272168717289533
+   },
+   {
+    "all": -0.5423535688975728,
+    "room": -0.1106881843906985,
+    "inside": -0.08367997652320694,
+    "persist": 0.24635956373947118,
+    "persistInside": -0.013777079333744032,
+    "gain": -0.03943200367472463
+   },
+   {
+    "all": -0.5423535688975728,
+    "room": -0.1106881843906985,
+    "inside": -0.08367997652320694,
+    "persist": 0.047015169521007295,
+    "persistInside": -0.08032586585081851,
+    "gain": 0.000005398831814420354
+   },
+   {
+    "all": 5.49888727230531,
+    "room": 4.098639612035621,
+    "inside": 2.323090776622241,
+    "persist": 0.22026557515133427,
+    "persistInside": -0.024064940232119553,
+    "gain": 0.03679351631917715
+   }
+  ],
+  [
+   {
+    "all": 0.09300262007889956,
+    "room": -0.19881205164238314,
+    "inside": -0.9617322659137554,
+    "persist": -0.0319421636232079,
+    "persistInside": -0.1258028857204181,
+    "gain": null
+   },
+   {
+    "all": 1.4115283968086008,
+    "room": 1.7197042547945356,
+    "inside": -2.6354941919298467,
+    "persist": -0.031000276036518358,
+    "persistInside": -0.20915798073388164,
+    "gain": 0.0001241984046214195
+   },
+   {
+    "all": 0.05558244283070399,
+    "room": -0.7092009766946661,
+    "inside": 0.16110074605515007,
+    "persist": 0.21833921446765828,
+    "persistInside": -0.2071134845612587,
+    "gain": -0.03822380380313685
+   },
+   {
+    "all": 0.3237212695631536,
+    "room": -0.7092009766946661,
+    "inside": 0.16110074605515007,
+    "persist": 0.007751294830119572,
+    "persistInside": -0.26258371956582277,
+    "gain": -0.00009261146818737586
+   },
+   {
+    "all": 6.020533240151934,
+    "room": 4.460851082677616,
+    "inside": 3.218548654346321,
+    "persist": 0.19245154866883774,
+    "persistInside": -0.21617906675607207,
+    "gain": 0.035384544331945565
+   }
+  ],
+  [
+   {
+    "all": -0.5269422951749939,
+    "room": -0.886756979612614,
+    "inside": -1.793423142640463,
+    "persist": 0.09876719893267322,
+    "persistInside": -0.14505996404840305,
+    "gain": null
+   },
+   {
+    "all": 0.16525570649463758,
+    "room": 0.16525570649463758,
+    "inside": -1.1653682177383367,
+    "persist": 0.008077248386391468,
+    "persistInside": -0.12923526426607895,
+    "gain": 0.00018224350613877172
+   },
+   {
+    "all": -0.3860936647779849,
+    "room": 0.06745123157196818,
+    "inside": -0.45154795990012286,
+    "persist": 0.2342804985690592,
+    "persistInside": -0.047320482942179,
+    "gain": -0.03875522460978129
+   },
+   {
+    "all": -0.9180789789307189,
+    "room": -0.13093687771651671,
+    "inside": -0.45154795990012286,
+    "persist": 0.04665423666738068,
+    "persistInside": -0.10298008073773042,
+    "gain": -0.0003703410942979044
+   },
+   {
+    "all": 4.71229287811665,
+    "room": 4.555915496561504,
+    "inside": 3.0438821334102797,
+    "persist": 0.20710703058485477,
+    "persistInside": -0.05678409112303495,
+    "gain": 0.03517050832792644
+   }
+  ],
+  [
+   {
+    "all": 1.0308136484143415,
+    "room": 1.139392811682354,
+    "inside": 0.14890710708945687,
+    "persist": 0.04921055327051544,
+    "persistInside": -0.11882715904457505,
+    "gain": null
+   },
+   {
+    "all": 1.718134431900502,
+    "room": 0.6417291531922878,
+    "inside": -0.6603089538913091,
+    "persist": 0.05417690107049323,
+    "persistInside": -0.10554632652914955,
+    "gain": 0.0006950086315575703
+   },
+   {
+    "all": 0.21058190812692593,
+    "room": 0.08811499940304168,
+    "inside": 1.6283048569648795,
+    "persist": 0.18684440390702028,
+    "persistInside": -0.07337080826304478,
+    "gain": -0.03855091518197917
+   },
+   {
+    "all": 0.3053880558981947,
+    "room": 0.08811499940304168,
+    "inside": 1.6283048569648795,
+    "persist": 0.013110335536196763,
+    "persistInside": -0.12302413477549183,
+    "gain": 0.0005967554329167981
+   },
+   {
+    "all": 7.39999313669896,
+    "room": 2.61174626811643,
+    "inside": 1.724318393477514,
+    "persist": 0.16194761856392448,
+    "persistInside": -0.08209968914098098,
+    "gain": 0.03711857361764616
+   }
+  ],
+  [
+   {
+    "all": -1.1306778867960356,
+    "room": -1.1306778867960356,
+    "inside": -0.02457304935130384,
+    "persist": -0.16747837991768005,
+    "persistInside": -0.32130902434534914,
+    "gain": null
+   },
+   {
+    "all": -0.6248082479651259,
+    "room": -0.6248082479651259,
+    "inside": -1.3494580324366694,
+    "persist": -0.10961314914801004,
+    "persistInside": -0.3659093371514097,
+    "gain": 0.00004470679050735168
+   },
+   {
+    "all": 0.13418682876512125,
+    "room": 0.13418682876512125,
+    "inside": 0.6573762423748292,
+    "persist": 0.052481628174337124,
+    "persistInside": -0.2642968526059828,
+    "gain": -0.03929478036357182
+   },
+   {
+    "all": 0.13418682876512125,
+    "room": 0.13418682876512125,
+    "inside": 0.6573762423748292,
+    "persist": -0.16592192800707253,
+    "persistInside": -0.31933709115984094,
+    "gain": 0.0000711182896144308
+   },
+   {
+    "all": 6.05186913935835,
+    "room": 3.883629921701565,
+    "inside": 2.6556857360159563,
+    "persist": 0.027500388309766144,
+    "persistInside": -0.27240752661792206,
+    "gain": 0.0370678857816361
+   }
+  ],
+  [
+   {
+    "all": -1.0056131395527381,
+    "room": -0.3964575105337533,
+    "inside": -0.5616781182136323,
+    "persist": -0.05458493696037303,
+    "persistInside": 0.14879240608424565,
+    "gain": null
+   },
+   {
+    "all": -1.3000458327046858,
+    "room": -0.7544240492855668,
+    "inside": 0.004082221055229871,
+    "persist": 0.0012861126584551,
+    "persistInside": 0.08722219439057004,
+    "gain": 0.0005894822860287373
+   },
+   {
+    "all": -1.3549204264495247,
+    "room": -1.0042718125067944,
+    "inside": 0.45683671124272496,
+    "persist": 0.24997346401014958,
+    "persistInside": 0.15583684235947431,
+    "gain": -0.0375112703373018
+   },
+   {
+    "all": 1.0454043117816358,
+    "room": -1.0042718125067944,
+    "inside": 0.45683671124272496,
+    "persist": 0.025426262848653514,
+    "persistInside": 0.10418376280767098,
+    "gain": 0.00024143252103287738
+   },
+   {
+    "all": 5.845668753586542,
+    "room": 3.071288943392005,
+    "inside": 0.39189790646710243,
+    "persist": 0.22494825021953987,
+    "persistInside": 0.1471772674634437,
+    "gain": 0.035262485283736926
+   }
+  ],
+  [
+   {
+    "all": -1.340795683619752,
+    "room": -0.6621239813324077,
+    "inside": -0.5437483107925106,
+    "persist": -0.12820941155013912,
+    "persistInside": -0.008590551456300643,
+    "gain": null
+   },
+   {
+    "all": -0.07745330451201222,
+    "room": 0.23182544468325403,
+    "inside": -0.3909912713591578,
+    "persist": -0.09170608351371362,
+    "persistInside": -0.05894433362948361,
+    "gain": 0.00023882086541473601
+   },
+   {
+    "all": -0.018434426957411973,
+    "room": -0.018434426957411973,
+    "inside": 0.4267935128830276,
+    "persist": 0.20745758103128803,
+    "persistInside": 0.00958798251980756,
+    "gain": -0.03871453253394652
+   },
+   {
+    "all": -0.018434426957411973,
+    "room": -0.018434426957411973,
+    "inside": -0.7451905258827151,
+    "persist": -0.07321147488782921,
+    "persistInside": -0.07143806489503397,
+    "gain": -0.0000938041699694946
+   },
+   {
+    "all": 4.626532942727027,
+    "room": 2.837653039596443,
+    "inside": 3.2588137769628633,
+    "persist": 0.1786777723276542,
+    "persistInside": -0.0009380345112619478,
+    "gain": 0.03590875651153293
+   }
+  ],
+  [
+   {
+    "all": -0.5806344994069178,
+    "room": -0.5806344994069178,
+    "inside": 0.8145157028901596,
+    "persist": -0.12300975364067333,
+    "persistInside": 0.05408686684658567,
+    "gain": null
+   },
+   {
+    "all": -0.7249764864760327,
+    "room": -0.7249764864760327,
+    "inside": 0.7420777990882825,
+    "persist": -0.14165739567564395,
+    "persistInside": 0.05559978647215152,
+    "gain": 0.0004121583715678496
+   },
+   {
+    "all": 0.05161970905869315,
+    "room": 0.05161970905869315,
+    "inside": -1.0627901758648994,
+    "persist": 0.2345182110582181,
+    "persistInside": 0.08361451331257633,
+    "gain": -0.03680289112806291
+   },
+   {
+    "all": 0.010312928404095558,
+    "room": 0.05161970905869315,
+    "inside": -1.0627901758648994,
+    "persist": -0.004180354633932333,
+    "persistInside": 0.01577724304827509,
+    "gain": -0.00009968092291329663
+   },
+   {
+    "all": 6.47651970780501,
+    "room": 5.566125608512161,
+    "inside": 0.7831983899847385,
+    "persist": 0.20751773567952475,
+    "persistInside": 0.07393387652869404,
+    "gain": 0.033968615083167286
+   }
+  ],
+  [
+   {
+    "all": 0.16306346896494422,
+    "room": -0.08279762338942216,
+    "inside": -0.652067002278078,
+    "persist": 0.044226545700616154,
+    "persistInside": -0.1338479198870586,
+    "gain": null
+   },
+   {
+    "all": -2.4487080323414294,
+    "room": -1.444379805741521,
+    "inside": 0.7293630521241959,
+    "persist": 0.0027876305678178758,
+    "persistInside": -0.07168316322956639,
+    "gain": 0.0003481875978743819
+   },
+   {
+    "all": -0.812150729651526,
+    "room": -0.6814828969041598,
+    "inside": -0.4167741147247989,
+    "persist": 0.28915438838259594,
+    "persistInside": 0.013689400371300425,
+    "gain": -0.03925680685652321
+   },
+   {
+    "all": -0.2994949525375646,
+    "room": -0.6814828969041598,
+    "inside": -0.4167741147247989,
+    "persist": 0.02192554860815151,
+    "persistInside": -0.05224920057084125,
+    "gain": 0.0002874787792994624
+   },
+   {
+    "all": 5.747227565471445,
+    "room": 2.6266046185493566,
+    "inside": 4.39386301835548,
+    "persist": 0.26108586469525313,
+    "persistInside": 0.0031171235469422947,
+    "gain": 0.03708940269168272
+   }
+  ],
+  [
+   {
+    "all": -1.289252643183158,
+    "room": 0.03252857193270811,
+    "inside": 0.05994490445192385,
+    "persist": -0.15037938363745254,
+    "persistInside": 0.10658644177879235,
+    "gain": null
+   },
+   {
+    "all": -0.7124131029892634,
+    "room": -0.5794055898591425,
+    "inside": 0.25579203768913233,
+    "persist": -0.1242357792488995,
+    "persistInside": 0.1022530624777622,
+    "gain": 0.0004060595487023676
+   },
+   {
+    "all": -0.15006549903636746,
+    "room": -0.15006549903636746,
+    "inside": 0.0688331453829635,
+    "persist": 0.0812819070441966,
+    "persistInside": 0.1253373674970118,
+    "gain": -0.03875833061711461
+   },
+   {
+    "all": -0.15006549903636746,
+    "room": -0.15006549903636746,
+    "inside": 0.0688331453829635,
+    "persist": -0.12557405650069334,
+    "persistInside": 0.06909608053331791,
+    "gain": -0.000040143626181116844
+   },
+   {
+    "all": 6.747061912212158,
+    "room": 3.9500129854541335,
+    "inside": 4.117666247229418,
+    "persist": 0.05061485752630652,
+    "persistInside": 0.11498563521222639,
+    "gain": 0.036259857093111296
+   }
+  ],
+  [
+   {
+    "all": -0.16025060174278738,
+    "room": -1.35288207500561,
+    "inside": -0.7533663626395157,
+    "persist": -0.05255105822305718,
+    "persistInside": 0.20983217030181522,
+    "gain": null
+   },
+   {
+    "all": -0.16507531383817733,
+    "room": -0.6706700883877843,
+    "inside": 2.5310039322470277,
+    "persist": -0.043808460453451,
+    "persistInside": 0.2111214631512854,
+    "gain": 0.00020811683543611436
+   },
+   {
+    "all": -0.9421205772584226,
+    "room": -0.8734137869628074,
+    "inside": 2.5603342525278934,
+    "persist": 0.17976290462987604,
+    "persistInside": 0.21247142393489715,
+    "gain": -0.03763609435609857
+   },
+   {
+    "all": -0.564534219667778,
+    "room": -0.8734137869628074,
+    "inside": 2.5603342525278934,
+    "persist": -0.029694477480976745,
+    "persistInside": 0.17595281210354968,
+    "gain": 0.00022606963804746853
+   },
+   {
+    "all": 7.022722692170498,
+    "room": 3.0426176319129876,
+    "inside": 4.39930136238594,
+    "persist": 0.15748935387236113,
+    "persistInside": 0.20621086724559604,
+    "gain": 0.03562514178308603
+   }
+  ],
+  [
+   {
+    "all": -0.7421900638443814,
+    "room": -0.7421900638443814,
+    "inside": -0.6049227126373488,
+    "persist": 0.032208520670813555,
+    "persistInside": 0.039717964856534234,
+    "gain": null
+   },
+   {
+    "all": 0.7800320370973993,
+    "room": 0.7800320370973993,
+    "inside": 1.906344775900915,
+    "persist": -0.01048322094908352,
+    "persistInside": 0.0776916568911283,
+    "gain": 0.0006658713136926949
+   },
+   {
+    "all": -0.41565631338857223,
+    "room": 0.6033710132193817,
+    "inside": 0.6602052063773833,
+    "persist": 0.2735557544661202,
+    "persistInside": 0.10227095728116914,
+    "gain": -0.03939771903172213
+   },
+   {
+    "all": -0.38525569161481005,
+    "room": 0.6033710132193817,
+    "inside": 0.6602052063773833,
+    "persist": 0.0466208029970595,
+    "persistInside": 0.04235735777282088,
+    "gain": 0.0005706444910103192
+   },
+   {
+    "all": 5.515832320410602,
+    "room": 4.0652534240967615,
+    "inside": 1.7391780043149985,
+    "persist": 0.24932752504352046,
+    "persistInside": 0.0944497987465075,
+    "gain": 0.03771837565758566
+   }
+  ],
+  [
+   {
+    "all": -1.5706984359897986,
+    "room": -1.0479893852713809,
+    "inside": -0.059333586742964226,
+    "persist": -0.09354667944251824,
+    "persistInside": 0.017419681257013875,
+    "gain": null
+   },
+   {
+    "all": -0.31480323010896405,
+    "room": -0.8635461447929418,
+    "inside": -0.05036809115764053,
+    "persist": -0.15343214449000825,
+    "persistInside": 0.006094427885965634,
+    "gain": 0.00024313203821773146
+   },
+   {
+    "all": -1.4003967844731162,
+    "room": -1.175170097932401,
+    "inside": 1.2185312847526126,
+    "persist": 0.15869694689434571,
+    "persistInside": 0.0685146441611025,
+    "gain": -0.039856179466627034
+   },
+   {
+    "all": -1.4003967844731162,
+    "room": -1.175170097932401,
+    "inside": 1.2185312847526126,
+    "persist": -0.10844874801402388,
+    "persistInside": 0.005245149516231775,
+    "gain": 0.00011896398271015128
+   },
+   {
+    "all": 6.856758527869329,
+    "room": 3.034259714834277,
+    "inside": 3.1461500931096493,
+    "persist": 0.12916506332895641,
+    "persistInside": 0.05957957308954721,
+    "gain": 0.037412899186928555
+   }
+  ],
+  [
+   {
+    "all": 0.34183139146943875,
+    "room": 0.7810382283392967,
+    "inside": -1.6610639635077271,
+    "persist": -0.20623534222663426,
+    "persistInside": -0.2538463025764036,
+    "gain": null
+   },
+   {
+    "all": -0.5518401887674933,
+    "room": 0.5791466258791714,
+    "inside": -0.627579893695453,
+    "persist": -0.13656547715144696,
+    "persistInside": -0.17958223716324292,
+    "gain": 0.0006370647736150198
+   },
+   {
+    "all": 0.019935350896765344,
+    "room": -0.17561934214676972,
+    "inside": 0.5653544105867652,
+    "persist": 0.11397790735827257,
+    "persistInside": -0.11268325660465267,
+    "gain": -0.03925785939949379
+   },
+   {
+    "all": 0.043663049131118015,
+    "room": -0.17561934214676972,
+    "inside": 0.5826919272238478,
+    "persist": -0.12212630209835032,
+    "persistInside": -0.16303562524059412,
+    "gain": 0.00021307777059283747
+   },
+   {
+    "all": 5.223491261603511,
+    "room": 2.7582645090419438,
+    "inside": 3.86013962146987,
+    "persist": 0.0862929826493025,
+    "persistInside": -0.12137931186042661,
+    "gain": 0.036858143422287507
+   }
+  ],
+  [
+   {
+    "all": 0.17382090443830214,
+    "room": -1.2005315641113592,
+    "inside": -1.2342896914519292,
+    "persist": -0.007662716814644388,
+    "persistInside": -0.07751844252947543,
+    "gain": null
+   },
+   {
+    "all": -0.30608777178788904,
+    "room": -0.7308261544369342,
+    "inside": -1.234352230566869,
+    "persist": -0.02207799215015163,
+    "persistInside": -0.07424671657230422,
+    "gain": 0.0005652671741765983
+   },
+   {
+    "all": -0.5433220073653242,
+    "room": -0.5433220073653242,
+    "inside": -2.4989148515877053,
+    "persist": 0.2172805357047262,
+    "persistInside": -0.08722409783575984,
+    "gain": -0.039203232083326774
+   },
+   {
+    "all": -0.5433220073653242,
+    "room": -0.5433220073653242,
+    "inside": -2.4989148515877053,
+    "persist": -0.014767314256400103,
+    "persistInside": -0.14678803222001274,
+    "gain": 0.0003869094213005379
+   },
+   {
+    "all": 6.866890061811388,
+    "room": 1.8469380212499031,
+    "inside": 2.803231356404364,
+    "persist": 0.19294194271417633,
+    "persistInside": -0.09620610641863447,
+    "gain": 0.03734401768606324
+   }
+  ],
+  [
+   {
+    "all": -0.31522135900300335,
+    "room": -0.12607638752621547,
+    "inside": -0.016453997558473665,
+    "persist": 0.21365131259263037,
+    "persistInside": -0.037480888702055855,
+    "gain": null
+   },
+   {
+    "all": -0.10761587457665911,
+    "room": -0.26711069328067066,
+    "inside": -1.366471258435053,
+    "persist": 0.19664785518847816,
+    "persistInside": -0.016630652649374782,
+    "gain": 0.0004001756424070884
+   },
+   {
+    "all": 0.39633619556542654,
+    "room": 0.7547327044948084,
+    "inside": 0.6105153341760207,
+    "persist": 0.32565612635762803,
+    "persistInside": 0.03020834778190096,
+    "gain": -0.03901761517622041
+   },
+   {
+    "all": 0.5510234005933633,
+    "room": 0.7547327044948084,
+    "inside": 0.6105153341760207,
+    "persist": 0.1799647676382171,
+    "persistInside": -0.021401884797222034,
+    "gain": -0.000014868248038990652
+   },
+   {
+    "all": 6.645532135259806,
+    "room": 4.078942901153347,
+    "inside": 3.559611803857836,
+    "persist": 0.30761032053647286,
+    "persistInside": 0.024366267799349615,
+    "gain": 0.03653400660033137
+   }
+  ],
+  [
+   {
+    "all": -0.968608789209074,
+    "room": -0.015123691109581845,
+    "inside": -0.27639860380796266,
+    "persist": -0.18190738657295463,
+    "persistInside": -0.12124876182863732,
+    "gain": null
+   },
+   {
+    "all": -1.0558737944865255,
+    "room": -0.5549042022885152,
+    "inside": -0.8798308505262142,
+    "persist": -0.19350292246319317,
+    "persistInside": -0.23182611518905047,
+    "gain": 0.0003661772741047833
+   },
+   {
+    "all": 0.48771445116854906,
+    "room": -1.0508769462749166,
+    "inside": -0.16177660113704234,
+    "persist": 0.16406561549463797,
+    "persistInside": -0.10781014985286286,
+    "gain": -0.04031187856616635
+   },
+   {
+    "all": 0.409208559263747,
+    "room": -1.0508769462749166,
+    "inside": -0.1587851099029181,
+    "persist": -0.1264841554519607,
+    "persistInside": -0.19261674353606198,
+    "gain": 0.0002845204009537234
+   },
+   {
+    "all": 7.2274954238104385,
+    "room": 3.7927741545671543,
+    "inside": 4.749552172818812,
+    "persist": 0.13383001799879385,
+    "persistInside": -0.1193453126333293,
+    "gain": 0.03826508231957112
+   }
+  ],
+  [
+   {
+    "all": -0.03912112536661758,
+    "room": 0.033090488235396794,
+    "inside": 0.7383762610312551,
+    "persist": 0.10248289423432068,
+    "persistInside": 0.08401842706890143,
+    "gain": null
+   },
+   {
+    "all": -0.2895478414344544,
+    "room": -0.23625268785806097,
+    "inside": 0.6954097721909414,
+    "persist": 0.008434652347412063,
+    "persistInside": 0.001922014844137332,
+    "gain": 0.0006198420334090672
+   },
+   {
+    "all": -0.3180774954809329,
+    "room": -0.3180774954809329,
+    "inside": 0.8377541099583883,
+    "persist": 0.2114270981422817,
+    "persistInside": 0.05156633456668378,
+    "gain": -0.03793787690661518
+   },
+   {
+    "all": -0.3180774954809329,
+    "room": -0.3180774954809329,
+    "inside": -0.18500608020459736,
+    "persist": 0.0014593207266457916,
+    "persistInside": 0.0077663309953327165,
+    "gain": 0.0006205896105435618
+   },
+   {
+    "all": 4.727263562492559,
+    "room": 1.1919548881557855,
+    "inside": 3.3389557995450345,
+    "persist": 0.18246550964302438,
+    "persistInside": 0.04259545555693696,
+    "gain": 0.03656027585466731
+   }
+  ],
+  [
+   {
+    "all": 0.39418493083591005,
+    "room": 0.39418493083591005,
+    "inside": 1.8464798135055387,
+    "persist": 0.34313425884745874,
+    "persistInside": 0.190723437668645,
+    "gain": null
+   },
+   {
+    "all": 1.4006624465924589,
+    "room": 1.0026331388732515,
+    "inside": 1.5818975115959195,
+    "persist": 0.271247018542577,
+    "persistInside": 0.2338454830255097,
+    "gain": 0.0003612118486484263
+   },
+   {
+    "all": 0.01871877153616985,
+    "room": -0.15824394140871728,
+    "inside": 1.3965200025300346,
+    "persist": 0.39349615899798907,
+    "persistInside": 0.28947465289843,
+    "gain": -0.038145363255049206
+   },
+   {
+    "all": 0.01871877153616985,
+    "room": -0.15824394140871728,
+    "inside": 1.3965200025300346,
+    "persist": 0.26121661943890695,
+    "persistInside": 0.23686448666861892,
+    "gain": 0.0003762945870325243
+   },
+   {
+    "all": 4.718884679069933,
+    "room": 3.515216280562646,
+    "inside": 5.401878277100846,
+    "persist": 0.3770960267978004,
+    "persistInside": 0.28282168853652834,
+    "gain": 0.03635315311383271
+   }
+  ],
+  [
+   {
+    "all": -1.6010621731381087,
+    "room": -1.4372955182021778,
+    "inside": -1.5833282215989397,
+    "persist": -0.35239580385531727,
+    "persistInside": 0.012138188236757858,
+    "gain": null
+   },
+   {
+    "all": -1.3327861900353708,
+    "room": -1.789931268626069,
+    "inside": 0.8231457420738416,
+    "persist": -0.39130920379165457,
+    "persistInside": 0.011484088404027804,
+    "gain": 0.0002756690663727318
+   },
+   {
+    "all": -2.1231729859754425,
+    "room": -1.3003688843022265,
+    "inside": 0.6824755235710411,
+    "persist": -0.029910998467511142,
+    "persistInside": 0.10990644569095025,
+    "gain": -0.04052954373020756
+   },
+   {
+    "all": -0.32306392623051855,
+    "room": -1.3131693332583922,
+    "inside": 1.0684797253041123,
+    "persist": -0.32467321116823894,
+    "persistInside": 0.06509462909143743,
+    "gain": 0.00031818061661852945
+   },
+   {
+    "all": 4.686247285033465,
+    "room": 2.039111079878319,
+    "inside": 4.30370021642531,
+    "persist": -0.05951344100123042,
+    "persistInside": 0.10144965477990775,
+    "gain": 0.038571878198579684
+   }
+  ],
+  [
+   {
+    "all": 0.5779007318419664,
+    "room": 0.6708333592063273,
+    "inside": -0.48815471135896504,
+    "persist": 0.006452874892768473,
+    "persistInside": -0.11798603972436375,
+    "gain": null
+   },
+   {
+    "all": 0.22512282569443387,
+    "room": 0.1380642326531413,
+    "inside": -0.6361577310462094,
+    "persist": 0.015366322277209105,
+    "persistInside": -0.12158721282766793,
+    "gain": 0.000359701340800721
+   },
+   {
+    "all": 0.4728218234450493,
+    "room": 0.4728218234450493,
+    "inside": -1.1752100062337487,
+    "persist": 0.30864054838166416,
+    "persistInside": -0.03394687230711894,
+    "gain": -0.03895559642505138
+   },
+   {
+    "all": 0.4728218234450493,
+    "room": 0.4728218234450493,
+    "inside": -1.1752100062337487,
+    "persist": 0.11924243635088733,
+    "persistInside": -0.0859083760281692,
+    "gain": 0.00004188046077967141
+   },
+   {
+    "all": 4.498771242210658,
+    "room": 4.359293721539841,
+    "inside": -0.613011706782007,
+    "persist": 0.28567023893795435,
+    "persistInside": -0.04296124219760948,
+    "gain": 0.03658240541910898
+   }
+  ],
+  [
+   {
+    "all": 0.9204094976386539,
+    "room": 0.9204094976386539,
+    "inside": -1.6002565564882847,
+    "persist": 0.1717351097380748,
+    "persistInside": -0.1454518783876783,
+    "gain": null
+   },
+   {
+    "all": 0.26938039097064503,
+    "room": 0.26938039097064503,
+    "inside": -1.6101106996333407,
+    "persist": 0.19511639703584568,
+    "persistInside": -0.26215385178107975,
+    "gain": 0.0003944450132197044
+   },
+   {
+    "all": -0.17302431910695784,
+    "room": -0.276397959120358,
+    "inside": -0.18062090396924776,
+    "persist": 0.2662474296254681,
+    "persistInside": -0.20007400184412177,
+    "gain": -0.03924856222575966
+   },
+   {
+    "all": -0.17302431910695784,
+    "room": -0.276397959120358,
+    "inside": -0.12237323940062202,
+    "persist": 0.1186839005266099,
+    "persistInside": -0.23295887833825843,
+    "gain": 0.0003152775820942731
+   },
+   {
+    "all": 5.661082002742636,
+    "room": 4.437277193411947,
+    "inside": 1.6802667092676784,
+    "persist": 0.24312770372457446,
+    "persistInside": -0.2074360990676461,
+    "gain": 0.037101314210408264
+   }
+  ],
+  [
+   {
+    "all": 0.3436298106878944,
+    "room": 0.4181179071911933,
+    "inside": -0.05974213443983345,
+    "persist": 0.18086905684011115,
+    "persistInside": -0.07508806409631236,
+    "gain": null
+   },
+   {
+    "all": 1.5087901468075198,
+    "room": 1.3094650177381477,
+    "inside": 1.2862589454381905,
+    "persist": 0.13293318300171864,
+    "persistInside": -0.07842389474202645,
+    "gain": 0.0002581319951163371
+   },
+   {
+    "all": -1.2407012820265406,
+    "room": -1.2971907822080697,
+    "inside": 0.6684671798181969,
+    "persist": 0.3524219144308525,
+    "persistInside": -0.07167255228697608,
+    "gain": -0.03701481942834085
+   },
+   {
+    "all": -1.2407012820265406,
+    "room": -1.2971907822080697,
+    "inside": 0.6684671798181969,
+    "persist": 0.17758856251927757,
+    "persistInside": -0.1331514685585793,
+    "gain": 0.00012742795555666312
+   },
+   {
+    "all": 8.341349332622432,
+    "room": 4.75702691568591,
+    "inside": 3.3297209279626383,
+    "persist": 0.3318163266195365,
+    "persistInside": -0.08110046295271858,
+    "gain": 0.03464367139519228
+   }
+  ],
+  [
+   {
+    "all": -2.390350928092781,
+    "room": -2.5989632858670566,
+    "inside": -0.5221363996494164,
+    "persist": -0.08814944520953269,
+    "persistInside": -0.3883305629526337,
+    "gain": null
+   },
+   {
+    "all": -0.9578514726441939,
+    "room": -1.0524218353425847,
+    "inside": -0.9401359838406744,
+    "persist": -0.007925691456892111,
+    "persistInside": -0.27291898612211085,
+    "gain": 0.0005714263213978559
+   },
+   {
+    "all": 0.23778261888147795,
+    "room": 0.36226457357323827,
+    "inside": -0.19921593885584557,
+    "persist": 0.2807506474186973,
+    "persistInside": -0.1984624875771327,
+    "gain": -0.036973053462172945
+   },
+   {
+    "all": 0.2615506869642392,
+    "room": 0.3849048260459202,
+    "inside": -0.3580603305291566,
+    "persist": 0.11211387243239435,
+    "persistInside": -0.24487900236501747,
+    "gain": 0.00047276283307375055
+   },
+   {
+    "all": 5.941550493372211,
+    "room": 4.082550128275127,
+    "inside": 0.3731924344559826,
+    "persist": 0.26081374189029494,
+    "persistInside": -0.20574289212166233,
+    "gain": 0.03531278353941817
+   }
+  ],
+  [
+   {
+    "all": 0.5469699572086482,
+    "room": 1.081118577443586,
+    "inside": -0.24946826799071853,
+    "persist": 0.19280008254720707,
+    "persistInside": -0.002713756944108444,
+    "gain": null
+   },
+   {
+    "all": 2.1761838865118652,
+    "room": 1.8005406006847215,
+    "inside": -1.7437672856466766,
+    "persist": 0.20629266313037642,
+    "persistInside": 0.09532286169685672,
+    "gain": 0.00014481919838686222
+   },
+   {
+    "all": 0.5742729844285531,
+    "room": -0.6472168371047945,
+    "inside": -0.9600534532128802,
+    "persist": 0.4009548008878966,
+    "persistInside": 0.08508329860090613,
+    "gain": -0.03936220483308247
+   },
+   {
+    "all": 0.14637563372946957,
+    "room": -0.6472168371047945,
+    "inside": -0.9600534532128802,
+    "persist": 0.23749846341092695,
+    "persistInside": 0.011026419768847525,
+    "gain": 0.000158612941341966
+   },
+   {
+    "all": 4.929730360583349,
+    "room": 2.0398211940796043,
+    "inside": 1.6964016080845663,
+    "persist": 0.37631866661453334,
+    "persistInside": 0.07304242041666018,
+    "gain": 0.036948727185600314
+   }
+  ],
+  [
+   {
+    "all": 0.5586509539423937,
+    "room": 0.40262936680312306,
+    "inside": -1.4015946155466759,
+    "persist": -0.33198599047242017,
+    "persistInside": 0.16330679290826428,
+    "gain": null
+   },
+   {
+    "all": 0.7293515730409824,
+    "room": 0.6880889032404518,
+    "inside": -0.9103746609526242,
+    "persist": -0.2467454929472651,
+    "persistInside": 0.21920187098578867,
+    "gain": 0.00037233279974051466
+   },
+   {
+    "all": -0.3717752812181815,
+    "room": 0.22410700283942678,
+    "inside": -1.55634615099468,
+    "persist": 0.0018348328542910654,
+    "persistInside": 0.32493917856368637,
+    "gain": -0.0392966830280641
+   },
+   {
+    "all": -0.32171115914858467,
+    "room": 0.22410700283942678,
+    "inside": -1.55634615099468,
+    "persist": -0.27443200027200376,
+    "persistInside": 0.29750203771217926,
+    "gain": 0.00009707576880799181
+   },
+   {
+    "all": 6.6452269822595955,
+    "room": 3.6367612886792338,
+    "inside": -1.1883015941999622,
+    "persist": -0.027329750269598777,
+    "persistInside": 0.31958093674680993,
+    "gain": 0.0367227104494476
+   }
+  ],
+  [
+   {
+    "all": 1.6879234267411058,
+    "room": 1.6879234267411058,
+    "inside": 0.12288832070765432,
+    "persist": 0.3259185065455412,
+    "persistInside": 0.0682392964882085,
+    "gain": null
+   },
+   {
+    "all": 2.238082009760591,
+    "room": 2.365385873672475,
+    "inside": 1.1422502704908246,
+    "persist": 0.324432600948513,
+    "persistInside": 0.15402725257831726,
+    "gain": 0.00026939994265274983
+   },
+   {
+    "all": 1.232878311291126,
+    "room": 0.9147074304436535,
+    "inside": 1.908191673152801,
+    "persist": 0.4326239568132964,
+    "persistInside": 0.2477919348795744,
+    "gain": -0.03766433379159323
+   },
+   {
+    "all": 1.2401965610181893,
+    "room": 0.9147074304436535,
+    "inside": 1.908191673152801,
+    "persist": 0.30807357962618037,
+    "persistInside": 0.20087207953186173,
+    "gain": 0.000011425479497858714
+   },
+   {
+    "all": 5.476692645799107,
+    "room": 3.249023028322866,
+    "inside": 3.300747264798793,
+    "persist": 0.4166516135845234,
+    "persistInside": 0.2419309391753174,
+    "gain": 0.035096281563161816
+   }
+  ],
+  [
+   {
+    "all": 0.6451860619566979,
+    "room": 0.6997868183501713,
+    "inside": -0.7349444087339181,
+    "persist": 0.04256927988177488,
+    "persistInside": -0.006231834451883472,
+    "gain": null
+   },
+   {
+    "all": -0.5156731827854444,
+    "room": 0.6056288623435402,
+    "inside": -0.506900860657392,
+    "persist": 0.16527823595249197,
+    "persistInside": 0.0015662556685872612,
+    "gain": 0.00030169861549600473
+   },
+   {
+    "all": -1.0181694439232791,
+    "room": 0.617362831430812,
+    "inside": -0.6811045827436434,
+    "persist": 0.32338926268981333,
+    "persistInside": 0.041463368947564534,
+    "gain": -0.03850141225165101
+   },
+   {
+    "all": -0.6440604824780228,
+    "room": 0.617362831430812,
+    "inside": -0.6765530550126777,
+    "persist": 0.12019710303004505,
+    "persistInside": -0.018242846348969277,
+    "gain": -0.0000729100571854991
+   },
+   {
+    "all": 4.8535275219767335,
+    "room": 4.25411017281085,
+    "inside": 1.3067122691410387,
+    "persist": 0.300394505782583,
+    "persistInside": 0.03137361452910132,
+    "gain": 0.03564024643854271
+   }
+  ],
+  [
+   {
+    "all": -1.9362286031425409,
+    "room": -1.1479857979623327,
+    "inside": 0.27615130329767673,
+    "persist": -0.01853040386915588,
+    "persistInside": 0.05515521508596506,
+    "gain": null
+   },
+   {
+    "all": -1.1247906767658344,
+    "room": -0.9968851028927327,
+    "inside": -1.5058568723996193,
+    "persist": -0.00491820433685499,
+    "persistInside": -0.001928119612735863,
+    "gain": 0.0002126451946871494
+   },
+   {
+    "all": -0.9976673706688879,
+    "room": 0.03200359242949706,
+    "inside": -0.9843738214737059,
+    "persist": 0.14994270612343383,
+    "persistInside": 0.009510611032843007,
+    "gain": -0.039345708224781124
+   },
+   {
+    "all": 0.0919741377477076,
+    "room": 0.03200359242949706,
+    "inside": -0.9843738214737059,
+    "persist": -0.03783525534521669,
+    "persistInside": -0.032716658367300595,
+    "gain": 0.000035247619436273816
+   },
+   {
+    "all": 6.604221763381526,
+    "room": 4.743741664421567,
+    "inside": -0.5707049579914185,
+    "persist": 0.13042714849387027,
+    "persistInside": 0.0032158292621530696,
+    "gain": 0.03695531422504194
+   }
+  ],
+  [
+   {
+    "all": -1.0841445131892828,
+    "room": -1.3692848686937318,
+    "inside": -1.8310978955487784,
+    "persist": -0.14840138592572058,
+    "persistInside": -0.3042251153268057,
+    "gain": null
+   },
+   {
+    "all": -0.5501261251123873,
+    "room": -0.5025498265441516,
+    "inside": -1.530236941030541,
+    "persist": -0.13322649279132778,
+    "persistInside": -0.3194568410407263,
+    "gain": 0.00058824334148027
+   },
+   {
+    "all": 2.153740390366318,
+    "room": 2.4745166357779005,
+    "inside": -0.9990806663476066,
+    "persist": 0.21098288196780587,
+    "persistInside": -0.2862538067225526,
+    "gain": -0.03851241008036347
+   },
+   {
+    "all": 0.8736952790682119,
+    "room": 2.4745166357779005,
+    "inside": -0.9990806663476066,
+    "persist": -0.06728386431790367,
+    "persistInside": -0.34931845046050847,
+    "gain": 0.0003711477458783967
+   },
+   {
+    "all": 7.2283946400390215,
+    "room": 4.979339336789539,
+    "inside": -1.249781145163,
+    "persist": 0.18229547927828413,
+    "persistInside": -0.2949512577358978,
+    "gain": 0.036748193056675746
+   }
+  ],
+  [
+   {
+    "all": 1.7627642921428535,
+    "room": 1.0584468167387286,
+    "inside": -0.39320780085150286,
+    "persist": -0.040111985762816445,
+    "persistInside": 0.11033829439265026,
+    "gain": null
+   },
+   {
+    "all": 0.12865162616632653,
+    "room": 1.632406620255131,
+    "inside": 0.5105832460311469,
+    "persist": -0.022488656979694904,
+    "persistInside": 0.11541119493348732,
+    "gain": 0.00043303978730770116
+   },
+   {
+    "all": 2.2144079183171317,
+    "room": 2.2144079183171317,
+    "inside": 0.8225321219397913,
+    "persist": 0.18699472480438936,
+    "persistInside": 0.23720165506836707,
+    "gain": -0.038531617434605515
+   },
+   {
+    "all": 1.9877774043423249,
+    "room": 2.2144079183171317,
+    "inside": 1.009684183643486,
+    "persist": -0.06499949305942695,
+    "persistInside": 0.1785034919729888,
+    "gain": -0.000027064888442250758
+   },
+   {
+    "all": 7.442169606929717,
+    "room": 4.37243142832325,
+    "inside": 3.9481615047879965,
+    "persist": 0.15873966296245096,
+    "persistInside": 0.22875404066614385,
+    "gain": 0.03579828590352408
+   }
+  ],
+  [
+   {
+    "all": -0.042353656917193123,
+    "room": 1.5058418613962348,
+    "inside": 0.569080681417935,
+    "persist": 0.10818806519265924,
+    "persistInside": -0.1549797199833105,
+    "gain": null
+   },
+   {
+    "all": 1.0634529941208937,
+    "room": 0.9635715691265124,
+    "inside": 1.0962673782879502,
+    "persist": 0.14393769498995146,
+    "persistInside": -0.16466456150604802,
+    "gain": 0.0004890672064997056
+   },
+   {
+    "all": 0.09226286299415805,
+    "room": -1.2802056275639728,
+    "inside": -0.7127222957196079,
+    "persist": 0.3436767265876728,
+    "persistInside": -0.18105306570019158,
+    "gain": -0.0369555037107051
+   },
+   {
+    "all": -0.24854578720915832,
+    "room": -1.2802056275639728,
+    "inside": -0.7127222957196079,
+    "persist": 0.1120333792816606,
+    "persistInside": -0.2542605633909778,
+    "gain": 0.00016011696229535085
+   },
+   {
+    "all": 7.226289977068164,
+    "room": 6.801754942927771,
+    "inside": 2.188621366641612,
+    "persist": 0.32108649608740153,
+    "persistInside": -0.1907938042882205,
+    "gain": 0.03470790825168891
+   }
+  ],
+  [
+   {
+    "all": 0.6502324483493331,
+    "room": -0.4703047236786713,
+    "inside": 2.162098332160545,
+    "persist": -0.28891577377563554,
+    "persistInside": 0.12059166952756888,
+    "gain": null
+   },
+   {
+    "all": -0.8125005701796555,
+    "room": -1.5441871349785377,
+    "inside": 2.00797140318566,
+    "persist": -0.33383105321891365,
+    "persistInside": 0.21531432535030404,
+    "gain": 0.0002885099135047706
+   },
+   {
+    "all": -2.1078012587066013,
+    "room": -2.1078012587066013,
+    "inside": 1.5599562429467064,
+    "persist": 0.03523630209294224,
+    "persistInside": 0.23604972722148457,
+    "gain": -0.03781291579127704
+   },
+   {
+    "all": -2.1029027673611735,
+    "room": -2.1029027673611735,
+    "inside": 1.5599562429467064,
+    "persist": -0.2281833035902812,
+    "persistInside": 0.19248941732258823,
+    "gain": 0.0003491091223360817
+   },
+   {
+    "all": 6.191041437263328,
+    "room": 2.438022589849268,
+    "inside": 2.953884133128019,
+    "persist": 0.009096834033236289,
+    "persistInside": 0.22910547514064752,
+    "gain": 0.03580719622487376
+   }
+  ],
+  [
+   {
+    "all": -0.326803119507406,
+    "room": -0.5508804821755756,
+    "inside": 0.07982303839992462,
+    "persist": -0.13175810851160216,
+    "persistInside": 0.26012643630044924,
+    "gain": null
+   },
+   {
+    "all": -0.9085230242023042,
+    "room": 0.10377334365220034,
+    "inside": 1.5619184808620419,
+    "persist": -0.030338237201399956,
+    "persistInside": 0.3214704398796098,
+    "gain": 0.0004315898717576277
+   },
+   {
+    "all": 1.8569642307587402,
+    "room": 0.3519623427456282,
+    "inside": 2.16831854238001,
+    "persist": 0.18273682842646194,
+    "persistInside": 0.3504371928887829,
+    "gain": -0.038133458756166326
+   },
+   {
+    "all": 1.910395953690508,
+    "room": 0.3519623427456282,
+    "inside": 2.16831854238001,
+    "persist": 0.036373258051813386,
+    "persistInside": 0.3181304321223819,
+    "gain": 0.00011051858836849558
+   },
+   {
+    "all": 7.140759274062323,
+    "room": 4.2288664126734155,
+    "inside": 4.909822755742337,
+    "persist": 0.16383625252582412,
+    "persistInside": 0.34517893076050304,
+    "gain": 0.035816452053953965
+   }
+  ],
+  [
+   {
+    "all": 0.05273763100838535,
+    "room": 0.05273763100838535,
+    "inside": -1.3374498264944386,
+    "persist": -0.1659896804577765,
+    "persistInside": 0.1369787736285998,
+    "gain": null
+   },
+   {
+    "all": -1.385825224763066,
+    "room": -1.4862116390094624,
+    "inside": 0.42680929253794625,
+    "persist": -0.2088895230625573,
+    "persistInside": 0.1657810095248418,
+    "gain": 0.00035671948814690915
+   },
+   {
+    "all": -0.6981283593087838,
+    "room": -0.966467210008319,
+    "inside": 0.00044017701499722485,
+    "persist": 0.042587107250403815,
+    "persistInside": 0.19870153874210755,
+    "gain": -0.03763641932718721
+   },
+   {
+    "all": -0.6785714640704033,
+    "room": -0.966467210008319,
+    "inside": 0.00044017701499722485,
+    "persist": -0.23093138066186727,
+    "persistInside": 0.15381899503786217,
+    "gain": 0.0005025887090092277
+   },
+   {
+    "all": 5.895796791600352,
+    "room": 3.4235248492872397,
+    "inside": 2.8908126576886986,
+    "persist": 0.012629845281154992,
+    "persistInside": 0.19126516931264254,
+    "gain": 0.035930451096156855
+   }
+  ],
+  [
+   {
+    "all": 1.3774215802281589,
+    "room": -0.2593578176972542,
+    "inside": 0.8243822930144834,
+    "persist": 0.09709438744589637,
+    "persistInside": -0.0415663648738319,
+    "gain": null
+   },
+   {
+    "all": 0.13908466544820924,
+    "room": 1.5503902126212719,
+    "inside": 0.7272937657506612,
+    "persist": 0.25957582693424675,
+    "persistInside": -0.04292328514656763,
+    "gain": 0.0005972470490324161
+   },
+   {
+    "all": 1.3100018855150306,
+    "room": 1.427860791227407,
+    "inside": -0.7434916597234378,
+    "persist": 0.4222153575452627,
+    "persistInside": -0.06146985748670898,
+    "gain": -0.03921159493608217
+   },
+   {
+    "all": 0.7175812751438863,
+    "room": 1.427860791227407,
+    "inside": -0.7372210012012291,
+    "persist": 0.28194063246550854,
+    "persistInside": -0.12666157067079395,
+    "gain": 0.0002529704311914761
+   },
+   {
+    "all": 3.3637796253439887,
+    "room": 2.7919249557002415,
+    "inside": -0.5646309982994175,
+    "persist": 0.40453728624593355,
+    "persistInside": -0.07022883176490037,
+    "gain": 0.03704774140619184
+   }
+  ],
+  [
+   {
+    "all": 1.394319956769434,
+    "room": 0.6978687512687138,
+    "inside": -0.18728639834950467,
+    "persist": 0.00017420669121601408,
+    "persistInside": 0.06284812901027319,
+    "gain": null
+   },
+   {
+    "all": 0.409387477325665,
+    "room": -0.8834022436279921,
+    "inside": 0.343203721048401,
+    "persist": 0.027272958587112584,
+    "persistInside": 0.0810425148563232,
+    "gain": 0.00038750774433597305
+   },
+   {
+    "all": -0.8139225908542678,
+    "room": -0.44622065165297614,
+    "inside": 0.7364319626186212,
+    "persist": 0.20407410297655282,
+    "persistInside": 0.11452692484452585,
+    "gain": -0.037163127194178164
+   },
+   {
+    "all": -0.6032487806278894,
+    "room": -0.5630417617514237,
+    "inside": 0.7364319626186212,
+    "persist": -0.02087297455630183,
+    "persistInside": 0.058868010011224596,
+    "gain": 0.0003757435883437681
+   },
+   {
+    "all": 7.221044435320094,
+    "room": 4.212224642138959,
+    "inside": 1.6631203604270812,
+    "persist": 0.18180083588605644,
+    "persistInside": 0.10713507190938912,
+    "gain": 0.03539005613361067
+   }
+  ],
+  [
+   {
+    "all": -0.7460780659419094,
+    "room": -0.8776987270420985,
+    "inside": 0.343637957144983,
+    "persist": 0.13384698355114769,
+    "persistInside": 0.1209859319566679,
+    "gain": null
+   },
+   {
+    "all": 0.9485073135040244,
+    "room": 2.1210984254965264,
+    "inside": -0.13572243610428256,
+    "persist": 0.1301261893418941,
+    "persistInside": 0.07367095256653221,
+    "gain": 0.00037211651584472005
+   },
+   {
+    "all": 1.920052934643364,
+    "room": 2.0093083508322227,
+    "inside": -0.31061234202584803,
+    "persist": 0.28227831477605114,
+    "persistInside": 0.12172122665464984,
+    "gain": -0.0383208010418516
+   },
+   {
+    "all": 1.9512499276571877,
+    "room": 2.0093083508322227,
+    "inside": -0.31061234202584803,
+    "persist": 0.11238549693963491,
+    "persistInside": 0.0787868256135373,
+    "gain": 0.000345580676489409
+   },
+   {
+    "all": 4.242110494284932,
+    "room": 3.8815932330004284,
+    "inside": 0.14238346839736643,
+    "persist": 0.2614995114050853,
+    "persistInside": 0.11477400971683326,
+    "gain": 0.036507710579068535
+   }
+  ],
+  [
+   {
+    "all": -0.2645617228727439,
+    "room": -0.3879822316594973,
+    "inside": -0.6069267882908282,
+    "persist": -0.2764527717987967,
+    "persistInside": -0.15562394634708854,
+    "gain": null
+   },
+   {
+    "all": -1.2618669825793691,
+    "room": -2.0170883377162983,
+    "inside": -0.6867635043718264,
+    "persist": -0.3497711187480556,
+    "persistInside": -0.1345772721486469,
+    "gain": 0.0005662600667886254
+   },
+   {
+    "all": -1.5092404319625565,
+    "room": -1.6829205006960817,
+    "inside": -1.135633999462679,
+    "persist": -0.04077177145118893,
+    "persistInside": -0.06510425662296612,
+    "gain": -0.041137226728460215
+   },
+   {
+    "all": -1.5357410528128626,
+    "room": -1.6829205006960817,
+    "inside": -1.135633999462679,
+    "persist": -0.33498114268709017,
+    "persistInside": -0.11762918813008591,
+    "gain": 0.0003945105128637274
+   },
+   {
+    "all": 4.0543185123698535,
+    "room": 2.5118632983458182,
+    "inside": -0.8797254526045989,
+    "persist": -0.07636825439544111,
+    "persistInside": -0.07538001649127485,
+    "gain": 0.03900741731297545
+   }
+  ],
+  [
+   {
+    "all": 0.2406131155542785,
+    "room": 0.15765715550011716,
+    "inside": 2.4192513723571096,
+    "persist": -0.153038687994174,
+    "persistInside": 0.3217388195683447,
+    "gain": null
+   },
+   {
+    "all": 0.4313839666677909,
+    "room": 0.16091784421618988,
+    "inside": 1.0349725464606376,
+    "persist": -0.12488004639762068,
+    "persistInside": 0.27547567057289124,
+    "gain": 0.0003896656996442448
+   },
+   {
+    "all": 1.963367986921971,
+    "room": -0.02240960486389356,
+    "inside": 1.8699280699574399,
+    "persist": 0.08468361199318074,
+    "persistInside": 0.23166669175602383,
+    "gain": -0.039290628955558
+   },
+   {
+    "all": 1.963367986921971,
+    "room": -0.022409604863893755,
+    "inside": 1.8699280699574399,
+    "persist": -0.11187541106439795,
+    "persistInside": 0.20815070095976504,
+    "gain": 0.0005861883780169303
+   },
+   {
+    "all": 6.614036298364779,
+    "room": 3.4408674353410356,
+    "inside": 1.7636250915416614,
+    "persist": 0.06010358160855619,
+    "persistInside": 0.2270271626708266,
+    "gain": 0.03780323589656021
+   }
+  ],
+  [
+   {
+    "all": 0.41252457924180097,
+    "room": 0.41252457924180097,
+    "inside": 0.7609630255452533,
+    "persist": 0.19254656916290036,
+    "persistInside": 0.10722682069328605,
+    "gain": null
+   },
+   {
+    "all": 1.1706237322621302,
+    "room": 1.3138039253109681,
+    "inside": -0.47276131952822886,
+    "persist": 0.17209219351615693,
+    "persistInside": 0.059634215915001905,
+    "gain": 0.00031782161541675155
+   },
+   {
+    "all": 0.46973364831254294,
+    "room": 1.7010655719800345,
+    "inside": -0.4512729940024296,
+    "persist": 0.31547796266470723,
+    "persistInside": 0.13833962356926588,
+    "gain": -0.0399589120859128
+   },
+   {
+    "all": 0.46973364831254294,
+    "room": 1.7010655719800345,
+    "inside": -0.4512729940024296,
+    "persist": 0.15206415922261463,
+    "persistInside": 0.09704888253075401,
+    "gain": 0.0006117187027719244
+   },
+   {
+    "all": 6.207881726833971,
+    "room": 4.334427299172031,
+    "inside": 2.7117845204148376,
+    "persist": 0.29484048560930587,
+    "persistInside": 0.1311726647665244,
+    "gain": 0.0384524060181758
+   }
+  ],
+  [
+   {
+    "all": -0.25058877260062845,
+    "room": -0.8447879703851228,
+    "inside": -0.0355245655272423,
+    "persist": -0.023880812518893308,
+    "persistInside": 0.11926934885665418,
+    "gain": null
+   },
+   {
+    "all": -0.015110958010567497,
+    "room": 0.14159932090039243,
+    "inside": 0.4124449454067733,
+    "persist": 0.02590919635196129,
+    "persistInside": 0.10654333423295627,
+    "gain": 0.00036575386568991013
+   },
+   {
+    "all": 0.48763923681357935,
+    "room": 0.22039332926359598,
+    "inside": -0.1780830787628053,
+    "persist": 0.30212126256306826,
+    "persistInside": 0.09101198249850416,
+    "gain": -0.03866683656798458
+   },
+   {
+    "all": 1.698453311023143,
+    "room": 0.22039332926359598,
+    "inside": 0.6219260136523422,
+    "persist": 0.1083984241223458,
+    "persistInside": 0.036466184201710744,
+    "gain": 0.000260869426277727
+   },
+   {
+    "all": 6.8607421238562685,
+    "room": 5.461661733903303,
+    "inside": 3.781563637342962,
+    "persist": 0.2817977183763946,
+    "persistInside": 0.08351079234119477,
+    "gain": 0.03667250158455714
+   }
+  ],
+  [
+   {
+    "all": 1.180009239353889,
+    "room": 1.2965481515083972,
+    "inside": -0.506094598322098,
+    "persist": 0.1370481524995518,
+    "persistInside": -0.10284973916587165,
+    "gain": null
+   },
+   {
+    "all": -0.9549173114985686,
+    "room": 0.706012358036897,
+    "inside": 0.7135548249368072,
+    "persist": 0.16290707560265735,
+    "persistInside": -0.02460083312517141,
+    "gain": 0.00044186887776315295
+   },
+   {
+    "all": 2.337633493738209,
+    "room": 0.17573513922925507,
+    "inside": -0.23525163900200943,
+    "persist": 0.36056573724092744,
+    "persistInside": 0.0059014392334811264,
+    "gain": -0.03804221119427234
+   },
+   {
+    "all": 2.3262920319993823,
+    "room": 0.17573513922925507,
+    "inside": -0.23525163900200943,
+    "persist": 0.1770027147081807,
+    "persistInside": -0.06260382412679492,
+    "gain": -0.000029282683495379068
+   },
+   {
+    "all": 6.230548563116662,
+    "room": 4.4732761222407325,
+    "inside": 0.36196550978995584,
+    "persist": 0.3435058963266864,
+    "persistInside": -0.0023350946019921096,
+    "gain": 0.03555568782422678
+   }
+  ],
+  [
+   {
+    "all": -0.09727563594244013,
+    "room": -0.5931426230165479,
+    "inside": -1.353311257990096,
+    "persist": -0.054352873134426036,
+    "persistInside": -0.04540234748518649,
+    "gain": null
+   },
+   {
+    "all": 1.1296847119337254,
+    "room": 0.8584359175500965,
+    "inside": -0.4487099540782596,
+    "persist": -0.041385557311416014,
+    "persistInside": 0.03361966479380491,
+    "gain": 0.0002782498011754589
+   },
+   {
+    "all": -0.2604855432723446,
+    "room": 1.4404708690874997,
+    "inside": -0.15193523772326864,
+    "persist": 0.18674157689179102,
+    "persistInside": 0.10294927978443746,
+    "gain": -0.03992998048933881
+   },
+   {
+    "all": -0.8837211352324272,
+    "room": 1.4404708690874997,
+    "inside": -0.2508151709379838,
+    "persist": -0.07996573047696268,
+    "persistInside": 0.04327114575051783,
+    "gain": 0.0002817328264204927
+   },
+   {
+    "all": 5.1535641353893755,
+    "room": 3.0374821479580785,
+    "inside": 1.2842734485287004,
+    "persist": 0.1581371661405515,
+    "persistInside": 0.09398890014661741,
+    "gain": 0.03789797843669759
+   }
+  ],
+  [
+   {
+    "all": -1.363460651145908,
+    "room": -1.60463861285484,
+    "inside": 0.9800397541161646,
+    "persist": -0.1103444484795965,
+    "persistInside": -0.10639667320919045,
+    "gain": null
+   },
+   {
+    "all": -0.8602060259325904,
+    "room": -0.9419555079160089,
+    "inside": -1.287209297041009,
+    "persist": -0.10342049596237252,
+    "persistInside": -0.18414019099545414,
+    "gain": 0.00032776032913915757
+   },
+   {
+    "all": -1.1071546290807992,
+    "room": -1.5906393967191321,
+    "inside": -0.059731101802536,
+    "persist": 0.19912179805532848,
+    "persistInside": -0.07782622532657618,
+    "gain": -0.03808536053131314
+   },
+   {
+    "all": -1.1071546290807992,
+    "room": -1.5906393967191321,
+    "inside": -0.059731101802536,
+    "persist": -0.0650431671008884,
+    "persistInside": -0.14154936070433116,
+    "gain": 0.00021531857676511073
+   },
+   {
+    "all": 6.973251984813876,
+    "room": 4.233839029644855,
+    "inside": 4.185489482462439,
+    "persist": 0.16918317947809608,
+    "persistInside": -0.0880041003253012,
+    "gain": 0.035739317183276186
+   }
+  ],
+  [
+   {
+    "all": -1.3387674411214254,
+    "room": -1.345212834332208,
+    "inside": -2.2549360499153472,
+    "persist": -0.09505809874299838,
+    "persistInside": 0.013607884950799004,
+    "gain": null
+   },
+   {
+    "all": 0.20560956444522618,
+    "room": -0.12576459964398007,
+    "inside": -1.4381893681401856,
+    "persist": -0.033901668368090575,
+    "persistInside": 0.007890844906962418,
+    "gain": 0.0008345858758982855
+   },
+   {
+    "all": -2.009788043245104,
+    "room": -1.6230383153170973,
+    "inside": -0.8974538617459636,
+    "persist": 0.18941424860687822,
+    "persistInside": -0.003160156449354649,
+    "gain": -0.03846802794304776
+   },
+   {
+    "all": -2.009788043245104,
+    "room": -1.5482523503344687,
+    "inside": -0.42462636265418624,
+    "persist": -0.03956783045117876,
+    "persistInside": -0.057550767274786294,
+    "gain": 0.00047688712646519476
+   },
+   {
+    "all": 5.300386941804528,
+    "room": 3.794688572861242,
+    "inside": 4.251386230950635,
+    "persist": 0.16295160255983673,
+    "persistInside": -0.011678656837451883,
+    "gain": 0.03700843319494992
+   }
+  ],
+  [
+   {
+    "all": 0.25636136240172,
+    "room": 1.1812174825769943,
+    "inside": 0.3897735154406845,
+    "persist": 0.43925552250281624,
+    "persistInside": 0.11924407152648364,
+    "gain": null
+   },
+   {
+    "all": 1.3902332158901842,
+    "room": 0.8709211481100404,
+    "inside": 0.31591050261704234,
+    "persist": 0.4704543155797499,
+    "persistInside": 0.11676853984667544,
+    "gain": 0.00039810311156699183
+   },
+   {
+    "all": 0.6406886117608086,
+    "room": 0.8907904156085334,
+    "inside": -0.15034859560387637,
+    "persist": 0.5188183438221388,
+    "persistInside": 0.23736713975853702,
+    "gain": -0.04120395401215112
+   },
+   {
+    "all": 0.6406886117608086,
+    "room": 0.8907904156085338,
+    "inside": -0.15034859560387637,
+    "persist": 0.4367690842959501,
+    "persistInside": 0.19026057358802984,
+    "gain": 0.00029215543436266476
+   },
+   {
+    "all": 5.75028709706329,
+    "room": 4.947924025167418,
+    "inside": 2.1690359831576105,
+    "persist": 0.5078321273515003,
+    "persistInside": 0.23079555764250487,
+    "gain": 0.03906949105917033
+   }
+  ],
+  [
+   {
+    "all": 0.07045063061218489,
+    "room": 0.1571254988739049,
+    "inside": -0.6832314432009731,
+    "persist": -0.00827341237821151,
+    "persistInside": 0.005873881486193148,
+    "gain": null
+   },
+   {
+    "all": 1.751867495697955,
+    "room": 1.751867495697955,
+    "inside": 1.1655320890087475,
+    "persist": -0.01614099305223051,
+    "persistInside": -0.02863941689106899,
+    "gain": 0.00018128757011235758
+   },
+   {
+    "all": 1.341346906565733,
+    "room": 1.2102902928371855,
+    "inside": 3.0483401540786645,
+    "persist": 0.2298542375245129,
+    "persistInside": 0.06448108852410915,
+    "gain": -0.03823108736572598
+   },
+   {
+    "all": 1.341346906565733,
+    "room": 1.2102902928371855,
+    "inside": 2.7601187484078418,
+    "persist": -0.033974109720313,
+    "persistInside": -0.01030395010251171,
+    "gain": 0.00020543651818259956
+   },
+   {
+    "all": 4.731936768287737,
+    "room": 3.6528087743591326,
+    "inside": 3.866779148173565,
+    "persist": 0.19985326354919533,
+    "persistInside": 0.05268811991513092,
+    "gain": 0.03572306969182816
+   }
+  ],
+  [
+   {
+    "all": -1.6441550176227422,
+    "room": -1.0977049788729882,
+    "inside": -0.4832155687548902,
+    "persist": -0.12163906244468987,
+    "persistInside": -0.2376835287179122,
+    "gain": null
+   },
+   {
+    "all": -0.9064670569670844,
+    "room": -0.9482929879130264,
+    "inside": -0.30959934965098357,
+    "persist": -0.06651173341604887,
+    "persistInside": -0.14446062690507896,
+    "gain": 0.0004997056728516568
+   },
+   {
+    "all": -1.9485652003587761,
+    "room": -1.167303265891128,
+    "inside": -0.5920052863653246,
+    "persist": 0.19567971413760313,
+    "persistInside": -0.18340361901150748,
+    "gain": -0.039732422395787406
+   },
+   {
+    "all": -1.5326664944546198,
+    "room": -1.167303265891128,
+    "inside": -0.8632412185589888,
+    "persist": -0.06071895671320889,
+    "persistInside": -0.2301984650958365,
+    "gain": 0.0005620382616779683
+   },
+   {
+    "all": 5.746765178758836,
+    "room": 5.478072423882313,
+    "inside": 1.9552255911471512,
+    "persist": 0.1645358539306417,
+    "persistInside": -0.19204145133289527,
+    "gain": 0.038162196194598846
+   }
+  ],
+  [
+   {
+    "all": 0.41376370613041036,
+    "room": 0.4374174255271942,
+    "inside": -0.5870312466707638,
+    "persist": -0.00954810537314363,
+    "persistInside": -0.15221765375737614,
+    "gain": null
+   },
+   {
+    "all": -0.6735054808911093,
+    "room": -0.25743252225997504,
+    "inside": -1.7509052654431534,
+    "persist": -0.12256331945333261,
+    "persistInside": -0.2175754074947175,
+    "gain": 0.00043327927860285184
+   },
+   {
+    "all": 0.25270488784463807,
+    "room": -0.28133781266719754,
+    "inside": -2.225209265966873,
+    "persist": 0.15993882691685632,
+    "persistInside": -0.13349737922543456,
+    "gain": -0.03974273919879143
+   },
+   {
+    "all": 0.1259918658513366,
+    "room": -0.28133781266719754,
+    "inside": -2.225209265966873,
+    "persist": -0.10543748408101715,
+    "persistInside": -0.1917578482748922,
+    "gain": 0.0003816652923149881
+   },
+   {
+    "all": 3.2452088028428507,
+    "room": 4.497297428783456,
+    "inside": -1.8405718788425844,
+    "persist": 0.13126754965666626,
+    "persistInside": -0.14333052448834152,
+    "gain": 0.0378007286095918
+   }
+  ],
+  [
+   {
+    "all": 0.627308588112355,
+    "room": 0.627308588112355,
+    "inside": 0.3886285748238671,
+    "persist": 0.1584009942260753,
+    "persistInside": 0.1122082394667098,
+    "gain": null
+   },
+   {
+    "all": 0.5385650129934914,
+    "room": 0.5385650129934914,
+    "inside": 0.41521513200318744,
+    "persist": 0.15969435458299086,
+    "persistInside": 0.14967260976636595,
+    "gain": 0.00017496471659846037
+   },
+   {
+    "all": -1.165663545937303,
+    "room": -1.165663545937303,
+    "inside": 0.16462153032606008,
+    "persist": 0.22344379078142027,
+    "persistInside": 0.10165434781891752,
+    "gain": -0.03913833218006557
+   },
+   {
+    "all": -1.165663545937303,
+    "room": -1.165663545937303,
+    "inside": 0.16462153032606008,
+    "persist": 0.041876832421063284,
+    "persistInside": 0.06406086969443522,
+    "gain": 0.00027828788325024166
+   },
+   {
+    "all": 5.016955279332035,
+    "room": 3.976738704382628,
+    "inside": 0.13857304792435987,
+    "persist": 0.1975089020109676,
+    "persistInside": 0.0944090757523113,
+    "gain": 0.03694770474320786
+   }
+  ],
+  [
+   {
+    "all": -1.2044037985266443,
+    "room": -0.16562594473481243,
+    "inside": 1.7498870158319604,
+    "persist": 0.028316151580374982,
+    "persistInside": -0.14308752124869825,
+    "gain": null
+   },
+   {
+    "all": 1.0494511268920566,
+    "room": -0.24025005488157933,
+    "inside": 0.7162875828691139,
+    "persist": 0.06398999839004807,
+    "persistInside": -0.09128230341122252,
+    "gain": 0.0005823264093553686
+   },
+   {
+    "all": -0.24285159647606705,
+    "room": -0.054559276403158774,
+    "inside": 0.34535765119522066,
+    "persist": 0.2865349112248079,
+    "persistInside": -0.06891865699128379,
+    "gain": -0.04002169800413449
+   },
+   {
+    "all": 0.7482012250938334,
+    "room": -0.08220810956508613,
+    "inside": 0.34535765119522066,
+    "persist": 0.07207949316807154,
+    "persistInside": -0.13041411588077445,
+    "gain": 0.00036607616432242986
+   },
+   {
+    "all": 6.0101708486445204,
+    "room": 5.199648620072371,
+    "inside": 1.858183839549127,
+    "persist": 0.2614550142574129,
+    "persistInside": -0.07847263236193087,
+    "gain": 0.03816948432455102
+   }
+  ],
+  [
+   {
+    "all": -0.7049196479412462,
+    "room": -0.871053121412885,
+    "inside": 0.057855390625057075,
+    "persist": -0.026707388378187053,
+    "persistInside": 0.019928627450472917,
+    "gain": null
+   },
+   {
+    "all": -0.9570823688845408,
+    "room": -0.9891269356476299,
+    "inside": 1.1180704623371598,
+    "persist": -0.053742867631160304,
+    "persistInside": 0.0030032751098532508,
+    "gain": 0.00006108055710452685
+   },
+   {
+    "all": -1.1891666800637128,
+    "room": 0.2914058060317401,
+    "inside": 0.8007750288188087,
+    "persist": 0.17235732274286972,
+    "persistInside": 0.043051613907057966,
+    "gain": -0.03924556512728958
+   },
+   {
+    "all": -0.9666550038258798,
+    "room": 0.2914058060317401,
+    "inside": 0.8007750288188087,
+    "persist": -0.08977072252628965,
+    "persistInside": -0.021131502837603885,
+    "gain": -0.00005736644574758736
+   },
+   {
+    "all": 5.850196882257506,
+    "room": 5.187414434890698,
+    "inside": 0.8990799516642232,
+    "persist": 0.1475753061530368,
+    "persistInside": 0.03552755515969485,
+    "gain": 0.036567824513227334
+   }
+  ],
+  [
+   {
+    "all": 1.8684024280105207,
+    "room": 1.608080186155895,
+    "inside": 0.24301854472185191,
+    "persist": 0.11746012437732097,
+    "persistInside": 0.10896378536970165,
+    "gain": null
+   },
+   {
+    "all": 1.5220719525891244,
+    "room": 1.5935854819840964,
+    "inside": 1.281120808443624,
+    "persist": 0.13963454631351505,
+    "persistInside": 0.04000364200691622,
+    "gain": 0.0007178730984635247
+   },
+   {
+    "all": 0.689275329047575,
+    "room": 0.5561567394274947,
+    "inside": -0.34629863065705807,
+    "persist": 0.27186160627781963,
+    "persistInside": 0.08207781351436956,
+    "gain": -0.038655185302696585
+   },
+   {
+    "all": 0.689275329047575,
+    "room": 0.5561567394274947,
+    "inside": -0.3291026731168276,
+    "persist": 0.14402332071676682,
+    "persistInside": 0.041849202158051185,
+    "gain": 0.0006752810004105493
+   },
+   {
+    "all": 3.6309599052606036,
+    "room": 3.8779057015033143,
+    "inside": 0.7778077627716957,
+    "persist": 0.2499346100607916,
+    "persistInside": 0.07499273339237052,
+    "gain": 0.037169384519858344
+   }
+  ],
+  [
+   {
+    "all": 0.03919856172539606,
+    "room": 0.03919856172539606,
+    "inside": 0.5394173698386289,
+    "persist": 0.0040671106142715005,
+    "persistInside": -0.0256250202484319,
+    "gain": null
+   },
+   {
+    "all": -0.2680065378698846,
+    "room": -0.24841969075703127,
+    "inside": 0.7509204637973913,
+    "persist": 0.07286299006132371,
+    "persistInside": -0.04026975304699066,
+    "gain": 0.0004828005871235666
+   },
+   {
+    "all": 1.3209657017874388,
+    "room": 0.38920373465500824,
+    "inside": 0.37273165790877394,
+    "persist": 0.301337254678967,
+    "persistInside": 0.03509398394824428,
+    "gain": -0.03977098488670577
+   },
+   {
+    "all": 1.3209657017874388,
+    "room": 0.38920373465500824,
+    "inside": 1.4024193194093333,
+    "persist": 0.06586948469655855,
+    "persistInside": -0.03266003376859602,
+    "gain": 0.0005301013735970768
+   },
+   {
+    "all": 7.093095537286587,
+    "room": 6.0115654053517265,
+    "inside": 4.035651733814026,
+    "persist": 0.278957327524899,
+    "persistInside": 0.025136865019035066,
+    "gain": 0.03822138241622929
+   }
+  ],
+  [
+   {
+    "all": -0.61617391048645,
+    "room": -0.61617391048645,
+    "inside": -0.31888231312974874,
+    "persist": -0.05709114750404979,
+    "persistInside": -0.04382843373885294,
+    "gain": null
+   },
+   {
+    "all": 0.22942743609562088,
+    "room": 0.1930951002873567,
+    "inside": -0.0017588679773591059,
+    "persist": -0.0007726227959463264,
+    "persistInside": -0.010359428219422578,
+    "gain": 0.0005051560709129994
+   },
+   {
+    "all": 0.20411512098160492,
+    "room": 0.4019812408498794,
+    "inside": 0.552916222229155,
+    "persist": 0.2719043613882179,
+    "persistInside": 0.02538664367107632,
+    "gain": -0.03900012067584783
+   },
+   {
+    "all": 0.2668456143650257,
+    "room": 0.4019812408498794,
+    "inside": 0.552916222229155,
+    "persist": 0.05402978052854199,
+    "persistInside": -0.05196456592263768,
+    "gain": 0.0006342414289883714
+   },
+   {
+    "all": 8.190626681738545,
+    "room": 5.9040655702296005,
+    "inside": 1.568919838869401,
+    "persist": 0.2463783417819053,
+    "persistInside": 0.014454683833224203,
+    "gain": 0.037633906674542104
+   }
+  ],
+  [
+   {
+    "all": 1.4917760412255414,
+    "room": 1.4917760412255414,
+    "inside": -0.3500236758386145,
+    "persist": 0.12175602141994421,
+    "persistInside": -0.08589104737152321,
+    "gain": null
+   },
+   {
+    "all": 1.5883482904419814,
+    "room": 1.5883482904419814,
+    "inside": -0.396666950162288,
+    "persist": 0.1410213268766413,
+    "persistInside": -0.12190273972713556,
+    "gain": 0.0003760873655491446
+   },
+   {
+    "all": 1.0121019680070897,
+    "room": 1.1789631826368634,
+    "inside": -0.10137684799833599,
+    "persist": 0.3491139829609764,
+    "persistInside": -0.029443717866810964,
+    "gain": -0.0397158017410527
+   },
+   {
+    "all": 1.1127850409632265,
+    "room": 1.1789631826368634,
+    "inside": -0.10137684799833599,
+    "persist": 0.1854503362872296,
+    "persistInside": -0.08967213808957346,
+    "gain": 0.00024529050091140296
+   },
+   {
+    "all": 6.3870358775782075,
+    "room": 2.755746365783307,
+    "inside": 2.6914032460244015,
+    "persist": 0.3280695110814389,
+    "persistInside": -0.03969572622433323,
+    "gain": 0.03737304479355919
+   }
+  ],
+  [
+   {
+    "all": -0.8269876329762094,
+    "room": -1.2703226780541592,
+    "inside": -0.8218843705372462,
+    "persist": -0.15447848903364653,
+    "persistInside": -0.10566148810465067,
+    "gain": null
+   },
+   {
+    "all": -0.4029293933362885,
+    "room": -0.026144398115528482,
+    "inside": -1.260711258047956,
+    "persist": -0.03871025520502833,
+    "persistInside": -0.13829021175539546,
+    "gain": 0.0005907860083249208
+   },
+   {
+    "all": 1.9939780674070706,
+    "room": 1.9939780674070706,
+    "inside": -0.3887315599746635,
+    "persist": 0.25283338856707194,
+    "persistInside": -0.1351883774765933,
+    "gain": -0.03765673198198553
+   },
+   {
+    "all": 1.5773556597470422,
+    "room": 1.9939780674070706,
+    "inside": -0.24827625988941052,
+    "persist": 0.005507378474810031,
+    "persistInside": -0.18756315611040217,
+    "gain": 0.00048590602378573177
+   },
+   {
+    "all": 3.1425341772521076,
+    "room": 3.574532920653993,
+    "inside": 1.569928633862805,
+    "persist": 0.2203965354717019,
+    "persistInside": -0.14551390327413358,
+    "gain": 0.035893714917692957
+   }
+  ],
+  [
+   {
+    "all": 1.5761559558127871,
+    "room": 2.0241355691691036,
+    "inside": 0.7269462782168273,
+    "persist": 0.31433033240788505,
+    "persistInside": 0.020929684259716426,
+    "gain": null
+   },
+   {
+    "all": 2.107661579629458,
+    "room": 2.107661579629458,
+    "inside": -0.13205022757848003,
+    "persist": 0.32651974323912997,
+    "persistInside": -0.0013457855141588318,
+    "gain": 0.00006802560163692036
+   },
+   {
+    "all": 1.841126371082813,
+    "room": 1.841126371082813,
+    "inside": -0.40142419593668216,
+    "persist": 0.43293471087768326,
+    "persistInside": -0.013396916164771872,
+    "gain": -0.03982328681182571
+   },
+   {
+    "all": 1.841126371082813,
+    "room": 1.841126371082813,
+    "inside": -0.40142419593668216,
+    "persist": 0.35591426596442177,
+    "persistInside": -0.043906825295029504,
+    "gain": -0.00009201013859072566
+   },
+   {
+    "all": 6.2945423344522355,
+    "room": 2.1572602564887644,
+    "inside": -0.27280889797752117,
+    "persist": 0.4148045829395469,
+    "persistInside": -0.02111018389892988,
+    "gain": 0.0368474837563812
+   }
+  ],
+  [
+   {
+    "all": -0.6878975987278243,
+    "room": -0.6878975987278243,
+    "inside": 0.7373900069312188,
+    "persist": -0.04142957138884057,
+    "persistInside": 0.09967389413594013,
+    "gain": null
+   },
+   {
+    "all": -1.696676968427952,
+    "room": -1.696676968427952,
+    "inside": 0.09867075643963598,
+    "persist": -0.10735391591253686,
+    "persistInside": 0.13506415701572072,
+    "gain": 0.0004947938911649567
+   },
+   {
+    "all": 0.2031522484281453,
+    "room": -0.35823732475193737,
+    "inside": 1.5399736678189413,
+    "persist": 0.10265641033089525,
+    "persistInside": 0.1558597768858118,
+    "gain": -0.038789838625515306
+   },
+   {
+    "all": 0.2031522484281453,
+    "room": -0.35823732475193737,
+    "inside": 1.113305399395253,
+    "persist": -0.08783934639563823,
+    "persistInside": 0.1251184851390032,
+    "gain": 0.0003791492835486252
+   },
+   {
+    "all": 8.024833993761584,
+    "room": 3.77824536250474,
+    "inside": 2.8993554286735987,
+    "persist": 0.07752739088349105,
+    "persistInside": 0.14900409470513296,
+    "gain": 0.036860916526781404
+   }
+  ]
+ ]
+}
