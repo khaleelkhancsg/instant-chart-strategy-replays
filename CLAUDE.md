@@ -596,6 +596,15 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
   - As a reversal entry it was worse than random in 2019-2025 and average in 2026.
   - Every combination rerun with it (`databox_room.mjs --ema-warning slowing`): 65 of 100 placebo
     picks as high.
+- **Dojis, levels and VWAP as turn calls** (`research/turn_context.mjs`; `--year 2025` confirms).
+  - Screened on 2026 and confirmed unchanged on 2025, against 100 placebo markets.
+  - Dojis alone call nothing. Two leads from 2026 failed on 2025:
+    - a doji at a level (+0.8, 13 of 100);
+    - the 1m EMA warning plus a doji (-2.9).
+  - One effect held in both years: at RTH VWAP, a bounce call wins about 1.5-2 points of win rate
+    less than a plain fade (99 of 100 placebo markets as high, both years and both halves of
+    2025). Price goes through VWAP more often than chance gives.
+  - Volume nodes leaned the same way in 2026, but the lean flipped in 2025.
 - **Heat before the target is set by the entry** (`research/databox_heat.mjs`): exits cannot
   change the path to the target.
   - Counting every firing, a 10-point target in 2026 averages 31 points against first (80%
