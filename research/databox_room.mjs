@@ -16,6 +16,14 @@
 // - Room raises the win rate, not the edge. A 0.5-ATR target with a 3-ATR stop wins 84% of the
 //   time from any 2026 minute and loses 0.3-1.3 points a trade. The box's best such pick from
 //   2019-2025 won 82% in 2026 and lost 3.12 a trade.
+// - REVERSE (added 2026-11-23, after the first run, when the person asked for the best configs):
+//   the 10 best on 2026, read on 2019-2025, average t 1.64. That is above every placebo market's
+//   (-1.62 to 1.39, median -0.13; 0 of 100 as high). They were positive in 5.1 of 7 years against a
+//   median 3.4 (2 of 100). Six of the ten are one setup: SHORT when the 1m EMA turns Pot. short while
+//   the 5m EMA (and MACD) read Pot. long, a 0.5-ATR target, no stop, out at 15:05 or after 120 min.
+//   Net points a trade after costs, to 15:05: 2019 +1.6, 2020 +1.9, 2021 -1.3, 2022 -8.1, 2023 -0.7,
+//   2024 +0.3, 2025 +8.7, 2026 +13.4 (+15.0 / +11.4 by half), about 300 trades a year. Picked after
+//   looking and only one direction holds (the forward pick is 96 of 100): a lead, not a book.
 // - From every 2026 minute, 16 of the 288 exit-and-direction pairs made money after costs, all of
 //   them shorts toward 15:05 with a big target (best +1.62 points a trade). Any minute had that.
 //
@@ -276,7 +284,26 @@ function persist(M, early, late, minE, minL) {
   return { r: (sxy - (sx * sy) / n) / Math.sqrt((sxx - (sx * sx) / n) * (syy - (sy * sy) / n)), n };
 }
 const INS = [0, 1, 2, 3, 4, 5, 6];
+// reverse (added 2026-11-23, after the person asked for the best configurations): the 10 best on
+// 2026 (100 trades there, 2,000 in 2019-2025), each read on 2019-2025 by itself (t by session);
+// the statistic is their mean t there, set against the same pick on every placebo market.
+function reverse(M) {
+  const top = [];
+  for (let k = 0; k < NC; k++) for (let d = 0; d < 2; d++) {
+    if (tradesIn(M, k, d, [7]) < 100 || tradesIn(M, k, d, INS) < 2000) continue;
+    for (let e = 0; e < NE; e++) {
+      const p = pooled(M, k, d, e, [7]);
+      if (!(p.t > (top.length < PICK ? -Infinity : top[top.length - 1].t))) continue;
+      top.push({ k, d, e, t: p.t });
+      top.sort((a, b) => b.t - a.t);
+      if (top.length > PICK) top.pop();
+    }
+  }
+  for (const p of top) { p.l = pooled(M, p.k, p.d, p.e, INS); p.years = INS.filter((s) => pooled(M, p.k, p.d, p.e, [s]).ex > 0).length; }
+  return { picks: top, t: top.reduce((s, p) => s + p.l.t, 0) / top.length, years: top.reduce((s, p) => s + p.years, 0) / top.length };
+}
 const read = (M) => ({
+  reverse: reverse(M),
   all: pick(M, INS, [7], 2000, 100, false, null),
   room: pick(M, INS, [7], 2000, 100, true, null),
   inside: pick(M, [8], [9], 100, 50, false, 9),
@@ -297,7 +324,7 @@ process.stderr.write(`  read: ${secs()}s\n`);
 const pl = [];
 for (let p = 0; p < PLACEBOS; p++) {
   const r = read(measure(placeboBars(bars, 9600 + p)));
-  pl.push({ all: r.all.t, room: r.room.t, inside: r.inside.t, persist: r.persist.r, persistInside: r.persistInside.r });
+  pl.push({ all: r.all.t, room: r.room.t, inside: r.inside.t, persist: r.persist.r, persistInside: r.persistInside.r, reverse: r.reverse.t, reverseYears: r.reverse.years });
   if ((p + 1) % 5 === 0 || p + 1 === PLACEBOS) process.stderr.write(`  ${p + 1}/${PLACEBOS} placebo markets, ${secs()}s\n`);
 }
 
@@ -330,6 +357,12 @@ const showPick = (title, P, key, lateName) => {
 showPick("ALL: the 10 best on 2019-2025, read on 2026", R.all, "all", "2026");
 showPick("ROOM: the 10 best on 2019-2025 among stops of 2 ATR or more held 40 minutes or more, read on 2026", R.room, "room", "2026");
 showPick("INSIDE 2026: the 10 best on Jan-Jun, read on Jul-Oct", R.inside, "inside", "Jul-Oct");
+{
+  const r = rank("reverse", R.reverse.t), ry = rank("reverseYears", R.reverse.years);
+  console.log(`\nREVERSE: the 10 best on 2026, each read on 2019-2025: mean t ${f2(R.reverse.t)} (placebo markets ${f2(r.lo)} to ${f2(r.hi)}, median ${f2(r.med)}; ${r.high} of ${r.n} as high); ` +
+              `years of 7 with a positive excess, mean ${f2(R.reverse.years)} (placebo median ${f2(ry.med)}; ${ry.high} of ${ry.n} as high)`);
+  for (const p of R.reverse.picks) console.log(`  ${(p.d ? "short " : "long  ") + labelOf(p.k).slice(0, 58).padEnd(59)} ${exitName(p.e).padEnd(39)} 2026 t ${f1(p.t).padStart(4)} | 2019-2025: ${pts(p.l.ex / p.l.n).padStart(6)} pts a trade over every minute, t ${f1(p.l.t)}, ${p.years}/7 years positive, ${p.l.n} trades`);
+}
 for (const [key, title] of [["persist", "PERSIST: every strategy's t on 2019-2025 against its t on 2026"], ["persistInside", "PERSIST INSIDE 2026: Jan-Jun against Jul-Oct"]]) {
   const r = rank(key, R[key].r);
   console.log(`\n${title}: correlation ${f2(R[key].r)} over ${R[key].n.toLocaleString()} strategies; placebo markets ${f2(r.lo)} to ${f2(r.hi)}, median ${f2(r.med)}; ${r.high} of ${r.n} as high`);
@@ -361,6 +394,8 @@ if (!PLANT) {
   const pk = (P) => ({ t: P.t, netPts: P.net * PX26, everyMinutePts: P.base * PX26, sePts: P.se * PX26, trades: P.n,
     picks: P.picks.map((p) => ({ entry: labelOf(p.k), dir: p.d ? "short" : "long", exit: exitName(p.e), tPicked: p.t, netPtsRead: p.l.net * PX26, everyMinutePtsRead: p.l.base * PX26, winsRead: p.l.win, tRead: p.l.t, nRead: p.l.n })) });
   fs.writeFileSync(`research/databox_room${SUF}_results.json`, JSON.stringify({ run: new Date().toISOString(), emaWarning: EW, placebos: PLACEBOS, strategies: NC * 2 * NE, tradesReal: trades,
-    all: pk(R.all), room: pk(R.room), inside: pk(R.inside), persist: R.persist, persistInside: R.persistInside, placebo: pl }, null, 1));
+    all: pk(R.all), room: pk(R.room), inside: pk(R.inside), persist: R.persist, persistInside: R.persistInside,
+    reverse: { t: R.reverse.t, years: R.reverse.years, picks: R.reverse.picks.map((p) => ({ entry: labelOf(p.k), dir: p.d ? "short" : "long", exit: exitName(p.e), t2026: p.t, ptsOver2019to2025: (p.l.ex / p.l.n) * PX26, t2019to2025: p.l.t, yearsPositive: p.years, trades2019to2025: p.l.n })) },
+    placebo: pl }, null, 1));
   console.log(`wrote ${SUF ? "" : "research/databox_room_exits.csv, "}research/databox_room${SUF}_top.csv, research/databox_room${SUF}_results.json`);
 }

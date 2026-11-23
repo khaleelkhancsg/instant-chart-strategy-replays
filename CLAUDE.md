@@ -543,6 +543,12 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
     the noise doubles, so an edge needs about 2 points to show.
   - Room buys win rate, not edge: a 0.5-ATR target with a 3-ATR stop wins 84% from any minute and
     still loses money.
+  - The one lead (added after looking): the 10 best on 2026, read back on 2019-2025, beat every
+    placebo market (mean t 1.64 against at most 1.39).
+    - Most of them are one setup: short when the 1m EMA turns Pot. short while the 5m rows read
+      Pot. long, 0.5-ATR target, no stop, out by 15:05.
+    - Net after costs: about breakeven 2019-2024 (2022 -8.1 a trade), +8.7 in 2025, +13.4 in 2026.
+    - The forward direction failed, so treat it as a lead.
 - **Reading the box live adds nothing** (`research/databox_live.mjs`, JSON beside it).
   - Every room strategy is read five ways:
     - at the close;
