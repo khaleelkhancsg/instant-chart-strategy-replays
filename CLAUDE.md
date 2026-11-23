@@ -528,6 +528,21 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
   - Picked on 2019-2025 and read on 2026: t 0.6, matched by 44 of 100 placebo picks. Picked on
     Jan-Jun 2026 and read on Jul-Oct: t 1.5, matched by 13 of 100.
   - With no stop, the picks' running totals fell 549-2,198 points a contract in 2026.
+- **Room adds no edge** (`research/databox_room.mjs`, CSVs and JSON beside it).
+  - The test: every entry with one grid of 144 exits, in 5-minute ATRs (about 28 points in
+    2026). Targets and stops are 0.5-5 ATR or none, held 15, 40 or 120 minutes or to 15:05.
+    That makes 179,712 strategies and 1.28 billion trades a market, against 100 placebo markets.
+  - t counts each session as one draw. A per-trade t is inflated by overlapping firings held to
+    15:05: one placebo market's picks scored t 11 out of sample.
+  - Picked on 2019-2025 and read on 2026, the picks lost 2.82 points a trade against 0.97 for every
+    minute with the same exits (t -1.7, 96 of 100 placebo picks as high).
+  - The roomy exits only (stop 2 ATR+, held 40 minutes+): -1.74 against -0.28 (72 of 100).
+    Jan-Jun read on Jul-Oct: 58 of 100. A strategy's t does not carry between periods (r 0.08,
+    29 of 100).
+  - A planted +1 point a trade shows at t 3.4, so the test can see an edge that size. With room
+    the noise doubles, so an edge needs about 2 points to show.
+  - Room buys win rate, not edge: a 0.5-ATR target with a 3-ATR stop wins 84% from any minute and
+    still loses money.
 - **Heat before the target is set by the entry** (`research/databox_heat.mjs`): exits cannot
   change the path to the target.
   - Counting every firing, a 10-point target in 2026 averages 31 points against first (80%
@@ -571,6 +586,12 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
   - It gates and splits trades as a `trend` study.
   - test/mock.test.mjs holds its lanes equal to the indicator's states after the warm-up.
   - It uses the lab's EMAs, seeded on the first value; Tradovate seeds on the first n.
+- **The Tradovate box reads the forming bar by default since 2026-11-23** (`updates`: `live` or
+  `close`; it replaced `readFormingBar`, off).
+  - It moves with each tick and sits in any `corner`. Indicators get no mouse input, so it can't
+    be dragged.
+  - The research reads `calc.st`, each bar's state once it has closed, which is what the live box
+    ends on. A mid-bar flip that flips back by the close was never tested.
 - **No 30-second bars are held.** Getting them takes a working TopstepX key (second bars, recent
   only) or Databento 1-second data (paid). Add one to `TFS` to run the other four
   combinations.
