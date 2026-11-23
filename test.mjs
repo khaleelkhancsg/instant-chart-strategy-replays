@@ -25,7 +25,7 @@ import { NO_FILTER } from "./src/filters.mjs";
 import { flatten, fastWindow } from "./src/search.mjs";
 import { evalDays } from "./src/dayeval.mjs";
 import { EVALS, EVAL_IDS, evalBase, evalKeys, evalOf } from "./src/evals.mjs";
-import { STUDIES, STUDY_TFS, resolveStudy, studyOnSignal, closedIndexMap, gatePasses, studyEdge, studyWarmupMin } from "./src/studies.mjs";
+import { STUDIES, STUDY_TFS, resolveStudy, studyOnSignal, gateKey, closedIndexMap, gatePasses, studyEdge, studyWarmupMin } from "./src/studies.mjs";
 import { DEFAULT_RULES } from "./src/challenge.mjs";
 import { describeEntry, px as explainPx } from "./src/explain.mjs";
 
@@ -3579,6 +3579,30 @@ if (bars_) {
       if (!st || st.pass !== false || e.entryOk) throw new Error(`bar ${k}: refused by the gate, but the explanation's study check is ${JSON.stringify(st)}`);
     }
     if (refused < 5) throw new Error(`only ${refused} gate refusals to check`);
+  });
+
+  t("a study as an exit: every SIGNAL exit is a bar its last closed reading went against the trade, and none without it", () => {
+    const s = strategies.get("donchian_shipped"), p = resolveParams(s, {});
+    const exec = resolveExec(s.execDefaults), filter = { ...NO_FILTER, ...s.filterDefaults };
+    const st = resolveStudy({ type: "databox", tf: 5, params: { gateOn: "macd" }, gate: "off", exit: "against" }, { strict: true });
+    if (st.exit !== "against") throw new Error("resolveStudy dropped exit");
+    let threw = false; try { resolveStudy({ type: "databox", tf: 5, exit: "sideways" }, { strict: true }); } catch { threw = true; }
+    if (!threw) throw new Error("an unknown exit mode was accepted");
+    const plain = runStrategy(H, s, p, exec, { filter });
+    if (plain.trades.some((t) => t.reason === "SIGNAL")) throw new Error("signal exits without a study exit");
+    const r = runStrategy(H, s, p, exec, { filter, studies: [st] });
+    const tf = r.tf || null, read = studyOnSignal(H, resample(H, s.timeframeMin), st);
+    let n = 0;
+    for (const t of r.trades) {
+      if (t.reason !== "SIGNAL") continue;
+      n++;
+      const k = t.exitIdx - 1;   // decided on the bar before the exit's open
+      if (read.dir[k] !== -t.dir) throw new Error(`a ${t.dir} trade left on bar ${k}, where the study read ${read.dir[k]}`);
+    }
+    if (n < 5) throw new Error(`only ${n} study exits to check`);
+    // a cached run must not stand in for one with an exit study (critic round 4)
+    if (JSON.stringify(gateKey([st])) === JSON.stringify(gateKey([]))) throw new Error("the cache key ignores an exit-only study");
+    if (tf === undefined) throw new Error("unreachable");
   });
 
   t("the order, in words: the trigger, the stop and the target are the trade's own", () => {

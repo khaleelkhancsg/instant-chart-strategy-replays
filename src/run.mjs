@@ -6,7 +6,7 @@
 import { resample } from "./resample.mjs";
 import { runBrackets, tradeStats, resolveExec } from "./engine.mjs";
 import { buildFilterContext, applyFilters, NO_FILTER, filterPeriods } from "./filters.mjs";
-import { buildEntryGate } from "./studies.mjs";
+import { buildEntryGate, buildStudyExit } from "./studies.mjs";
 import { newsWindowMask } from "./news.mjs";
 import { explainSignal } from "./explain.mjs";
 
@@ -50,7 +50,7 @@ export function runStrategy(bars1m, strategy, params, exec, opts = {}) {
   }
 
   const x = resolveExec(exec);
-  // A strategy may also return an exitSig: +1 closes a long, -1 closes a short.
+  // A strategy may also return an exitSig, a bitmask per bar: 1 closes a long, 2 a short.
   // It rides on the exec config rather than the signature so nothing that calls
   // runBrackets directly has to change.
   if (out.exitSig) x.exitSig = out.exitSig;
@@ -64,6 +64,13 @@ export function runStrategy(bars1m, strategy, params, exec, opts = {}) {
   if (x.newsRule === "noentry" || x.newsRule === "flat") x.newsMask = newsWindowMask(tf, x.newsBeforeMin, x.newsAfterMin, opts.newsEvents);
   // Indicator gates refuse entries only, so they are a hook rather than a mask
   // on the signal: a refused signal still flips an opposite position.
+  // A study set to exit (st.exit "against") closes a trade its direction reads against, OR'd
+  // with the strategy's own exitSig.
+  const studyExit = buildStudyExit(bars1m, tf, opts.studies);
+  if (studyExit) {
+    if (x.exitSig) { const m = Int8Array.from(x.exitSig); for (let i = 0; i < m.length; i++) m[i] |= studyExit[i]; x.exitSig = m; }
+    else x.exitSig = studyExit;
+  }
   let studyGated = 0;
   const gate = buildEntryGate(bars1m, tf, opts.studies);
   if (gate) {

@@ -931,8 +931,8 @@ export function resolveStudy(st, { strict = false } = {}) {
   if (!S) throw new Error(`unknown study type "${st.type}"; one of ${Object.keys(STUDIES).join(", ")}`);
   if (strict) {
     // label and gateText are what the chart reports a study as; passing one back is fine
-    const bad = Object.keys(st).filter((k) => !["id", "type", "tf", "params", "gate", "color", "hidden", "label", "gateText"].includes(k));
-    if (bad.length) throw new Error(`unknown study key${bad.length > 1 ? "s" : ""} ${bad.join(", ")}; a study takes type, tf, params, gate`);
+    const bad = Object.keys(st).filter((k) => !["id", "type", "tf", "params", "gate", "exit", "color", "hidden", "label", "gateText"].includes(k));
+    if (bad.length) throw new Error(`unknown study key${bad.length > 1 ? "s" : ""} ${bad.join(", ")}; a study takes type, tf, params, gate, exit`);
   }
   const tf = st.tf == null || st.tf === "" ? 0 : Math.trunc(Number(st.tf));
   if (!(tf === 0 || STUDY_TFS.includes(tf))) throw new Error(`${st.type}: timeframe ${st.tf} is not one of 0 (the signal's), ${STUDY_TFS.join(", ")}`);
@@ -957,6 +957,12 @@ export function resolveStudy(st, { strict = false } = {}) {
   const gate = st.gate == null || st.gate === "" ? "off" : String(st.gate);
   if (gate !== "off" && !S.gates.includes(gate)) throw new Error(`${st.type} gate "${gate}" is not one of off, ${S.gates.join(", ")}`);
   const out = { type: st.type, tf, params, gate };
+  // exit "against": the study also closes a trade its direction reads against (buildStudyExit)
+  if (st.exit != null && st.exit !== "" && st.exit !== "off") {
+    if (st.exit !== "against") throw new Error(`${st.type} exit "${st.exit}" is not one of off, against`);
+    if (!["trend", "osc", "price"].includes(S.kind) && !S.gates.includes("with")) throw new Error(`${st.type} has no direction to exit on`);
+    out.exit = "against";
+  }
   if (st.id != null) out.id = String(st.id);
   if (typeof st.color === "string" && /^#[0-9a-f]{6}$/i.test(st.color)) out.color = st.color;
   if (st.hidden) out.hidden = true;
@@ -970,7 +976,10 @@ export const resolveStudies = (list, opts) => {
 export const studyLabel = (st) => `${STUDIES[st.type].label(st.params)}${st.tf ? ` · ${st.tf}m` : ""}`;
 export const isGating = (st) => !!st && !!st.gate && st.gate !== "off";
 // What changes the trades: only gating studies, and only these fields of them.
-export const gateKey = (studies) => (studies || []).filter(isGating).map((s) => [s.type, s.tf, s.params, s.gate]);
+// The part of a study list that changes trades, for cache keys: the gates, and the studies set to
+// exit (st.exit), which change trades without gating (critic round 4: exit-only studies were
+// dropped, so a cached plain run was reused).
+export const gateKey = (studies) => (studies || []).filter((s) => isGating(s) || s.exit === "against").map((s) => [s.type, s.tf, s.params, s.gate, s.exit || "off"]);
 
 // How far back a study needs data before the window, in minutes, on the signal
 // timeframe `sigTf`. Bars become minutes padded 1.6x, plus 3 days: 7/5 for weekends,
@@ -1108,6 +1117,20 @@ export function gatePasses(r, k, d) {
 }
 
 // Every gating study at once, over the signal bars: (k, d) -> true to allow.
+// A study as an exit (st.exit === "against"): its direction, read on each signal bar exactly as a
+// gate reads it (the last closed bar of its timeframe), closes a long when it reads -1 and a short
+// when it reads +1, at the next open. An exitSig mask: 1 closes a long, 2 a short (src/engine.mjs).
+export function buildStudyExit(bars1m, sigBars, studies) {
+  const rs = (studies || []).filter((st) => st && st.exit === "against").map((st) => studyOnSignal(bars1m, sigBars, st));
+  if (!rs.length) return null;
+  const n = sigBars.close.length, m = new Int8Array(n);
+  for (const r of rs) {
+    if (!r.hasDir) throw new Error(`study ${r.st.type} has no direction to exit on`);
+    for (let k = 0; k < n; k++) m[k] |= r.dir[k] === -1 ? 1 : r.dir[k] === 1 ? 2 : 0;
+  }
+  return m;
+}
+
 export function buildEntryGate(bars1m, sigBars, studies) {
   const rs = (studies || []).filter(isGating).map((st) => studyOnSignal(bars1m, sigBars, st));
   if (!rs.length) return null;

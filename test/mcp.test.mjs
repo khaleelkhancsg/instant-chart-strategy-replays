@@ -120,6 +120,19 @@ await t("compare: a configuration against itself is a perfect tie", async () => 
   const m = await call("compare", { a: { strategy: "donchian_shipped" }, b: { strategy: "donchian_shipped", exec: { entryType: "market" } } });
   if (!(m.periods[0].onlyA + m.periods[0].onlyB > 0)) throw new Error("stop vs market entries made no difference");
 });
+await t("compare: each period's pass rates are its own window counts and pass_rate's, call after call (Maglev miscompile, critic round 1)", async () => {
+  const gate = (rule) => [{ type: "databox", tf: 5, params: { emaRule: rule, gateOn: "strict" }, gate: "with" }];
+  const base = { strategy: "donchian_1250", eval: "1250" }, pairs = [[{ ...base, studies: gate("speed") }, { ...base, studies: gate("slowing") }], [base, { ...base, studies: gate("slowing") }]];
+  for (const [a, b] of [...pairs, ...pairs]) {
+    const r = await call("compare", { a, b }), pa = await call("pass_rate", a), pb = await call("pass_rate", b);
+    for (const p of r.periods) {
+      eq(p.aPass, Math.round(((p.both + p.onlyA) / p.windows) * 1000) / 10, `${p.period} aPass against its counts:`);
+      eq(p.bPass, Math.round(((p.both + p.onlyB) / p.windows) * 1000) / 10, `${p.period} bPass against its counts:`);
+      eq(p.aPass, pa.periods.find((x) => x.period === p.period).calendar.pass, `${p.period} aPass against pass_rate:`);
+      eq(p.bPass, pb.periods.find((x) => x.period === p.period).calendar.pass, `${p.period} bPass against pass_rate:`);
+    }
+  }
+});
 await t("search: ranks in-sample only, reports out-of-sample and an overfitting estimate", async () => {
   const r = await call("search", { strategy: "momentum_roc", exec: { slippageTicks: 1 }, grid: { "params.lookback": [5, 10, 20], "exec.slAtrMult": [1, 2] } });
   eq(r.tried, 6); eq(r.of, 6);
@@ -239,6 +252,20 @@ await t("papers and chart tools answer (or say plainly why not)", async () => {
   if (!Array.isArray(p)) throw new Error("papers did not list");
   const c = await call("chart_state", {});
   if (!(c.error || c.strategy)) throw new Error("chart_state neither answered nor explained");
+});
+await t("compare in this process, called twice: each period's pass rates are its own counts (the Maglev miscompile showed here)", async () => {
+  // The bug came out in-process on the second call (a warm JIT); the server child above warms differently.
+  const { TOOLS } = await import("../mcp/tools.mjs");
+  const cmp = TOOLS.find((x) => x.name === "compare");
+  const gate = (rule) => [{ type: "databox", tf: 5, params: { emaRule: rule, gateOn: "strict" }, gate: "with" }];
+  const base = { strategy: "donchian_1250", eval: "1250" };
+  for (const [a, b] of [[{ ...base, studies: gate("speed") }, { ...base, studies: gate("slowing") }], [base, { ...base, studies: gate("slowing") }], [base, { ...base, studies: gate("speed") }]]) {
+    const r = await cmp.run({ a, b });
+    for (const p of r.periods) {
+      eq(p.aPass, Math.round(((p.both + p.onlyA) / p.windows) * 1000) / 10, `${p.period} aPass against its counts:`);
+      eq(p.bPass, Math.round(((p.both + p.onlyB) / p.windows) * 1000) / 10, `${p.period} bPass against its counts:`);
+    }
+  }
 });
 await t("stdout carried protocol messages only", async () => { eq(stray.length, 0, `stray stdout lines (${stray.slice(0, 2).join(" | ")}):`); });
 

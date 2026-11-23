@@ -193,25 +193,7 @@ export const TOOLS = [
       const A = await L.resolveConfig(a), Bc = await L.resolveConfig(b);
       const ta = L.fullRun(A).trades, tb = L.fullRun(Bc).trades;
       const R0 = { windowDays: Math.max(A.rules.windowDays, Bc.rules.windowDays) };
-      const rows = L.readPeriods(periods).map((p) => {
-        const starts = L.windowStarts(R0, p.from, p.to);
-        let pa = 0, pb = 0, both = 0, onlyA = 0, onlyB = 0, na = 0, nb = 0;
-        const months = new Map();
-        for (const s of starts) {
-          const ra = replayWindow(ta, s, A.rules), rb = replayWindow(tb, s, Bc.rules);
-          const xa = ra.outcome === OUTCOME.PASS, xb = rb.outcome === OUTCOME.PASS;
-          pa += xa; pb += xb; both += xa && xb; onlyA += xa && !xb; onlyB += xb && !xa;
-          na += ra.stats.netPnl; nb += rb.stats.netPnl;
-          const m = L.isoDay(s).slice(0, 7), c = months.get(m) || [0, 0];
-          c[0] += xa; c[1] += xb; months.set(m, c);
-        }
-        let mA = 0, mB = 0, mT = 0;
-        for (const [x, y] of months.values()) { if (x > y) mA++; else if (y > x) mB++; else mT++; }
-        const n = starts.length || 1;
-        return { period: p.label, windows: starts.length, aPass: L.pct(pa / n), bPass: L.pct(pb / n), both, onlyA, onlyB,
-                 neither: starts.length - both - onlyA - onlyB, aMeanNet: Math.round(na / n), bMeanNet: Math.round(nb / n),
-                 monthsAWins: mA, monthsBWins: mB, monthsTied: mT };
-      });
+      const rows = L.readPeriods(periods).map((p) => comparePeriod(p, L.windowStarts(R0, p.from, p.to), ta, tb, A.rules, Bc.rules));
       return { a: { strategy: A.s.id, eval: A.eval, changed: L.changed(A), costs: L.costLine(A.exec) }, b: { strategy: Bc.s.id, eval: Bc.eval, changed: L.changed(Bc), costs: L.costLine(Bc.exec) },
                warnings: [...A.warnings.map((w) => "a: " + w), ...Bc.warnings.map((w) => "b: " + w)], method: L.CALENDAR, periods: rows };
     },
@@ -516,6 +498,39 @@ export const TOOLS = [
     },
   },
 ];
+
+// One period of `compare`: each window's outcome for A and B, then the counts from those.
+// Written as two passes over a typed array, with the row built field by field: the single-pass
+// version (counters summed inside the window loop, the row as one object literal in a .map
+// callback) was miscompiled by Node 24's Maglev tier, which gave earlier periods a later period's
+// aPass/bPass while their window counts stayed right (critic loop round 1; reproduced 2026-11-23,
+// gone with --no-maglev). test/mcp.test.mjs holds the pass fields to the counts and to pass_rate.
+function comparePeriod(p, starts, ta, tb, rulesA, rulesB) {
+  const N = starts.length, out = new Uint8Array(N), netA = new Float64Array(N), netB = new Float64Array(N);
+  for (let k = 0; k < N; k++) {
+    const ra = replayWindow(ta, starts[k], rulesA), rb = replayWindow(tb, starts[k], rulesB);
+    out[k] = (ra.outcome === OUTCOME.PASS ? 1 : 0) | (rb.outcome === OUTCOME.PASS ? 2 : 0);
+    netA[k] = ra.stats.netPnl; netB[k] = rb.stats.netPnl;
+  }
+  let both = 0, onlyA = 0, onlyB = 0, na = 0, nb = 0;
+  const months = new Map();
+  for (let k = 0; k < N; k++) {
+    const o = out[k];
+    if (o === 3) both++; else if (o === 1) onlyA++; else if (o === 2) onlyB++;
+    na += netA[k]; nb += netB[k];
+    const m = L.isoDay(starts[k]).slice(0, 7), c = months.get(m) || [0, 0];
+    c[0] += o & 1; c[1] += (o >> 1) & 1; months.set(m, c);
+  }
+  let mA = 0, mB = 0, mT = 0;
+  for (const [x, y] of months.values()) { if (x > y) mA++; else if (y > x) mB++; else mT++; }
+  const n = N || 1, row = {};
+  row.period = p.label; row.windows = N;
+  row.aPass = L.pct((both + onlyA) / n); row.bPass = L.pct((both + onlyB) / n);
+  row.both = both; row.onlyA = onlyA; row.onlyB = onlyB; row.neither = N - both - onlyA - onlyB;
+  row.aMeanNet = Math.round(na / n); row.bMeanNet = Math.round(nb / n);
+  row.monthsAWins = mA; row.monthsBWins = mB; row.monthsTied = mT;
+  return row;
+}
 
 function popcount(m) { let c = 0; while (m) { c += m & 1; m >>= 1; } return c; }
 function sumWhere(arr, mask, inSet) { let s = 0; for (let j = 0; j < arr.length; j++) if (((mask >> j) & 1) === (inSet ? 1 : 0)) s += arr[j]; return s; }
