@@ -336,9 +336,29 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
     // the text keeps its place inside the box, wherever the box is
     const rel = (b) => b.out.filter((q) => q.t === "text").map((q) => `${q.key}:${(q.x - b.left).toFixed(2)},${(q.y - b.top).toFixed(2)}`).sort().join(" ");
     eq(rel(tr), rel(tl)); eq(rel(br), rel(at({ corner: "topLeft", boxX: 12, boxY: 20 })));
-    // and the top-left box is the one it always was: no origin
+    // the top-left box carries no origin, and the default corner is the top right
     const items = new Run(box, { props: { corner: "topLeft" } }).compute(BARS.slice(0, 301))[300].graphics.items;
     if (items.some((it) => it.origin)) throw new Error("the top-left box carries an origin");
+    const dflt = at({});
+    near(dflt.right, tr.right); near(dflt.top, tr.top);
+  });
+  t("every line of text is centred and sits inside the box, in every corner, even in a font 15% wider", () => {
+    const WIDE = (p) => p.text.length * p.size * (p.weight === "bold" ? 0.58 : 0.52) * 1.15;
+    let lines = 0;
+    for (const corner of ["topLeft", "topRight", "bottomLeft", "bottomRight"]) for (const k of [300, 2500, 5000]) for (const showBars of [true, false]) {
+      const r = new Run(box, { props: { corner, showBars } }).compute(BARS.slice(0, k + 1));
+      const out = graphicsPrims(r.map((o) => ({ graphics: o.graphics })), A, k - 99, k);
+      const b0 = out.find((q) => q.key === "dbBox"), xs = b0.pts.map((q) => q.x), ys = b0.pts.map((q) => q.y);
+      const L = Math.min(...xs), R = Math.max(...xs), T = Math.min(...ys), B = Math.max(...ys);
+      for (const q of out.filter((q) => q.t === "text" && q.text)) {
+        if (q.h !== "center" || q.v !== "middle") throw new Error(`${q.key} is aligned ${q.h} ${q.v}, not centred`);
+        const tb = textBox(q, WIDE(q));
+        if (tb.x < L || tb.x + tb.w > R || tb.y < T || tb.y + tb.h > B) throw new Error(`${q.key} "${q.text}" leaves the box (${corner})`);
+        lines++;
+      }
+      eq(overlaps(out).length, 0, `overlapping text (${corner}):`);
+    }
+    if (lines < 100) throw new Error(`only ${lines} lines checked`);
   });
   t("warnings can be switched off row by row, and a setting saved as on / off still reads", () => {
     for (let k = 40; k < 3000; k += 31) {
