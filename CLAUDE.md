@@ -558,6 +558,15 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
     they score t 5.9 at the median: assuming the minute's unknown wick came after the entry makes
     the edge. The middle reading: 53 of 100 placebo picks as high.
   - Settling the order inside the minute needs second-by-second bars.
+- **Momentum slowing points to nothing** (`research/databox_slowing.mjs`; the EMA row's `slowing`
+  rule, also in the lab study, warns when the gap moves its side's way less than the bar before).
+  - It fires before the turn 64% of the time on 1m, as it does on placebo markets: the rule's own
+    arithmetic.
+  - Price still goes 31-33 points the other way first (placebo 32). 8% of its warnings lead to a
+    cross (placebo 8%).
+  - As a reversal entry it was worse than random in 2019-2025 and average in 2026.
+  - Every combination rerun with it (`databox_room.mjs --ema-warning slowing`): 65 of 100 placebo
+    picks as high.
 - **Heat before the target is set by the entry** (`research/databox_heat.mjs`): exits cannot
   change the path to the target.
   - Counting every firing, a 10-point target in 2026 averages 31 points against first (80%

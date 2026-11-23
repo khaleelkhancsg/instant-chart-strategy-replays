@@ -262,7 +262,8 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
     for (let i = j; i >= 0 && sides[i] === sides[j]; i--) bars++;
     const s = sides[j], m = h(j) - h(j - 1), before = h(j - 1) - h(j - 2);
     const warn = rule === "shrink" ? h(j - 1) !== undefined && (s === 1 ? h(j) < h(j - 1) : s === -1 && h(j) > h(j - 1))
-      : rule === "speed" ? h(j - 2) !== undefined && (s === 1 ? m < 0 && m < before : s === -1 && m > 0 && m > before) : false;
+      : rule === "speed" ? h(j - 2) !== undefined && (s === 1 ? m < 0 && m < before : s === -1 && m > 0 && m > before)
+      : rule === "slowing" ? h(j - 2) !== undefined && (s === 1 ? m < before : s === -1 && m > before) : false;
     if (!ready || !s) return { text: "Warming up", bars: "" };
     return { text: s === 1 ? (warn ? "Potentially short" : "Long") : warn ? "Potentially long" : "Short", bars: `${bars} bar${bars === 1 ? "" : "s"}` };
   };
@@ -390,25 +391,46 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
     // closing at the same speed as the bar before is no warning
     eq([...databoxRow([-6, -5, -3.5, -2], "speed")].join(","), "3,3,4,3", "the same speed:");
   });
-  t("the lab's databox study draws the indicator's states, bar for bar after its warm-up", () => {
+  t("hand-traced: momentum slowing warns while the gap still widens, as soon as it moves less than the bar before", () => {
+    // the gap moves +3, +2, +1, -1, -2, -1.5 a bar
+    const rise = [1, 4, 6, 7, 6, 4, 2.5];
+    eq([...databoxRow(rise, "slowing")].join(","), "1,1,2,2,2,2,1", "slowing:");
+    eq([...databoxRow(rise, "speed")].join(","), "1,1,1,1,2,2,1", "closing faster, for comparison:");
+    eq([...databoxRow(rise.map((x) => -x), "slowing")].join(","), "3,3,4,4,4,4,3", "the mirror:");
+    // moving its side's way by the same amount as the bar before is no warning
+    eq([...databoxRow([1, 3, 5, 7], "slowing")].join(","), "1,1,1,1", "a steady rise:");
+  });
+  t("momentum slowing, the EMA row's third choice, reads Tradovate's EMA gap", () => {
+    let differs = 0;
+    for (let k = 40; k < BARS.length; k += 47) {
+      const j = k - 1, b = boxAt(k, { emaWarning: "slowing", updates: "close" });
+      eq(b.dbState0.text, expected(hEma, j, j >= 26, "slowing").text, `EMA row at bar ${j}:`);
+      if (b.dbState0.text !== boxAt(k, { updates: "close" }).dbState0.text) differs++;
+    }
+    if (!differs) throw new Error("slowing never differed from the default");
+  });
+  t("the lab's databox study draws the indicator's states, bar for bar after its warm-up, under each EMA rule", () => {
     // the study on the same bars, as the chart computes it
     const T = { ts: Float64Array.from(BARS, (b) => b.ts), open: Float64Array.from(BARS, (b) => b.o), high: Float64Array.from(BARS, (b) => b.h),
                 low: Float64Array.from(BARS, (b) => b.l), close: Float64Array.from(BARS, (b) => b.c), volume: Float64Array.from(BARS, (b) => b.v),
                 tday: Int32Array.from(BARS, (b) => b.td), ctMin: Int16Array.from(BARS, (b) => b.ct) };
-    const st = STUDIES.databox, p = Object.fromEntries(st.params.map((d) => [d.key, d.default]));
-    const lanes = st.compute(T, p).lanes, warm = st.warmup(p);
-    // the indicator's own state on every bar
-    const run = new Run(box), map = run.calc.map.bind(run.calc), mine = [];
-    const code = (r, ready) => (!ready || !r || r.side === 0 ? 0 : r.side === 1 ? (r.warn ? 2 : 1) : r.warn ? 4 : 3);
-    run.calc.map = (d, i) => { const out = map(d, i), S = run.calc.st[i]; mine[i] = [code(S.ema, S.emaReady), code(S.macd, S.macdReady)]; return out; };
-    run.compute(BARS);
-    let seen = new Set();
-    for (let i = warm; i < BARS.length; i++) {
-      eq(lanes[0].codes[i], mine[i][0], `EMA lane on bar ${i}:`);
-      eq(lanes[1].codes[i], mine[i][1], `MACD lane on bar ${i}:`);
-      seen.add(mine[i][0]); seen.add(mine[i][1]);
+    const st = STUDIES.databox;
+    for (const rule of ["speed", "closer", "slowing"]) {
+      const p = { ...Object.fromEntries(st.params.map((d) => [d.key, d.default])), emaRule: rule };
+      const lanes = st.compute(T, p).lanes, warm = st.warmup(p);
+      // the indicator's own state on every bar
+      const run = new Run(box, { props: { emaWarning: rule } }), map = run.calc.map.bind(run.calc), mine = [];
+      const code = (r, ready) => (!ready || !r || r.side === 0 ? 0 : r.side === 1 ? (r.warn ? 2 : 1) : r.warn ? 4 : 3);
+      run.calc.map = (d, i) => { const out = map(d, i), S = run.calc.st[i]; mine[i] = [code(S.ema, S.emaReady), code(S.macd, S.macdReady)]; return out; };
+      run.compute(BARS);
+      let seen = new Set();
+      for (let i = warm; i < BARS.length; i++) {
+        eq(lanes[0].codes[i], mine[i][0], `${rule}: EMA lane on bar ${i}:`);
+        eq(lanes[1].codes[i], mine[i][1], `${rule}: MACD lane on bar ${i}:`);
+        seen.add(mine[i][0]); seen.add(mine[i][1]);
+      }
+      eq([...seen].sort().join(","), "1,2,3,4", `${rule}: every state seen:`);
     }
-    eq([...seen].sort().join(","), "1,2,3,4", "every state seen:");
   });
   t("the box always draws the same keys, so the platform replaces it", () => {
     const keys = (props) => Object.keys(boxAt(500, props)).sort().join(",");

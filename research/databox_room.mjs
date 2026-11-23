@@ -69,6 +69,9 @@ import { loadTools, readIndicator } from "../tradovate/mock/library.mjs";
 
 const args = process.argv.slice(2), opt = (name, dflt) => { const i = args.indexOf(name); return i >= 0 ? Number(args[i + 1]) : dflt; };
 const PLACEBOS = opt("--placebos", 100), PLANT = opt("--plant", 0);
+// --ema-warning RULE: the EMA row's warning rule (the indicator's emaWarning: speed, the default;
+// closer; slowing). Another rule's files carry its name: research/databox_room_slowing_*.
+const EW = args.includes("--ema-warning") ? args[args.indexOf("--ema-warning") + 1] : "speed", SUF = EW === "speed" ? "" : `_${EW}`;
 const MIN = 60000, COST = 1.25, FLAT = 15 * 60 + 5, FIRST = 8 * 60 + 30, LAST = 14 * 60 + 55;
 const Y0 = 2019, NY = 8, NS = 10, H2 = Date.UTC(2026, 6, 1), PICK = 10;
 const slotName = (s) => (s < NY ? String(Y0 + s) : s === 8 ? "2026 Jan-Jun" : "2026 Jul-Oct");
@@ -86,7 +89,7 @@ const t0 = Date.now(), secs = () => ((Date.now() - t0) / 1000).toFixed(0);
 const BOX = loadIndicator(readIndicator("emaMacdDatabox").source, loadTools());
 const code = (r, ready) => (!ready || !r || r.side === 0 ? 0 : r.side === 1 ? (r.warn ? 2 : 1) : r.warn ? 4 : 3);
 function boxStates(T, minutes) {
-  const run = new Run(BOX, { minutes, check: false }), map = run.calc.map.bind(run.calc);
+  const run = new Run(BOX, { minutes, props: { emaWarning: EW }, check: false }), map = run.calc.map.bind(run.calc);
   const n = T.close.length, ema = new Int8Array(n), macd = new Int8Array(n);
   run.calc.map = (d, i) => { const out = map(d, i), S = run.calc.st[i]; ema[i] = code(S.ema, S.emaReady); macd[i] = code(S.macd, S.macdReady); return out; };
   run.compute(Array.from({ length: n }, (_, i) => ({ ts: T.ts[i], o: T.open[i], h: T.high[i], l: T.low[i], c: T.close[i], v: T.volume[i], td: T.tday[i], ct: T.ctMin[i] })));
@@ -307,6 +310,7 @@ const rank = (key, val) => {
   return { lo: zs[0], hi: zs[zs.length - 1], med: zs[zs.length >> 1], high: zs.filter((z) => z >= val).length, n: zs.length };
 };
 if (PLANT) console.log(`PLANTED: +${PLANT} bp (${(PLANT * PX26).toFixed(1)} points) on every trade of "1m EMA Long" long, real market only`);
+console.log(`EMA row warning rule: ${EW}${EW === "speed" ? " (the default)" : ""}`);
 console.log(`${NC} combinations x long and short x ${NE} exits = ${(NC * 2 * NE).toLocaleString()} strategies; ${(trades / 1e9).toFixed(2)} billion trades on the real market, as many on each of ${PLACEBOS} placebo markets; ${secs()}s`);
 {
   const rows = [];
@@ -339,7 +343,7 @@ if (!PLANT) {
     const x = s * 2 + d, n = real.Bn[x];
     if (n) ex.push([`"${exitName(e)}"`, d ? "short" : "long", slotName(s), n, (real.Bsum[x * NE + e] / n).toFixed(3), ((real.Bsum[x * NE + e] / n) * PX26).toFixed(2), (real.Bw[x * NE + e] / n).toFixed(4)].join(","));
   }
-  fs.writeFileSync("research/databox_room_exits.csv", ex.join("\n"));
+  if (!SUF) fs.writeFileSync("research/databox_room_exits.csv", ex.join("\n"));   // every minute: the same under any rule
   const top = ["ranked_on,rank,entry,direction,exit,t_by_session," + Array.from({ length: NS }, (_, s) => `${slotName(s)} trades,${slotName(s)} net bp,${slotName(s)} excess bp,${slotName(s)} t`).join(",")];
   for (const [name, slots, minN] of [["2019-2025", INS, 2000], ["2026", [7], 100]]) {
     const all = [];
@@ -353,10 +357,10 @@ if (!PLANT) {
       top.push([name, i + 1, `"${labelOf(r.k)}"`, r.d ? "short" : "long", `"${exitName(r.e)}"`, r.t.toFixed(2), ...cells].join(","));
     });
   }
-  fs.writeFileSync("research/databox_room_top.csv", top.join("\n"));
+  fs.writeFileSync(`research/databox_room${SUF}_top.csv`, top.join("\n"));
   const pk = (P) => ({ t: P.t, netPts: P.net * PX26, everyMinutePts: P.base * PX26, sePts: P.se * PX26, trades: P.n,
     picks: P.picks.map((p) => ({ entry: labelOf(p.k), dir: p.d ? "short" : "long", exit: exitName(p.e), tPicked: p.t, netPtsRead: p.l.net * PX26, everyMinutePtsRead: p.l.base * PX26, winsRead: p.l.win, tRead: p.l.t, nRead: p.l.n })) });
-  fs.writeFileSync("research/databox_room_results.json", JSON.stringify({ run: new Date().toISOString(), placebos: PLACEBOS, strategies: NC * 2 * NE, tradesReal: trades,
+  fs.writeFileSync(`research/databox_room${SUF}_results.json`, JSON.stringify({ run: new Date().toISOString(), emaWarning: EW, placebos: PLACEBOS, strategies: NC * 2 * NE, tradesReal: trades,
     all: pk(R.all), room: pk(R.room), inside: pk(R.inside), persist: R.persist, persistInside: R.persistInside, placebo: pl }, null, 1));
-  console.log("wrote research/databox_room_exits.csv, research/databox_room_top.csv, research/databox_room_results.json");
+  console.log(`wrote ${SUF ? "" : "research/databox_room_exits.csv, "}research/databox_room${SUF}_top.csv, research/databox_room${SUF}_results.json`);
 }
