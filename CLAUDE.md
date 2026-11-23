@@ -74,6 +74,29 @@ rule logic into a script: that is a second engine, and it drifts.
     stop width scored 27.3% out of sample in 2026, below the 32.1% of holding the
     base.
 
+## Verdict rules: screen, confirm, forward (2026-11-23)
+
+What it takes for an idea to count. Every research verdict in this lab uses this funnel.
+- **Screen (stage 1), on the data the idea came from:** it beats 90 of 100 placebo markets
+  (about p 0.10), in BOTH halves of the period (2026: Jan-Jun and Jul-Oct, or Jan-Mar and
+  Apr-Jul), after costs. Passing promotes it to confirmation. It is not a result.
+- **Confirm (stage 2), on data not used to find or tune it:** freeze the exact rules and the
+  test in writing first, run once, and beat 95 of 100 placebo markets (p 0.05) or stricter.
+  - Data not used: another year (2019-2025 for a 2026 idea, 2026 for an older one), or bars
+    after the hold-out.
+  - No changes after seeing the result. A changed rule goes back to stage 1.
+- **Forward (stage 3):** paper or live data the research never saw, with the rules fixed. Write
+  the kill rule in advance (e.g. drawdown beyond the backtest's worst). Only this counts as final.
+- **Count every variant tried** on a dataset, and quote it beside any best-of result. The
+  more tried, the bigger the margin needed: published research asks t > 3 for a new factor
+  (Harvey, Liu & Zhu 2016). Use the Deflated Sharpe or PBO (`search`) when choosing among
+  many.
+- **A test added after looking is a lead, never a verdict.** Say so whenever you quote one.
+- **Every idea needs a reason:** who is on the other side, or what forced flow or structure
+  makes it work. Mined patterns with no reason need a stricter confirmation.
+- The ledger of what has been tried, and its verdicts, is `critic_loop/LEDGER.md` and
+  `critic_loop/RULED_OUT.md` (outside this repo).
+
 ## Engine conventions (src/engine.mjs)
 
 - **No trade sees the future: proven end to end** (`research/lookahead_audit.mjs`, 2026-11-21).
