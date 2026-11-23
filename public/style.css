@@ -99,6 +99,8 @@ html, body {
 /* The view's buttons, at the bar's right end: the P&L panes, split, pop out, full screen, keys. */
 .viewbtns { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 .viewbtns .keysbtn { margin-left: 0; }
+.drawbtns + .viewbtns { margin-left: 10px; }
+.drawbtn { min-width: 26px; font-size: 13px; padding: 1px 6px; }
 .fullbtn { padding: 0 8px; font-size: 14px; line-height: 18px; color: var(--muted); }
 .fullbtn[aria-pressed="true"] { background: rgba(240,180,41,.14); border-color: #f0b429; color: #f0b429; }
 .tfpick[hidden], #chartWrap2[hidden] { display: none; }

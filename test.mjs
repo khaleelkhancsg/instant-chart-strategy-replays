@@ -25,7 +25,7 @@ import { NO_FILTER } from "./src/filters.mjs";
 import { flatten, fastWindow } from "./src/search.mjs";
 import { evalDays } from "./src/dayeval.mjs";
 import { EVALS, EVAL_IDS, evalBase, evalKeys, evalOf } from "./src/evals.mjs";
-import { STUDIES, STUDY_TFS, resolveStudy, studyOnSignal, gateKey, closedIndexMap, gatePasses, studyEdge, studyWarmupMin } from "./src/studies.mjs";
+import { STUDIES, STUDY_TFS, resolveStudy, studyOnSignal, gateKey, closedIndexMap, gatePasses, studyEdge, studyWarmupMin, formingSeries, computeStudy } from "./src/studies.mjs";
 import { DEFAULT_RULES } from "./src/challenge.mjs";
 import { describeEntry, px as explainPx } from "./src/explain.mjs";
 
@@ -3267,6 +3267,39 @@ if (bars_) {
 section("14d. Cammy value levels: the strategy's levels are the Tradovate indicator's");
 // Two implementations of the same profiles: src/valueprofile.mjs with the strategy's
 // session logic, and TradingCustomIndicators/tradovate/cammyValueLevels.js run on the
+// A longer-timeframe study drawn live: at each 1-minute bar, the value the study has if its
+// forming bar closed there -- checked against the study recomputed on bars that END with that
+// partial bar (what a live chart of that timeframe shows then), and against the closed value at
+// each close of the longer bar.
+if (bars_) {
+  const { bars: B } = bars_;
+  const H = sliceBars(B, B.count - 20000, B.count), sig = resample(H, 1);
+  t("a longer-timeframe EMA, EMA cross and MACD drawn live equal the study recomputed with the forming bar, and the closed value at each close", () => {
+    let checked = 0, atClose = 0;
+    for (const [type, params, tf] of [["ema", { length: 21 }, 5], ["emacross", { fast: 9, slow: 21 }, 10], ["macd", { fast: 12, slow: 26, signal: 9 }, 5]]) {
+      const st = resolveStudy({ type, tf, params }), live = formingSeries(H, st, 1, sig);
+      if (!live) throw new Error(`${type}: no live series`);
+      const closed = computeStudy(H, st, 1, sig), map = closedIndexMap(sig, closed.bars);
+      for (let k = 15000; k < 20000; k += 97) {
+        // the truth: the study on the bars up to this minute, its last (partial) bar forming
+        const partial = resample(sliceBars(H, 0, k + 1), tf), last = partial.close.length - 1;
+        const ref = STUDIES[type].compute(partial, st.params);
+        live.lines.forEach((l, j) => { if (Math.abs(l.data[k] - ref.lines[j].data[last]) > 1e-6) throw new Error(`${type} ${l.name} at ${k}: live ${l.data[k]}, recomputed ${ref.lines[j].data[last]}`); });
+        checked++;
+      }
+      for (let k = 15000; k < 20000; k++) {
+        const c = map[k];
+        if (c < 0 || closed.bars.ts[c] + tf * 60000 !== sig.ts[k] + 60000) continue;
+        live.lines.forEach((l, j) => { if (l.data[k] !== closed.out.lines[j].data[c]) throw new Error(`${type} ${l.name} at a close ${k}: ${l.data[k]} vs ${closed.out.lines[j].data[c]}`); });
+        atClose++;
+      }
+    }
+    if (checked < 100 || atClose < 1000) throw new Error(`only ${checked} live and ${atClose} close checks`);
+    if (formingSeries(H, resolveStudy({ type: "ema", tf: 1, params: { length: 21 } }), 1, sig)) throw new Error("a same-timeframe study got a live series");
+    if (formingSeries(H, resolveStudy({ type: "rsi", tf: 5, params: {} }), 1, sig)) throw new Error("a study without a forming step got one");
+  });
+}
+
 // mock. Each draws a level the other may not (the indicator through the 16:00-18:00
 // break, the strategy before the indicator's first bar), but where both draw, they agree.
 if (bars_) {

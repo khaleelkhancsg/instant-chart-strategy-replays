@@ -15,7 +15,7 @@ import { NO_FILTER } from "/src/filters.mjs";
 import { indexAtOrAfter, resample } from "/src/resample.mjs";
 import { windowSpan, DEFAULT_TAIL_MIN } from "/src/window.mjs";
 import { EVALS, EVAL_IDS, DEFAULT_EVAL, evalBase, evalKeys } from "/src/evals.mjs";
-import { STUDIES, STUDY_TFS, resolveStudy, studyLabel, isGating, gateLabel, computeStudy } from "/src/studies.mjs";
+import { STUDIES, STUDY_TFS, resolveStudy, studyLabel, isGating, gateLabel, computeStudy, formingSeries, studyBars } from "/src/studies.mjs";
 import { describeEntry, describeExit, eventText, explainLines, num as fmtNum, px as fmtPx } from "/src/explain.mjs";
 import { newsBetween, NEWS_KINDS } from "/src/news.mjs";
 import { newsMarks, newsSpans, newsClock } from "/ui.mjs";
@@ -266,6 +266,7 @@ const S = {
   editRight: false,    // split: the Indicators tab edits the right-hand chart's own
   tvLib: null,         // what can be added, and the tools they run on
   tvFocus: true,       // the chart given over to them: no trades, equity or daily panes
+  htfDraw: "smooth",   // a longer-timeframe study drawn smooth (closed bars joined), live (forming bar) or as steps (a view preference)
   showSignals: false,  // mark every signal bar, entered or not (a view preference)
   showNews: true,      // mark red-folder releases (a view preference)
   why: null,           // the entry explained: { ts: its signal bar's open time }
@@ -738,16 +739,21 @@ function buildStudiesGroup(set) {
   pick.onchange = () => { const v = pick.value; pick.value = ""; if (v) addStudy(v, set); };
   g.body.appendChild(pick);
   for (const st of set.studies) g.body.appendChild(buildStudyCard(st, set));
+  // how a study on a longer timeframe than the candles is drawn (a view preference, not the trades)
+  if (set.studies.some((st) => st.tf && st.tf > (S.params.timeframeMin || 1))) {
+    const d = { key: "htfDraw", label: "Longer-timeframe lines", type: "select", options: [["smooth", "Smooth: closed bars joined, as that chart draws them"], ["live", "Live: each minute, as its bar forms"], ["steps", "Steps: what was known at each minute"]] };
+    g.body.appendChild(buildParamControl(d, S.htfDraw, (v) => { S.htfDraw = v; try { saveLocal("mnq.htf", v); } catch { /* private mode */ } repaint(); }));
+  }
   const h = document.createElement("div");
   h.className = "hint";
   const plain = S.strategyDesc && S.strategyDesc.chartOnly;
   h.textContent = !set.gates
-    ? (set.studies.length ? "A study on a longer timeframe is read from its last CLOSED bar, drawn as steps where each value became known."
+    ? (set.studies.length ? "A study on a longer timeframe is read from its last CLOSED bar for gates and trades; it is drawn as that timeframe's own chart draws it, closed bars joined (live or as steps under Longer-timeframe lines)."
                           : "Add indicators to this chart. They are its own: the other chart keeps its own, and neither changes the trades.")
     : plain
       ? "A plain chart: add indicators to look at the price through them. To see how a strategy's trades did in their states, or to gate its entries, pick that strategy."
       : set.studies.length
-        ? "A gate refuses entries only: a refused signal still closes an opposite position, so a gate never changes how a trade exits. A study on a longer timeframe is read from its last CLOSED bar, drawn as steps where each value became known."
+        ? "A gate refuses entries only: a refused signal still closes an opposite position, so a gate never changes how a trade exits. A study on a longer timeframe is read from its last CLOSED bar for gates and trades; it is drawn as that timeframe's own chart draws it, closed bars joined (live or as steps under Longer-timeframe lines)."
         : "Add indicators to see them beside the strategy's, and in “Indicator edge” how its trades did in each of their states. Set a gate to trade only the states you pick.";
   g.body.appendChild(h);
   const n = set.studies.length, gn = set.studies.filter(isGating).length;
@@ -845,16 +851,23 @@ function studyOverlays(res, list) {
   for (const st of list) {
     const D = STUDIES[st.type];
     const { bars: sb, out: o, tf } = computeStudy(S.blob, st, sigTf, res.tf);
-    const step = tf > sigTf;
-    const map = step
-      ? { localIdx: Float64Array.from(sb.srcLast, (v) => v + 1), stride: tf, step: true }
+    // A longer timeframe is drawn (a view preference; gates and trades read closed bars):
+    //   smooth  each closed bar's value at its close, joined, as that timeframe's own chart draws it
+    //   live    each minute, the value while its bar forms (EMA, EMA cross, MACD; else smooth)
+    //   steps   each closed bar's value held until the next closes: what was known at each minute
+    // (live on every minute, whatever the signal's timeframe: it is only drawn)
+    const one = studyBars(S.blob, 1);
+    const live = tf > sigTf && S.htfDraw === "live" ? formingSeries(S.blob, st, 1, one) : null;
+    const step = tf > sigTf && !live && S.htfDraw === "steps";
+    const map = live ? { localIdx: centresOf(one), stride: 1 }
+      : tf > sigTf ? { localIdx: Float64Array.from(sb.srcLast, (v) => v + 1), stride: tf, step }
       : { localIdx: centresOf(sb), stride: tf };
     const lv = D.levels ? D.levels(st.params) : null;
     const guides = D.pane === "sub" && lv ? [...new Set([lv.lo, lv.mid, lv.hi].filter((v) => v != null && Number.isFinite(v)))] : [];
     out.push({
       key: `st:${st.id}`, name: studyLabel(st) + (st.tf ? "" : ` · ${sigTf}m`), color: st.color, pane: D.pane, hidden: !!st.hidden,
       gateText: gates && isGating(st) ? gateLabel(st.type, st.gate, st.params) : "",
-      lines: o.lines, lanes: o.lanes || null, map, range: D.range || null, auto: D.auto || null, guides,
+      lines: live ? live.lines : o.lines, lanes: o.lanes || null, map, range: D.range || null, auto: D.auto || null, guides,
     });
   }
   return out;
@@ -2625,6 +2638,7 @@ async function boot() {
   S.chart.onHoverNews = (nw) => { if (!nw && !window._hoverTrade && !S.chart.hoverSignal) tradeTooltip(null); };
   // Red-folder releases on the chart: shown unless turned off, a view preference, kept.
   try { S.showNews = localStorage.getItem("mnq.news") !== "0"; } catch { S.showNews = true; }
+  try { const v = localStorage.getItem("mnq.htf"); S.htfDraw = v === "steps" || v === "live" ? v : "smooth"; } catch { S.htfDraw = "smooth"; }
   const newsBtn = $("newsToggle");
   const paintNewsBtn = () => { newsBtn.classList.toggle("on", S.showNews); newsBtn.setAttribute("aria-pressed", String(S.showNews)); };
   paintNewsBtn();
@@ -2696,6 +2710,19 @@ async function boot() {
     if (BC) BC.postMessage({ type: "hover", pt });
   };
   S.chart.onHoverMove = (pt) => linkHover(S.chart, pt);
+
+  // Drawings (lines and boxes on the prices): one list, kept in time and price, shown on every
+  // chart in this window and kept between visits.
+  try { S.drawings = JSON.parse(localStorage.getItem("mnq.drawings") || "[]"); } catch { S.drawings = []; }
+  if (!Array.isArray(S.drawings)) S.drawings = [];
+  const drawBtns = [...document.querySelectorAll(".drawbtn")];
+  const paintTool = () => drawBtns.forEach((b) => { const on = b.dataset.tool === S.tool; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+  S.setTool = (t) => { S.tool = t || null; for (const c of charts()) c.setTool(S.tool); paintTool(); };
+  S.drawingsChanged = () => { try { saveLocal("mnq.drawings", JSON.stringify(S.drawings)); } catch { /* private mode */ } for (const c of charts()) c.requestDraw(); };
+  S.hookDrawings = (c) => { c.setDrawings(S.drawings); c.onDrawingsChange = S.drawingsChanged; c.onToolDone = () => S.setTool(null); };
+  S.hookDrawings(S.chart);
+  drawBtns.forEach((b) => (b.onclick = () => S.setTool(S.tool === b.dataset.tool ? null : b.dataset.tool)));
+  $("drawClear").onclick = () => { if (!S.drawings.length) return; S.drawings.length = 0; for (const c of charts()) c.setDrawings(S.drawings); S.drawingsChanged(); };
   if (BC) BC.onmessage = (ev) => {
     const m = ev.data || {};
     if (m.type === "hover") for (const c of charts()) c.showLinked(m.pt);
@@ -2721,6 +2748,7 @@ async function boot() {
       c.onHoverNews = (nw) => { if (!nw && !window._hoverTrade && !c.hoverSignal) tradeTooltip(null); };
       c.onClick = (hit) => { if (hit) selectWhy(hit.trade || hit.signal); };
       c.onHoverMove = (pt) => linkHover(c, pt);
+      S.hookDrawings(c);
       c.onTradovateDrawn = tvPaintFit;
       $("chartWrap2").addEventListener("mousemove", (e) => { S.hoverChart = c; tradeTooltip(window._hoverTrade, e); });
       $("chartWrap2").addEventListener("mouseleave", () => tradeTooltip(null));
@@ -2900,6 +2928,8 @@ async function boot() {
     if (e.key === "Escape" && !help.classList.contains("hidden")) { toggleHelp(); return; }
     if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;     // the browser's own
+    if (e.key === "Escape" && S.tool) { S.setTool(null); return; }
+    if ((e.key === "Delete" || e.key === "Backspace") && charts().some((c) => c.selDrawing >= 0)) { charts().find((c) => c.selDrawing >= 0).deleteSelectedDrawing(); for (const c of charts()) c.setDrawings(S.drawings); e.preventDefault(); return; }
     if (e.key === "Escape" && S.why) { selectWhy(null); return; }
     if (e.key === "Escape" && isFull()) { setFull(false); return; }
     if (e.key === "f") { setFull(!isFull()); e.preventDefault(); return; }

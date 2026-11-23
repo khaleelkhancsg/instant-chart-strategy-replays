@@ -140,6 +140,13 @@
 
       <button id="newsToggle" class="sigtoggle newstoggle on" aria-pressed="true" title="Mark each red-folder US release: the jobs report, CPI, PPI, retail sales, advance GDP, PCE, the FOMC decision, press conference and minutes. Hover one for its time. Session rules → Red-folder news makes the strategy stand aside around them.">News</button>
       <button id="sigToggle" class="sigtoggle" aria-pressed="false" title="Mark every signal bar the strategy produced: ◆ entered, ◇ an order that never filled, × refused (with the reason on hover), · already in a position. Click one, or any trade, for what triggered it.">Signals</button>
+      <div class="viewbtns drawbtns" role="group" aria-label="Draw on the chart">
+        <button class="sigtoggle drawbtn" data-tool="hline" aria-pressed="false" title="Horizontal line: click a price">─</button>
+        <button class="sigtoggle drawbtn" data-tool="trend" aria-pressed="false" title="Trend line: drag from one point to another">╱</button>
+        <button class="sigtoggle drawbtn" data-tool="rect" aria-pressed="false" title="Box: drag one corner to the other">▭</button>
+        <button class="sigtoggle drawbtn" data-tool="vline" aria-pressed="false" title="Vertical line: click a time">│</button>
+        <button id="drawClear" class="sigtoggle" title="Remove every drawing (to remove one, click it and press Delete)">✕</button>
+      </div>
       <div class="viewbtns" role="group" aria-label="View">
         <button id="indBtn" class="sigtoggle" aria-pressed="false" title="This chart's indicators: in full screen and in a pop-out they open beside the chart (I)">ƒx</button>
         <button id="bookBtn" class="sigtoggle on" aria-pressed="true" title="The equity and daily P&amp;L panes, or the price and its indicators alone (P)">P&amp;L</button>
@@ -212,6 +219,7 @@
         <dt>Esc</dt><dd>Close whatever is open</dd>
         <dt>Wheel</dt><dd>Zoom the time axis at the pointer</dd>
         <dt>Drag</dt><dd>Pan</dd>
+        <dt>─ ╱ ▭ │</dt><dd>Draw a horizontal line, trend line, box or vertical line on the prices; click one and press Delete to remove it</dd>
         <dt>Shift + wheel</dt><dd>Zoom the pane's prices (or wheel over the price axis)</dd>
         <dt>Double-click</dt><dd>Back to the opening view (on the axis: that pane's scale)</dd>
         <dt>Click</dt><dd>A trade or signal: what triggered it</dd>

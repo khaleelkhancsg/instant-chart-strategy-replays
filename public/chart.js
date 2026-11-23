@@ -107,6 +107,15 @@ export class ChartView {
     this.onHoverMove = null;
     this.linked = null;
     this.showBook = true;        // the equity and daily P&L panes
+    // Drawings on the price pane, kept as {type, a: {ts, price}, b: {ts, price}} so they stay
+    // where they were put through zoom, pan, candle size and day changes. The app owns the list
+    // (setDrawings) and hears of every change (onDrawingsChange).
+    this.drawings = [];
+    this.tool = null;            // "hline" | "trend" | "rect" | "vline" while drawing one
+    this._draft = null;
+    this.selDrawing = -1;
+    this.onDrawingsChange = null;
+    this.onToolDone = null;
     this._raf = 0;
 
     this._bindEvents();
@@ -375,6 +384,7 @@ export class ChartView {
     };
     const DRAW = { price: this._drawPricePane, sub: this._drawSubPane, equity: this._drawEquityPane, daily: this._drawDailyPane };
     for (const k of this.paneOrder) clipped(k, DRAW[k] || ((c) => this._drawStudyPane(c, k)));
+    clipped("price", this._drawDrawings);
     this._drawWhyBand(ctx);
     this._drawDimAfterResolution(ctx);
     this._drawSessionBands(ctx);
@@ -382,6 +392,81 @@ export class ChartView {
     this._drawTimeAxis(ctx);
     // a linked crosshair follows the view as it zooms and pans
     if (!this.hover && this.linked) this._drawCrosshair();
+  }
+
+  // ── drawings ──
+  setDrawings(list) { this.drawings = list || []; this.selDrawing = -1; this.requestDraw(); }
+  setTool(t) { this.tool = t || null; this._draft = null; this.requestDraw(); }
+  // A fractional local index as a time, and back: whole minutes between bars, carried on past
+  // the last bar so a line can run into the space to the right.
+  _tsAt(i) {
+    const b = this.data.bars, n = b.count, k = Math.max(0, Math.min(n - 1, Math.floor(i)));
+    return b.ts[k] + (i - k) * 60000;
+  }
+  _iAtTs(ts) {
+    const b = this.data.bars, n = b.count;
+    if (!n) return NaN;
+    const k = upperBound(b.ts.subarray(0, n), ts) - 1;
+    if (k < 0) return (ts - b.ts[0]) / 60000;
+    return k + (k === n - 1 ? (ts - b.ts[k]) / 60000 : Math.min(1, (ts - b.ts[k]) / 60000));
+  }
+  _priceAtY(my) { const P = this.panes.price; return this.priceHi - ((my - P.top) / P.height) * (this.priceHi - this.priceLo); }
+  _drawPoint(mx, my) { return { ts: this._tsAt(this.iAt(mx)), price: this._priceAtY(my) }; }
+  // Each drawing in pixels: {x0, y0, x1, y1}.
+  _drawingPx(d) {
+    const P = this.panes.price, xa = this.x(this._iAtTs(d.a.ts)), ya = this.priceY(d.a.price);
+    if (d.type === "hline") return { x0: this.plotL, y0: ya, x1: this.plotR, y1: ya };
+    if (d.type === "vline") return { x0: xa, y0: P.top, x1: xa, y1: P.bottom };
+    return { x0: xa, y0: ya, x1: this.x(this._iAtTs(d.b.ts)), y1: this.priceY(d.b.price) };
+  }
+  _drawDrawings(ctx) {
+    if (!this.priceY || !this.data) return;
+    const list = this._draft ? [...this.drawings, this._draft] : this.drawings;
+    list.forEach((d, k) => {
+      const p = this._drawingPx(d), sel = k === this.selDrawing, color = d.color || "#5fa8ff";
+      ctx.save();
+      ctx.strokeStyle = color; ctx.lineWidth = sel ? 2.5 : 1.5; ctx.setLineDash(d === this._draft ? [5, 4] : []);
+      if (d.type === "rect") {
+        const x = Math.min(p.x0, p.x1), y = Math.min(p.y0, p.y1), w = Math.abs(p.x1 - p.x0), h = Math.abs(p.y1 - p.y0);
+        ctx.globalAlpha = 0.12; ctx.fillStyle = color; ctx.fillRect(x, y, w, h);
+        ctx.globalAlpha = 1; ctx.strokeRect(x, y, w, h);
+      } else {
+        ctx.beginPath(); ctx.moveTo(p.x0, p.y0); ctx.lineTo(p.x1, p.y1); ctx.stroke();
+      }
+      if (d.type === "hline") {
+        const txt = d.a.price.toFixed(2);
+        ctx.font = "11px ui-sans-serif, system-ui"; ctx.setLineDash([]);
+        const w = ctx.measureText(txt).width + 8;
+        ctx.fillStyle = color; ctx.fillRect(this.plotR - w, p.y0 - 8, w, 16);
+        ctx.fillStyle = "#0b0e13"; ctx.textBaseline = "middle"; ctx.fillText(txt, this.plotR - w + 4, p.y0);
+      }
+      if (sel) for (const [hx, hy] of [[p.x0, p.y0], [p.x1, p.y1]]) { ctx.setLineDash([]); ctx.fillStyle = color; ctx.fillRect(hx - 3, hy - 3, 6, 6); }
+      ctx.restore();
+    });
+  }
+  // The drawing under the pointer, or -1: within 6 pixels of a line, or of a box's edge.
+  _hitDrawing(mx, my) {
+    const P = this.panes && this.panes.price;
+    if (!P || !this.priceY || my < P.top || my > P.bottom) return -1;
+    let best = -1, bestD = 6;
+    this.drawings.forEach((d, k) => {
+      const p = this._drawingPx(d);
+      let dist;
+      if (d.type === "rect") {
+        const x0 = Math.min(p.x0, p.x1), x1 = Math.max(p.x0, p.x1), y0 = Math.min(p.y0, p.y1), y1 = Math.max(p.y0, p.y1);
+        dist = Math.min(pointToSeg(mx, my, x0, y0, x1, y0), pointToSeg(mx, my, x0, y1, x1, y1), pointToSeg(mx, my, x0, y0, x0, y1), pointToSeg(mx, my, x1, y0, x1, y1));
+      } else dist = pointToSeg(mx, my, p.x0, p.y0, p.x1, p.y1);
+      if (dist < bestD) { bestD = dist; best = k; }
+    });
+    return best;
+  }
+  deleteSelectedDrawing() {
+    if (this.selDrawing < 0) return false;
+    this.drawings.splice(this.selDrawing, 1);
+    this.selDrawing = -1;
+    if (this.onDrawingsChange) this.onDrawingsChange(this.drawings);
+    this.requestDraw();
+    return true;
   }
 
   // Faint vertical separators at each CME session boundary (17:00 ET).
@@ -1471,6 +1556,16 @@ export class ChartView {
     el.addEventListener("mousemove", (e) => {
       const r = el.getBoundingClientRect();
       const mx = e.clientX - r.left, my = e.clientY - r.top;
+      if (this._draft) {
+        const pt = this._drawPoint(Math.min(mx, this.plotR), my);
+        this._draft.b = pt;
+        if (this._draft.type === "hline") this._draft.a = { ...this._draft.a, price: pt.price };
+        if (this._draft.type === "vline") this._draft.a = { ...this._draft.a, ts: pt.ts };
+        this.requestDraw();
+        this.hover = { x: mx, y: my };
+        this._drawCrosshair();
+        return;
+      }
       if (dragging && dragPane) {
         this.panY(dragPane, my - lastY);
         lastY = my;
@@ -1514,7 +1609,7 @@ export class ChartView {
         this.requestDraw();
         if (this.onHoverNews) this.onHoverNews(nw);
       }
-      el.style.cursor = mx > this.plotR ? "ns-resize" : t || sg ? "pointer" : "crosshair";
+      el.style.cursor = mx > this.plotR ? "ns-resize" : t || sg || (!this.tool && this._hitDrawing(mx, my) >= 0) ? "pointer" : "crosshair";
       this._drawCrosshair();
       if (this.onHoverMove) this.onHoverMove(this._pointAt(mx, my));
     });
@@ -1526,6 +1621,10 @@ export class ChartView {
       if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 4 || !this.onClick) return;
       const r = el.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
       if (mx > this.plotR) return;
+      // a drawing under the pointer is picked (Delete removes it); a click elsewhere drops it
+      const hd = this.tool ? -1 : this._hitDrawing(mx, my);
+      if (hd !== this.selDrawing) { this.selDrawing = hd; this.requestDraw(); }
+      if (hd >= 0) return;
       const t = this._hitTrade(mx, my), sg = t ? null : this._hitSignal(mx, my);
       this.onClick(t ? { trade: t } : sg ? { signal: sg } : null);
     });
@@ -1540,6 +1639,13 @@ export class ChartView {
     el.addEventListener("mousedown", (e) => {
       const r = el.getBoundingClientRect();
       const mx = e.clientX - r.left, my = e.clientY - r.top;
+      // with a drawing tool picked, a press on the price pane starts a drawing, not a pan
+      if (this.tool && this.data && this.priceY && mx <= this.plotR && this._paneAt(my) === "price") {
+        const pt = this._drawPoint(mx, my);
+        this._draft = { type: this.tool, a: pt, b: { ...pt } };
+        this.requestDraw();
+        return;
+      }
       dragging = true; lastX = mx; lastY = my;
       dragPane = wantsY(mx, e) ? this._paneAt(my) : null;
       homePane = dragPane ? null : this._paneAt(my);
@@ -1547,6 +1653,20 @@ export class ChartView {
                       : (homePane && this.yZoomed(homePane)) ? "move" : "grabbing";
     });
     window.addEventListener("mouseup", () => {
+      if (this._draft) {
+        const d = this._draft, p = this._drawingPx(d);
+        this._draft = null;
+        // a line or box needs some size; a horizontal or vertical line is one click
+        if (d.type === "hline" || d.type === "vline" || Math.hypot(p.x1 - p.x0, p.y1 - p.y0) > 4) {
+          this.drawings.push(d);
+          this.selDrawing = this.drawings.length - 1;
+          if (this.onDrawingsChange) this.onDrawingsChange(this.drawings);
+        }
+        this.tool = null;
+        if (this.onToolDone) this.onToolDone();
+        this.requestDraw();
+        return;
+      }
       dragging = false; dragPane = null; homePane = null;
       el.style.cursor = "crosshair";
     });

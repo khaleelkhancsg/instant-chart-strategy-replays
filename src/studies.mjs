@@ -291,6 +291,7 @@ export const STUDIES = {
     params: [int("length", "Length", 50, 2, 2000), SOURCE],
     label: (p) => `EMA ${p.length}`, warmup: (p) => 10 * p.length, gates: ["with", "against"],
     compute: (b, p) => { const v = ema(source(b, p.source), p.length); return { line: v, lines: [{ name: `EMA ${p.length}`, data: v }] }; },
+    forming: (b, p, out) => (p.source !== "close" ? null : (c, x) => [emaNext(out.lines[0].data[c], x, p.length)]),
   },
   sma: {
     name: "SMA", group: "Price", pane: "price", kind: "price",
@@ -313,6 +314,7 @@ export const STUDIES = {
       for (let i = 0; i < n; i++) { d[i] = f[i] - s[i]; dir[i] = sign(d[i]); }
       return { dir, value: d, lines: [{ name: `EMA ${p.fast}`, data: f }, { name: `EMA ${p.slow}`, data: s, dash: [5, 3] }] };
     },
+    forming: (b, p, out) => (c, x) => [emaNext(out.lines[0].data[c], x, p.fast), emaNext(out.lines[1].data[c], x, p.slow)],
   },
   vwap: {
     name: "VWAP", group: "Price", pane: "price", kind: "price",
@@ -684,6 +686,10 @@ export const STUDIES = {
       const r = macd(b.close, p.fast, p.slow, p.signal);
       return { value: r.hist, lines: [{ name: "hist", data: r.hist, kind: "hist" }, { name: "MACD", data: r.line }, { name: "signal", data: r.signal, dash: [4, 3] }] };
     },
+    forming: (b, p) => {
+      const ef = ema(b.close, p.fast), es = ema(b.close, p.slow), sig = macd(b.close, p.fast, p.slow, p.signal).signal;
+      return (c, x) => { const line = emaNext(ef[c], x, p.fast) - emaNext(es[c], x, p.slow), s = emaNext(sig[c], line, p.signal); return [line - s, line, s]; };
+    },
   },
   databox: {
     name: "EMA + MACD databox", group: "Oscillators", pane: "sub", kind: "trend",
@@ -1018,6 +1024,31 @@ export function computeStudy(bars1m, st, sigTf = 1, sigBars = null) {
   const b = sigBars && (sigBars.tfMin || 1) === tf ? sigBars : studyBars(bars1m, tf);
   const out = memo(b, `study:${st.type}:${JSON.stringify(st.params)}`, () => STUDIES[st.type].compute(b, st.params));
   return { bars: b, out, tf };
+}
+
+// One more step of src/indicators.mjs ema(): the EMA if the next bar closed at x (seeded on x).
+const emaNext = (prev, x, span) => (Number.isFinite(prev) ? (2 / (span + 1)) * x + (1 - 2 / (span + 1)) * prev : x);
+
+// A study on a longer timeframe as it reads on the forming bar, at each signal bar: what a
+// live chart of that timeframe shows as each shorter bar closes. Built from the last CLOSED
+// study bar and the signal bar's close, so it uses nothing later; at each longer bar's close it
+// is that bar's value. For drawing only: gates and research read closed bars. Null when the
+// study has no forming step (studies' `forming`) or is on the signal's timeframe.
+export function formingSeries(bars1m, st, sigTf, sigBars) {
+  const D = STUDIES[st.type], { bars: b, out } = computeStudy(bars1m, st, sigTf, sigBars);
+  if (!D.forming || b === sigBars || (st.tf || sigTf) <= sigTf) return null;
+  const step = D.forming(b, st.params, out);
+  if (!step) return null;
+  const map = closedIndexMap(sigBars, b), n = sigBars.close.length, sMs = (sigBars.tfMin || 1) * 60000, tMs = (b.tfMin || 1) * 60000;
+  const lines = out.lines.map((l) => ({ ...l, data: new Float64Array(n).fill(NaN) }));
+  for (let k = 0; k < n; k++) {
+    const c = map[k];
+    if (c < 0) continue;
+    if (b.ts[c] + tMs === sigBars.ts[k] + sMs) { lines.forEach((l, j) => (l.data[k] = out.lines[j].data[c])); continue; }
+    const v = step(c, sigBars.close[k]);
+    lines.forEach((l, j) => (l.data[k] = v[j]));
+  }
+  return { lines };
 }
 
 // For each signal bar, the last study bar that had closed by the time it did
