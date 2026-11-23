@@ -122,12 +122,17 @@ t("conditions: an item shows only inside its pixels-per-bar range", () => {
   eq(prim({ ...it, conditions: { scaleRangeX: { min: 20 } } }).length, 0);
   eq(prim({ ...it, conditions: { scaleRangeX: { min: 5 } } }).length, 1);
 });
-t("a Container moves its children, and origin measures px from a corner", () => {
+t("a Container moves its children, and origin moves px's zero to a corner, keeping its direction", () => {
   const txt = { tag: "Text", key: "t", point: { x: du(150), y: du(150) }, text: "abc", style: { fontSize: 10 }, textAlignment: "none" };
   const moved = prim({ tag: "Container", key: "c", children: [txt], transformOps: [{ tag: "Translate", vector: { x: px(7), y: px(0) } }] })[0];
   near(moved.x, A.x.pos(150) + 7);
-  const corner = prim({ ...txt, point: { x: px(20), y: px(10) }, origin: { cs: "grid", h: "right", v: "bottom" } })[0];
+  // from the bottom-right corner, into the chart is negative (Tradovate's guide, for the right edge)
+  const corner = prim({ ...txt, point: { x: px(-20), y: px(-10) }, origin: { cs: "grid", h: "right", v: "bottom" } })[0];
   near(corner.x, 980); near(corner.y, 490);
+  const outside = prim({ ...txt, point: { x: px(20), y: px(10) }, origin: { cs: "grid", h: "right", v: "bottom" } })[0];
+  near(outside.x, 1020); near(outside.y, 510);
+  const topLeft = prim({ ...txt, point: { x: px(20), y: px(10) }, origin: { cs: "grid", h: "left", v: "top" } })[0];
+  near(topLeft.x, 20); near(topLeft.y, 10);
 });
 t("shapes, dots and instances become drawables", () => {
   const p = { x: du(150), y: du(150) };
@@ -203,6 +208,10 @@ t("text with no font size, an unknown alignment, or a colour with no #", () => {
   flags(item(`{ fontSize: 9 }`, "middle"), "textAlignment");
   flags(item(`{ fontSize: 9, fill: "f3ff14" }`, "none"), "leading #");
 });
+t("an origin Tradovate does not know", () => {
+  flags(`{ graphics: { items: [{ tag: "Text", key: "a", text: "x", style: { fontSize: 9 }, textAlignment: "leftMiddle", point: { x: px(-9), y: px(9) }, origin: { cs: "grid", h: "end", v: "top" } }] } }`, "an origin Tradovate does not know");
+  flags(`{ graphics: { items: [{ tag: "Text", key: "a", text: "x", style: { fontSize: 9 }, textAlignment: "leftMiddle", point: { x: px(-9), y: px(9) }, origin: { h: "right", v: "top" } }] } }`, "an origin Tradovate does not know");
+});
 t("a line style with width where the graphics module reads lineWidth", () => flags(`{ graphics: { items: [{ tag: "LineSegments", key: "a", lines: [{ tag: "Line", a: { x: du(1), y: du(1) }, b: { x: du(2), y: du(1) } }], lineStyle: { width: 2, color: "#f00" } }] } }`, "reads lineWidth"));
 t("two items sharing a key on one bar", () => {
   const it = `{ tag: "Text", key: "a", text: "x", point: { x: du(1), y: du(1) }, style: { fontSize: 9 }, textAlignment: "none" }`;
@@ -269,10 +278,10 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
       for (let i = 26; i < BARS.length; i++) eq(mine[i][field], theirs[i].value, `${field} on bar ${i}:`);
     }
   });
-  t("each row reads the last closed bar: its side, its warning and its count, from Tradovate's MACD", () => {
+  t("at bar close, each row reads the last closed bar: its side, its warning and its count, from Tradovate's MACD", () => {
     let seen = new Set();
     for (let k = 40; k < BARS.length; k += 47) {
-      const b = boxAt(k), j = k - 1;
+      const b = boxAt(k, { updates: "close" }), j = k - 1;
       const e = expected(hEma, j, j >= 26, "speed"), m = expected(hMacd, j, j >= 33, "shrink");
       eq(b.dbState0.text, e.text, `EMA row at bar ${j}:`); eq(b.dbBars0.text, e.bars, `EMA count at bar ${j}:`);
       eq(b.dbState1.text, m.text, `MACD row at bar ${j}:`); eq(b.dbBars1.text, m.bars, `MACD count at bar ${j}:`);
@@ -280,12 +289,56 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
     }
     for (const s of ["Long", "Short", "Potentially short", "Potentially long"]) if (!seen.has(s)) throw new Error(`never saw "${s}"`);
   });
-  t("reading the forming bar reads the last bar instead", () => {
+  t("live, the default, reads the forming bar, and a saved \"read forming bar: off\" no longer holds it at the close", () => {
     for (const k of [300, 1234, 5000]) {
-      const b = boxAt(k, { readFormingBar: true });
-      eq(b.dbState1.text, expected(hMacd, k, true, "shrink").text, `MACD row at bar ${k}:`);
-      eq(b.dbState0.text, expected(hEma, k, true, "speed").text, `EMA row at bar ${k}:`);
+      for (const props of [{}, { updates: "live" }, { readFormingBar: false }]) {
+        const b = boxAt(k, props), m = expected(hMacd, k, true, "shrink"), e = expected(hEma, k, true, "speed");
+        eq(b.dbState1.text, m.text, `MACD row at bar ${k}:`); eq(b.dbBars1.text, m.bars, `MACD count at bar ${k}:`);
+        eq(b.dbState0.text, e.text, `EMA row at bar ${k}:`); eq(b.dbBars0.text, e.bars, `EMA count at bar ${k}:`);
+        eq(b.dbHead.text, "EMA + MACD, live");
+      }
+      eq(boxAt(k, { updates: "close" }).dbHead.text, "EMA + MACD, at bar close");
     }
+  });
+  t("live, a bar read as it forms ends where the at-close box reads it, once the next bar starts", () => {
+    // the forming bar k, mapped tick by tick: at each tick the live box reads that tick;
+    // once bar k + 1 starts, the at-close box reads bar k as it finished
+    for (const k of [400, 2222]) {
+      const r = new Run(box, { props: {} }), base = BARS.slice(0, k), bar = BARS[k];
+      const ticks = [bar.o, bar.h, bar.l, bar.c].map((c, n) => ({ ...bar, c, h: Math.max(bar.o, c), l: Math.min(bar.o, c), v: Math.round((bar.v * (n + 1)) / 4) }));
+      let last = null;
+      for (const tick of ticks) last = r.compute([...base, tick])[k];
+      const atClose = new Run(box, { props: { updates: "close" } }).compute(BARS.slice(0, k + 2))[k + 1];
+      const key = (out) => Object.fromEntries(out.graphics.items.map((it) => [it.key, it.text]));
+      for (const f of ["dbState0", "dbState1", "dbBars0", "dbBars1"]) eq(key(last)[f], key(atClose)[f], `${f} at bar ${k}:`);
+    }
+  });
+  t("the box sits in the corner asked for, boxX and boxY in from it, inside the chart", () => {
+    const at = (props) => {
+      const r = new Run(box, { props }).compute(BARS.slice(0, 501));
+      const list = r.map((o) => ({ graphics: o.graphics }));
+      const out = graphicsPrims(list, A, 400, 499);
+      const box0 = out.find((q) => q.key === "dbBox"), xs = box0.pts.map((q) => q.x), ys = box0.pts.map((q) => q.y);
+      for (const q of out) {
+        const pts = q.pts || [{ x: q.x, y: q.y }];
+        for (const z of pts) if (!(z.x >= A.left && z.x <= A.right && z.y >= A.top && z.y <= A.bottom)) throw new Error(`${q.key} at ${z.x},${z.y} is off the chart (${props.corner})`);
+      }
+      return { left: Math.min(...xs), right: Math.max(...xs), top: Math.min(...ys), bottom: Math.max(...ys), out };
+    };
+    const tl = at({ corner: "topLeft", boxX: 8, boxY: 30 }), w = tl.right - tl.left, h = tl.bottom - tl.top;
+    near(tl.left, A.left + 8); near(tl.top, A.top + 30);
+    const tr = at({ corner: "topRight", boxX: 8, boxY: 30 });
+    near(tr.right, A.right - 8); near(tr.top, A.top + 30); near(tr.right - tr.left, w);
+    const bl = at({ corner: "bottomLeft", boxX: 12, boxY: 20 });
+    near(bl.left, A.left + 12); near(bl.bottom, A.bottom - 20); near(bl.bottom - bl.top, h);
+    const br = at({ corner: "bottomRight", boxX: 12, boxY: 20 });
+    near(br.right, A.right - 12); near(br.bottom, A.bottom - 20);
+    // the text keeps its place inside the box, wherever the box is
+    const rel = (b) => b.out.filter((q) => q.t === "text").map((q) => `${q.key}:${(q.x - b.left).toFixed(2)},${(q.y - b.top).toFixed(2)}`).sort().join(" ");
+    eq(rel(tr), rel(tl)); eq(rel(br), rel(at({ corner: "topLeft", boxX: 12, boxY: 20 })));
+    // and the top-left box is the one it always was: no origin
+    const items = new Run(box, { props: { corner: "topLeft" } }).compute(BARS.slice(0, 301))[300].graphics.items;
+    if (items.some((it) => it.origin)) throw new Error("the top-left box carries an origin");
   });
   t("warnings can be switched off row by row, and a setting saved as on / off still reads", () => {
     for (let k = 40; k < 3000; k += 31) {
@@ -299,9 +352,9 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
   t("the EMA row's \"closing at all\" reads any closing gap, as the first version did", () => {
     let differs = 0;
     for (let k = 40; k < BARS.length; k += 47) {
-      const j = k - 1, b = boxAt(k, { emaWarning: "closer" });
+      const j = k - 1, b = boxAt(k, { emaWarning: "closer", updates: "close" });
       eq(b.dbState0.text, expected(hEma, j, j >= 26, "shrink").text, `EMA row at bar ${j}:`);
-      if (b.dbState0.text !== boxAt(k, {}).dbState0.text) differs++;
+      if (b.dbState0.text !== boxAt(k, { updates: "close" }).dbState0.text) differs++;
     }
     if (!differs) throw new Error("the two rules never differed");
   });
@@ -340,6 +393,8 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
   t("the box always draws the same keys, so the platform replaces it", () => {
     const keys = (props) => Object.keys(boxAt(500, props)).sort().join(",");
     eq(keys({ showBars: false }), keys({}));
+    for (const corner of ["topRight", "bottomLeft", "bottomRight"]) eq(keys({ corner }), keys({}));
+    eq(keys({ updates: "close" }), keys({}));
     eq(keys({}), "dbBars0,dbBars1,dbBox,dbEdge,dbHead,dbLabel0,dbLabel1,dbState0,dbState1");
   });
 }

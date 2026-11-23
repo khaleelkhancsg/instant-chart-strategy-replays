@@ -44,13 +44,18 @@ export function paneAxes({ left, right, top, bottom, first, barW, lo, hi, tick =
   };
 }
 
-// An item's origin moves where a px counts from (GraphicsResponse.d.ts AxesOrigin).
+// An item's origin moves where a px counts from (GraphicsResponse.d.ts AxesOrigin). It moves
+// the zero and keeps the axes' direction: from a right-hand origin x still grows to the right,
+// so a point inside the chart has a negative x. Tradovate's "Creating Advanced Custom
+// Indicators" guide (2022) says so for the right edge: "we need to use negative numbers to
+// move into the visible quadrant". A bottom origin is read the same way. Until 2026-11-23 the
+// mock counted both inward, which drew a right-hand item mirrored off the platform's place.
 function originAxes(A, o) {
   if (!o) return A;
   return {
     ...A,
-    x: { ...A.x, base: o.h === "right" ? (v) => A.right - v : A.x.base },
-    y: { ...A.y, base: o.v === "bottom" ? (v) => A.bottom - v : A.y.base },
+    x: { ...A.x, base: o.h === "right" ? (v) => A.right + v : A.x.base },
+    y: { ...A.y, base: o.v === "bottom" ? (v) => A.bottom + v : A.y.base },
   };
 }
 

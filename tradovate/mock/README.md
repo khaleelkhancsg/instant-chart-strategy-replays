@@ -38,6 +38,7 @@ Assumptions, because Tradovate does not document them:
 
 - **Text alignment.** `leftMiddle` is read as the text's left edge at the point, so it runs to the right.
 - **Which items draw.** A per-bar item draws while its bar is in view. A `global` one always draws, once per key.
+- **An item's `origin`** moves where its pixels count from to a corner of the chart, and keeps their direction. From a right-hand corner, x still grows to the right, so a point inside the chart has a negative x. Tradovate's guide *Creating Advanced Custom Indicators* says this for the right edge. The bottom edge is read the same way, and `cs` (`frame` or `grid`) is not told apart. Until 2026-11-23 the mock counted both inward.
 - **A forming bar.** Its own indicators keep running state in tools like EMA, so it must rebuild or restore that state on a live bar. It does not say how. An indicator that passes the forming check is safe either way, and one that does not gets a note.
 - **Rectangles** are centred on their position, as its docs say in one place. Its `Instancing` example reads as a corner.
 - **Some plotters are simplified.** `cumulative`, `zigzag` and `pivotpoints` draw as plain lines, and `scatter` as dots.

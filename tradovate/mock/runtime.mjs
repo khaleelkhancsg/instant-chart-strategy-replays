@@ -136,6 +136,10 @@ function checkItem(it, bar, problems) {
   const bad = (text) => problems.add("error", "graphics", `${(it && it.tag) || "item"} ${text}`, bar);
   if (!it || typeof it !== "object") return bad("is not an object");
   if (typeof it.key !== "string" || !it.key) bad("has no key");
+  const o = it.origin;
+  if (o !== undefined && !(o && ["frame", "grid"].includes(o.cs) && ["left", "right"].includes(o.h) && ["top", "bottom"].includes(o.v))) {
+    bad(`has an origin Tradovate does not know: ${JSON.stringify(o)} (AxesOrigin wants cs "frame" or "grid", h "left" or "right", v "top" or "bottom")`);
+  }
   const lineStyle = (s) => {
     if (!s || s.color === undefined) bad("has no line color");
     else if (s.lineWidth === undefined) bad(s.width === undefined ? "has no lineWidth" : "sets width, but the graphics LineStyle reads lineWidth");
