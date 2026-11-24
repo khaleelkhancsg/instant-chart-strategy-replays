@@ -267,8 +267,10 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
     if (!ready || !s) return { text: "Warming up", bars: "" };
     return { text: s === 1 ? (warn ? "Potentially short" : "Long") : warn ? "Potentially long" : "Short", bars: `${bars} bar${bars === 1 ? "" : "s"}` };
   };
+  // The rows' arithmetic is checked with the VWAP-slope marking off (it changes only the text of a
+  // warning, and has its own test below); a test that sets vwapSlope keeps its own.
   const boxAt = (k, props) => {
-    const r = new Run(box, { props }).compute(BARS.slice(0, k + 1));
+    const r = new Run(box, { props: { vwapSlope: "off", ...props } }).compute(BARS.slice(0, k + 1));
     return Object.fromEntries(r[k].graphics.items.map((it) => [it.key, it]));
   };
 
@@ -358,6 +360,11 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
         lines++;
       }
       eq(overlaps(out).length, 0, `overlapping text (${corner}):`);
+      // the longest state the row can show, wherever it is not showing now, also fits
+      for (const key of ["dbState0", "dbState1"]) {
+        const q = { ...out.find((z) => z.key === key), text: "Potentially short (weak)" }, tb = textBox(q, WIDE(q));
+        if (tb.x < L || tb.x + tb.w > R) throw new Error(`"${q.text}" would leave the box (${corner}, bar counts ${showBars ? "on" : "off"})`);
+      }
     }
     if (lines < 100) throw new Error(`only ${lines} lines checked`);
   });
@@ -431,6 +438,42 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
       }
       eq([...seen].sort().join(","), "1,2,3,4", `${rule}: every state seen:`);
     }
+  });
+  t("a warning calling the way the RTH VWAP moved over 15 minutes reads \"(weak)\" in grey; hide shows the side; off leaves it", () => {
+    // A plain reference RTH VWAP: typical price weighted by volume from 08:30 CT, nothing outside
+    // 08:30-15:00. Chicago time comes from each bar's timestamp, as the indicator must work it out
+    // in Tradovate (these bars' own `ct` field runs 30 minutes off their January timestamps, so the
+    // lab's study, which reads `ct`, cannot be the reference here; on the real 2026 bars the
+    // indicator's slope equals the lab's VWAP (RTH) slope on all 50,475 RTH minutes that have one).
+    const vw = [];
+    { let day = null, pv = 0, vv = 0;
+      for (const b of BARS) {
+        const local = b.ts - 6 * 3600000, ct = Math.floor(local / 60000) % 1440, d = Math.floor(local / 86400000);   // January: CST
+        if (ct < 510 || ct >= 900) { vw.push(NaN); continue; }
+        if (d !== day) { day = d; pv = 0; vv = 0; }
+        pv += ((b.h + b.l + b.c) / 3) * b.v; vv += b.v; vw.push(pv / vv);
+      } }
+    const slope = (j) => (j >= 15 && Number.isFinite(vw[j]) && Number.isFinite(vw[j - 15]) ? Math.sign(vw[j] - vw[j - 15]) : 0);
+    const call = (text) => (text === "Potentially short" ? -1 : text === "Potentially long" ? 1 : 0);
+    let weak = 0, strong = 0;
+    for (let k = 60; k < BARS.length; k += 13) {
+      const off = boxAt(k, { vwapSlope: "off" }), mark = boxAt(k, { vwapSlope: "mark" }), hide = boxAt(k, { vwapSlope: "hide" });
+      eq(boxAt(k, {}).dbState0.text, off.dbState0.text, `the tests' helper reads off at ${k}:`);
+      const dflt = Object.fromEntries(new Run(box, { props: {} }).compute(BARS.slice(0, k + 1))[k].graphics.items.map((it) => [it.key, it]));
+      for (const key of ["dbState0", "dbState1"]) {
+        eq(dflt[key].text, mark[key].text, `mark is the default (${key} at ${k}):`);
+        const c = call(off[key].text), s = slope(k);
+        if (c && s && c === s) {
+          eq(mark[key].text, `${off[key].text} (weak)`, `${key} marked at ${k}:`); eq(mark[key].style.fill, "#898781", `${key} grey at ${k}:`);
+          eq(hide[key].text, c === -1 ? "Long" : "Short", `${key} hidden at ${k}:`);
+          weak++;
+        } else {
+          eq(mark[key].text, off[key].text, `${key} unmarked at ${k}:`); eq(hide[key].text, off[key].text, `${key} not hidden at ${k}:`);
+          if (c) strong++;
+        }
+      }
+    }
+    if (weak < 20 || strong < 20) throw new Error(`too few cases: ${weak} weak, ${strong} other warnings`);
   });
   t("the box always draws the same keys, so the platform replaces it", () => {
     const keys = (props) => Object.keys(boxAt(500, props)).sort().join(",");

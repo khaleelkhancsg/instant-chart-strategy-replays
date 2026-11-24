@@ -654,6 +654,19 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
     be dragged.
   - The research reads `calc.st`, each bar's state once it has closed, which is what the live box
     ends on. A mid-bar flip that flips back by the close was never tested.
+- **The idea loop** (`research/idea_lab.mjs`; ledger `research/idea_lab_ledger.md`) screened about 300
+  ideas for the box's warnings on 2026 and confirmed two on 2025. Both say one thing: warnings calling the
+  way the RTH VWAP moved over 15 minutes are the weaker kind.
+  - The Tradovate box marks them "(weak)" (`vwapSlope`: mark, hide or off; since 2026-11-24). Its slope
+    equals the research's on every 2026 RTH minute. test/mock.test.mjs checks the marking against a
+    plain reference VWAP.
+  - Forward test frozen in the ledger: `--batch 53 --from 2026-11-02` once 40 sessions of new bars are
+    held, with a kill rule.
+  - As a gate or exit on `donchian_1250` and `macd_fade_1250` the box helps neither. A Donchian breakout
+    is a move the box already agrees with (the 5m box reads with all 128 of 2026's trades). On the fade
+    every variant helped one half of 2026 and hurt the other.
+  - Every other 2026 screen pass failed its unseen year, including outside data (FRED macro, Treasury
+    auctions, mega-cap earnings, CFTC positioning; `research/event_data_build.py`).
 - **No 30-second bars are held.** Getting them takes a working TopstepX key (second bars, recent
   only) or Databento 1-second data (paid). Add one to `TFS` to run the other four
   combinations.

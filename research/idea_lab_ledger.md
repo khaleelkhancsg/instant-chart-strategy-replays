@@ -11,6 +11,29 @@ Only CONFIRMED counts toward the five.
 Already known before the loop (not counted): the reverse-check short lead (databox_room.mjs), the
 VWAP break lean (turn_context.mjs), the MACD row's own slight lean.
 
+## Forward test of the two confirmed findings (written 2026-11-24, before any forward bar is read)
+
+Built into the Tradovate databox the same day (TradingCustomIndicators/tradovate/emaMacdDatabox.js,
+`vwapSlope`, default "mark": a warning calling the way the RTH VWAP moved over the last 15 minutes reads
+"(weak)" in grey). Its slope equals the research's VWAP (RTH) slope on all 50,475 RTH minutes of 2026 that
+have one.
+
+The test, frozen:
+- Bars: MNQ 1-minute from 2026-11-02 on, which no run has read. They need a TopstepX pull (the API key was
+  refused on Nov 20 and again today; the person must regenerate it) or Databento, then `npm run data:build`.
+  TopstepX 1-minute bars from Oct 30 roll off from 2026-12-29.
+- Command: `node --max-old-space-size=16384 research/idea_lab.mjs --batch 53 --from 2026-11-02 --placebos 100`
+  (F1 = #1 exactly, F2 = #2 exactly; the 18-point race; 100 placebo markets).
+- When: once at least 40 RTH sessions after 2026-11-02 are held (about 3,500 warnings for F2, 900 for F1,
+  going by Sep-Oct 2026). If both read "undecided", once more at 80 sessions, and that run is final.
+- Holds: the lift has the confirmed sign and beats at least 90 of 100 placebo markets (F1 as low, F2 as
+  high). Then the default stays "mark".
+- Kill rule: F2 with the wrong sign, or beating fewer than 50 of 100. Then the indicator's default goes to
+  "off", the README says why, and nothing is re-tuned or re-tested on these bars.
+- F1 alone failing while F2 holds keeps the marking (F2 covers every row, F1 is its 1m EMA part); it is
+  reported.
+- A dry run on already-tested bars (Sep-Oct 2026, one placebo market) checked the machinery only.
+
 ## Changed question (2026-11-24, the person's choice): the box as a gate or an exit on a book
 
 After about 300 ideas filtering warnings, the person chose to stop and test the box where it might pay:
@@ -39,6 +62,19 @@ on 115 (13 split), the 15m box on 90 (3 against, 35 split). A Donchian breakout 
 agrees with, so a gate has nothing to refuse; the 15m gate refuses the 35 split trades, which were good.
 Over the 23-minute average hold the 5m box never turns fully against; the 1m box does, and exiting on it
 cuts the winners before their target. The box carries nothing the Donchian book does not already have.
+
+The same six on macd_fade_1250 (shipped 55.8%; Jan-Mar 59.6, Apr-Jul 50.7): none pass.
+| variant | 2026 | Jan-Mar | Apr-Jul |
+| --- | --- | --- | --- |
+| gate with, 1m | 0 | 0 | 0 (the fade always trades against the 1m box) |
+| gate with, 5m | 55.2 | 41.6 | 70.7 |
+| gate with, 15m | 49.7 | 49.4 | 49.3 |
+| exit against, 1m | 52.7 | 39.3 | 69.3 |
+| exit against, 5m | 51.5 | 47.2 | 56.0 |
+| exit against, 15m | 51.5 | 56.2 | 45.3 |
+Added after looking (a fade's natural gate is "against"; leads only): gate against 5m 10.9 (0 / 24.0);
+gate against 15m 50.3 (19.1 / 88.0). Every variant that helps one half of 2026 hurts the other: the
+fade's regime, not the box.
 
 ## Status 2026-11-24 (after batch 52): 2 of 5 confirmed, about 300 ideas tried
 

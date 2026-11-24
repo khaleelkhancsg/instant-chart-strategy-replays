@@ -74,7 +74,12 @@ const PLACEBOS = Number(arg("--placebos", 100)), YEAR = Number(arg("--year", 202
 // names are split on "|" when one is given (some names hold a comma), else on ","
 const ONLY = arg("--only", "") ? arg("--only", "").split(arg("--only", "").includes("|") ? "|" : ",").map((s) => s.trim()) : null;
 const MIN = 60000, FLAT = 15 * 60 + 5, FIRST = 8 * 60 + 30, LAST = 14 * 60 + 55, RS = [0.00064, 0.001275];
-const FROM = Date.UTC(YEAR, 0, 1), TO = YEAR === 2026 ? Date.UTC(2026, 9, 31) : Date.UTC(YEAR + 1, 0, 1), H2 = Date.UTC(YEAR, 6, 1);
+// --from / --to (YYYY-MM-DD, --to exclusive) replace the year's dates, for the forward test (batch 53); the
+// halves then split at the midpoint
+const FROM_ARG = arg("--from", ""), TO_ARG = arg("--to", "");
+const FROM = FROM_ARG ? Date.parse(FROM_ARG) : Date.UTC(YEAR, 0, 1);
+const TO = TO_ARG ? Date.parse(TO_ARG) : FROM_ARG ? Infinity : YEAR === 2026 ? Date.UTC(2026, 9, 31) : Date.UTC(YEAR + 1, 0, 1);
+let H2 = FROM_ARG ? NaN : Date.UTC(YEAR, 6, 1);   // set from the data's span below when --from is given
 const t0 = Date.now(), secs = () => ((Date.now() - t0) / 1000).toFixed(0);
 
 // ── the box ──
@@ -1037,6 +1042,15 @@ const BATCHES = {
     { name: "toward the session VWAP, not crowded, warnings against VWAP's slope", kind: "filter", base: "potUncrowdedSlopeAgainst", why: "independence from #2",
       pass: (x, i, d) => Number.isFinite(x.vws[i]) && d * (x.vws[i] - x.C[i]) > 0 },
   ],
+  // batch 53: THE FORWARD TEST of the two confirmed findings, frozen exactly as they were confirmed (the rules
+  // and the test written in the ledger, "Forward test", before any forward bar is read). Run only with
+  // --from 2026-11-02 on bars nobody has tested.
+  53: [
+    { name: "F1: 1m EMA warnings agreeing with VWAP's slope", kind: "filter", base: "potE1", expect: "hurts", why: "confirmed #1 (vwap_nodes_confluence.mjs, \"1m EMA Pot. / VWAP slope agrees\")",
+      pass: (x, i, d) => Number.isFinite(x.vw[i - 15]) && d * (x.vw[i] - x.vw[i - 15]) > 0 },
+    { name: "F2: any box warning against VWAP slope", kind: "filter", base: "potAny", expect: "helps", why: "confirmed #2 (batch 7, \"any box warning against VWAP slope\")",
+      pass: (x, i, d) => Number.isFinite(x.vw[i - 15]) && d * (x.vw[i] - x.vw[i - 15]) < 0 },
+  ],
   // batch 52 (screen 2026, confirm 2025): more positioning
   52: [
     { name: "any warning with asset managers crowded long", kind: "filter", base: "potAny", why: "asset managers' net long in the top fifth of the year: real money fully invested, with no buyer left behind dips, so rallies stall and turns pay",
@@ -1161,6 +1175,13 @@ function measure(sample) {
 }
 
 const real = Lab.loadSample({ file: "data/mnq_1m_beta.bin", from: FROM, to: TO });
+if (FROM_ARG) {   // the forward test's halves: split at the middle of the bars it has
+  let lo = Infinity, hi = -Infinity; for (const t of real.b.ts) if (t >= FROM && t < TO) { lo = Math.min(lo, t); hi = Math.max(hi, t); }
+  if (!(hi > lo)) throw new Error(`no bars from ${FROM_ARG}${TO_ARG ? " to " + TO_ARG : ""} in data/mnq_1m_beta.bin: pull and rebuild first (npm run data:pull, npm run data:build)`);
+  H2 = (lo + hi) / 2;
+  process.stderr.write(`  forward bars: ${new Date(lo).toISOString().slice(0, 16)} to ${new Date(hi).toISOString().slice(0, 16)} UTC, halves split ${new Date(H2).toISOString().slice(0, 10)}
+`);
+}
 const R = measure(real);
 process.stderr.write(`  real market: ${secs()}s\n`);
 const pl = [];
@@ -1173,7 +1194,7 @@ for (let p = 0; p < PLACEBOS; p++) {
 const cnt = (k, key, up) => { const v = R[k][key]; if (!Number.isFinite(v)) return NaN; return pl.map((o) => o[k][key]).filter(Number.isFinite).filter((z) => (up ? z >= v : z <= v)).length; };
 const sg = (v) => (Number.isFinite(v) ? (v >= 0 ? "+" : "") + (100 * v).toFixed(1) : "—"), pc = (v) => (Number.isFinite(v) ? (100 * v).toFixed(1) : "—");
 const verdicts = [];
-console.log(`batch ${BATCH}, ${YEAR}${YEAR === 2026 ? " (to Oct 30)" : ""}, ${PLACEBOS} placebo markets; ${secs()}s`);
+console.log(`batch ${BATCH}, ${FROM_ARG ? `forward from ${FROM_ARG}${TO_ARG ? " to " + TO_ARG : ""}` : YEAR + (YEAR === 2026 ? " (to Oct 30)" : "")}, ${PLACEBOS} placebo markets; ${secs()}s`);
 console.log(`edge: points of win rate over every minute the same way (signals) or over the box signal without the filter (filters). "hi"/"lo": placebo markets as high / as low`);
 for (let r = 0; r < 2; r++) {
   console.log(`\n${r ? "37" : "18"}-point race${r ? " (beside it)" : " (the one judged)"}`);
@@ -1183,7 +1204,10 @@ for (let r = 0; r < 2; r++) {
     let v = "";
     if (r === 0) {
       const mn = idea.minN || 100, enough = o.n0h0 >= mn && o.n0h1 >= mn;
-      if (YEAR === 2026 || !ONLY) { if (enough && h1 <= 10 && h2 <= 10) v = "SCREEN PASS (helps)"; else if (enough && l1 <= 10 && l2 <= 10) v = "SCREEN PASS (hurts: the reverse helps)"; }
+      if (FROM_ARG && idea.expect) {   // the forward test's rule, written before it runs (ledger, "Forward test")
+        const beats = idea.expect === "helps" ? 100 - hi : 100 - lo, right = idea.expect === "helps" ? o.edge0 > 0 : o.edge0 < 0;
+        v = !enough ? "FORWARD: too few warnings yet" : right && beats >= 90 ? "FORWARD: holds" : !right || beats < 50 ? "FORWARD: kill" : "FORWARD: undecided";
+      } else if (YEAR === 2026 || !ONLY) { if (enough && h1 <= 10 && h2 <= 10) v = "SCREEN PASS (helps)"; else if (enough && l1 <= 10 && l2 <= 10) v = "SCREEN PASS (hurts: the reverse helps)"; }
       else { v = hi <= 5 ? "CONFIRMED (helps)" : lo <= 5 ? "CONFIRMED (hurts)" : "not confirmed"; }
       verdicts.push({ name: idea.name, kind: idea.kind, verdict: v || "fails the screen", edge: o.edge0, hi, lo, h1, l1, h2, l2, n: o.n0 });
     }
@@ -1191,6 +1215,6 @@ for (let r = 0; r < 2; r++) {
   });
 }
 console.log(`\n(${secs()}s)`);
-const tag = `b${BATCH}_${YEAR}${ONLY ? "_confirm" : ""}`;
+const tag = FROM_ARG ? `b${BATCH}_fwd_${FROM_ARG}` : `b${BATCH}_${YEAR}${ONLY ? "_confirm" : ""}`;
 fs.writeFileSync(`research/idea_lab_${tag}_results.json`, JSON.stringify({ run: new Date().toISOString(), batch: BATCH, year: YEAR, only: ONLY, placebos: PLACEBOS,
   ideas: IDEAS.map((d) => ({ name: d.name, kind: d.kind, base: d.base || null, why: d.why })), real: R, verdicts, placebo: pl }, null, 1));
