@@ -11,6 +11,13 @@ Only CONFIRMED counts toward the five.
 Already known before the loop (not counted): the reverse-check short lead (databox_room.mjs), the
 VWAP break lean (turn_context.mjs), the MACD row's own slight lean.
 
+## Status 2026-11-24 (after batch 52): 2 of 5 confirmed, about 300 ideas tried
+
+Outside data (FRED yields, dollar, credit, Fed liquidity; Treasury auctions; mega-cap earnings; CFTC
+positioning; index days) added 26 ideas in batches 45-52 and nothing confirmed. The strongest screen in the
+loop (batch 47: toward the session VWAP with leveraged funds not crowded, +5.9, 100 of 100, both halves
+99) failed on 2023. Every 2026 screen pass since #2 has failed its unseen year.
+
 ## Status 2026-11-24 (after batch 44): 2 of 5 confirmed, about 272 ideas tried
 
 The lab's own data is close to used up: price, volume, time, levels, VWAP, the box's history, VXN/VIX/VXV
@@ -319,6 +326,55 @@ Screen (2026): none pass. Release day -0.9 (83 as low); first hour against yeste
 (2,378 warnings, 51; halves -3.7 / +0.5); Monday morning -0.6. The holiday filter found no sessions: Globex
 trades a short session on most holidays, so a missing weekday almost never marks one. It would need the
 exchange's holiday list; not re-run.
+
+### Batch 51 (--batch 51, run on 2026 and 2023): independence check for batch 47 against #2
+
+The not-crowded session VWAP filter inside warnings with VWAP's slope and inside warnings against it.
+Written before batch 47's 2023 result: it counts as new only if both rows lift beyond 90 of 100 on 2026
+and on 2023.
+
+2026: both rows pass the rule. With VWAP's slope +4.1 (834 warnings; 96 of 100; halves 90 and 92);
+against it +5.8 (6,639; 98; halves 79 and 99). 2023: pending.
+
+### Batch 48 (--batch 48): Fed net liquidity (balance sheet less Treasury cash less reverse repo): calling with its 4-week change; liquidity draining fast
+
+Readings lagged to publication (WALCL and WTREGEN 2 days, RRP 1 day). Qualifying weeks per half (2025
+H1/H2, 2026 H1/H2): |4-week change| >= $50bn 25/22/19/10 of 26/27/25/21 (so it works as a direction);
+drain <= -$100bn 7/10/2/3.
+
+Screen (2026): none pass. Calling with net liquidity's month -0.0 (halves -0.9 / +1.3); liquidity draining
+fast -1.6 (100 as low overall; Jan-Jun 91, Jul-Oct 79).
+
+### Batch 49 (--batch 49): earnings timing: the session before mega-cap earnings; earnings season (a report in the last 10 days)
+
+Screen (2026): none pass. Session before earnings +0.5 (halves -0.4 / +1.6); earnings season -1.1 (83 as
+low).
+
+### Batch 50 (--batch 50): positioning shifts: NQ open interest up 5%+ in the last report (weeks per half 7/5/4/3); dealers' net position in the year's bottom fifth
+
+Screen (2026): none pass. Open interest jumped +1.6 (95; Jan-Jun 100, Jul-Oct 47); dealers crowded short
+-0.6.
+
+### Batch 52 (--batch 52): asset managers crowded long (top fifth of the year); the week after leveraged funds flipped their net side
+
+Screen (2026): none pass. Asset managers crowded long +0.6 (78). Leveraged funds never flipped their net
+side in 2026, so the second idea had no events.
+
+### Batch 47 (--batch 47, screen 2026, confirm 2023): does trend followers' positioning (CFTC leveraged funds crowded either way) say when turns back to the session VWAP work?
+
+Written before the run: the finding would be the "crowded" row passing on 2026 and on 2023 (unused by
+every balance filter; 2025 and 2024 have been used). Because batch 28 ruled the session VWAP filter #2
+again, a pass counts as new only if, in addition, the crowded row lifts both sides of #2's split.
+
+Screen (2026): the opposite of the hypothesis. Not crowded +5.9 (7,808 warnings; 100 of 100; halves 99
+and 99; 37-point +6.1, 99), the largest and steadiest screen in the loop; crowded +1.1 (81). The reason
+given was wrong, so as with batch 19 it is a screen pass named the way it came out, and the unseen year
+decides. A possible reason, after the fact: with trend followers not crowded, no side is forced to
+unwind, and intraday swings come back to the session's balance; crowded markets get squeezed through it.
+Named for confirmation on 2023: toward the session VWAP, leveraged funds not crowded: helps. The same
+rule as written above applies: to count as new it must also lift both sides of #2's split.
+Confirmation (2023): not confirmed, -0.4 (44 of 100; halves -1.4 / +1.2). Final. Batch 51's 2023 run was
+stopped part-way: it mattered only if this confirmed.
 
 ### Batch 46 (--batch 46): outside events: the hour after a coupon auction, after an auction calling its way, mega-cap earnings sessions, quarterly expiry days, against leveraged funds' crowded side, the way asset managers are adding
 

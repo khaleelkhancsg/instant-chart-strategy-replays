@@ -52,12 +52,12 @@ const VIX = readFred("data/raw/fred/VIXCLS.csv"), VXV = readFred("data/raw/fred/
 // it was public before the session: yields (H.15, the Treasury's own close) from the day before, the HY
 // spread (ICE, posted the next day) two days back, the broad dollar (published weekly) a week back.
 // macroAt(series, iso, lagDays, back) = [the last value dated before iso - lagDays, the one `back` observations before it]
-const MACRO = Object.fromEntries(["DGS2", "DGS10", "DTWEXBGS", "BAMLH0A0HYM2"].map((s) => { const m = readFred(`data/raw/fred/${s}.csv`); return [s, { m, d: [...m.keys()].sort() }]; }));
+const MACRO = Object.fromEntries(["DGS2", "DGS10", "DTWEXBGS", "BAMLH0A0HYM2", "WALCL", "WTREGEN", "RRPONTSYD"].map((s) => { const m = readFred(`data/raw/fred/${s}.csv`); return [s, { m, d: [...m.keys()].sort() }]; }));
 const macroAt = (s, iso, lag, back) => { const { m, d } = MACRO[s], cut = new Date(Date.parse(iso) - lag * 86400000 + 86400000).toISOString().slice(0, 10);
   let lo = 0, hi = d.length; while (lo < hi) { const md = (lo + hi) >> 1; if (d[md] < cut) lo = md + 1; else hi = md; } const k = lo - 1; return k - back >= 0 ? [m.get(d[k]), m.get(d[k - back])] : [NaN, NaN]; };
 // batch 46: event files built by research/event_data_build.py into data/raw/events
 const readCsv = (f) => { const [h, ...r] = fs.readFileSync(f, "utf8").trim().split(/\r?\n/).map((l) => l.split(",")); return r.map((v) => Object.fromEntries(h.map((k, j) => [k, v[j]]))); };
-function BATCH_NEEDS_EVENTS() { const a = process.argv.slice(2), i = a.indexOf("--batch"); return i >= 0 && Number(a[i + 1]) === 46; }
+function BATCH_NEEDS_EVENTS() { const a = process.argv.slice(2), i = a.indexOf("--batch"); return i >= 0 && [46, 47, 49, 50, 51, 52].includes(Number(a[i + 1])); }
 const EV = BATCH_NEEDS_EVENTS() ? {
   earnings: new Set(readCsv("data/raw/events/earnings.csv").map((r) => r.session)),
   // coupon auctions by date: the close in Chicago minutes, and the weakest bid-to-cover against its term's usual
@@ -65,7 +65,7 @@ const EV = BATCH_NEEDS_EVENTS() ? {
     const et = ((+t[1] % 12) + (t[3] === "PM" ? 12 : 0)) * 60 + +t[2], rel = r.btc_vs_prev6 ? +r.btc_vs_prev6 : NaN, o = m.get(r.date) || { ct: et - 60, rel: NaN };
     o.ct = Math.min(o.ct, et - 60); if (Number.isFinite(rel)) o.rel = Number.isFinite(o.rel) ? Math.min(o.rel, rel) : rel; m.set(r.date, o); return m; }, new Map()),
   quarterly: new Set(readCsv("data/raw/events/index_days.csv").filter((r) => r.kind !== "monthly").map((r) => r.date)),
-  cot: readCsv("data/raw/events/cot_nq.csv").map((r) => ({ from: r.usable_from, lev: (+r.lev_long - +r.lev_short) / +r.oi, am: (+r.am_long - +r.am_short) / +r.oi })),
+  cot: readCsv("data/raw/events/cot_nq.csv").map((r) => ({ from: r.usable_from, oi: +r.oi, dealer: (+r.dealer_long - +r.dealer_short) / +r.oi, lev: (+r.lev_long - +r.lev_short) / +r.oi, am: (+r.am_long - +r.am_short) / +r.oi })),
 } : null;
 const PC = new Map(), prevClose = (map, iso) => { const key = (map === VIX ? "x" : "v") + iso; if (PC.has(key)) return PC.get(key); let best = null; for (const d of map.keys()) if (d < iso && (!best || d > best)) best = d; const v = best ? map.get(best) : NaN; PC.set(key, v); return v; };
 
@@ -271,20 +271,38 @@ function context(sample) {
         const [y2, y2p] = macroAt("DGS2", iso, 1, 1), [y10, y10p] = macroAt("DGS10", iso, 1, 1), [u, up] = macroAt("DTWEXBGS", iso, 7, 5), [h, hp] = macroAt("BAMLH0A0HYM2", iso, 2, 5);
         a = (y2 - y2p) * 100; b = (y10 - y10p) * 100; c = (u / up - 1) * 100; e = (h - hp) * 100; }
       x.y2chg[i] = a; x.y10chg[i] = b; x.usd5[i] = c; x.hy5[i] = e; } }
+  // batch 48: net liquidity's 4-week change ($bn) known before the session: the Fed's balance sheet (WALCL,
+  // Wednesday levels posted Thursday afternoon, read 2 days back) less the Treasury's cash (WTREGEN, the
+  // same) less the reverse repo (RRPONTSYD, posted the same afternoon, read a day back, 20 readings back)
+  x.liq4 = new Float64Array(N).fill(NaN);
+  if (BATCH === 48) { let td18 = -1, v = NaN; for (let i = 0; i < N; i++) { if (TD[i] !== td18) { td18 = TD[i]; const iso = new Date(TD[i] * 86400000).toISOString().slice(0, 10);
+        const [w, wp] = macroAt("WALCL", iso, 2, 4), [t, tp] = macroAt("WTREGEN", iso, 2, 4), [r, rp] = macroAt("RRPONTSYD", iso, 1, 20);
+        v = ((w - wp) - (t - tp)) / 1000 - (r - rp); } x.liq4[i] = v; } }
   // batch 46: per session, from EV: an earnings session, the coupon auction (close minute CT, strength), a
   // quarterly expiry, and positioning usable that day (leveraged funds' net share of open interest against
   // its last 52 reports: +1 top fifth, -1 bottom fifth; asset managers' net share change over 4 reports)
   if (EV) {
     x.earn = new Uint8Array(N); x.aucCt = new Int16Array(N).fill(-1); x.aucRel = new Float64Array(N).fill(NaN); x.quarterly = new Uint8Array(N); x.levCrowd = new Int8Array(N); x.amTrend = new Float64Array(N).fill(NaN);
-    let td17 = -1, e = 0, ac = -1, ar = NaN, q = 0, lc = 0, at = NaN;
+    let td17 = -1, e = 0, ac = -1, ar = NaN, q = 0, lc = 0, at = NaN, pre = 0, season = 0, oiChg = NaN, dealerShort = 0, amCrowd = 0, levFlip = 0;
+    x.amCrowd = new Uint8Array(N); x.levFlip = new Int8Array(N);
+    x.preEarn = new Uint8Array(N); x.season = new Uint8Array(N); x.oiChg = new Float64Array(N).fill(NaN); x.dealerShort = new Uint8Array(N);
     for (let i = 0; i < N; i++) {
       if (TD[i] !== td17) { td17 = TD[i]; const iso = new Date(TD[i] * 86400000).toISOString().slice(0, 10);
         e = EV.earnings.has(iso) ? 1 : 0; const a = EV.auctions.get(iso); ac = a ? a.ct : -1; ar = a ? a.rel : NaN; q = EV.quarterly.has(iso) ? 1 : 0;
         let k = -1; for (let j = 0; j < EV.cot.length && EV.cot[j].from <= iso; j++) k = j;
         lc = 0; at = NaN;
         if (k >= 52) { const win = EV.cot.slice(k - 51, k + 1).map((c) => c.lev).sort((p, r) => p - r), v = EV.cot[k].lev; lc = v >= win[Math.floor(0.8 * 51)] ? 1 : v <= win[Math.floor(0.2 * 51)] ? -1 : 0; }
-        if (k >= 4) at = EV.cot[k].am - EV.cot[k - 4].am; }
+        if (k >= 4) at = EV.cot[k].am - EV.cot[k - 4].am;
+        // batch 49: tomorrow's session is an earnings session; a mega-cap reported within the last 10 days
+        { const nx = new Date(TD[i] * 86400000); do nx.setUTCDate(nx.getUTCDate() + 1); while (nx.getUTCDay() === 0 || nx.getUTCDay() === 6); pre = EV.earnings.has(nx.toISOString().slice(0, 10)) ? 1 : 0;
+          season = 0; for (let b = 0; b <= 10 && !season; b++) if (EV.earnings.has(new Date((TD[i] - b) * 86400000).toISOString().slice(0, 10))) season = 1; }
+        // batch 50: open interest's change over the last report (%); dealers' net share in the bottom fifth of the year
+        oiChg = k >= 1 ? (EV.cot[k].oi / EV.cot[k - 1].oi - 1) * 100 : NaN;
+        amCrowd = 0; if (k >= 52) { const win = EV.cot.slice(k - 51, k + 1).map((c) => c.am).sort((p, r) => p - r); amCrowd = EV.cot[k].am >= win[Math.floor(0.8 * 51)] ? 1 : 0; }
+        levFlip = k >= 1 && Math.sign(EV.cot[k].lev) !== Math.sign(EV.cot[k - 1].lev) ? Math.sign(EV.cot[k].lev) : 0;
+        dealerShort = 0; if (k >= 52) { const win = EV.cot.slice(k - 51, k + 1).map((c) => c.dealer).sort((p, r) => p - r); dealerShort = EV.cot[k].dealer <= win[Math.floor(0.2 * 51)] ? 1 : 0; } }
       x.earn[i] = e; x.aucCt[i] = ac; x.aucRel[i] = ar; x.quarterly[i] = q; x.levCrowd[i] = lc; x.amTrend[i] = at;
+      x.preEarn[i] = pre; x.season[i] = season; x.amCrowd[i] = amCrowd; x.levFlip[i] = levFlip; x.oiChg[i] = oiChg; x.dealerShort[i] = dealerShort;
     }
   }
   // batch 4: the 1m box's flips (either way) in each minute, and the close-location value of each bar
@@ -333,6 +351,12 @@ const BASES = {
   // warnings split by the multi-day trend: calling with price's side of its 20-settlement average, or against it
   potWith20: (x, i) => { const d = BASES.potAny(x, i); return d && Number.isFinite(x.d20[i]) && d * (x.C[i] - x.d20[i]) > 0 ? d : 0; },
   potAgainst20: (x, i) => { const d = BASES.potAny(x, i); return d && Number.isFinite(x.d20[i]) && d * (x.C[i] - x.d20[i]) < 0 ? d : 0; },
+  // warnings split by leveraged funds' positioning (batch 47): crowded either way, or not
+  potCrowded: (x, i) => (x.levCrowd && x.levCrowd[i] !== 0 ? BASES.potAny(x, i) : 0),
+  potUncrowded: (x, i) => (x.levCrowd && x.levCrowd[i] === 0 ? BASES.potAny(x, i) : 0),
+  // batch 51: not crowded, split by confirmed #2 (VWAP's 15-minute slope)
+  potUncrowdedSlopeWith: (x, i) => (x.levCrowd && x.levCrowd[i] === 0 ? BASES.potSlopeWith(x, i) : 0),
+  potUncrowdedSlopeAgainst: (x, i) => (x.levCrowd && x.levCrowd[i] === 0 ? BASES.potSlopeAgainst(x, i) : 0),
   potVxnHigh: (x, i) => (x.vxn[i] >= 21 ? BASES.potAny(x, i) : 0),
   potVxnLow: (x, i) => (x.vxn[i] < 21 ? BASES.potAny(x, i) : 0),
   lead: (x, i) => (x.e1[i] === 2 && x.e1[i - 1] !== 2 && x.e5[i] === 4 ? -1 : 0),
@@ -995,6 +1019,51 @@ const BATCHES = {
       pass: (x, i, d) => x.levCrowd[i] !== 0 && d === -x.levCrowd[i] },
     { name: "any warning the way asset managers are adding", kind: "filter", base: "potAny", why: "asset managers' net share of open interest rising (falling) over four weeks is slow real-money buying (selling); a turn that way has it behind it",
       pass: (x, i, d) => Number.isFinite(x.amTrend[i]) && x.amTrend[i] !== 0 && d === Math.sign(x.amTrend[i]) },
+  ],
+  // batch 47 (screen 2026, confirm 2023: 2025 and 2024 have been used by the balance filters): does trend
+  // followers' positioning say when turns back to balance work? Finding = the "crowded" row passing both
+  // stages; the "not crowded" row read beside it.
+  47: [
+    { name: "toward the session VWAP, leveraged funds crowded", kind: "filter", base: "potCrowded", why: "with trend followers crowded on one side, a turn back to the session's balance has their unwinding behind it",
+      pass: (x, i, d) => Number.isFinite(x.vws[i]) && d * (x.vws[i] - x.C[i]) > 0 },
+    { name: "toward the session VWAP, leveraged funds not crowded", kind: "filter", base: "potUncrowded", why: "the other side of the split",
+      pass: (x, i, d) => Number.isFinite(x.vws[i]) && d * (x.vws[i] - x.C[i]) > 0 },
+  ],
+  // batch 51 (independence check for batch 47, written before its 2023 result): does "toward the session
+  // VWAP, leveraged funds not crowded" lift warnings on both sides of #2's split?
+  51: [
+    { name: "toward the session VWAP, not crowded, warnings with VWAP's slope", kind: "filter", base: "potUncrowdedSlopeWith", why: "independence from #2",
+      pass: (x, i, d) => Number.isFinite(x.vws[i]) && d * (x.vws[i] - x.C[i]) > 0 },
+    { name: "toward the session VWAP, not crowded, warnings against VWAP's slope", kind: "filter", base: "potUncrowdedSlopeAgainst", why: "independence from #2",
+      pass: (x, i, d) => Number.isFinite(x.vws[i]) && d * (x.vws[i] - x.C[i]) > 0 },
+  ],
+  // batch 52 (screen 2026, confirm 2025): more positioning
+  52: [
+    { name: "any warning with asset managers crowded long", kind: "filter", base: "potAny", why: "asset managers' net long in the top fifth of the year: real money fully invested, with no buyer left behind dips, so rallies stall and turns pay",
+      pass: (x, i) => x.amCrowd[i] === 1 },
+    { name: "any warning against leveraged funds' fresh flip", kind: "filter", base: "potAny", why: "in the week after trend followers flip their net side, they keep adding to the new side; a turn against that has their flow against it, so it fails",
+      pass: (x, i, d) => x.levFlip[i] !== 0 && d === -x.levFlip[i] },
+  ],
+  // batch 48 (screen 2026, confirm 2025): Fed liquidity
+  48: [
+    { name: "any warning calling with net liquidity's month", kind: "filter", base: "potAny", why: "net liquidity (Fed balance sheet less Treasury cash less reverse repo) up $50bn+ over four weeks is cash looking for assets, which lifts equities; a turn calling long then (short after a $50bn drain) has that flow behind it",
+      pass: (x, i, d) => Math.abs(x.liq4[i]) >= 50 && d === Math.sign(x.liq4[i]) },
+    { name: "any warning while liquidity drains fast", kind: "filter", base: "potAny", why: "net liquidity down $100bn+ in four weeks tightens funding; de-risking overshoots both ways intraday, so turns pay",
+      pass: (x, i) => x.liq4[i] <= -100 },
+  ],
+  // batch 49 (screen 2026, confirm 2025): earnings timing
+  49: [
+    { name: "any warning the session before mega-cap earnings", kind: "filter", base: "potAny", why: "the day before a big report traders wait and option dealers hedge a pinned market: little follow-through, so turns pay",
+      pass: (x, i) => x.preEarn[i] === 1 },
+    { name: "any warning in earnings season", kind: "filter", base: "potAny", why: "within 10 days after a mega-cap report the index keeps repricing on fresh numbers: moves carry, turns fail",
+      pass: (x, i) => x.season[i] === 1 },
+  ],
+  // batch 50 (screen 2026, confirm 2025): positioning shifts
+  50: [
+    { name: "any warning after open interest jumped", kind: "filter", base: "potAny", why: "NQ open interest up 5%+ in the last weekly report: new positions being built behind a trend, so turns fail",
+      pass: (x, i) => x.oiChg[i] >= 5 },
+    { name: "any warning with dealers crowded short", kind: "filter", base: "potAny", why: "dealers' net NQ position in the bottom fifth of the year means they are short futures against client longs (ETF and options flow); their hedging buys dips and sells rips, so turns pay",
+      pass: (x, i) => x.dealerShort[i] === 1 },
   ],
   // batch 44: batch 43's idea with a cut that occurs. The box warns about every 4.6 minutes in RTH; if the
   // gaps were random, 10 minutes would be about their 90th percentile. Chosen from that, not from results.
