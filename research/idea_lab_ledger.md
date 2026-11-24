@@ -11,6 +11,35 @@ Only CONFIRMED counts toward the five.
 Already known before the loop (not counted): the reverse-check short lead (databox_room.mjs), the
 VWAP break lean (turn_context.mjs), the MACD row's own slight lean.
 
+## Changed question (2026-11-24, the person's choice): the box as a gate or an exit on a book
+
+After about 300 ideas filtering warnings, the person chose to stop and test the box where it might pay:
+as an entry gate or an exit on donchian_1250 ($1,250 eval, the live bot's book). Written before any run:
+- Variants (6): the databox study (defaults: EMA 12/26, MACD 12/26/9, warnings both, gateOn both) on 1m,
+  5m and 15m bars, each as gate "with" (entries only while the box reads the trade's way) and as exit
+  "against" (close at the next open once the box reads against the trade). Costs as the book ships.
+- Screen: the MCP compare tool, paired with the shipped book, calendar method, 2026 Jan-Mar and Apr-Jul.
+  A variant passes if it beats the shipped book in both halves and wins more calendar months than it loses.
+- Confirm: each pass, unchanged, on 2025 windows by the same comparison, run once.
+- Placebo markets are not available through these tools; the paired comparison against the same book on
+  the same windows is the control, and 2026 holds about 5.5 independent windows, so a pass is a lead
+  until 2025 agrees.
+
+Screen (2026, calendar, $1,250, against the shipped 74.5%; Jan-Mar 76.4, Apr-Jul 73.3): none pass.
+| variant | 2026 | Jan-Mar | Apr-Jul | months won (variant / book) |
+| --- | --- | --- | --- | --- |
+| gate with, 1m | 73.9 | 74.2 | 74.7 | 1 / 1 |
+| gate with, 5m | 74.5 | 76.4 | 73.3 | identical |
+| gate with, 15m | 63.0 | 64.0 | 62.7 | 0 / 3 |
+| exit against, 1m | 44.8 | 29.2 | 64.0 | 0 / 4 |
+| exit against, 5m | 74.5 | 76.4 | 73.3 | identical |
+| exit against, 15m | 74.5 | 76.4 | 73.3 | 0 / 0 (net $962 vs $989) |
+Why (backtest byStudy, 2026's 128 trades): at the signal the 5m box reads "with" on all 128, the 1m box
+on 115 (13 split), the 15m box on 90 (3 against, 35 split). A Donchian breakout is a move the box already
+agrees with, so a gate has nothing to refuse; the 15m gate refuses the 35 split trades, which were good.
+Over the 23-minute average hold the 5m box never turns fully against; the 1m box does, and exiting on it
+cuts the winners before their target. The box carries nothing the Donchian book does not already have.
+
 ## Status 2026-11-24 (after batch 52): 2 of 5 confirmed, about 300 ideas tried
 
 Outside data (FRED yields, dollar, credit, Fed liquidity; Treasury auctions; mega-cap earnings; CFTC
