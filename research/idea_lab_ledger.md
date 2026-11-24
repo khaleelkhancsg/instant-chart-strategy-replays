@@ -11,7 +11,7 @@ Only CONFIRMED counts toward the five.
 Already known before the loop (not counted): the reverse-check short lead (databox_room.mjs), the
 VWAP break lean (turn_context.mjs), the MACD row's own slight lean.
 
-## Paused 2026-11-24: resume here
+## Paused 2026-11-24, resumed the same day (runs 1-4 below done; see each batch)
 
 About 220 ideas tried (batches 1-27 screened). Runs stopped part-way, to restart as they were:
 1. Confirm toward the session VWAP on 2025 (batch 26, named, not yet run to the end):
@@ -278,6 +278,9 @@ warnings; 100 of 100; halves 99 and 99; 37-point +2.5, 86). Near: toward the day
 Jan-Jun 100, Jul-Oct 86); toward the developing POC +1.8 (89); a day full of warnings +2.3 (77); before a
 release 223 warnings, too few to read.
 Named for confirmation on 2025: any warning calling toward the session VWAP: helps.
+Confirmation (2025): not confirmed, +0.3 (61 of 100; Jan-Jun +2.8, 100; Jul-Dec -2.2). The fourth balance
+filter with the same shape: every "toward balance" reading works in 2026 and 2025 Jan-Jun and turns in
+2025 Jul-Dec, and VXN does not explain it (batch 29).
 
 Written before the 2025 runs: toward the session VWAP and toward the IB midpoint may be #2 again (a
 warning against VWAP's slope often calls back toward VWAP). Each counts as a new finding only if it
@@ -286,13 +289,100 @@ it) in the same direction, beating 90 of 100 on 2026 and on 2025 in each. Toward
 judged as its own finding; the IB midpoint (batch 23) as another; if both pass they still need to show
 they are not the same warnings (overlap reported).
 
+### Batch 33 (--batch 33, screen 2026, confirm 2024): the balance filters split by the 20-day trend (warnings with or against price's side of the 20-settlement average)
+
+Why: every balance filter turned in 2025 Jul-Dec, a steady multi-week rise, and VXN does not explain it.
+Hypothesis: a turn back to the day's balance that is against the multi-day trend gets bought (sold).
+Written before the run: a "with the 20-day trend" row passing on 2026 is confirmed on 2024 (unseen by
+these filters), and counts as new only if it also holds inside both sides of #2's split (batch 28's
+rule), because batch 28 showed the IB midpoint's lift sits mostly with #2 (88 and 50 of 100).
+
+Screen (2026): toward the session VWAP passes on both sides of the split: with the 20-day trend +3.8 (99;
+halves 98 and 99), against it +3.1 (98; 94 and 94). IB midpoint: with +3.7 (100; Jul-Oct 80), against
++3.0. In 2026 the split barely separates them, so 2026 cannot show the hypothesis; 2024 decides.
+Named for confirmation on 2024: toward the session VWAP, with the 20-day trend: helps.
+Confirmation (2024): not confirmed, +0.3 (57 of 100; halves +0.1 and +0.5). The balance family is closed:
+its lift is 2026's and 2025 Jan-Jun's, not the market's, and neither VXN (batch 29) nor the 20-day trend
+picks out where it works.
+
+### Batch 32 (--batch 32): the session before a holiday, release days, the first hour against yesterday's last hour, Monday mornings
+
+Screen (2026): none pass. Release day -0.9 (83 as low); first hour against yesterday's last hour -2.0
+(2,378 warnings, 51; halves -3.7 / +0.5); Monday morning -0.6. The holiday filter found no sessions: Globex
+trades a short session on most holidays, so a missing weekday almost never marks one. It would need the
+exchange's holiday list; not re-run.
+
+### Batch 42 (--batch 42): an acceleration into the warning, a warning soon after an opposite one, against a trend running since the open
+
+Results: pending.
+
+### Batch 41 (--batch 41): the 5m ATR rising, a 1m EMA warning with the MACD histogram still growing, after 11:00 on a narrow day
+
+Screen (2026): none pass. 5m ATR rising -0.4 (halves -1.1 / +0.6); after 11:00 on a narrow day +1.2 (1,372;
+Jan-Jun 96, Jul-Oct -1.8). The MACD-still-growing filter has no events, by construction: the EMA row warns
+when its gap (the MACD line) closes faster each bar, which always pulls the histogram the same way.
+
+### Batch 40 (--batch 40 --year 2025, confirm 2024): MES on the warnings: MES's box warning the same way, MES failing to confirm MNQ's extreme, against NQ's 15-minute outperformance
+
+MES ends 2026-03-23, so this screens on 2025 (both halves) and confirms on 2024, as batch 3 did.
+
+Results: pending.
+
+### Batch 39 (--batch 39): the multi-week trend: a day that set a 20-day extreme, calling with the 20-day trend, calling with yesterday's direction
+
+Screen (2026): none pass. A day that set a 20-day extreme -1.8 (99 as low; Jan-Jun 89, one short of the
+rule; Jul-Oct 100): a miss, not rounded up. With the 20-day trend +0.7 (Jan-Jun -0.0); with yesterday's
+direction -0.8.
+
+### Batch 37 (--batch 37): jumps (3 bars, 40%), a fake flip in the last half hour, 3+ VWAP crosses in the hour, the 1m rows split 10 of 15 bars
+
+Screen (2026): none pass. Jumps -5.5 (516 warnings, 95 as low; halves 88 and 79); 3+ VWAP crosses +1.4
+(95; Jan-Jun 100, Jul-Oct -0.1); rows split 10+ bars +0.8 (82); fake flip +0.6.
+
+### Batch 35 (--batch 35): the tape's memory (lag-1 autocorrelation, the 5-minute variance ratio), a move made of jumps, the hour's range edge
+
+Screen (2026): none pass. Hour's range edge calling inside +2.3 (99; Jan-Jun 100, Jul-Oct 79); mean-reverting
+tape +1.0 (92; Jan-Jun 69); variance ratio under 0.8 +0.6 (halves -0.3 / +1.9). Jumps: the cut (one bar
+over a third of the path) caught 4 warnings, a design slip; batch 37 re-runs it with a cut that occurs,
+counted as a new trial.
+
+### Batch 38 (--batch 38): the near misses pooled (built after looking; only 2025 counts)
+
+Changing approach after about 25 ideas in a row without a countable pass. Four leads lifted warnings in
+both halves of 2026 and beat 95+ of 100 overall: the hour's range edge calling inside (batch 35, +2.3),
+volume rising over the hour (36, +1.0), an inside bar (27, +1.6), the day after a wide day (22, +1.0).
+Each rule is used exactly as its batch wrote it. Written before any run: the judged row is "2+ of the
+four"; its 2026 screen is biased by construction, so it goes to 2025 (unseen by all four) whatever 2026
+says, and must beat 95 of 100 there. "1+" is read beside it. If it confirms, it still needs batch 28's
+independence check against #2 (the range edge is a balance reading).
+
+2025: not confirmed. 2+ of the four -0.3 (72 of 100 as high, the wrong way; halves -2.4 / +1.6); 1+ -0.7.
+The near misses were noise; pooling them does not change that.
+
+### Batch 36 (--batch 36): the two VWAPs sloping apart, volume rising over the hour, off a round 25 calling away, Friday afternoon toward the nearest round 100
+
+Screen (2026): none pass. Volume rising over the hour +1.0 (98; halves 87 and 93); two VWAPs sloping apart
+-0.5 (halves +1.4 / -2.7); round 25 +0.0; Friday toward round 100 +0.3 (1,319).
+
+### Batch 34 (--batch 34): the 15m rows' own warnings as calls, a thin market (volume per point), a day outrunning yesterday
+
+Screen (2026): none pass. Day outrunning yesterday -1.7 (98 as low; Jul-Oct 81); 15m EMA warning -2.3
+(1,053, signal, 80 as low); 15m MACD -1.3; thin market -1.4 (1,817).
+
+### Batch 31 (--batch 31): the structure already turned, a warning confirmed by the next bar, a trending overnight, quiet for the time of day
+
+Screen (2026): none pass. Trending overnight +1.0 (91; Jan-Jun 98, Jul-Oct 51); quiet for the time of day
++0.9 (69); confirmed by the next bar -0.2 (signal); structure turned +0.0.
+
 ### Batch 30 (--batch 30): VIX above VXV, VXN's premium over VIX above its median, yesterday's range broken today, a 5m inside bar, a 15m row warning the same way
 
 Changed before the full run (seen on one placebo market only): the VXN premium was "VXN 1.25x VIX or
 more", true every day of 2026 Jul-Oct, so it could not split that half; now against its 60-day median.
 VIX above VXV happened on no day of 2026 Jul-Oct, so it cannot pass the both-halves rule; kept as read.
 
-Results: pending.
+Screen (2026): none pass. VIX above VXV +3.2 (1,346 warnings, Jan-Jun only, 97); VXN premium -0.8 (halves
+-1.9 / +0.5); yesterday's range broken -0.8 (93 as low; Jan-Jun +0.1); 5m inside bar +1.3 (89); a 15m row
+warning the same way +1.1 (Jul-Oct -0.9).
 
 ### Batch 29 (--batch 29, screen 2026, confirm 2024): do the balance filters need a volatile market? (toward the IB midpoint and the session VWAP, split at VXN 21)
 
@@ -301,8 +391,14 @@ Jan-Jun (22) and failed in 2025 Jul-Dec (20). 2025's halves have been seen, so t
 (VXN medians 17 and 21), unused by these filters. One threshold, 21, fixed before the run, near the
 long-run median. Finding = a high-VXN row passing both stages.
 
-Results: pending.
+Screen (2026): the regime idea fails. The low-VXN rows lift as much as the high ones (IB midpoint +4.0
+under 21 vs +3.1 at 21+; session VWAP +2.4 vs +3.4), so volatility does not explain 2025 Jul-Dec. The
+one pass, toward the session VWAP at VXN 21+ (+3.4, 100; halves 98 and 96), is the session VWAP filter
+again, ruled #2 by batch 28; its 2024 run was not made.
 
 ### Batch 28 (--batch 28): independence checks for batch 23 and 26 against confirmed #2
 
-Results: pending.
+2026: toward the session VWAP lifts both sides of #2's split but beats only 77 (with the slope, +1.2,
+1,840 warnings) and 88 (against it, +2.0; Jan-Jun -0.3) of 100, short of the 90 the rule asks. So by the
+rule written before the runs, toward the session VWAP is #2 again, not a new finding, whatever 2025
+says. The IB rows: +2.5 (88) and +0.7 (50); moot, the IB midpoint failed 2025.
