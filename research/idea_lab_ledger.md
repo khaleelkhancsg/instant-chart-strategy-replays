@@ -11,6 +11,14 @@ Only CONFIRMED counts toward the five.
 Already known before the loop (not counted): the reverse-check short lead (databox_room.mjs), the
 VWAP break lean (turn_context.mjs), the MACD row's own slight lean.
 
+## Status 2026-11-24 (after batch 44): 2 of 5 confirmed, about 272 ideas tried
+
+The lab's own data is close to used up: price, volume, time, levels, VWAP, the box's history, VXN/VIX/VXV
+and MES have all been tried in several forms. A recurring pattern: mean-reversion readings work in 2026
+and 2025 Jan-Jun and turn in 2025 Jul-Dec (balance filters, MES confirmation), and nothing tried (VXN,
+the 20-day trend) says which regime is on. Next source proposed: daily rates, dollar and credit series
+from FRED (needs the person's OK to download).
+
 ## Paused 2026-11-24, resumed the same day (runs 1-4 below done; see each batch)
 
 About 220 ideas tried (batches 1-27 screened). Runs stopped part-way, to restart as they were:
@@ -312,9 +320,23 @@ Screen (2026): none pass. Release day -0.9 (83 as low); first hour against yeste
 trades a short session on most holidays, so a missing weekday almost never marks one. It would need the
 exchange's holiday list; not re-run.
 
+### Batch 44 (--batch 44): the box's first warning in 10 minutes (batch 43 with a cut that occurs)
+
+The cut is the gaps' rough 90th percentile if warnings came at random every 4.6 minutes, chosen from that and
+not from any result; counted as a new trial.
+
+Screen (2026): 81 warnings, too few (-5.0, 81 of 100). Warnings cluster far more than at random, so even
+10 quiet minutes are rare. Dropped.
+
+### Batch 43 (--batch 43): the box's first warning in 30 minutes
+
+Screen (2026): no events. With four rows the box never goes 30 minutes without a warning (one about every
+4.6 minutes in RTH): a design slip.
+
 ### Batch 42 (--batch 42): an acceleration into the warning, a warning soon after an opposite one, against a trend running since the open
 
-Results: pending.
+Screen (2026): none pass. Soon after an opposite warning -1.8 (100 as low overall; Jan-Jun 89, one short;
+Jul-Oct 96); acceleration +0.9 (86); against a trend since the open 96 warnings, too few.
 
 ### Batch 41 (--batch 41): the 5m ATR rising, a 1m EMA warning with the MACD histogram still growing, after 11:00 on a narrow day
 
@@ -326,7 +348,10 @@ when its gap (the MACD line) closes faster each bar, which always pulls the hist
 
 MES ends 2026-03-23, so this screens on 2025 (both halves) and confirms on 2024, as batch 3 did.
 
-Results: pending.
+Screen (2025): none pass. MES's box warning the same way +0.2; against NQ's outperformance +0.4 (Jul-Dec
+-0.1; 37-point +1.5, 99); MES failing to confirm the extreme -0.3 overall, but +7.3 in Jan-Jun (beyond
+all 100) and -5.8 in Jul-Dec (beyond all 100 the other way): a regime that flipped mid-year, the same
+Jul-Dec 2025 turn the balance filters showed.
 
 ### Batch 39 (--batch 39): the multi-week trend: a day that set a 20-day extreme, calling with the 20-day trend, calling with yesterday's direction
 

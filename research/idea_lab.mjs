@@ -922,6 +922,17 @@ const BATCHES = {
     { name: "any warning against a trend running since the open", kind: "filter", base: "potAny", why: "the 1m MACD side began within the first 15 minutes and has held since: an opening drive, the day's strongest flow, which a warning rarely turns",
       pass: (x, i) => { const m = minuteOfSession(x, i); return m > 30 && x.ageM1[i] >= m - 15; } },
   ],
+  // batch 43 (screen 2026, confirm 2025): a warning after a quiet box
+  43: [
+    { name: "the box's first warning in 30 minutes", kind: "filter", base: "potAny", why: "no warning of either kind in the last 30 bars means a trend ran clean; its first easing is a mature move tiring, where turns are likelier than in a box that keeps warning",
+      pass: (x, i) => { for (let k = i - 30; k < i; k++) if (BASES.potAny(x, k)) return false; return true; } },
+  ],
+  // batch 44: batch 43's idea with a cut that occurs. The box warns about every 4.6 minutes in RTH; if the
+  // gaps were random, 10 minutes would be about their 90th percentile. Chosen from that, not from results.
+  44: [
+    { name: "the box's first warning in 10 minutes", kind: "filter", base: "potAny", why: "as batch 43: a box quiet for about its longest usual gap, then a warning, is a clean trend's first easing",
+      pass: (x, i) => { for (let k = i - 10; k < i; k++) if (BASES.potAny(x, k)) return false; return true; } },
+  ],
   // batch 29 (screen 2026, confirm 2024: 2025's halves were seen for these filters): the balance filters
   // worked in 2026 and 2025 Jan-Jun and failed in 2025 Jul-Dec, VXN's quietest half. Do they need a
   // volatile market? The finding would be the high-VXN rows; the low-VXN rows are read beside them.

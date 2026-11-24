@@ -1,0 +1,1951 @@
+{
+ "run": "2026-11-24T16:36:35.845Z",
+ "batch": 43,
+ "year": 2026,
+ "only": null,
+ "placebos": 100,
+ "ideas": [
+  {
+   "name": "the box's first warning in 30 minutes",
+   "kind": "filter",
+   "base": "potAny",
+   "why": "no warning of either kind in the last 30 bars means a trend ran clean; its first easing is a mature move tiring, where turns are likelier than in a box that keeps warning"
+  }
+ ],
+ "real": [
+  {
+   "name": "the box's first warning in 30 minutes",
+   "n0h0": 0,
+   "edge0h0": null,
+   "n0h1": 0,
+   "edge0h1": null,
+   "n0": 0,
+   "win0": null,
+   "edge0": null,
+   "n1h0": 0,
+   "edge1h0": null,
+   "n1h1": 0,
+   "edge1h1": null,
+   "n1": 0,
+   "win1": null,
+   "edge1": null
+  }
+ ],
+ "verdicts": [
+  {
+   "name": "the box's first warning in 30 minutes",
+   "kind": "filter",
+   "verdict": "fails the screen",
+   "edge": null,
+   "hi": null,
+   "lo": null,
+   "h1": null,
+   "l1": null,
+   "h2": null,
+   "l2": null,
+   "n": 0
+  }
+ ],
+ "placebo": [
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ],
+  [
+   {
+    "name": "the box's first warning in 30 minutes",
+    "n0h0": 0,
+    "edge0h0": null,
+    "n0h1": 0,
+    "edge0h1": null,
+    "n0": 0,
+    "win0": null,
+    "edge0": null,
+    "n1h0": 0,
+    "edge1h0": null,
+    "n1h1": 0,
+    "edge1h1": null,
+    "n1": 0,
+    "win1": null,
+    "edge1": null
+   }
+  ]
+ ]
+}
