@@ -11,7 +11,7 @@ Only CONFIRMED counts toward the five.
 Already known before the loop (not counted): the reverse-check short lead (databox_room.mjs), the
 VWAP break lean (turn_context.mjs), the MACD row's own slight lean.
 
-## Confirmed (count: 1 of 5)
+## Confirmed (count: 2 of 5; #2 extends #1)
 
 1. **1m EMA Potentially warnings that agree with VWAP's slope are weaker: skip them.**
    - Source: vwap_nodes_confluence.mjs, "1m EMA Pot. / VWAP slope agrees". The warning's call is the
@@ -20,6 +20,13 @@ VWAP break lean (turn_context.mjs), the MACD row's own slight lean.
      -3.9 and -5.3; beyond 95 of 100 placebo markets both halves).
    - 2025, unchanged: -1.8, worse than 98 of 100 (Jan-Jun -4.2; Jul-Oct +0.4, flat).
    - Use: keep 1m EMA warnings that call against VWAP's slope.
+2. **Any box warning (1m/5m, EMA/MACD rows pooled) against VWAP's 15-minute slope does better.**
+   - Source: batch 7, "any box warning against VWAP slope" (from #1 and batch 5's 5m leans, so it
+     passed both stages afresh).
+   - 2026: +3.9 points of win rate over the same warnings without the filter (17,563 warnings;
+     halves beat 100 and 93 of 100).
+   - 2025, unchanged: +2.2 (beats 97 of 100; Jan-Jun +4.4, Jul-Dec +0.1, flat).
+   - Same mechanism as #1, now across every row: an extension, not an independent discovery.
 
 ## Named for confirmation on 2025 (written before the 2025 runs)
 
@@ -89,5 +96,119 @@ potM5 against VWAP slope +4.4 (overall 98 of 100, halves 84 and 98); potE5 +5.3 
 turn on the 37-point race in 2026: halves 99 and 80, so it fails the screen too.
 
 ### Batch 7 (--batch 7): published intraday momentum, time-of-day flows, the VWAP-slope rule pooled, weekly and Globex bias
+
+Screen (2026): one pass, any box warning against VWAP slope (+3.9; halves beat 100 and 93 of 100). It
+contains confirmed #1 (the 1m EMA row), so it counts as new only if it holds beyond that row. The 2025
+run reports it as named. The published first-half-hour / last-half-hour momentum: -1.7, nothing.
+Named for confirmation on 2025: any box warning against VWAP slope: helps.
+
+### Batch 6 (--batch 6): the flip or warning minute itself
+
+Screen (2026): one pass, potM1 at VWAP's 2-sigma band (+2.3; halves beat 91 and 99 of 100). Near misses:
+potE1 with the 5m row warning too (+1.5, overall 96, Jan-Jun 71); flip1 on a strong-bodied bar hurts
+(-2.4, Jan-Jun only).
+Named for confirmation on 2025: potM1 at VWAP's 2-sigma band: helps.
+
+### Batch 8 (--batch 8): settlement (the prior day's RTH close)
+
+Screen (2026): no pass. Settlement cross -2.0, rejection -2.1, into the settlement toward VWAP +3.1 (85 of
+100), potM1 at settlement +3.2 (96 overall, halves 84 and 86). Two reversed strongly in both halves but
+had too few events (once-a-day signals, under 100 a half):
+- far from settlement at 10:00, fade: -10.0 (worse than 92 and 90 of 100). The reverse, continuing away
+  from settlement, is batch 9's lead.
+- settle-to-settle momentum: -12.1. Its reverse is the regime study's known next-session reversal, not new.
+
+### Batch 9 (--batch 9): settlement distance as a trend-day sign (from batch 8's reversed result)
+
+Daily signals: minimum 60 events a half, stated before the run.
+Screen (2026): no pass by the rules.
+- far from settlement at 10:00, continue: +8.6 on the 18-point race (beats 99 of 100; halves 93 and 94;
+  37-point +14.3). But Jul-Oct had 54 events, under the 60 minimum, so it fails the screen.
+- first time 0.3 range from settlement: -10.9 (Jul-Oct only).
+- flip1 far from settlement its way: +1.1, nothing.
+
+Next, the same idea unchanged on fresh years, a stricter two-stage test: screen on 2025 (both halves, 90 of
+100, minimum 60 a half), then confirm on 2024 (95 of 100).
+Screen (2025): fails. Far from settlement at 10:00, continue +2.6 overall, but Jan-Jun -2.1 (45 of 100) and
+Jul-Dec +7.0 (91). Not confirmed: its 2026 strength looks like 2026's trending market. The first-time
+version +3.2 (Jan-Jun 84, Jul-Dec 94) misses Jan-Jun too.
+
+Batch 6 confirmation (2025): potM1 at VWAP's 2-sigma band -0.8, not confirmed. Batch 7 confirmation
+(2025): any box warning against VWAP slope +2.2, CONFIRMED (#2).
+
+### Batch 10 (--batch 10): 3m box, Heikin-Ashi box, 1m/5m/15m stack, 60-min momentum, VXN jump, turn of the month, month VWAP
+
+Screen (2026): no pass. All near zero. The turn of the month (34 days) and the VXN jump (54) are too rare to
+judge.
+
+### Batch 11 (--batch 11): what kind of day it is (VWAP crosses, initial balance width, settlement distance) as context
+
+Screen (2026): no pass. Any warning on a balance day +2.1 (halves 68 and 84); flip1 its way on a trend day
++7.4 (only 153 events; Jan-Jun 72); narrow initial balance break -4.6 (Jan-Jun 87 as high, Jul-Oct 74).
+
+### Batch 12 (--batch 12): the day's participation (volume vs normal) and efficiency, the opening auction, the overnight box
+
+Screen (2026): no pass. Volume regime (light / heavy days) about 0. Warnings in chop -0.9 (halves 84 and
+78 as high). Warnings in the opening auction -1.6, but placebo markets lose more there (beats 98 overall,
+halves 94 and 87).
+
+### Batch 13 (--batch 13): the box's own readings (the side's age, repeat warnings, histogram depth, long sides ending, afternoon)
+
+Screen (2026): one pass, potM1 repeated within 10 bars (+2.5; beats 100 of 100, halves 94 and 99). Near
+misses that fail Jan-Jun: deep histogram fall +2.5 (88), potE1 after a mature side +1.9 (82), potM1 in a
+young side -2.2 (a clear hurt in Jan-Jun only).
+Named for confirmation on 2025: potM1 repeated within 10 bars: helps.
+Confirmation (2025): not confirmed, -1.0 (84 of 100 as high; Jul-Dec -2.1, the other way).
+
+### Batch 14 (--batch 14): repeat warnings on other rows, both rows together, sustained easing, warnings that clear (trend resumes), price stalled
+
+Screen (2026): one pass, both 1m rows warning together (+3.3; beats 100 of 100, halves 100 and 99). The
+rest fail: potE1 repeated +1.2 (Jan-Jun 56); three bars of easing hurts in Jul-Oct only; warnings that
+clear (trend resumes) about 0.
+Named for confirmation on 2025: both 1m rows warning together: helps.
+Confirmation (2025): not confirmed, +1.1, the same direction but beats only 92 of 100 (needs 95; Jan-Jun
++1.8 at 96, Jul-Dec +0.5). A failed confirmation is final.
+
+### Batch 15 (--batch 15): the 1m MACD warning beside the 5m rows, trend strength, a stretched EMA gap
+
+Screen (2026): no pass. potM1 with the 5m box already turned its way -2.1 (as low: 12 and 10 by half,
+just over); potM1 in a strong trend -3.4 (Jul-Oct only).
+
+### Batch 16 (--batch 16): value migration, the open's type, 5m ADX as context, big-gap days, warnings through VWAP
+
+Screen (2026): no pass. Every idea fails a half: value migration +0.8, ADX over 25 +0.3, warnings
+calling through VWAP +0.9 (Jul-Oct 54).
+
+### Batch 17 (--batch 17): is confirmed #1/#2 about the session's drift in general? Warnings against other measures of it
+
+Screen (2026): one pass, any warning against the day's direction (price vs the RTH open): +2.5, beats 98
+of 100 (halves 95 and 94). Near: against the 5m EMA's slope +2.2 (Jul-Oct 78); against the last hour's
+slope +1.0; against a steep VWAP slope +1.3 (Jul-Oct 65).
+Named for confirmation on 2025: any warning against the day's direction: helps.
+Confirmation (2025): not confirmed, +0.2 (48 of 100; Jan-Jun +1.9, 95 as high; Jul-Dec -1.4). The
+counter-drift lean holds for VWAP's slope (#1, #2) but not for price against the RTH open.
+
+### Batch 18 (--batch 18): the box's flips (with the day's direction, after a 5m flip, held a bar, breaking the 30-min range, both rows crossing together)
+
+Screen (2026): none pass. With the day's direction -0.7 (63 of 100); after a 5m flip -2.1 (205 events,
+64); held a second bar -0.8 (78); breaking the 30-minute range -1.5 but the halves disagree (Jan-Jun -5.9,
+96; Jul-Oct +4.7, 6 as high); both rows within 3 bars +1.0 (84 as high; Jul-Oct -1.4). The mirror of #3
+does not hold for flips: the counter-drift lean belongs to the warnings.
+
+### Batch 19 (--batch 19): the day's last warning worked, round hundreds, volatility bursts, volume flow against price, the week's direction, the 5m bar's closing minute
+
+Screen (2026): one pass, the other way round from its hypothesis. Warnings after the day's last resolved
+warning reached its target first are worse: -1.5 (15,262 warnings; 99 of 100 as low; halves 97 and 92;
+37-point -1.9, 100). So warnings after a failed one, or before any has resolved, do better. A likely
+mechanism: after a warning works, the next one usually calls back the earlier way, with the drift #1-#3
+say to skip. Near: the 5m closing minute -1.0 but the halves disagree (Jan-Jun +1.1, 95 as high; Jul-Oct
+-4.1, 100 as low); round 100 -1.0 (76); burst -2.3 (67 as high); flow +0.2; week -0.2.
+Named for confirmation on 2025: any warning after the day's last warning worked: hurts.
+
+### Batch 21 (--batch 21): between the two VWAPs, the forming 5m bar its way, Fridays, toward the overnight midpoint, VWAP flat
+
+Results: pending.
+
+### Batch 20 (--batch 20): against the opening gap, both extremes an hour old, the warning bar closing its way, 3+ fresh extremes, inside the prior day's range
 
 Results: pending.

@@ -31,7 +31,7 @@ import * as Lab from "./lib_levels.mjs";
 import { buildCatalog } from "./levels_catalog.mjs";
 import { rawOffsets } from "../src/levels.mjs";
 import { resample } from "../src/resample.mjs";
-import { atr, ema, macd } from "../src/indicators.mjs";
+import { atr, ema, macd, adx } from "../src/indicators.mjs";
 import { loadIndicator, Run } from "../tradovate/mock/runtime.mjs";
 import { loadTools, readIndicator } from "../tradovate/mock/library.mjs";
 import { RED_FOLDER } from "../src/news_calendar.mjs";
@@ -108,8 +108,8 @@ function context(sample) {
   // batch 2: the day's context, all known before or at the minute
   // RTH range of each session, the average of the 10 before (adr10), and today's range used so far
   x.adr10 = new Float64Array(N).fill(NaN); x.used = new Float64Array(N).fill(NaN); x.onR = new Float64Array(N).fill(NaN); x.pdDir = new Int8Array(N);
-  x.vxn = new Float64Array(N).fill(NaN); x.vxnMed = new Float64Array(N).fill(NaN); x.opex = new Uint8Array(N); x.sinceNews = new Int32Array(N).fill(-1);
-  { const ranges = [], dirs = []; let td2 = -1, hi = -Infinity, lo = Infinity, o = NaN, c = NaN, adr = NaN, pdir = 0, vx = NaN, vmed = NaN, isOpex = 0;
+  x.vxn = new Float64Array(N).fill(NaN); x.vxnChg = new Float64Array(N).fill(NaN); x.tom = new Uint8Array(N); x.vxnMed = new Float64Array(N).fill(NaN); x.opex = new Uint8Array(N); x.sinceNews = new Int32Array(N).fill(-1);
+  { const ranges = [], dirs = []; let td2 = -1, hi = -Infinity, lo = Infinity, o = NaN, c = NaN, adr = NaN, pdir = 0, vx = NaN, vxc = NaN, vmed = NaN, isOpex = 0, tom = 0;
     let nk = 0; const NEWS = RED_FOLDER.map((r) => r[0]);
     for (let i = 0; i < N; i++) {
       if (TD[i] !== td2) {
@@ -118,19 +118,65 @@ function context(sample) {
         const last = ranges.slice(-10); adr = last.length >= 5 ? last.reduce((a, v) => a + v, 0) / last.length : NaN; pdir = dirs.length ? dirs[dirs.length - 1] : 0;
         const day = new Date(TD[i] * 86400000), iso = day.toISOString().slice(0, 10);
         let lo2 = 0, hi2 = VXN_DATES.length; while (lo2 < hi2) { const m = (lo2 + hi2) >> 1; if (VXN_DATES[m] < iso) lo2 = m + 1; else hi2 = m; }
-        vx = lo2 > 0 ? VXN.get(VXN_DATES[lo2 - 1]) : NaN;
+        vx = lo2 > 0 ? VXN.get(VXN_DATES[lo2 - 1]) : NaN; vxc = lo2 > 1 ? vx / VXN.get(VXN_DATES[lo2 - 2]) - 1 : NaN;
         const prev = VXN_DATES.slice(Math.max(0, lo2 - 60), lo2).map((d) => VXN.get(d)).sort((a, b) => a - b); vmed = prev.length >= 30 ? prev[prev.length >> 1] : NaN;
         isOpex = day.getUTCDay() === 5 && day.getUTCDate() >= 15 && day.getUTCDate() <= 21 ? 1 : 0;
+        { const dd = day.getUTCDate(), last = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth() + 1, 0)).getUTCDate(); tom = dd <= 3 || dd >= last - 1 ? 1 : 0; }
       }
       const ct = CT[i];
       if (ct >= FIRST && ct < 15 * 60 + 15) { if (!Number.isFinite(o)) o = O[i]; c = C[i]; hi = Math.max(hi, H[i]); lo = Math.min(lo, L[i]); x.used[i] = (hi - lo) / adr; }
-      x.adr10[i] = adr; x.pdDir[i] = pdir; x.vxn[i] = vx; x.vxnMed[i] = vmed; x.opex[i] = isOpex;
+      x.adr10[i] = adr; x.pdDir[i] = pdir; x.vxn[i] = vx; x.vxnChg[i] = vxc; x.tom[i] = tom; x.vxnMed[i] = vmed; x.opex[i] = isOpex;
       x.onR[i] = x.onH[i] - x.onL[i];
       while (nk < NEWS.length && NEWS[nk] <= TS[i]) nk++;
       if (nk > 0) x.sinceNews[i] = Math.round((TS[i] + MIN - NEWS[nk - 1]) / MIN);
     }
   }
   x.h12 = macd(C, 12, 26, 9).hist;
+  // batch 12: RTH volume so far today against the 20 sessions before at the same minute; 30-minute efficiency ratio
+  x.dayVol = new Float64Array(N).fill(NaN); x.er30 = new Float64Array(N).fill(NaN); x.onBox = new Int8Array(N);
+  { const ringC = new Map(); let td6 = -1, cum = 0, ob = 0;
+    for (let i = 0; i < N; i++) {
+      if (TD[i] !== td6) { td6 = TD[i]; cum = 0; ob = 0; }
+      if (CT[i] === FIRST - 1) { const both = (d) => sideOf(x.e1[i]) === d && sideOf(x.m1[i]) === d; ob = both(1) ? 1 : both(-1) ? -1 : 0; }
+      x.onBox[i] = ob;
+      if (CT[i] >= FIRST && CT[i] < 15 * 60 + 15) {
+        cum += V[i];
+        let r = ringC.get(CT[i]); if (!r) { r = []; ringC.set(CT[i], r); }
+        if (r.length >= 10) x.dayVol[i] = cum / (r.reduce((a, v) => a + v, 0) / r.length);
+        r.push(cum); if (r.length > 20) r.shift();
+      }
+      if (i >= 30) { let path = 0; for (let k = i - 29; k <= i; k++) path += Math.abs(C[k] - C[k - 1]); x.er30[i] = path > 0 ? Math.abs(C[i] - C[i - 30]) / path : NaN; }
+    }
+  }
+  // batch 16: 5m ADX at the last closed 5m bar; the prior day's RTH POC; the RTH open's place against yesterday's value
+  { const bb = resample(b, 5), ax = adx(bb.high, bb.low, bb.close, 14).adx; x.adx5 = new Float64Array(N).fill(NaN); let k = -1;
+    for (let i = 0; i < N; i++) { while (k + 1 < bb.ts.length && bb.ts[k + 1] + 5 * MIN <= TS[i] + MIN) k++; if (k >= 0) x.adx5[i] = ax[k]; } }
+  x.pdPoc = tr("PD POC (RTH)");
+  x.ema105 = ema(C, 105);
+  // batch 15: the 12/26 EMA gap (the EMA row's histogram)
+  { const e12 = ema(C, 12), e26 = ema(C, 26); x.gap12 = new Float64Array(N); for (let i = 0; i < N; i++) x.gap12[i] = e12[i] - e26[i]; }
+  // batch 13: how long each 1m row has held its side (bars), as the box's count column shows
+  x.ageE1 = new Int32Array(N); x.ageM1 = new Int32Array(N);
+  for (let i = 1; i < N; i++) {
+    x.ageE1[i] = sideOf(x.e1[i]) && sideOf(x.e1[i]) === sideOf(x.e1[i - 1]) ? x.ageE1[i - 1] + 1 : 1;
+    x.ageM1[i] = sideOf(x.m1[i]) && sideOf(x.m1[i]) === sideOf(x.m1[i - 1]) ? x.ageM1[i - 1] + 1 : 1;
+  }
+  // batch 11: VWAP crosses so far today (RTH)
+  x.vwX = new Int16Array(N);
+  { let td5 = -1, cnt = 0, side = 0; for (let i = 0; i < N; i++) { if (TD[i] !== td5) { td5 = TD[i]; cnt = 0; side = 0; }
+      if (CT[i] >= FIRST && Number.isFinite(x.vw[i])) { const sd = sgn(C[i] - x.vw[i]); if (sd && side && sd !== side) cnt++; if (sd) side = sd; } x.vwX[i] = cnt; } }
+  // batch 10: the box on 3-minute bars and on 1-minute Heikin-Ashi bars; the month's VWAP; VXN's last change
+  if (BATCH === 10) {
+    const f3 = up(3); x.e3 = f3.e; x.m3 = f3.m;
+    const hc = new Float64Array(N), ho = new Float64Array(N), hh = new Float64Array(N), hl = new Float64Array(N);
+    for (let i = 0; i < N; i++) { hc[i] = (O[i] + H[i] + L[i] + C[i]) / 4; ho[i] = i ? (ho[i - 1] + hc[i - 1]) / 2 : (O[i] + C[i]) / 2; hh[i] = Math.max(H[i], ho[i], hc[i]); hl[i] = Math.min(L[i], ho[i], hc[i]); }
+    const ha = boxStates({ ts: TS, open: ho, high: hh, low: hl, close: hc, volume: V, tday: TD, ctMin: CT }, 1); x.eHA = ha.e; x.mHA = ha.m;
+    x.vwM = cat.get("VWAP (month)").series[0];
+  }
+  // batch 8: the settlement before the prior one (ppC), so the prior day's settle-to-settle change is known
+  x.ppC = new Float64Array(N).fill(NaN);
+  { let td4 = -1, prevDayPdC = NaN, cur = NaN, lastPdC = NaN;
+    for (let i = 0; i < N; i++) { if (TD[i] !== td4) { td4 = TD[i]; cur = prevDayPdC; prevDayPdC = lastPdC; } x.ppC[i] = cur; if (Number.isFinite(x.pdC[i])) lastPdC = x.pdC[i]; } }
   // batch 4: the 1m box's flips (either way) in each minute, and the close-location value of each bar
   x.flipAt = new Uint8Array(N); x.clv = new Float64Array(N).fill(NaN);
   for (let i = 1; i < N; i++) {
@@ -169,6 +215,7 @@ const BASES = {
   potM5: (x, i) => pot(x.m5[i - 1], x.m5[i]),
   potE5: (x, i) => pot(x.e5[i - 1], x.e5[i]),
   potAny: (x, i) => pot(x.m1[i - 1], x.m1[i]) || pot(x.e1[i - 1], x.e1[i]) || pot(x.m5[i - 1], x.m5[i]) || pot(x.e5[i - 1], x.e5[i]),
+  pot1: (x, i) => pot(x.m1[i - 1], x.m1[i]) || pot(x.e1[i - 1], x.e1[i]),
   lead: (x, i) => (x.e1[i] === 2 && x.e1[i - 1] !== 2 && x.e5[i] === 4 ? -1 : 0),
 };
 
@@ -352,6 +399,218 @@ const BATCHES = {
     { name: "flip1 with the Globex-open bias", kind: "filter", base: "flip1", why: "price above the 17:00 open means the full session's net flow is up; flips with it carry",
       pass: (x, i, d) => Number.isFinite(x.gO[i]) && d * (x.C[i] - x.gO[i]) > 0 },
   ],
+  // batch 8 (screen 2026, confirm 2025): the settlement (the prior day's RTH close, CME's settle reference)
+  8: [
+    { name: "settlement cross continues", kind: "signal", why: "yesterday's settlement is where the day's margin and P&L reset; a decisive cross through it puts the other side's positions underwater and they cover",
+      call: (x, i) => (minuteOfSession(x, i) > 30 && Number.isFinite(x.pdC[i]) && x.C[i] > x.pdC[i] && x.C[i - 1] <= x.pdC[i] ? 1 : minuteOfSession(x, i) > 30 && x.C[i] < x.pdC[i] && x.C[i - 1] >= x.pdC[i] ? -1 : 0) },
+    { name: "settlement rejection", kind: "signal", why: "a test of settlement that is pushed back off it shows the defenders there; price moves away",
+      call: (x, i) => { const s0 = x.pdC[i]; if (!Number.isFinite(s0) || minuteOfSession(x, i) <= 15) return 0;
+        if (x.H[i] >= s0 && x.C[i] < s0 - 0.25 * x.A5[i] && x.C[i - 1] < s0) return -1; if (x.L[i] <= s0 && x.C[i] > s0 + 0.25 * x.A5[i] && x.C[i - 1] > s0) return 1; return 0; } },
+    { name: "into the settlement, toward VWAP", kind: "signal", why: "the settle is an average price over the close and MOC / hedging flows trade around the day's average, so late price is pulled toward VWAP",
+      call: (x, i) => { if ((x.CT[i] + 1) % 1440 !== 14 * 60 + 30 || !Number.isFinite(x.vw[i])) return 0; const d = x.vw[i] - x.C[i]; return Math.abs(d) > 0.3 * x.A5[i] ? sgn(d) : 0; } },
+    { name: "settle-to-settle momentum", kind: "signal", why: "a day that settled well above (below) the settle before leaves trend followers and margin-driven flows pushing the same way next morning",
+      call: (x, i) => { if (minuteOfSession(x, i) !== 30 || !Number.isFinite(x.ppC[i])) return 0; const ch = x.pdC[i] - x.ppC[i]; return Math.abs(ch) > 0.15 * x.adr10[i] ? sgn(ch) : 0; } },
+    { name: "far from settlement, fade", kind: "signal", why: "by mid-morning, a price far from settlement has stretched the day's P&L for the losing side and draws mean-reverting liquidity",
+      call: (x, i) => { if ((x.CT[i] + 1) % 1440 !== 10 * 60 || !Number.isFinite(x.pdC[i])) return 0; const d = x.C[i] - x.pdC[i]; return Math.abs(d) > 0.4 * x.adr10[i] ? -sgn(d) : 0; } },
+    { name: "flip1 on the settlement side", kind: "filter", base: "flip1", why: "a flip that points away from settlement, with price already beyond it, has the day's winners behind it",
+      pass: (x, i, d) => Number.isFinite(x.pdC[i]) && d * (x.C[i] - x.pdC[i]) > 0 },
+    { name: "flip1 just through settlement", kind: "filter", base: "flip1", why: "a flip within 15 minutes of price crossing settlement its way joins the cross",
+      pass: (x, i, d) => { const s0 = x.pdC[i]; if (!Number.isFinite(s0)) return false; for (let k = i - 15; k <= i; k++) if (d * (x.C[k] - s0) > 0 && d * (x.C[k - 1] - s0) <= 0) return true; return false; } },
+    { name: "potM1 at settlement", kind: "filter", base: "potM1", why: "easing momentum right at the settlement level is a defended level holding",
+      pass: (x, i) => Number.isFinite(x.pdC[i]) && Math.abs(x.C[i] - x.pdC[i]) < 0.3 * x.A5[i] },
+  ],
+  // batch 9 (screen 2026, confirm 2025): from batch 8's reversed result, distance from settlement as a trend-day
+  // sign. Daily signals, so minN 60 a half (stated before the run).
+  9: [
+    { name: "far from settlement at 10:00, continue", kind: "signal", minN: 60, why: "a session already 0.4 of its usual range from settlement by 10:00 is a trend day; the move keeps going",
+      call: (x, i) => { if ((x.CT[i] + 1) % 1440 !== 10 * 60 || !Number.isFinite(x.pdC[i])) return 0; const d = x.C[i] - x.pdC[i]; return Math.abs(d) > 0.4 * x.adr10[i] ? sgn(d) : 0; } },
+    { name: "first time 0.3 range from settlement, continue", kind: "signal", minN: 60, why: "the first time in a session that price gets 0.3 of its usual range from settlement (after 09:00) marks the day breaking away",
+      call: (x, i) => { if (minuteOfSession(x, i) < 30 || !Number.isFinite(x.pdC[i]) || !(x.adr10[i] > 0)) return 0; const far = (k) => Math.abs(x.C[k] - x.pdC[k]) > 0.3 * x.adr10[k];
+        if (!far(i)) return 0; for (let k = i - 1; k >= 0 && x.TD[k] === x.TD[i] && minuteOfSession(x, k) >= 30; k--) if (far(k)) return 0; return sgn(x.C[i] - x.pdC[i]); } },
+    { name: "flip1 far from settlement its way", kind: "filter", base: "flip1", why: "flips that point the way a trend day has already gone from settlement",
+      pass: (x, i, d) => Number.isFinite(x.pdC[i]) && d * (x.C[i] - x.pdC[i]) > 0.4 * x.adr10[i] },
+  ],
+  // batch 10 (screen 2026, confirm 2025): other box timeframes and inputs, time-series momentum, VXN, the turn of the month
+  10: [
+    { name: "3m box flip", kind: "signal", why: "a middle speed between the 1m box (late, noisy) and the 5m (late, slow) may keep more of the move",
+      call: (x, i) => { const both = (k, d) => sideOf(x.e3[k]) === d && sideOf(x.m3[k]) === d; return both(i, 1) && !both(i - 1, 1) ? 1 : both(i, -1) && !both(i - 1, -1) ? -1 : 0; } },
+    { name: "Heikin-Ashi box flip", kind: "signal", why: "the box read on Heikin-Ashi candles (averaged prices) filters single-bar noise before the EMAs see it",
+      call: (x, i) => { const both = (k, d) => sideOf(x.eHA[k]) === d && sideOf(x.mHA[k]) === d; return both(i, 1) && !both(i - 1, 1) ? 1 : both(i, -1) && !both(i - 1, -1) ? -1 : 0; } },
+    { name: "flip1 with 1m, 5m and 15m all agreeing", kind: "filter", base: "flip1", why: "a flip that completes the stack on three timeframes has every horizon's traders on one side",
+      pass: (x, i, d) => sideOf(x.e5[i]) === d && sideOf(x.m5[i]) === d && sideOf(x.e15[i]) === d && sideOf(x.m15[i]) === d },
+    { name: "60-minute momentum", kind: "signal", why: "time-series momentum (Moskowitz, Ooi & Pedersen) at an intraday horizon: an hour's strong move draws trend followers in",
+      call: (x, i) => { if (minuteOfSession(x, i) < 60 || minuteOfSession(x, i) % 15 !== 0) return 0; const mv = x.C[i] - x.C[i - 60]; return Math.abs(mv) > 1.5 * x.A5[i] ? sgn(mv) : 0; } },
+    { name: "VXN jumped, risk-off morning", kind: "signal", minN: 40, why: "a jump in the Nasdaq-100 volatility index overnight means de-risking that keeps selling into the morning (a fall, the mirror)",
+      call: (x, i) => { if (minuteOfSession(x, i) !== 15 || !Number.isFinite(x.vxnChg[i])) return 0; return x.vxnChg[i] > 0.06 ? -1 : x.vxnChg[i] < -0.06 ? 1 : 0; } },
+    { name: "turn of the month, long", kind: "signal", minN: 30, why: "the turn-of-the-month effect (Ariel; Lakonishok & Smidt): payroll and pension inflows lift equities in the last day and first days of a month",
+      call: (x, i) => (minuteOfSession(x, i) === 15 && x.tom[i] ? 1 : 0) },
+    { name: "flip1 with the month's VWAP", kind: "filter", base: "flip1", why: "price above the month's average cost has the month's buyers in profit and defending; flips with them carry",
+      pass: (x, i, d) => Number.isFinite(x.vwM[i]) && d * (x.C[i] - x.vwM[i]) > 0 },
+  ],
+  // batch 11 (screen 2026, confirm 2025): the kind of day as context
+  11: [
+    { name: "any warning on a balance day", kind: "filter", base: "potAny", why: "a day that has crossed VWAP four or more times is rotating; turns called there come true",
+      pass: (x, i) => x.vwX[i] >= 4 },
+    { name: "flip1 its way on a trend day", kind: "filter", base: "flip1", why: "after 10:00, a day that has crossed VWAP at most once is trending; flips its way (with price on that side of VWAP) carry",
+      pass: (x, i, d) => minuteOfSession(x, i) >= 60 && x.vwX[i] <= 2 && d * (x.C[i] - x.vw[i]) > 0 },
+    { name: "any warning toward settlement on a far day", kind: "filter", base: "potAny", why: "on a day 0.4 of its range from settlement (a trend day), warnings calling a turn back toward settlement fight the trend (expected to hurt)",
+      pass: (x, i, d) => Number.isFinite(x.pdC[i]) && Math.abs(x.C[i] - x.pdC[i]) > 0.4 * x.adr10[i] && d * (x.pdC[i] - x.C[i]) > 0 },
+    { name: "narrow initial balance, its break continues", kind: "signal", why: "a first hour under 0.35 of the usual range leaves the day's range to be made later; the break of that hour starts it",
+      call: (x, i) => { if (minuteOfSession(x, i) <= 60 || !Number.isFinite(x.ibH[i]) || !(x.ibH[i] - x.ibL[i] < 0.5 * x.adr10[i])) return 0;
+        return x.C[i] > x.ibH[i] && x.C[i - 1] <= x.ibH[i] ? 1 : x.C[i] < x.ibL[i] && x.C[i - 1] >= x.ibL[i] ? -1 : 0; } },
+    { name: "wide initial balance, fade its edges", kind: "signal", why: "a first hour over 0.8 of the usual range has spent the day's range; tests of its edges reverse",
+      call: (x, i) => { if (minuteOfSession(x, i) <= 60 || !Number.isFinite(x.ibH[i]) || !(x.ibH[i] - x.ibL[i] > 0.65 * x.adr10[i])) return 0;
+        return x.H[i] >= x.ibH[i] && x.H[i - 1] < x.ibH[i] ? -1 : x.L[i] <= x.ibL[i] && x.L[i - 1] > x.ibL[i] ? 1 : 0; } },
+  ],
+  // batch 12 (screen 2026, confirm 2025): participation and efficiency
+  12: [
+    { name: "any warning on a light-volume day", kind: "filter", base: "potAny", why: "with participation under 80% of normal, nobody is pushing a trend; called turns come true",
+      pass: (x, i) => x.dayVol[i] < 0.8 },
+    { name: "flip1 on a heavy-volume day", kind: "filter", base: "flip1", why: "with participation over 120% of normal, real money is moving; flips carry",
+      pass: (x, i) => x.dayVol[i] > 1.2 },
+    { name: "any warning in chop (efficiency under 0.25)", kind: "filter", base: "potAny", why: "when the last 30 minutes went nowhere for the distance travelled, price is rotating and turns follow through",
+      pass: (x, i) => x.er30[i] < 0.25 },
+    { name: "flip1 with an efficient move its way (over 0.35)", kind: "filter", base: "flip1", why: "a flip at the end of a straight 30-minute move joins a clean trend",
+      pass: (x, i, d) => x.er30[i] > 0.35 && d * (x.C[i] - x.C[i - 30]) > 0 },
+    { name: "any warning in the opening auction", kind: "filter", base: "potAny", why: "the first 30 minutes are price discovery after the open; momentum readings there are noise (expected to hurt)",
+      pass: (x, i) => minuteOfSession(x, i) <= 30 },
+    { name: "flip1 with the overnight box", kind: "filter", base: "flip1", why: "a flip that agrees with where the 1m box stood at 08:29 joins the overnight session's direction",
+      pass: (x, i, d) => x.onBox[i] === d },
+  ],
+  // batch 13 (screen 2026, confirm 2025): the box's own readings - the age of the side behind a warning (its
+  // count column), repeat warnings, the depth of the histogram's fall, long sides ending, the afternoon
+  13: [
+    { name: "potE1 after a mature side (30+ bars)", kind: "filter", base: "potE1", why: "easing after a trend has run 30 bars is exhaustion of a mature move; easing in a young trend is a pause",
+      pass: (x, i) => x.ageE1[i] >= 30 },
+    { name: "potM1 after a mature side (30+ bars)", kind: "filter", base: "potM1", why: "the same for the MACD row",
+      pass: (x, i) => x.ageM1[i] >= 30 },
+    { name: "potM1 in a young side (under 8 bars)", kind: "filter", base: "potM1", why: "easing right after a cross is the new trend's first pullback, not a turn (expected to hurt)",
+      pass: (x, i) => x.ageM1[i] < 8 },
+    { name: "potM1 repeated within 10 bars", kind: "filter", base: "potM1", why: "a second easing soon after the first cleared is momentum failing to rebuild",
+      pass: (x, i, d) => { for (let k = i - 10; k < i; k++) if (pot(x.m1[k - 1], x.m1[k]) === d) return true; return false; } },
+    { name: "potM1 with a deep histogram fall", kind: "filter", base: "potM1", why: "a histogram already 40% down from its 10-bar peak is a real loss of momentum, not a one-bar wobble",
+      pass: (x, i, d) => { let pk = 0; for (let k = i - 10; k <= i; k++) pk = Math.max(pk, -d * x.h12[k]); return pk > 0 && -d * x.h12[i] < 0.6 * pk; } },
+    { name: "flip1 ending a long side (40+ bars)", kind: "filter", base: "flip1", why: "a flip that ends a side held 40 bars is a real trend change; flips after short sides are chop",
+      pass: (x, i) => x.ageE1[i - 1] >= 40 || x.ageM1[i - 1] >= 40 },
+    { name: "any warning in the afternoon", kind: "filter", base: "potAny", why: "afternoon sessions mean-revert more than mornings (lower participation), so called turns come true",
+      pass: (x, i) => minuteOfSession(x, i) >= 240 },
+  ],
+  // batch 14 (screen 2026, confirm 2025): more of the box's own readings
+  14: [
+    { name: "potE1 repeated within 10 bars", kind: "filter", base: "potE1", why: "a second easing on the EMA row soon after the first cleared is momentum failing to rebuild",
+      pass: (x, i, d) => { for (let k = i - 10; k < i; k++) if (pot(x.e1[k - 1], x.e1[k]) === d) return true; return false; } },
+    { name: "potM5 repeated within 15 minutes", kind: "filter", base: "potM5", why: "the same on the 5m MACD row",
+      pass: (x, i, d) => { for (let k = i - 15; k < i; k++) if (pot(x.m5[k - 1], x.m5[k]) === d) return true; return false; } },
+    { name: "both 1m rows warning together", kind: "filter", base: "potM1", why: "the MACD and EMA rows easing at once is a broader slowdown than one row",
+      pass: (x, i, d) => (d === 1 ? x.e1[i] === 4 : x.e1[i] === 2) },
+    { name: "three bars of easing", kind: "signal", why: "a MACD row that has stayed in its warning for three bars is a sustained loss of momentum, not a one-bar wobble",
+      call: (x, i) => { const w = (k) => (x.m1[k] === 4 ? 1 : x.m1[k] === 2 ? -1 : 0); const d = w(i); return d && w(i - 1) === d && w(i - 2) === d && w(i - 3) !== d ? d : 0; } },
+    { name: "MACD warning cleared, trend resumes", kind: "signal", why: "a warning that clears back to the plain side without a cross is a failed reversal; those who acted on it are trapped and the trend resumes",
+      call: (x, i) => (x.m1[i] === 1 && x.m1[i - 1] === 2 ? 1 : x.m1[i] === 3 && x.m1[i - 1] === 4 ? -1 : 0) },
+    { name: "EMA warning cleared, trend resumes", kind: "signal", why: "the same on the EMA row",
+      call: (x, i) => (x.e1[i] === 1 && x.e1[i - 1] === 2 ? 1 : x.e1[i] === 3 && x.e1[i - 1] === 4 ? -1 : 0) },
+    { name: "potM1 with price stalled", kind: "filter", base: "potM1", why: "momentum easing while price has also failed to make a new 10-bar extreme for 5 bars: both stalling",
+      pass: (x, i, d) => { let ext = d === -1 ? -Infinity : Infinity; for (let k = i - 15; k < i - 5; k++) ext = d === -1 ? Math.max(ext, x.H[k]) : Math.min(ext, x.L[k]);
+        for (let k = i - 5; k <= i; k++) if (d === -1 ? x.H[k] > ext : x.L[k] < ext) return false; return true; } },
+  ],
+  // batch 15 (screen 2026, confirm 2025): the 1m MACD warning beside the other rows and the trend's strength
+  15: [
+    { name: "potM1 with a 5m row warning too", kind: "filter", base: "potM1", why: "the 1m MACD easing while a 5m row eases the same way is a slowdown on two horizons",
+      pass: (x, i, d) => (d === 1 ? x.e5[i] === 4 || x.m5[i] === 4 : x.e5[i] === 2 || x.m5[i] === 2) },
+    { name: "potM1 in a strong trend (big histogram)", kind: "filter", base: "potM1", why: "easing from a big histogram (half an ATR or more) is a strong move running out, where reversals are larger",
+      pass: (x, i, d) => { let pk = 0; for (let k = i - 5; k <= i; k++) pk = Math.max(pk, -d * x.h12[k]); return pk > 0.5 * x.a1[i - 1]; } },
+    { name: "potE1 with a stretched EMA gap", kind: "filter", base: "potE1", why: "the 12/26 gap over 1.5 ATR is a stretched trend; easing there snaps back further",
+      pass: (x, i, d) => -d * x.gap12[i] > 1.5 * x.a1[i - 1] },
+    { name: "potM1 with the 5m box already turned its way", kind: "filter", base: "potM1", why: "if both 5m rows already point the warned way, the 1m warning is the last timeframe to catch up",
+      pass: (x, i, d) => sideOf(x.e5[i]) === d && sideOf(x.m5[i]) === d },
+  ],
+  // batch 16 (screen 2026, confirm 2025): market-profile and trend-strength context
+  16: [
+    { name: "flip1 with value migrating its way", kind: "filter", base: "flip1", why: "today's busiest price above yesterday's means the market is accepting higher prices; long flips go with that (short mirrored)",
+      pass: (x, i, d) => Number.isFinite(x.dpoc[i]) && Number.isFinite(x.pdPoc[i]) && d * (x.dpoc[i] - x.pdPoc[i]) > 0.25 * x.A5[i] },
+    { name: "flip1 its way after an open outside value", kind: "filter", base: "flip1", why: "an RTH open above yesterday's value area (or below) is an imbalance open (Dalton); flips that way carry",
+      pass: (x, i, d) => Number.isFinite(x.vah[i]) && (d === 1 ? x.rO[i] > x.vah[i] : x.rO[i] < x.val[i]) },
+    { name: "any warning after an open inside value", kind: "filter", base: "potAny", why: "an open inside yesterday's value is a balance open; the day rotates, so called turns come true",
+      pass: (x, i) => Number.isFinite(x.vah[i]) && x.rO[i] < x.vah[i] && x.rO[i] > x.val[i] },
+    { name: "flip1 when 5m ADX is over 25", kind: "filter", base: "flip1", why: "a trending tape by ADX lets flips run",
+      pass: (x, i) => x.adx5[i] > 25 },
+    { name: "any warning when 5m ADX is under 20", kind: "filter", base: "potAny", why: "a trendless tape by ADX rotates, so called turns come true",
+      pass: (x, i) => x.adx5[i] < 20 },
+    { name: "flip1 its way on a big-gap day", kind: "filter", base: "flip1", why: "an RTH open half the usual range from settlement is a gap day; flips the gap's way carry the overnight news",
+      pass: (x, i, d) => Number.isFinite(x.pdC[i]) && Number.isFinite(x.rO[i]) && d * (x.rO[i] - x.pdC[i]) > 0.5 * x.adr10[i] },
+    { name: "any warning calling through VWAP just after a touch", kind: "filter", base: "potAny", why: "VWAP breaks more often than it holds (confirmed lean): a warning that calls price through VWAP within 3 bars of touching it",
+      pass: (x, i, d) => { for (let k = i - 3; k <= i; k++) if (x.L[k] <= x.vw[k] && x.H[k] >= x.vw[k]) return d * (x.vw[i] - x.C[i]) < 0 ? false : true; return false; } },
+  ],
+  // batch 17 (screen 2026, confirm 2025): confirmed #1/#2 say warnings against VWAP's slope do better. Is it the session's
+  // drift in general? Other measures of it, each a new variable.
+  17: [
+    { name: "any warning against the day's direction", kind: "filter", base: "potAny", why: "a turn called against where the session has gone since its open: the counter-drift turn #1/#2 point to",
+      pass: (x, i, d) => Number.isFinite(x.rO[i]) && d * (x.C[i] - x.rO[i]) < 0 },
+    { name: "any warning against the last hour's slope", kind: "filter", base: "potAny", why: "the same, with the drift as the last 60 minutes' move",
+      pass: (x, i, d) => d * (x.C[i] - x.C[i - 60]) < 0 },
+    { name: "any warning against the 5m EMA's slope", kind: "filter", base: "potAny", why: "the same, with the drift as the 5m-equivalent EMA (EMA 105 on 1m bars) sloping over 15 minutes",
+      pass: (x, i, d) => d * (x.ema105[i] - x.ema105[i - 15]) < 0 },
+    { name: "any warning against a steep VWAP slope", kind: "filter", base: "potAny", why: "if #2 is about drift, it should be stronger when VWAP moved over half a 5m ATR in 15 minutes",
+      pass: (x, i, d) => Number.isFinite(x.vw[i - 15]) && d * (x.vw[i] - x.vw[i - 15]) < -0.5 * x.A5[i] },
+  ],
+  // batch 18 (screen 2026, confirm 2025): the box's flips
+  18: [
+    { name: "flip1 with the day's direction", kind: "filter", base: "flip1", why: "the mirror of the warnings' result: flips that go with where the session has gone since the open join the drift",
+      pass: (x, i, d) => Number.isFinite(x.rO[i]) && d * (x.C[i] - x.rO[i]) > 0 },
+    { name: "flip1 within 10 min of a 5m flip its way", kind: "filter", base: "flip1", why: "a 1m flip right after the 5m box turned the same way is the fast timeframe confirming a new slower trend",
+      pass: (x, i, d) => { const b5 = (k, dd) => sideOf(x.e5[k]) === dd && sideOf(x.m5[k]) === dd; for (let k = i - 10; k <= i; k++) if (b5(k, d) && !b5(k - 1, d)) return true; return false; } },
+    { name: "flip held for a second bar", kind: "signal", why: "a flip still standing one bar later has survived the first whipsaw; entering a bar late trades a little price for fewer false flips",
+      call: (x, i) => { const both = (k, d) => sideOf(x.e1[k]) === d && sideOf(x.m1[k]) === d; for (const d of [1, -1]) if (both(i, d) && both(i - 1, d) && !both(i - 2, d)) return d; return 0; } },
+    { name: "flip1 breaking the 30-minute range", kind: "filter", base: "flip1", why: "a flip that also takes out the last 30 minutes' high (low) is a breakout, not a wiggle inside a range",
+      pass: (x, i, d) => { let hi = -Infinity, lo = Infinity; for (let k = i - 30; k < i; k++) { hi = Math.max(hi, x.H[k]); lo = Math.min(lo, x.L[k]); } return d === 1 ? x.C[i] > hi : x.C[i] < lo; } },
+    { name: "flip1 with both rows crossing within 3 bars", kind: "filter", base: "flip1", why: "both lines crossing almost together is a sharp change; one row crossing long before the other is a slow drift",
+      pass: (x, i, d) => { const other = sideOf(x.e1[i - 1]) === d ? x.m1 : x.e1, first = other === x.m1 ? x.e1 : x.m1; let k = i - 1; while (k > i - 30 && sideOf(first[k]) === d) k--; return i - k <= 3; } },
+  ],
+  // batch 19 (screen 2026, confirm 2025): new information: the box's own recent record, round numbers,
+  // volatility bursts, volume flow against price, the week's drift, the 5m bar's closing minute
+  19: [
+    { name: "any warning after the day's last warning worked", kind: "filter", base: "potAny", why: "warnings pay in a rotating market; if today's last resolved warning reached its target first, the day is rotating, and if it failed, the day is trending through them",
+      pass: (x, i, d) => { for (let j = i - 1; j > i - 390 && x.TD[j] === x.TD[i]; j--) { const dj = BASES.potAny(x, j); if (!dj) continue;
+          const R = 0.00064 * (x.C[j] - x.off[j]), P = x.C[j]; for (let k = j + 1; k < i; k++) { const up = x.H[k] - P >= R, dn = P - x.L[k] >= R; if (up || dn) return dj === 1 ? up && !dn : dn && !up; } } return false; } },
+    { name: "any warning just off a round 100, calling away", kind: "filter", base: "potAny", why: "round hundreds collect resting orders and option strikes; a warning that calls price away from one it touched in the last 5 minutes has those orders behind it",
+      pass: (x, i, d) => { const raw = x.C[i] - x.off[i], M = Math.round(raw / 100) * 100; if (d !== Math.sign(raw - M)) return false; for (let k = i - 4; k <= i; k++) if (x.L[k] - x.off[k] <= M && x.H[k] - x.off[k] >= M) return true; return false; } },
+    { name: "any warning after a volatility burst", kind: "filter", base: "potAny", why: "a burst of range (the last 5 bars' average over 1.5x the hour before) is a flush or a squeeze; once it runs out of forced orders, a turn is more likely",
+      pass: (x, i) => { let a = 0, b = 0; for (let k = i - 4; k <= i; k++) a += x.H[k] - x.L[k]; for (let k = i - 64; k <= i - 5; k++) b += x.H[k] - x.L[k]; return b > 0 && a / 5 > 1.5 * (b / 60); } },
+    { name: "any warning with volume flow already turned", kind: "filter", base: "potAny", why: "price rose over 30 minutes while the volume of down bars beat up bars (or the reverse): the move is running on thin participation, and the warning calls the side the volume is already on",
+      pass: (x, i, d) => { let f = 0; for (let k = i - 29; k <= i; k++) { const m = x.C[k] - x.O[k]; f += m > 0 ? x.V[k] : m < 0 ? -x.V[k] : 0; } return d * (x.C[i] - x.C[i - 30]) < 0 && d * f > 0; } },
+    { name: "any warning against the week's direction", kind: "filter", base: "potAny", why: "#2/#3 at a longer scale: a turn against where price has gone since last week's close",
+      pass: (x, i, d) => Number.isFinite(x.pwC[i]) && d * (x.C[i] - x.pwC[i]) < 0 },
+    { name: "1m warning on the 5m bar's closing minute", kind: "filter", base: "pot1", why: "5-minute chart traders act as their bar closes; a 1m warning landing on that minute gets their orders too",
+      pass: (x, i) => (x.CT[i] + 1) % 5 === 0 },
+  ],
+  // batch 20 (screen 2026, confirm 2025): is the day balanced or one-way? the gap, stale extremes, the
+  // prior day's range, fresh extremes; and the warning bar's own close
+  20: [
+    { name: "any warning against the opening gap", kind: "filter", base: "potAny", why: "a gap from settlement leaves overnight traders on one side; turns that call back toward settlement have gap-fill flow behind them",
+      pass: (x, i, d) => Number.isFinite(x.rO[i]) && Number.isFinite(x.pdC[i]) && d * (x.rO[i] - x.pdC[i]) < 0 },
+    { name: "any warning with both day extremes an hour old", kind: "filter", base: "potAny", why: "if neither the day's high nor low has moved in 60 minutes the market has found its range, and turns inside a range pay",
+      pass: (x, i) => x.rHi[i] >= 0 && x.rLi[i] >= 0 && i - Math.max(x.rHi[i], x.rLi[i]) > 60 },
+    { name: "any warning on a bar closing its way", kind: "filter", base: "potAny", why: "a warning whose own bar closed in the called half of its range (close location over 0.5 its way) already shows sellers (buyers) winning the minute",
+      pass: (x, i, d) => d * x.clv[i] > 0.5 },
+    { name: "any warning after 3+ fresh extremes in 30 min", kind: "filter", base: "potAny", why: "three or more new session highs (lows) in half an hour, with the warning calling against them, is a run that has drawn in late buyers (sellers), who give up into the turn",
+      pass: (x, i, d) => { let n = 0; for (let k = i - 29; k <= i; k++) if (Number.isFinite(x.rH[k - 1]) && x.TD[k] === x.TD[k - 1] && (d === -1 ? x.rH[k] > x.rH[k - 1] : x.rL[k] < x.rL[k - 1])) n++; return n >= 3; } },
+    { name: "any warning inside the prior day's range", kind: "filter", base: "potAny", why: "inside yesterday's range both sides have traded and accepted prices; turns there rotate, outside it price is discovering and runs",
+      pass: (x, i) => Number.isFinite(x.pdH[i]) && x.C[i] < x.pdH[i] && x.C[i] > x.pdL[i] },
+  ],
+  // batch 21 (screen 2026, confirm 2025): the two VWAPs disagreeing, the forming 5m bar, Fridays, the
+  // overnight midpoint, a flat VWAP
+  21: [
+    { name: "any warning between the session and RTH VWAPs", kind: "filter", base: "potAny", why: "between the overnight-inclusive VWAP and the day's own VWAP, the two groups' average prices disagree: a contested zone where turns rotate",
+      pass: (x, i) => Number.isFinite(x.vw[i]) && Number.isFinite(x.vws[i]) && (x.C[i] - x.vw[i]) * (x.C[i] - x.vws[i]) < 0 },
+    { name: "any warning with the forming 5m bar moving its way", kind: "filter", base: "potAny", why: "the 5m bar in progress (its open to this minute's close) already moving the called way: the slower chart's traders see the turn start",
+      pass: (x, i, d) => { const k0 = i - ((x.CT[i]) % 5); return k0 < i && d * (x.C[i] - x.O[k0]) > 0; } },
+    { name: "any warning on a Friday", kind: "filter", base: "potAny", why: "positions are squared before the weekend, so Friday moves are given back more than built on",
+      pass: (x, i) => new Date(x.TS[i] - 6 * 3600000).getUTCDay() === 5 },
+    { name: "any warning calling toward the overnight midpoint", kind: "filter", base: "potAny", why: "the overnight range's middle is where overnight inventory is balanced; away from it, turns back toward it are inventory unwinding",
+      pass: (x, i, d) => Number.isFinite(x.onH[i]) && Number.isFinite(x.onL[i]) && d * ((x.onH[i] + x.onL[i]) / 2 - x.C[i]) > 0 },
+    { name: "any warning with VWAP flat", kind: "filter", base: "potAny", why: "#2 says the drift's direction matters; with no drift (VWAP moved under a tenth of a 5m ATR in 15 minutes) both ways should rotate",
+      pass: (x, i) => Number.isFinite(x.vw[i - 15]) && Math.abs(x.vw[i] - x.vw[i - 15]) < 0.1 * x.A5[i] },
+  ],
 };
 const IDEAS = (BATCHES[BATCH] || []).filter((d) => !ONLY || ONLY.includes(d.name));
 if (!IDEAS.length) throw new Error(`no ideas in batch ${BATCH}${ONLY ? " named " + ONLY.join(", ") : ""}`);
@@ -444,7 +703,7 @@ for (let r = 0; r < 2; r++) {
     const idea = IDEAS[k], hi = cnt(k, `edge${r}`, true), lo = cnt(k, `edge${r}`, false), h1 = cnt(k, `edge${r}h0`, true), l1 = cnt(k, `edge${r}h0`, false), h2 = cnt(k, `edge${r}h1`, true), l2 = cnt(k, `edge${r}h1`, false);
     let v = "";
     if (r === 0) {
-      const enough = o.n0h0 >= 100 && o.n0h1 >= 100;
+      const mn = idea.minN || 100, enough = o.n0h0 >= mn && o.n0h1 >= mn;
       if (YEAR === 2026 || !ONLY) { if (enough && h1 <= 10 && h2 <= 10) v = "SCREEN PASS (helps)"; else if (enough && l1 <= 10 && l2 <= 10) v = "SCREEN PASS (hurts: the reverse helps)"; }
       else { v = hi <= 5 ? "CONFIRMED (helps)" : lo <= 5 ? "CONFIRMED (hurts)" : "not confirmed"; }
       verdicts.push({ name: idea.name, kind: idea.kind, verdict: v || "fails the screen", edge: o.edge0, hi, lo, h1, l1, h2, l2, n: o.n0 });
