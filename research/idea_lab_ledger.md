@@ -320,6 +320,31 @@ Screen (2026): none pass. Release day -0.9 (83 as low); first hour against yeste
 trades a short session on most holidays, so a missing weekday almost never marks one. It would need the
 exchange's holiday list; not re-run.
 
+### Batch 46 (--batch 46): outside events: the hour after a coupon auction, after an auction calling its way, mega-cap earnings sessions, quarterly expiry days, against leveraged funds' crowded side, the way asset managers are adding
+
+Data (downloaded 2026-11-24 with the person's OK; built by research/event_data_build.py into
+data/raw/events): Treasury auction results (fiscaldata.treasury.gov), SEC EDGAR 8-K item 2.02 dates for
+AAPL MSFT NVDA AMZN META GOOGL AVGO TSLA, CFTC Traders in Financial Futures (NASDAQ-100 Consolidated,
+usable the Monday after each Friday release), third Fridays. Also saved, not yet used: FRED RRPONTSYD,
+WTREGEN, WALCL (Fed liquidity).
+
+Screen (2026): none pass on the judged 18-point race. Against leveraged funds' crowded side -2.3 (99 as
+low; Jan-Jun 58, Jul-Oct 100); after an auction calling its way +2.8 (972; halves +6.6 / -1.8); quarterly
+expiry -2.7 (353); the way asset managers add -0.5 (halves +0.9 / -2.6); earnings sessions +0.7; the hour
+after an auction +0.6. Leads on the 37-point race only (not judged): the hour after an auction +4.8 (98;
+halves 96 and 84), earnings sessions +3.4 (98; halves 98 and 76).
+
+### Batch 45 (--batch 45): outside information from FRED: a 2-year yield shock, against yesterday's 10-year move, against the dollar's week, credit spreads widening
+
+Data downloaded 2026-11-24 with the person's OK (DGS2, DGS10, DTWEXBGS, BAMLH0A0HYM2 into data/raw/fred).
+Each reading is lagged to when it was public: yields a day, the HY spread two days, the dollar (weekly
+release) a week. Qualifying days per half (2025 H1/H2, 2026 H1/H2): 2y shock 23/10/14/8; 10y 5bp
+43/20/26/22; dollar 0.5% 52/48/59/32; HY +15bp 24/12/10/12.
+
+Screen (2026): none pass. After a 2-year yield shock +2.3 (100 of 100 overall, but Jan-Jun +3.5 and Jul-Oct
++0.2; the opposite of its stated reason: turns did better after shocks, not worse); against yesterday's
+10-year move +1.3 (85); against the dollar's week +0.3 (halves +1.8 / -2.1); credit spreads widened +0.7.
+
 ### Batch 44 (--batch 44): the box's first warning in 10 minutes (batch 43 with a cut that occurs)
 
 The cut is the gaps' rough 90th percentile if warnings came at random every 4.6 minutes, chosen from that and

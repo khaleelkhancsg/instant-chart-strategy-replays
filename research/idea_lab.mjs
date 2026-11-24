@@ -48,6 +48,25 @@ const VXN_DATES = [...VXN.keys()].sort();
 // batch 30: VIX and VXV (3-month VIX) closes by date; prevClose(map, dates, iso) = the last close before iso
 const readFred = (f) => new Map(fs.readFileSync(f, "utf8").trim().split(/\r?\n/).slice(1).map((l) => l.split(",")).filter(([, v]) => v && v !== ".").map(([d, v]) => [d, Number(v)]));
 const VIX = readFred("data/raw/fred/VIXCLS.csv"), VXV = readFred("data/raw/fred/VXVCLS.csv");
+// batch 45: daily macro series (data/raw/fred, downloaded 2026-11-24 with the person's OK). Each is read as
+// it was public before the session: yields (H.15, the Treasury's own close) from the day before, the HY
+// spread (ICE, posted the next day) two days back, the broad dollar (published weekly) a week back.
+// macroAt(series, iso, lagDays, back) = [the last value dated before iso - lagDays, the one `back` observations before it]
+const MACRO = Object.fromEntries(["DGS2", "DGS10", "DTWEXBGS", "BAMLH0A0HYM2"].map((s) => { const m = readFred(`data/raw/fred/${s}.csv`); return [s, { m, d: [...m.keys()].sort() }]; }));
+const macroAt = (s, iso, lag, back) => { const { m, d } = MACRO[s], cut = new Date(Date.parse(iso) - lag * 86400000 + 86400000).toISOString().slice(0, 10);
+  let lo = 0, hi = d.length; while (lo < hi) { const md = (lo + hi) >> 1; if (d[md] < cut) lo = md + 1; else hi = md; } const k = lo - 1; return k - back >= 0 ? [m.get(d[k]), m.get(d[k - back])] : [NaN, NaN]; };
+// batch 46: event files built by research/event_data_build.py into data/raw/events
+const readCsv = (f) => { const [h, ...r] = fs.readFileSync(f, "utf8").trim().split(/\r?\n/).map((l) => l.split(",")); return r.map((v) => Object.fromEntries(h.map((k, j) => [k, v[j]]))); };
+function BATCH_NEEDS_EVENTS() { const a = process.argv.slice(2), i = a.indexOf("--batch"); return i >= 0 && Number(a[i + 1]) === 46; }
+const EV = BATCH_NEEDS_EVENTS() ? {
+  earnings: new Set(readCsv("data/raw/events/earnings.csv").map((r) => r.session)),
+  // coupon auctions by date: the close in Chicago minutes, and the weakest bid-to-cover against its term's usual
+  auctions: readCsv("data/raw/events/auctions.csv").reduce((m, r) => { const t = /(\d+):(\d+) (AM|PM)/.exec(r.close_et); if (!t) return m;
+    const et = ((+t[1] % 12) + (t[3] === "PM" ? 12 : 0)) * 60 + +t[2], rel = r.btc_vs_prev6 ? +r.btc_vs_prev6 : NaN, o = m.get(r.date) || { ct: et - 60, rel: NaN };
+    o.ct = Math.min(o.ct, et - 60); if (Number.isFinite(rel)) o.rel = Number.isFinite(o.rel) ? Math.min(o.rel, rel) : rel; m.set(r.date, o); return m; }, new Map()),
+  quarterly: new Set(readCsv("data/raw/events/index_days.csv").filter((r) => r.kind !== "monthly").map((r) => r.date)),
+  cot: readCsv("data/raw/events/cot_nq.csv").map((r) => ({ from: r.usable_from, lev: (+r.lev_long - +r.lev_short) / +r.oi, am: (+r.am_long - +r.am_short) / +r.oi })),
+} : null;
 const PC = new Map(), prevClose = (map, iso) => { const key = (map === VIX ? "x" : "v") + iso; if (PC.has(key)) return PC.get(key); let best = null; for (const d of map.keys()) if (d < iso && (!best || d > best)) best = d; const v = best ? map.get(best) : NaN; PC.set(key, v); return v; };
 
 const args = process.argv.slice(2), arg = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
@@ -245,6 +264,29 @@ function context(sample) {
       if (CT[i] >= FIRST && CT[i] < 15 * 60 + 15) { h = Math.max(h, H[i]); l = Math.min(l, L[i]); }
       x.hi20[i] = H20; x.lo20[i] = L20;
     } }
+  // batch 45: the macro readings known before each session (see MACRO): the 2-year and 10-year yields' last
+  // daily change (basis points), the broad dollar's 5-observation change (%), the HY spread's 5-observation change (bp)
+  x.y2chg = new Float64Array(N).fill(NaN); x.y10chg = new Float64Array(N).fill(NaN); x.usd5 = new Float64Array(N).fill(NaN); x.hy5 = new Float64Array(N).fill(NaN);
+  { let td16 = -1, a = NaN, b = NaN, c = NaN, e = NaN; for (let i = 0; i < N; i++) { if (TD[i] !== td16) { td16 = TD[i]; const iso = new Date(TD[i] * 86400000).toISOString().slice(0, 10);
+        const [y2, y2p] = macroAt("DGS2", iso, 1, 1), [y10, y10p] = macroAt("DGS10", iso, 1, 1), [u, up] = macroAt("DTWEXBGS", iso, 7, 5), [h, hp] = macroAt("BAMLH0A0HYM2", iso, 2, 5);
+        a = (y2 - y2p) * 100; b = (y10 - y10p) * 100; c = (u / up - 1) * 100; e = (h - hp) * 100; }
+      x.y2chg[i] = a; x.y10chg[i] = b; x.usd5[i] = c; x.hy5[i] = e; } }
+  // batch 46: per session, from EV: an earnings session, the coupon auction (close minute CT, strength), a
+  // quarterly expiry, and positioning usable that day (leveraged funds' net share of open interest against
+  // its last 52 reports: +1 top fifth, -1 bottom fifth; asset managers' net share change over 4 reports)
+  if (EV) {
+    x.earn = new Uint8Array(N); x.aucCt = new Int16Array(N).fill(-1); x.aucRel = new Float64Array(N).fill(NaN); x.quarterly = new Uint8Array(N); x.levCrowd = new Int8Array(N); x.amTrend = new Float64Array(N).fill(NaN);
+    let td17 = -1, e = 0, ac = -1, ar = NaN, q = 0, lc = 0, at = NaN;
+    for (let i = 0; i < N; i++) {
+      if (TD[i] !== td17) { td17 = TD[i]; const iso = new Date(TD[i] * 86400000).toISOString().slice(0, 10);
+        e = EV.earnings.has(iso) ? 1 : 0; const a = EV.auctions.get(iso); ac = a ? a.ct : -1; ar = a ? a.rel : NaN; q = EV.quarterly.has(iso) ? 1 : 0;
+        let k = -1; for (let j = 0; j < EV.cot.length && EV.cot[j].from <= iso; j++) k = j;
+        lc = 0; at = NaN;
+        if (k >= 52) { const win = EV.cot.slice(k - 51, k + 1).map((c) => c.lev).sort((p, r) => p - r), v = EV.cot[k].lev; lc = v >= win[Math.floor(0.8 * 51)] ? 1 : v <= win[Math.floor(0.2 * 51)] ? -1 : 0; }
+        if (k >= 4) at = EV.cot[k].am - EV.cot[k - 4].am; }
+      x.earn[i] = e; x.aucCt[i] = ac; x.aucRel[i] = ar; x.quarterly[i] = q; x.levCrowd[i] = lc; x.amTrend[i] = at;
+    }
+  }
   // batch 4: the 1m box's flips (either way) in each minute, and the close-location value of each bar
   x.flipAt = new Uint8Array(N); x.clv = new Float64Array(N).fill(NaN);
   for (let i = 1; i < N; i++) {
@@ -926,6 +968,33 @@ const BATCHES = {
   43: [
     { name: "the box's first warning in 30 minutes", kind: "filter", base: "potAny", why: "no warning of either kind in the last 30 bars means a trend ran clean; its first easing is a mature move tiring, where turns are likelier than in a box that keeps warning",
       pass: (x, i) => { for (let k = i - 30; k < i; k++) if (BASES.potAny(x, k)) return false; return true; } },
+  ],
+  // batch 45 (screen 2026, confirm 2025): outside information, the macro series known before the session
+  45: [
+    { name: "any warning after a 2-year yield shock", kind: "filter", base: "potAny", why: "the 2-year yield moved 8bp+ the day before: policy expectations repricing, which equity desks keep trading into the next session, so moves carry and turns fail",
+      pass: (x, i) => Math.abs(x.y2chg[i]) >= 8 },
+    { name: "any warning calling against yesterday's 10-year move", kind: "filter", base: "potAny", why: "Nasdaq trades against long yields; after a 5bp+ move in the 10-year, a turn the way the bond move favours (long after yields fell, short after they rose) has the rates flow behind it",
+      pass: (x, i, d) => Math.abs(x.y10chg[i]) >= 5 && d === -Math.sign(x.y10chg[i]) },
+    { name: "any warning against the dollar's week", kind: "filter", base: "potAny", why: "a dollar up 0.5%+ over five readings tightens conditions for global holders of US tech; turns calling short then (long after a falling dollar) have that flow behind them",
+      pass: (x, i, d) => Math.abs(x.usd5[i]) >= 0.5 && d === -Math.sign(x.usd5[i]) },
+    { name: "any warning after credit spreads widened", kind: "filter", base: "potAny", why: "high-yield spreads 15bp+ wider over five days is stress: forced de-risking overshoots both ways intraday, and turns pay",
+      pass: (x, i) => x.hy5[i] >= 15 },
+  ],
+  // batch 46 (screen 2026, confirm 2025): outside events: Treasury auctions, mega-cap earnings, quarterly
+  // expiry, CFTC positioning (research/event_data_build.py; data/raw/events)
+  46: [
+    { name: "any warning in the hour after a coupon auction", kind: "filter", base: "potAny", why: "a note or bond auction's result reprices yields at the close (12:00 CT); equities follow for the next hour, so moves carry and turns fail",
+      pass: (x, i) => x.aucCt[i] >= 0 && x.CT[i] >= x.aucCt[i] && x.CT[i] < x.aucCt[i] + 60 },
+    { name: "any warning after an auction, calling its way", kind: "filter", base: "potAny", why: "a weak auction (bid-to-cover under 0.95 of the term's usual) pushes yields up and Nasdaq down; a strong one (over 1.05) the reverse. After the close, a turn calling that way has the rates flow behind it",
+      pass: (x, i, d) => x.aucCt[i] >= 0 && x.CT[i] >= x.aucCt[i] && Number.isFinite(x.aucRel[i]) && (x.aucRel[i] < 0.95 ? d === -1 : x.aucRel[i] > 1.05 ? d === 1 : false) },
+    { name: "any warning on a mega-cap earnings session", kind: "filter", base: "potAny", why: "the first session after AAPL, MSFT, NVDA, AMZN, META, GOOGL, AVGO or TSLA reports (about 40% of the index): the index reprices, so moves carry and turns fail",
+      pass: (x, i) => x.earn[i] === 1 },
+    { name: "any warning on a quarterly expiry day", kind: "filter", base: "potAny", why: "quad witching and the Nasdaq-100 rebalance: dealers' hedges roll off and index funds trade at the close; pinning through the day, so turns pay",
+      pass: (x, i) => x.quarterly[i] === 1 },
+    { name: "any warning against leveraged funds' crowded side", kind: "filter", base: "potAny", why: "leveraged funds' net NQ position in the top (bottom) fifth of the last year: trend followers are crowded long (short), and a turn against them has their unwinding behind it",
+      pass: (x, i, d) => x.levCrowd[i] !== 0 && d === -x.levCrowd[i] },
+    { name: "any warning the way asset managers are adding", kind: "filter", base: "potAny", why: "asset managers' net share of open interest rising (falling) over four weeks is slow real-money buying (selling); a turn that way has it behind it",
+      pass: (x, i, d) => Number.isFinite(x.amTrend[i]) && x.amTrend[i] !== 0 && d === Math.sign(x.amTrend[i]) },
   ],
   // batch 44: batch 43's idea with a cut that occurs. The box warns about every 4.6 minutes in RTH; if the
   // gaps were random, 10 minutes would be about their 90th percentile. Chosen from that, not from results.
