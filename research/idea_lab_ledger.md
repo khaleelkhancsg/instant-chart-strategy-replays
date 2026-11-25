@@ -72,6 +72,16 @@ research/light_check.mjs: idea_lab's own definitions (checked equal: F1, F2 to b
    "default" column: placebo markets as high of 90 or more). 2026 MNQ went the other way (EMA +0.4, MACD
    -0.3), so a pass is a long-run tendency, not this year's.
 
+### NOVEL: the box overnight (research/databox_eth.mjs, written before the runs)
+
+Every study counted 08:30-14:55 CT only. This counts Globex bars closing 18:00-07:30 CT with a 60-minute race
+(0.064%, stopped at 08:25 CT; unresolved = a loss both ways). Readings: 1m EMA 12/26 speed, 1m EMA 3/13
+slowing (#3), 1m MACD shrink, 5m EMA speed, 5m MACD shrink, 1m EMA and MACD flips. Discovery on MNQ
+2019-05 to 2026-10 (halves split 2023-01-01): a reading passes when its edge beats 90 of 100 placebo
+markets overall and in both halves, same sign (negative = a continuation call). Confirm each pass once on NQ
+2010-2018 and on ES 2010-2026, the same sign beating 90 of 100 on each. One finding however many pass.
+(A no-placebo smoke run showed one MNQ number, 1m EMA 12/26 speed -0.3: discovery data only.)
+
 ## New unseen data: NQ 2010-2018 (found 2026-11-25)
 
 Desktop\Backtesting\NQ CSV holds NQ (full-size, same index) 1-minute bars from 2010-06-06. Every idea and
