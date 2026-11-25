@@ -1,0 +1,22 @@
+{
+ "run": "2026-11-25T20:09:46.092Z",
+ "placebos": 100,
+ "cells": [
+  {
+   "cell": "2m EMA warning",
+   "pick": "2m EMA 3/13 slowing",
+   "pickEdge": {
+    "n": 129036,
+    "edge": -0.0009215198587986096
+   },
+   "defEdge": {
+    "n": 80633,
+    "edge": -0.014175069475314491
+   },
+   "gain": 0.013253549616515882,
+   "gainHi": 0,
+   "pickHi": 72,
+   "confirmed": false
+  }
+ ]
+}

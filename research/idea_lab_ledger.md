@@ -138,7 +138,10 @@ exact): 1 of 8 cells passes.
   4m MACD warning  pick 4m MACD 12/26/9 speed      2019-25   +0.1 | 2026   -1.1 (91 of 100 as high; halves -2.0 / +0.0) | default -0.1 / -1.0  fails the screen
   5m MACD warning  pick 5m MACD 6/13/3 slowing     2019-25   +0.1 | 2026   -1.1 (78 of 100 as high; halves -0.7 / -1.5) | default -1.1 / -0.3  fails the screen
 The pass is the 2m EMA row at 3/13 "slowing", #3's setting one timeframe up; its 2019-2025 edge is -0.2, so the
-NQ stage's own-edge test decides. NQ: pending.
+NQ stage's own-edge test decides.
+NQ (2,520 s, research/databox_lengths2_nq_results.json): NOT CONFIRMED. Gain over the default +1.3 (0 of 100 as
+high; halves +1.7 / +0.9), but the pick's own edge is -0.1 (72 of 100 as high): it only dilutes a negative
+default (-1.4). Fails the own-edge test at 5% and at the person's new 10% bar alike.
 
 ### The lengths picks confirmed on NQ 2010-2018 (databox_lengths.mjs --nq; written before the NQ file was built)
 
