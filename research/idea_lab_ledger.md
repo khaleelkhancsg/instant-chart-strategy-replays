@@ -41,6 +41,24 @@ What the table says (every definition, 2019-25 and 2026, each against placebo ma
 - Warnings are followed by a cross no more often than on placebo markets: that share is arithmetic, not foresight.
 Not added to databox_tune (no passing base).
 
+## New unseen data: NQ 2010-2018 (found 2026-11-25)
+
+Desktop\Backtesting\NQ CSV holds NQ (full-size, same index) 1-minute bars from 2010-06-06. Every idea and
+study so far read MNQ from 2019 on, so NQ 2010-2018 is nine unseen years: a confirmation set for leads that
+have no unused MNQ year left. 2019 on is excluded (the same index's moves as MNQ).
+
+### Confirming the in-between timeframe leads on NQ 2010-2018 (research/databox_mid_confirm.mjs, written before the NQ file was built)
+
+The 7 leads of databox_mid (each beat 90 in both periods there), frozen: L1 1m EMA warning against the 2m
+MACD line's last move; L2 1m MACD flip against it; L3 1m MACD warning with the 3m MACD line's last move; L4
+1m MACD warning with the 3m MACD row warning the same way; L5 5m EMA warning against the 2m MACD line's
+last move; L6 5m MACD flip with the 2m MACD side; L7 5m MACD warning against the 4m EMA side. One run on
+NQ 2010-2018: CONFIRMED = lift beats 95 of 100 placebo markets (7 at 5%: about 0.35 false expected). NEW
+(not #2 again) = also positive and beating 90 inside the calls WITH VWAP's 15-minute slope. Check: on MNQ
+2019-2026 the script gives databox_mid's lifts exactly (passed: L1 +0.7 on 38,634 ... L7 +0.4 on 16,607).
+
+Results: pending (the NQ file is built when memory frees up).
+
 ## A wide grid of lengths, each row reading alone (research/databox_lengths.mjs, written 2026-11-25)
 
 Written before the run (the script's header has it in full): the indicator's arithmetic re-done exactly on
