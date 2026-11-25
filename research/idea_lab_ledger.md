@@ -57,7 +57,13 @@ NQ 2010-2018: CONFIRMED = lift beats 95 of 100 placebo markets (7 at 5%: about 0
 (not #2 again) = also positive and beating 90 inside the calls WITH VWAP's 15-minute slope. Check: on MNQ
 2019-2026 the script gives databox_mid's lifts exactly (passed: L1 +0.7 on 38,634 ... L7 +0.4 on 16,607).
 
-Results: pending (the NQ file is built when memory frees up).
+Results (2026-11-25, 878 s, NQ 2010-06 to 2018-12, 2.8 million bars; research/databox_mid_confirm_results.json).
+1 of 7 confirmed, and it is #2 again; nothing new counts.
+  L1 +0.0 (33 of 100 as high); L2 +0.4 (14); L3 -1.0 (98: reversed); L4 -0.6 (86); L6 -0.1 (68); L7 -0.4 (100: reversed).
+  L5 (5m EMA warning against the 2m MACD line's last move) +1.1 (5 of 100 as high: confirmed at the line),
+  halves +0.8 / +1.6; inside calls with VWAP's slope +0.8 (21 of 100: not 90), against +1.1 (12): by the
+  rule written before the run it is #2 again, not a new finding.
+The true confluence leads (the in-between row agreeing: L3, L4, L6) all failed, two of them reversed.
 
 ### Confirmed #1 and #2 re-checked on NQ 2010-2018 (idea_lab.mjs --batch 53 --file data/nq_1m.bin; written before the NQ file was built)
 
