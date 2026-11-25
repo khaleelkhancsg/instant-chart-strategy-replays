@@ -50,6 +50,7 @@ const ALL_IDEAS = {
   B14: { name: "B14: both 1m rows warning together", expect: "helps", base: (x, i) => pot(x.m1[i - 1], x.m1[i]), pass: (x, i, d) => (d === 1 ? x.e1[i] === 4 : x.e1[i] === 2) },
   ADAPT: { name: "ADAPT: the VWAP-slope side that won the last 60 sessions", expect: "helps", base: potAny, adaptive: true },
   ADAPT1: { name: "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)", expect: "helps", base: (x, i) => pot(x.m1[i - 1], x.m1[i]) || pot(x.e1[i - 1], x.e1[i]), adaptive: true },
+  VOLHI: { name: "VOLHI: any warning with the 1m ATR above its 20-session median", expect: "helps", base: potAny, pass: (x, i) => Number.isFinite(x.atrMed[i]) && x.a1[i] > x.atrMed[i] },
   ADAPTW: { name: "ADAPTW: take warnings if they won the last 60 sessions, else fade", expect: "helps", base: potAny, adaptiveW: true },
 };
 const IDEAS = WANT.map((k) => { if (!ALL_IDEAS[k]) throw new Error(`no idea ${k}`); return { key: k, ...ALL_IDEAS[k] }; });
@@ -61,6 +62,15 @@ function measure(sample) {
   for (let i = 0, k = -1; i < N; i++) { while (k + 1 < bb.ts.length && bb.ts[k + 1] + 5 * MIN <= TS[i] + MIN) k++; e5[i] = k >= 0 ? s5.e[k] : 0; m5[i] = k >= 0 ? s5.m[k] : 0; A5[i] = k >= 0 ? a5[k] : NaN; }
   const x = { e1: s1.e, m1: s1.m, e5, m5, vw: Lab.studyLines(sample, "vwap", 1, { anchor: "rth", bands: 1 }).VWAP };
   const a1 = atr(H, L, C, 14);
+  // VOLHI: each RTH session's median 1m ATR, and the median of the previous 20 sessions' medians (known before the session)
+  x.a1 = a1; x.atrMed = new Float64Array(N).fill(NaN);
+  { const meds = []; let td = -1, vals = [], ref = NaN;
+    const med = (a) => { const z = [...a].sort((p, q) => p - q); return z.length ? (z.length % 2 ? z[z.length >> 1] : (z[z.length / 2 - 1] + z[z.length / 2]) / 2) : NaN; };
+    for (let i = 0; i < N; i++) {
+      if (TD[i] !== td) { if (vals.length) { meds.push(med(vals)); if (meds.length > 20) meds.shift(); } vals = []; td = TD[i]; ref = meds.length === 20 ? med(meds) : NaN; }
+      const cc = (CT[i] + 1) % 1440; if (cc >= FIRST && cc <= LAST && Number.isFinite(a1[i])) vals.push(a1[i]);
+      x.atrMed[i] = ref;
+    } }
   // every counted minute's race, once
   const win = new Int8Array(N), counted = new Uint8Array(N);
   for (let i = 31; i + 1 < N; i++) {

@@ -77,6 +77,10 @@ Results so far (2026-11-25; research/light_check_{nq,mnq}_results.json):
    2010-2018 and MNQ 2019-2026 (each beating 90), confirm on ES 2010-2026 from the close AND the next open
    (each beating 90). Counts as one of the five if all pass.
    ADAPTW screen: NQ 2010-2018 -0.1 on 302,220 (33 of 100); MNQ 2019-2026 +0.1 (96; halves 100 / 33). FAILS (NQ).
+7. NOVEL, VOLHI (written before any run): any box warning when the 1m ATR(14) is above the median of the previous
+   20 RTH sessions' median 1m ATR (known before the session). Why: reversal warnings need someone leaning against
+   the move; in fast markets liquidity providers fade pushes. Expect helps. Same protocol: screen NQ 2010-2018 and
+   MNQ 2019-2026 (each beating 90), confirm ES 2010-2026 from the close and the next open (each beating 90).
 ES results (2026-11-25; research/light_check_es_results.json, _es_open_results.json):
 - F1 +0.8 (3 of 100 the expected way), F2 -1.2 (0), B14 -0.8 (0): all REVERSED on ES, as on NQ.
 - ADAPT from the close +0.4 on 241,697 (beats 92; halves 80 / 82; 3,997 days); from the next open +0.5 on
