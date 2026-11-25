@@ -110,6 +110,9 @@ the race is a few ticks (NQ / ES before about 2019); on MNQ's fine ticks there i
 tick effect, not usable on MNQ. Same shape for the 1m EMA flip faded (NQ -1.0, ES -1.1, MNQ -0.0).
 Beside it: #3 overnight with next-open races: ES +0.7 (100; halves 100 / 100), NQ +0.5 (100; 100 / 83), MNQ +0.1
 (65).
+Bounce check, #3 in the day session (databox_lengths.mjs --nq --entry-open, 1,891 s,
+research/databox_lengths_nq_open_results.json): STANDS. 1m EMA 3/13 slowing +0.4 on its own (0 of 100 as
+high), the default -0.6; gain +0.9 (0 of 100); halves +1.3 / +0.5. (From the close it was +0.3 / +1.2.)
 
 ## New unseen data: NQ 2010-2018 (found 2026-11-25)
 
