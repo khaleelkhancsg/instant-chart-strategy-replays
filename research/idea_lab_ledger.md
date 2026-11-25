@@ -70,6 +70,12 @@ Results so far (2026-11-25; research/light_check_{nq,mnq}_results.json):
 - ADAPT screen: NQ 2010-2018 +1.1 on 124,010 (beats 100; halves 89 / 100; 2,134 days); MNQ 2019-2026 +1.6 on
   123,040 (beats 100; halves 98 / 100). SCREEN PASS on both. Added before the ES runs, stricter: ADAPT counts
   only if ES confirms (beats 90) with races from the close AND from the next bar's open (bid-ask bounce).
+6. NOVEL, ADAPTW (written before any run): the same regime idea for the warnings themselves. Each session, the
+   trailing 60 sessions' box warnings (any row) are scored as wins less that session's every-minute win rate
+   the same way; if the sum is above 0 the warnings are taken as called, otherwise faded. A signal: its edge
+   is its win rate less every counted minute's the same way (idea_lab's signal convention). Screen on NQ
+   2010-2018 and MNQ 2019-2026 (each beating 90), confirm on ES 2010-2026 from the close AND the next open
+   (each beating 90). Counts as one of the five if all pass.
 5. NOVEL, written while run 3 was going and before its output existed: a 5m warning as a CONTINUATION call.
    The default 5m warnings called the wrong way on MNQ 2019-2025 (EMA -1.4, MACD -1.1; worse than 100 and 97
    of 100 placebo markets) and on NQ 2010-2018 (EMA -1.7, MACD -1.4; worse than all 100), so price tends to

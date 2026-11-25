@@ -49,6 +49,7 @@ const ALL_IDEAS = {
   F2: { name: "F2: any box warning against VWAP slope", expect: "helps", base: potAny, pass: (x, i, d) => Number.isFinite(x.vw[i - 15]) && d * (x.vw[i] - x.vw[i - 15]) < 0 },
   B14: { name: "B14: both 1m rows warning together", expect: "helps", base: (x, i) => pot(x.m1[i - 1], x.m1[i]), pass: (x, i, d) => (d === 1 ? x.e1[i] === 4 : x.e1[i] === 2) },
   ADAPT: { name: "ADAPT: the VWAP-slope side that won the last 60 sessions", expect: "helps", base: potAny, adaptive: true },
+  ADAPTW: { name: "ADAPTW: take warnings if they won the last 60 sessions, else fade", expect: "helps", base: potAny, adaptiveW: true },
 };
 const IDEAS = WANT.map((k) => { if (!ALL_IDEAS[k]) throw new Error(`no idea ${k}`); return { key: k, ...ALL_IDEAS[k] }; });
 
@@ -78,7 +79,35 @@ function measure(sample) {
     win[i] = (up === 1 ? 1 : 0) | (dn === 1 ? 2 : 0);   // bit 1: long wins, bit 2: short wins
   }
   const won = (i, d) => (d === 1 ? win[i] & 1 : (win[i] >> 1) & 1);
+  // every counted minute's win rate by half and direction (a signal's baseline), and by session (ADAPTW's trailing yardstick)
+  const bn = new Float64Array(4), bw = new Float64Array(4), dayRate = new Map();
+  for (let i = 31; i + 1 < N; i++) {
+    if (!counted[i]) continue;
+    const h = TS[i] < H2 ? 0 : 1; let r = dayRate.get(TD[i]); if (!r) dayRate.set(TD[i], (r = [0, 0, 0, 0]));
+    for (const [dir, d] of [[0, 1], [1, -1]]) { bn[h * 2 + dir]++; bw[h * 2 + dir] += won(i, d); r[dir * 2]++; r[dir * 2 + 1] += won(i, d); }
+  }
   return IDEAS.map((idea) => {
+    if (idea.adaptiveW) {   // a signal: the warning's call, or its reverse, by the trailing 60 sessions' warning edge
+      const t = new Float64Array(6), hist = [];   // [half]: n, wins, expected wins
+      let cur = null, curTd = -1, mode = 0, days = 0;
+      for (let i = 31; i + 1 < N; i++) {
+        if (!counted[i]) continue;
+        const d = idea.base(x, i);
+        if (!d) continue;
+        if (TD[i] !== curTd) {
+          if (cur) { hist.push(cur); if (hist.length > TRAIL) hist.shift(); }
+          cur = [0, 0]; curTd = TD[i];
+          if (hist.length < TRAIL) mode = 0; else { let n = 0, e = 0; for (const z of hist) { n += z[0]; e += z[1]; } mode = n ? (e > 0 ? 1 : -1) : 0; if (mode) days++; }
+        }
+        const r = dayRate.get(TD[i]), dir = d === 1 ? 0 : 1;
+        cur[0]++; cur[1] += won(i, d) - r[dir * 2 + 1] / r[dir * 2];   // used from tomorrow
+        if (!mode) continue;
+        const c = mode * d, h = TS[i] < H2 ? 0 : 1, cd = c === 1 ? 0 : 1;
+        t[h * 3]++; t[h * 3 + 1] += won(i, c); t[h * 3 + 2] += bw[h * 2 + cd] / bn[h * 2 + cd];
+      }
+      const e = (n, w, x2) => (n ? (w - x2) / n : NaN);
+      return { key: idea.key, name: idea.name, n: t[0] + t[3], nh: [t[0], t[3]], edge: e(t[0] + t[3], t[1] + t[4], t[2] + t[5]), h1: e(t[0], t[1], t[2]), h2: e(t[3], t[4], t[5]), days };
+    }
     const t = new Float64Array(4), u = new Float64Array(4);   // [half]: n, wins (filter true / false)
     // ADAPT: each session's against / with tallies, and the trailing 60 sessions' sums before it
     const hist = [];   // { a: [n, w], w: [n, w] } per finished session
@@ -134,7 +163,7 @@ const out = R.map((o, k) => {
   const idea = IDEAS[k], up = idea.expect === "helps", vals = pl.map((p) => p[k].edge), beats = vals.filter((z) => (up ? z < o.edge : z > o.edge)).length;
   const hv1 = pl.map((p) => p[k].h1), hv2 = pl.map((p) => p[k].h2), b1 = hv1.filter((z) => (up ? z < o.h1 : z > o.h1)).length, b2 = hv2.filter((z) => (up ? z < o.h2 : z > o.h2)).length;
   const right = up ? o.edge > 0 : o.edge < 0, v = right && beats >= 95 ? "beats 95" : right && beats >= 90 ? "beats 90" : !right && vals.length && beats <= 10 ? "REVERSED" : "neither";
-  console.log(`  ${o.name.padEnd(58)} n ${String(o.n).padStart(7)}  edge ${pt(o.edge).padStart(5)} (beats ${beats} of ${vals.length} the expected way; halves ${pt(o.h1)} [${b1}] / ${pt(o.h2)} [${b2}])${idea.adaptive ? `  days ${o.days}` : ""}  ${v}`);
+  console.log(`  ${o.name.padEnd(58)} n ${String(o.n).padStart(7)}  edge ${pt(o.edge).padStart(5)} (beats ${beats} of ${vals.length} the expected way; halves ${pt(o.h1)} [${b1}] / ${pt(o.h2)} [${b2}])${idea.adaptive || idea.adaptiveW ? `  days ${o.days}` : ""}  ${v}`);
   return { ...o, beats, beatsH: [b1, b2], verdict: v };
 });
 if (TAG) fs.writeFileSync(`research/light_check_${TAG}_results.json`, JSON.stringify({ run: new Date().toISOString(), file: FILE, from: FROM, to: TO, placebos: PLACEBOS, ideas: out, placebo: pl }, null, 1));
