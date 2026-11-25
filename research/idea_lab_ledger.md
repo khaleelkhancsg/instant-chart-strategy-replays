@@ -77,6 +77,27 @@ research/confirm_vwap_slope.mjs, a light copy computing only F1 and F2, one run 
 same rules and seeds; checked to give idea_lab batch 53's numbers exactly on MNQ 2026 (F1 4,278 warnings
 -4.5; F2 17,563 +3.9, the confirmed figures).
 
+Results (2026-11-25, 842 s, research/confirm_vwap_slope_nq_results.json): NEITHER HOLDS; BOTH REVERSE.
+  F1 (1m EMA warnings with VWAP's slope, expected to hurt): +1.5 on 43,510 (halves +1.2 / +1.8), beyond all
+  100 placebo markets the other way. F2 (any warning against VWAP's slope, expected to help): -1.9 on 183,561
+  (halves -1.9 / -1.8), beyond all 100 the other way.
+Data check: NQ and MNQ over the same span (2019-06 to 2025) agree (F1 +0.8 / +0.5, F2 -0.2 / -0.0), so the
+NQ file is not the cause. Year by year (NQ to 2018, MNQ from 2019; description, no placebo markets), F2:
+  2010 -1.1, 2011 -2.1, 2012 -2.3, 2013 -0.8, 2014 -3.3, 2015 -2.5, 2016 +0.8, 2017 -2.6, 2018 -2.8,
+  2019 +0.3, 2020 -2.1, 2021 -1.3, 2022 +0.1, 2023 +0.3, 2024 +0.8, 2025 +2.2, 2026 +3.9.
+  F1 mirrors it (positive in 13 of 17 years; -1.8 in 2025, -4.5 in 2026).
+Reading: #1 / #2 are a 2025-2026 regime. For most of 17 years a box warning WITH VWAP's slope did better and
+one against it worse; the loop found and confirmed the rule inside the same recent regime (2026 screen, 2025
+confirm). The "(weak)" mark in the Tradovate box (vwapSlope "mark", the default) follows the recent regime;
+over the long run it marks the better warnings. Kept as confirmed by the rules they passed; now flagged as
+regime-dependent. The forward test (batch 53) still decides whether the regime holds.
+
+#3 year by year (1m EMA 3/13 slowing against the default 12/26 speed; edge points, description):
+  2010 +1.1/-1.2, 2011 +0.9/-1.1, 2012 +0.4/-0.8, 2013 +0.6/-0.5, 2014 +0.1/-1.6, 2015 -0.5/-0.8,
+  2016 +0.2/-0.9, 2017 -0.2/-0.7, 2018 +0.1/-1.0, 2019 +0.4/-0.1, 2020 +1.7/+0.6, 2021 +1.7/+0.8,
+  2022 +1.5/+1.2, 2023 -0.1/+0.0, 2024 +0.2/+0.3, 2025 -0.2/+0.1, 2026 +1.3/+0.8.
+  Better than the default in 14 of 17 years, its own edge positive in 13: not a regime artefact like #1 / #2.
+
 ## A wide grid of lengths, each row reading alone (research/databox_lengths.mjs, written 2026-11-25)
 
 Written before the run (the script's header has it in full): the indicator's arithmetic re-done exactly on

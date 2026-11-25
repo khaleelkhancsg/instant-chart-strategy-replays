@@ -26,9 +26,13 @@ import { loadTools, readIndicator } from "../tradovate/mock/library.mjs";
 
 const args = process.argv.slice(2), opt = (name, dflt) => { const i = args.indexOf(name); return i >= 0 ? Number(args[i + 1]) : dflt; };
 const CHECK = args.includes("--check"), PLACEBOS = CHECK ? 0 : opt("--placebos", 100);
-const FILE = CHECK ? "data/mnq_1m_beta.bin" : "data/nq_1m.bin";
-const FROM = CHECK ? Date.UTC(2026, 0, 1) : Date.UTC(2010, 5, 7), TO = CHECK ? Date.UTC(2026, 9, 31) : Date.UTC(2019, 0, 1);
-const H2 = CHECK ? Date.UTC(2026, 6, 1) : Date.UTC(2014, 6, 1);
+// --span FROM TO (ISO dates): a description run on another span of the file (the data check: NQ over 2019-2025
+// should give MNQ's sign there); halves split at the middle
+const SPAN = args.includes("--span") ? [Date.parse(args[args.indexOf("--span") + 1]), Date.parse(args[args.indexOf("--span") + 2])] : null;
+const FROM = SPAN ? SPAN[0] : CHECK ? Date.UTC(2026, 0, 1) : Date.UTC(2010, 5, 7), TO = SPAN ? SPAN[1] : CHECK ? Date.UTC(2026, 9, 31) : Date.UTC(2019, 0, 1);
+const H2 = SPAN ? (SPAN[0] + SPAN[1]) / 2 : CHECK ? Date.UTC(2026, 6, 1) : Date.UTC(2014, 6, 1);
+const FILE_ARG = args.includes("--file") ? args[args.indexOf("--file") + 1] : null;
+const FILE = FILE_ARG || (CHECK ? "data/mnq_1m_beta.bin" : "data/nq_1m.bin");
 const MIN = 60000, FLAT = 15 * 60 + 5, FIRST = 8 * 60 + 30, LAST = 14 * 60 + 55, R18 = 0.00064;
 const t0 = Date.now(), secs = () => ((Date.now() - t0) / 1000).toFixed(0);
 
@@ -104,5 +108,5 @@ const out = R.map((o, k) => {
   console.log(`  ${o.name.padEnd(48)} n ${o.n}  edge ${pt(o.edge)} (beats ${beats} of ${vals.length} placebo markets the expected way)  halves ${pt(o.h1)} / ${pt(o.h2)}  ${v}`);
   return { ...o, beats, verdict: v };
 });
-fs.writeFileSync("research/confirm_vwap_slope_nq_results.json", JSON.stringify({ run: new Date().toISOString(), placebos: PLACEBOS, ideas: out, placebo: pl }, null, 1));
+if (!SPAN) fs.writeFileSync("research/confirm_vwap_slope_nq_results.json", JSON.stringify({ run: new Date().toISOString(), placebos: PLACEBOS, ideas: out, placebo: pl }, null, 1));
 console.log("wrote research/confirm_vwap_slope_nq_results.json");
