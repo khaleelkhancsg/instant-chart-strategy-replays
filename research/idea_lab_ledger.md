@@ -64,6 +64,12 @@ research/light_check.mjs: idea_lab's own definitions (checked equal: F1, F2 to b
 3. #3 on ES 2010-2026 (databox_lengths.mjs --es): the 1m EMA 3/13 slowing pick against the default; holds =
    gain and its own edge each positive and beating 90 of 100 (the other 7 cells' picks are shown beside it).
 4. F1 / F2 on ES 2010-2026: description (does ES show the same regime turn?).
+Results so far (2026-11-25; research/light_check_{nq,mnq}_results.json):
+- B14 on NQ 2010-2018: -0.6 on 27,863 (halves -0.2 / -1.1), only 10 of 100 placebo markets as bad the expected
+  way: REVERSED. Like #1 / #2 it describes recent years; it does not hold.
+- ADAPT screen: NQ 2010-2018 +1.1 on 124,010 (beats 100; halves 89 / 100; 2,134 days); MNQ 2019-2026 +1.6 on
+  123,040 (beats 100; halves 98 / 100). SCREEN PASS on both. Added before the ES runs, stricter: ADAPT counts
+  only if ES confirms (beats 90) with races from the close AND from the next bar's open (bid-ask bounce).
 5. NOVEL, written while run 3 was going and before its output existed: a 5m warning as a CONTINUATION call.
    The default 5m warnings called the wrong way on MNQ 2019-2025 (EMA -1.4, MACD -1.1; worse than 100 and 97
    of 100 placebo markets) and on NQ 2010-2018 (EMA -1.7, MACD -1.4; worse than all 100), so price tends to
