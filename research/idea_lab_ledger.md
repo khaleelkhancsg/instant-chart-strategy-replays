@@ -86,6 +86,17 @@ flip the other way: -0.2 (beats 100; halves -0.3 at 97, -0.2 at 96). For a flip,
 cross (a warning's other way is continuation). Tiny. Near: 5m EMA speed -1.0 (100; halves 77 / 100), 1m EMA
 speed -0.3 (99; 86 / 98), 5m MACD -0.2 (96; 86 / 85), 1m EMA flip -0.2 (92; 63 / 98), 1m MACD warning (93;
 97 / 54). #3 overnight +0.1 (63): it is a day-session reading. Confirming the pass on NQ 2010-2018 and ES.
+Confirmation (NQ 2010-2018 128 s; ES 2010-2026 222 s; research/databox_eth_{nq,es}_results.json): the pass, 1m
+MACD flip faded, -1.1 on NQ (beats 100; halves 100 / 100) and -2.2 on ES (100; 100 / 100): confirmed by the
+rule. Every other reading also passes on ES the reversal way, and #3 passes as called on ES (+0.7).
+SUSPECTED ARTEFACT, written before the check: bid-ask bounce. A 1-minute close prints at the bid or the ask
+and bounces back, which favours any reversal call measured from the close, most when the race is a few
+ticks: ES in 2010 (0.064% about 3 ticks) -3.3 in its first half, -1.0 in its second; NQ (about 5 ticks) -1.1;
+MNQ 2019-2026 (18 points, 74 ticks in 2026) -0.2. #3 is a reversal call too, so its NQ confirmation is
+exposed the same way.
+The check (databox_eth.mjs and databox_lengths.mjs --entry-open): the race starts at the next bar's open, a
+fill one could get, with the every-minute baseline moved the same way. Rule: a reading whose edge loses its
+sign or falls under 90 of 100 with next-open entry is bounce, not counted; one that keeps both stands.
 
 ## New unseen data: NQ 2010-2018 (found 2026-11-25)
 
