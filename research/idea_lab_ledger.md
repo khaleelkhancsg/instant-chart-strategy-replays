@@ -71,6 +71,11 @@ Not counted toward the five (they are already confirmed); a robustness check of 
 Batch 53's F1 and F2 unchanged, run in three spans (2010-06-07 to 2013, 2013 to 2016, 2016 to 2019: one
 whole span does not fit in memory), pooled n-weighted per placebo index. Holds = the expected sign (F1
 hurts, F2 helps) beating 95 of 100 pooled placebo markets.
+Changed before any result was read (2026-11-25): the full harness needs 6-7 GB and about 130 s a placebo
+market per 3-year span (over 7 hours), so the spans were stopped at 10 placebo markets, unread. Replaced by
+research/confirm_vwap_slope.mjs, a light copy computing only F1 and F2, one run over 2010-06-07 to 2018-12-31,
+same rules and seeds; checked to give idea_lab batch 53's numbers exactly on MNQ 2026 (F1 4,278 warnings
+-4.5; F2 17,563 +3.9, the confirmed figures).
 
 ## A wide grid of lengths, each row reading alone (research/databox_lengths.mjs, written 2026-11-25)
 
