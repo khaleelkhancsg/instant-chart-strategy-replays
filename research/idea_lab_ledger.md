@@ -23,7 +23,23 @@ kind, the best on 2019-2025 read on 2026 less the current definition; the mean g
 beat 95 of 100 placebo markets making the same picks. Check: the current definitions must give the
 indicator's own onsets. If a better base passes, it becomes extra settings in databox_tune.mjs.
 
-Results: pending (runs when memory frees up).
+Results (2026-11-25, 612 s, research/databox_base_results.json). Check passed: the current definitions gave
+the indicator's own onsets exactly (1m EMA 511,838; 1m MACD 434,805; 5m EMA 102,688; 5m MACD 84,965).
+VERDICT: not a better base. Mean gain over the 8 cells +0.4 points; 21 of 100 placebo markets as high.
+  Picks (2019-25 best, gain on 2026 vs current): 1m EMA side hyst25 +0.0; 1m EMA warn shrink +0.4 (12);
+  1m MACD side cross +0.0; 1m MACD warn slowing +0.3 (21); 5m EMA side hyst25 +0.5 (37); 5m EMA warn fade50
+  -1.0 (71); 5m MACD side hold2 +2.6 (10); 5m MACD warn slowing +0.2 (34). None beats 90 alone.
+What the table says (every definition, 2019-25 and 2026, each against placebo markets):
+- No side definition has an edge: every cross, held cross and hysteresis cross is at or below zero (they
+  are late by construction). Hysteresis halves the flips undone in 5 bars, but placebo markets drop the same.
+- The 1m warnings (shrink, speed, slowing) beat all 100 placebo markets on 2019-2025 (+0.4 to +0.9) and stay
+  positive in 2026 (+0.3 to +1.2, 2 to 30 placebo as high). Small and real, already in the box; the
+  alternatives (fades from the peak, two fading bars, projected crosses) are no better and mostly worse.
+- The 5m EMA warnings are negative on 2019-2025 (shrink -1.6, 100 of 100 placebo as high) but positive in
+  2026: the sign is not stable. 5m EMA twofade 2026 +3.5 (0 as high, both halves) but 2019-25 -1.0: a lead
+  for nothing (it fails the older years).
+- Warnings are followed by a cross no more often than on placebo markets: that share is arithmetic, not foresight.
+Not added to databox_tune (no passing base).
 
 ## Box settings tuned over every entry and exit (research/databox_tune.mjs, started 2026-11-25)
 
