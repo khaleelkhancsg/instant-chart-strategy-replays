@@ -95,6 +95,19 @@ ES results (2026-11-25; research/light_check_es_results.json, _es_open_results.j
    5m MACD) warning's edge on ES 2010-2026 is negative beyond 90 of 100 placebo markets (read from run 3's
    "default" column: placebo markets as high of 90 or more). 2026 MNQ went the other way (EMA +0.4, MACD
    -0.3), so a pass is a long-run tendency, not this year's.
+Results 3 and 5 (ES 2010-2026, 4,028 s, research/databox_lengths_es_results.json):
+- #3 on ES: 1m EMA 3/13 slowing +0.2 on its own (0 of 100 as high), the default -1.7; gain +1.9 (0 of 100); halves
+  +2.7 / +1.1. CONFIRMED on a third market.
+- 5m warnings as continuation calls: the default 5m EMA warning -2.2 (all 100 placebo markets higher), 5m MACD -1.6
+  (all 100 higher). CONFIRMED by rule 5. Year by year (EMA / MACD edge, points; description):
+    NQ  2010 -1.9/0.0, 2011 -2.5/-2.7, 2012 -3.0/-1.5, 2013 -0.7/-1.9, 2014 -2.4/-1.5, 2015 -1.7/-0.6, 2016 -0.8/-0.1,
+        2017 -1.2/-1.7, 2018 -1.5/-2.4
+    MNQ 2019 -3.4/-1.8, 2020 -2.9/-3.4, 2021 -1.0/-0.6, 2022 -1.3/-1.0, 2023 +0.5/+1.0, 2024 -1.6/-1.5, 2025 -0.6/-0.3,
+        2026 +0.4/-0.3
+    ES  2010 -3.8/-4.2 ... 2022 -1.4/-1.9, 2023 -0.0/+0.5, 2024 -0.8/-1.4, 2025 +0.8/-0.3, 2026 +0.5/+0.7
+  The EMA warning called the wrong way in 15 of 17 years on NQ/MNQ and 15 of 17 on ES; since 2023 it is near zero.
+  Counted: #5, a long-run tendency that has faded in the last few years. A bounce check is not needed: bid-ask
+  bounce flatters reversal calls, and this is a reversal call that loses.
 
 ### NOVEL: the box overnight (research/databox_eth.mjs, written before the runs)
 
@@ -400,7 +413,7 @@ About 220 ideas tried (batches 1-27 screened). Runs stopped part-way, to restart
 4. Batch 30 (VIX curve, VXN premium, range broken, 5m inside bar, 15m warning): screen `--batch 30`.
 Pattern so far: the "toward balance" filters pass 2026 and 2025 Jan-Jun, then reverse in 2025 Jul-Dec.
 
-## Confirmed (count: 4 of 5; #2 extends #1; #4 supersedes #1 / #2)
+## Confirmed (count: 5 of 5; #2 extends #1; #4 supersedes #1 / #2)
 
 1. **1m EMA Potentially warnings that agree with VWAP's slope are weaker: skip them.**
    - Source: vwap_nodes_confluence.mjs, "1m EMA Pot. / VWAP slope agrees". The warning's call is the
@@ -435,6 +448,12 @@ Pattern so far: the "toward balance" filters pass 2026 and 2025 Jan-Jun, then re
      on the 1m rows' warnings only, is a new trial (written before its runs): screen NQ 2010-2018 and MNQ 2019-2026
      (each beating 90), confirm on ES 2010-2026 from the close and the next open (each beating 90). Built only if
      it passes.
+5. **A 5-minute warning is a continuation sign, not a turn.** The default 5m EMA and MACD warnings ("Potentially
+   short" on the long side) call the wrong way: price keeps going the side's way more often than chance.
+   - MNQ 2019-2025 EMA -1.4, MACD -1.1 (worse than 100 and 97 of 100 placebo markets); NQ 2010-2018 -1.7, -1.4
+     (all 100); confirmed on ES 2010-2026, unseen: -2.2, -1.6 (all 100).
+   - Wrong way in 15 of 17 years on NQ/MNQ and on ES, but near zero since 2023 (2026: +0.4 / -0.3). Use: do not
+     treat a 5m warning as a turn; on the long run it means the trend is still on.
 
 ## Named for confirmation on 2025 (written before the 2025 runs)
 
