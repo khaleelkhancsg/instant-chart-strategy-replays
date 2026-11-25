@@ -41,6 +41,17 @@ What the table says (every definition, 2019-25 and 2026, each against placebo ma
 - Warnings are followed by a cross no more often than on placebo markets: that share is arithmetic, not foresight.
 Not added to databox_tune (no passing base).
 
+## A wide grid of lengths, each row reading alone (research/databox_lengths.mjs, written 2026-11-25)
+
+Written before the run (the script's header has it in full): the indicator's arithmetic re-done exactly on
+1m and 5m closes; EMA pairs fast {3..26} x slow {13..100} (51) x warning rule speed / shrink / slowing, MACD
+sets (8 fast/slow pairs x signal 3/5/9/13/18 = 40) with shrink; 568 readings. Per cell (1m/5m x EMA/MACD x
+flip/warning) the best on 2019-2025 read on 2026 less the default; the mean gain over 8 must beat 95 of 100
+placebo markets making the same picks. Check: the defaults equal databox_base's rows (passed in a 1-placebo
+trial whose verdict line is not counted).
+
+Results: pending.
+
 ## In-between timeframes (research/databox_mid.mjs, written 2026-11-25)
 
 The person's question: do 2m, 3m and 4m rows add confluence and edge to the box's 1m and 5m readings?
