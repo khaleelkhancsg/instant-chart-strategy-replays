@@ -1,0 +1,1530 @@
+{
+ "run": "2026-11-25T21:56:23.368Z",
+ "file": "data/mnq_1m_beta.bin",
+ "from": 1557100800000,
+ "to": 1793404800000,
+ "placebos": 100,
+ "ideas": [
+  {
+   "key": "VOLHI",
+   "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+   "n": 142838,
+   "nh": [
+    68982,
+    73856
+   ],
+   "edge": -0.011664178721297769,
+   "h1": -0.017035794424990147,
+   "h2": -0.006668494049898166,
+   "days": 0,
+   "beats": 87,
+   "beatsH": [
+    95,
+    51
+   ],
+   "verdict": "neither"
+  }
+ ],
+ "placebo": [
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142765,
+    "nh": [
+     69606,
+     73159
+    ],
+    "edge": -0.011505059458377986,
+    "h1": -0.022267549424807853,
+    "h2": -0.0013790519265697854,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142454,
+    "nh": [
+     69574,
+     72880
+    ],
+    "edge": -0.013047296458585711,
+    "h1": -0.018469046193053118,
+    "h2": -0.008240909088716386,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142851,
+    "nh": [
+     69547,
+     73304
+    ],
+    "edge": -0.015688854748531433,
+    "h1": -0.02401440988672493,
+    "h2": -0.007896855075681608,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142911,
+    "nh": [
+     69508,
+     73403
+    ],
+    "edge": -0.01156412633043391,
+    "h1": -0.019661035628657397,
+    "h2": -0.003856835274768322,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142669,
+    "nh": [
+     69792,
+     72877
+    ],
+    "edge": -0.013190041918899942,
+    "h1": -0.019933349691083457,
+    "h2": -0.006968122290431589,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142754,
+    "nh": [
+     69581,
+     73173
+    ],
+    "edge": -0.01209592636716772,
+    "h1": -0.016823977083310626,
+    "h2": -0.008134347159415078,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142851,
+    "nh": [
+     69847,
+     73004
+    ],
+    "edge": -0.014588249015764554,
+    "h1": -0.024150402602552523,
+    "h2": -0.005421096633694444,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142835,
+    "nh": [
+     69649,
+     73186
+    ],
+    "edge": -0.015447739194744015,
+    "h1": -0.024184276442399344,
+    "h2": -0.007179164664109783,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142714,
+    "nh": [
+     69639,
+     73075
+    ],
+    "edge": -0.011486672089452532,
+    "h1": -0.019386387173320696,
+    "h2": -0.003996517210223982,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142660,
+    "nh": [
+     69523,
+     73137
+    ],
+    "edge": -0.018109707297468303,
+    "h1": -0.02527793908207676,
+    "h2": -0.011373487290469941,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 143102,
+    "nh": [
+     69965,
+     73137
+    ],
+    "edge": -0.01523090596676746,
+    "h1": -0.023103590970999288,
+    "h2": -0.008064159962823836,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142596,
+    "nh": [
+     69600,
+     72996
+    ],
+    "edge": -0.011658531891764301,
+    "h1": -0.021796324367243602,
+    "h2": -0.001884430095368872,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142754,
+    "nh": [
+     69496,
+     73258
+    ],
+    "edge": -0.011656172099944961,
+    "h1": -0.01824855150860266,
+    "h2": -0.005942980774826634,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142980,
+    "nh": [
+     69904,
+     73076
+    ],
+    "edge": -0.015714860604324477,
+    "h1": -0.02227621196638352,
+    "h2": -0.009766587074975852,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142944,
+    "nh": [
+     69836,
+     73108
+    ],
+    "edge": -0.013767068003692595,
+    "h1": -0.02663599530987243,
+    "h2": -0.0014500570042744743,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142719,
+    "nh": [
+     69733,
+     72986
+    ],
+    "edge": -0.015537655817536244,
+    "h1": -0.022436850964871136,
+    "h2": -0.009228805268523432,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142652,
+    "nh": [
+     69711,
+     72941
+    ],
+    "edge": -0.013372720509622738,
+    "h1": -0.020610218987938134,
+    "h2": -0.00675296670046216,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 143026,
+    "nh": [
+     69598,
+     73428
+    ],
+    "edge": -0.008089124681909976,
+    "h1": -0.01676257605693593,
+    "h2": -0.00008091959580497354,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142740,
+    "nh": [
+     69589,
+     73151
+    ],
+    "edge": -0.013783526821340264,
+    "h1": -0.022672518195226976,
+    "h2": -0.005496558315403022,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142687,
+    "nh": [
+     69556,
+     73131
+    ],
+    "edge": -0.012003032595069851,
+    "h1": -0.020151757969856687,
+    "h2": -0.0045078669609533994,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142693,
+    "nh": [
+     69648,
+     73045
+    ],
+    "edge": -0.01176058603075697,
+    "h1": -0.020941938879594058,
+    "h2": -0.003097766112021949,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142829,
+    "nh": [
+     69591,
+     73238
+    ],
+    "edge": -0.01415023237952201,
+    "h1": -0.015772783235122045,
+    "h2": -0.013245283764819427,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142591,
+    "nh": [
+     69729,
+     72862
+    ],
+    "edge": -0.012968353969329549,
+    "h1": -0.021962478696362142,
+    "h2": -0.004518274550483259,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142857,
+    "nh": [
+     69828,
+     73029
+    ],
+    "edge": -0.016707631236458242,
+    "h1": -0.026664648334191077,
+    "h2": -0.0073574623553996354,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142934,
+    "nh": [
+     69659,
+     73275
+    ],
+    "edge": -0.014218225331755707,
+    "h1": -0.022180751100246143,
+    "h2": -0.0066812001542531085,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142805,
+    "nh": [
+     69712,
+     73093
+    ],
+    "edge": -0.015603851568988192,
+    "h1": -0.022784238062424744,
+    "h2": -0.008844628526735343,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 143190,
+    "nh": [
+     69943,
+     73247
+    ],
+    "edge": -0.016314027456434954,
+    "h1": -0.019852463467194104,
+    "h2": -0.013388539795889554,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 143017,
+    "nh": [
+     69671,
+     73346
+    ],
+    "edge": -0.013718499694720387,
+    "h1": -0.02018108054108836,
+    "h2": -0.0079805084546975,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142477,
+    "nh": [
+     69474,
+     73003
+    ],
+    "edge": -0.013004813884131383,
+    "h1": -0.01794065935460737,
+    "h2": -0.00880972669627239,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142484,
+    "nh": [
+     69566,
+     72918
+    ],
+    "edge": -0.014147469731024542,
+    "h1": -0.02278155743050081,
+    "h2": -0.005955327667840626,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142451,
+    "nh": [
+     69498,
+     72953
+    ],
+    "edge": -0.014241628047603927,
+    "h1": -0.024030340176453946,
+    "h2": -0.004889690775384814,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142323,
+    "nh": [
+     69397,
+     72926
+    ],
+    "edge": -0.01583902778469426,
+    "h1": -0.024443682056306537,
+    "h2": -0.007925406780018185,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142725,
+    "nh": [
+     69607,
+     73118
+    ],
+    "edge": -0.01853378644789755,
+    "h1": -0.027745879947593755,
+    "h2": -0.009813340543573135,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142751,
+    "nh": [
+     69628,
+     73123
+    ],
+    "edge": -0.01669702421159852,
+    "h1": -0.025813847717310434,
+    "h2": -0.008203582489055283,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142902,
+    "nh": [
+     69521,
+     73381
+    ],
+    "edge": -0.011796456038018599,
+    "h1": -0.021975658205353632,
+    "h2": -0.002221704171064598,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142959,
+    "nh": [
+     69462,
+     73497
+    ],
+    "edge": -0.01204461501945503,
+    "h1": -0.022426195920829062,
+    "h2": -0.0021776789712309452,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142918,
+    "nh": [
+     69719,
+     73199
+    ],
+    "edge": -0.01611418941408782,
+    "h1": -0.022747307036415254,
+    "h2": -0.009997473047449745,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 143030,
+    "nh": [
+     69646,
+     73384
+    ],
+    "edge": -0.012287344809204515,
+    "h1": -0.01846501645864479,
+    "h2": -0.006543036669252433,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142542,
+    "nh": [
+     69513,
+     73029
+    ],
+    "edge": -0.011778488473655702,
+    "h1": -0.020806612141304803,
+    "h2": -0.0032221704002134977,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 143171,
+    "nh": [
+     69686,
+     73485
+    ],
+    "edge": -0.01594111614541549,
+    "h1": -0.022058934186672152,
+    "h2": -0.010552644621796725,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142831,
+    "nh": [
+     69618,
+     73213
+    ],
+    "edge": -0.017271892503269992,
+    "h1": -0.025598334104543208,
+    "h2": -0.009465581899462339,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142637,
+    "nh": [
+     69506,
+     73131
+    ],
+    "edge": -0.01560907971363995,
+    "h1": -0.02156441917505464,
+    "h2": -0.010341567905811477,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142983,
+    "nh": [
+     70034,
+     72949
+    ],
+    "edge": -0.014133932070844846,
+    "h1": -0.024028129645995877,
+    "h2": -0.004709755089911227,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142554,
+    "nh": [
+     69465,
+     73089
+    ],
+    "edge": -0.01310260833973581,
+    "h1": -0.02063727358137879,
+    "h2": -0.0061099234063859975,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142744,
+    "nh": [
+     69434,
+     73310
+    ],
+    "edge": -0.012294490420441062,
+    "h1": -0.021011506065009344,
+    "h2": -0.004084490206633096,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 143012,
+    "nh": [
+     69760,
+     73252
+    ],
+    "edge": -0.012776427744945418,
+    "h1": -0.020491600300280077,
+    "h2": -0.005660363023777981,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142909,
+    "nh": [
+     69507,
+     73402
+    ],
+    "edge": -0.014378993079290803,
+    "h1": -0.024667095340017486,
+    "h2": -0.00462828544680266,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142399,
+    "nh": [
+     69693,
+     72706
+    ],
+    "edge": -0.013103311090513103,
+    "h1": -0.02253650940004004,
+    "h2": -0.003991978981247979,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 143160,
+    "nh": [
+     69822,
+     73338
+    ],
+    "edge": -0.015309004079229305,
+    "h1": -0.023593380755729365,
+    "h2": -0.007499064570882064,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142476,
+    "nh": [
+     69281,
+     73195
+    ],
+    "edge": -0.008451156555536021,
+    "h1": -0.017751714546578312,
+    "h2": 0.00023820338026986354,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142965,
+    "nh": [
+     69585,
+     73380
+    ],
+    "edge": -0.013027763966529216,
+    "h1": -0.018532131773365212,
+    "h2": -0.00806878919829812,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 143248,
+    "nh": [
+     69611,
+     73637
+    ],
+    "edge": -0.017388312805256545,
+    "h1": -0.023445793259916692,
+    "h2": -0.011778058633230004,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142948,
+    "nh": [
+     69876,
+     73072
+    ],
+    "edge": -0.013780396434453723,
+    "h1": -0.021504462829149473,
+    "h2": -0.006556480277700616,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 143219,
+    "nh": [
+     70100,
+     73119
+    ],
+    "edge": -0.01541205112379107,
+    "h1": -0.02134617516911308,
+    "h2": -0.009971832037368289,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142693,
+    "nh": [
+     69642,
+     73051
+    ],
+    "edge": -0.01548421203975664,
+    "h1": -0.025625649226251934,
+    "h2": -0.005912050954841375,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142966,
+    "nh": [
+     69888,
+     73078
+    ],
+    "edge": -0.01547160156709726,
+    "h1": -0.0223181406623581,
+    "h2": -0.009168727641057028,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142875,
+    "nh": [
+     69512,
+     73363
+    ],
+    "edge": -0.015486022058295135,
+    "h1": -0.023997586558655137,
+    "h2": -0.007437301721385403,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142600,
+    "nh": [
+     69408,
+     73192
+    ],
+    "edge": -0.013268861432569001,
+    "h1": -0.024063240475387937,
+    "h2": -0.003046911164418631,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142561,
+    "nh": [
+     69734,
+     72827
+    ],
+    "edge": -0.01113479289913305,
+    "h1": -0.019109164157945335,
+    "h2": -0.0038894717052576078,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142928,
+    "nh": [
+     69541,
+     73387
+    ],
+    "edge": -0.016250199671589804,
+    "h1": -0.026526305472340417,
+    "h2": -0.00658719874700453,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142984,
+    "nh": [
+     69898,
+     73086
+    ],
+    "edge": -0.013482966927839957,
+    "h1": -0.025819480318502896,
+    "h2": -0.001428661822911459,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142329,
+    "nh": [
+     69411,
+     72918
+    ],
+    "edge": -0.012642425851346395,
+    "h1": -0.020248243725742632,
+    "h2": -0.005652081788161956,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142882,
+    "nh": [
+     69620,
+     73262
+    ],
+    "edge": -0.014025839654942862,
+    "h1": -0.022807273206688572,
+    "h2": -0.005849813917963631,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 143032,
+    "nh": [
+     69972,
+     73060
+    ],
+    "edge": -0.015428650560018187,
+    "h1": -0.027158921451291895,
+    "h2": -0.004213778815122415,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142649,
+    "nh": [
+     69682,
+     72967
+    ],
+    "edge": -0.013339349977216586,
+    "h1": -0.020229962574337734,
+    "h2": -0.0069631945984266475,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142912,
+    "nh": [
+     69600,
+     73312
+    ],
+    "edge": -0.013461019272692887,
+    "h1": -0.021670688761373624,
+    "h2": -0.005828516527073446,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142986,
+    "nh": [
+     69696,
+     73290
+    ],
+    "edge": -0.015592931952977174,
+    "h1": -0.02820899967182905,
+    "h2": -0.00351587206970283,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 143105,
+    "nh": [
+     69842,
+     73263
+    ],
+    "edge": -0.012962354586205649,
+    "h1": -0.02026172915682589,
+    "h2": -0.005995745897087124,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142689,
+    "nh": [
+     69646,
+     73043
+    ],
+    "edge": -0.015120447840253126,
+    "h1": -0.02117059633770818,
+    "h2": -0.009651170496372818,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 143007,
+    "nh": [
+     69705,
+     73302
+    ],
+    "edge": -0.01611951249943261,
+    "h1": -0.023696864491888514,
+    "h2": -0.009218791953524486,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142920,
+    "nh": [
+     69578,
+     73342
+    ],
+    "edge": -0.013754084533997069,
+    "h1": -0.017679092598827884,
+    "h2": -0.010598921437867725,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142907,
+    "nh": [
+     69654,
+     73253
+    ],
+    "edge": -0.013266933401013536,
+    "h1": -0.023262228388143735,
+    "h2": -0.0037622141234082696,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142775,
+    "nh": [
+     69610,
+     73165
+    ],
+    "edge": -0.009884933439599786,
+    "h1": -0.021616393956191582,
+    "h2": 0.001507585885088425,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142715,
+    "nh": [
+     69591,
+     73124
+    ],
+    "edge": -0.019446753178123333,
+    "h1": -0.0280895754744252,
+    "h2": -0.011601682927082135,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 143265,
+    "nh": [
+     69838,
+     73427
+    ],
+    "edge": -0.013282244040210056,
+    "h1": -0.01887018358893794,
+    "h2": -0.008187343805783176,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142486,
+    "nh": [
+     69552,
+     72934
+    ],
+    "edge": -0.013687112690340009,
+    "h1": -0.021626922617971167,
+    "h2": -0.006302529081566366,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142784,
+    "nh": [
+     69673,
+     73111
+    ],
+    "edge": -0.016361786834783176,
+    "h1": -0.02623658601177764,
+    "h2": -0.006951756614547555,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 143016,
+    "nh": [
+     69760,
+     73256
+    ],
+    "edge": -0.01143921321252478,
+    "h1": -0.017560540698205618,
+    "h2": -0.005849177095350266,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142879,
+    "nh": [
+     69783,
+     73096
+    ],
+    "edge": -0.013649687880137262,
+    "h1": -0.02237937240251059,
+    "h2": -0.0054954325921098834,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142603,
+    "nh": [
+     69592,
+     73011
+    ],
+    "edge": -0.013209456803677466,
+    "h1": -0.0214828421046106,
+    "h2": -0.005486989338206294,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142581,
+    "nh": [
+     69431,
+     73150
+    ],
+    "edge": -0.013940940516617095,
+    "h1": -0.01965326269560741,
+    "h2": -0.008881308119987552,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 143180,
+    "nh": [
+     69893,
+     73287
+    ],
+    "edge": -0.01697046247485895,
+    "h1": -0.026844309985236958,
+    "h2": -0.007604562692802852,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142848,
+    "nh": [
+     69732,
+     73116
+    ],
+    "edge": -0.00940531143287876,
+    "h1": -0.014959404817971145,
+    "h2": -0.004405862654324744,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 143179,
+    "nh": [
+     69765,
+     73414
+    ],
+    "edge": -0.00949699042459029,
+    "h1": -0.020514000057600956,
+    "h2": 0.0011301308073579097,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142956,
+    "nh": [
+     69599,
+     73357
+    ],
+    "edge": -0.015639089562275554,
+    "h1": -0.024041716174380223,
+    "h2": -0.007738731152254541,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142312,
+    "nh": [
+     69379,
+     72933
+    ],
+    "edge": -0.011621903117463028,
+    "h1": -0.01605456124814897,
+    "h2": -0.008013889509833783,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142952,
+    "nh": [
+     69725,
+     73227
+    ],
+    "edge": -0.01623491542297395,
+    "h1": -0.0251753984669163,
+    "h2": -0.0076849702650192975,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142533,
+    "nh": [
+     69596,
+     72937
+    ],
+    "edge": -0.013943632779238269,
+    "h1": -0.02002657298623317,
+    "h2": -0.008495335862758246,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142566,
+    "nh": [
+     69434,
+     73132
+    ],
+    "edge": -0.012628212428711871,
+    "h1": -0.0212832083456046,
+    "h2": -0.004677351006209307,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142804,
+    "nh": [
+     69851,
+     72953
+    ],
+    "edge": -0.016500099000468615,
+    "h1": -0.023154244687604686,
+    "h2": -0.010325639400004472,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142560,
+    "nh": [
+     69386,
+     73174
+    ],
+    "edge": -0.013360139038659569,
+    "h1": -0.01924232327143638,
+    "h2": -0.008114345130938339,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142668,
+    "nh": [
+     69729,
+     72939
+    ],
+    "edge": -0.01483180632644504,
+    "h1": -0.02282884764761811,
+    "h2": -0.007380185548652607,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142536,
+    "nh": [
+     69552,
+     72984
+    ],
+    "edge": -0.015553756015039555,
+    "h1": -0.022119608423597337,
+    "h2": -0.00945262201939795,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 143231,
+    "nh": [
+     69736,
+     73495
+    ],
+    "edge": -0.011927392057775321,
+    "h1": -0.017674293173030875,
+    "h2": -0.006792956524058258,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142407,
+    "nh": [
+     69534,
+     72873
+    ],
+    "edge": -0.012470252297926088,
+    "h1": -0.018553691555843188,
+    "h2": -0.006905625611795141,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142933,
+    "nh": [
+     69823,
+     73110
+    ],
+    "edge": -0.013521000916456305,
+    "h1": -0.020871260219457954,
+    "h2": -0.006626466611122095,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142865,
+    "nh": [
+     69716,
+     73149
+    ],
+    "edge": -0.015375543397099956,
+    "h1": -0.02058225244021633,
+    "h2": -0.010687222233258464,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142443,
+    "nh": [
+     69415,
+     73028
+    ],
+    "edge": -0.014198826875304993,
+    "h1": -0.021088112578301843,
+    "h2": -0.007909499985815693,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 142587,
+    "nh": [
+     69396,
+     73191
+    ],
+    "edge": -0.011744170415872668,
+    "h1": -0.021245012135228003,
+    "h2": -0.0027600966250971304,
+    "days": 0
+   }
+  ],
+  [
+   {
+    "key": "VOLHI",
+    "name": "VOLHI: any warning with the 1m ATR above its 20-session median",
+    "n": 143102,
+    "nh": [
+     69845,
+     73257
+    ],
+    "edge": -0.01368707773283706,
+    "h1": -0.02119222126227155,
+    "h2": -0.006539359723115812,
+    "days": 0
+   }
+  ]
+ ]
+}

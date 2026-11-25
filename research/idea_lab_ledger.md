@@ -81,6 +81,8 @@ Results so far (2026-11-25; research/light_check_{nq,mnq}_results.json):
    20 RTH sessions' median 1m ATR (known before the session). Why: reversal warnings need someone leaning against
    the move; in fast markets liquidity providers fade pushes. Expect helps. Same protocol: screen NQ 2010-2018 and
    MNQ 2019-2026 (each beating 90), confirm ES 2010-2026 from the close and the next open (each beating 90).
+   VOLHI screen: MNQ 2019-2026 -1.2 on 142,838 (wrong sign; placebo markets pull the same way, 87 of 100 lower):
+   FAILS.
 ES results (2026-11-25; research/light_check_es_results.json, _es_open_results.json):
 - F1 +0.8 (3 of 100 the expected way), F2 -1.2 (0), B14 -0.8 (0): all REVERSED on ES, as on NQ.
 - ADAPT from the close +0.4 on 241,697 (beats 92; halves 80 / 82; 3,997 days); from the next open +0.5 on
