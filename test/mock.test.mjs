@@ -348,8 +348,8 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
   t("every line of text is centred and sits inside the box, in every corner, even in a font 15% wider", () => {
     const WIDE = (p) => p.text.length * p.size * (p.weight === "bold" ? 0.58 : 0.52) * 1.15;
     let lines = 0;
-    for (const corner of ["topLeft", "topRight", "bottomLeft", "bottomRight"]) for (const k of [300, 2500, 5000]) for (const showBars of [true, false]) {
-      const r = new Run(box, { props: { corner, showBars } }).compute(BARS.slice(0, k + 1));
+    for (const corner of ["topLeft", "topRight", "bottomLeft", "bottomRight"]) for (const k of [300, 2500, 5000]) for (const showBars of [true, false]) for (const vwapSlope of ["off", "mark"]) {
+      const r = new Run(box, { props: { corner, showBars, vwapSlope } }).compute(BARS.slice(0, k + 1));
       const out = graphicsPrims(r.map((o) => ({ graphics: o.graphics })), A, k - 99, k);
       const b0 = out.find((q) => q.key === "dbBox"), xs = b0.pts.map((q) => q.x), ys = b0.pts.map((q) => q.y);
       const L = Math.min(...xs), R = Math.max(...xs), T = Math.min(...ys), B = Math.max(...ys);
@@ -360,10 +360,10 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
         lines++;
       }
       eq(overlaps(out).length, 0, `overlapping text (${corner}):`);
-      // the longest state the row can show, wherever it is not showing now, also fits
+      // the longest state the row can show with this setting, wherever it is not showing now, also fits
       for (const key of ["dbState0", "dbState1"]) {
-        const q = { ...out.find((z) => z.key === key), text: "Potentially short (weak)" }, tb = textBox(q, WIDE(q));
-        if (tb.x < L || tb.x + tb.w > R) throw new Error(`"${q.text}" would leave the box (${corner}, bar counts ${showBars ? "on" : "off"})`);
+        const q = { ...out.find((z) => z.key === key), text: vwapSlope === "mark" ? "Potentially short (weak)" : "Potentially short" }, tb = textBox(q, WIDE(q));
+        if (tb.x < L || tb.x + tb.w > R) throw new Error(`"${q.text}" would leave the box (${corner}, bar counts ${showBars ? "on" : "off"}, vwapSlope ${vwapSlope})`);
       }
     }
     if (lines < 100) throw new Error(`only ${lines} lines checked`);
@@ -461,7 +461,7 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
       eq(boxAt(k, {}).dbState0.text, off.dbState0.text, `the tests' helper reads off at ${k}:`);
       const dflt = Object.fromEntries(new Run(box, { props: {} }).compute(BARS.slice(0, k + 1))[k].graphics.items.map((it) => [it.key, it]));
       for (const key of ["dbState0", "dbState1"]) {
-        eq(dflt[key].text, mark[key].text, `mark is the default (${key} at ${k}):`);
+        eq(dflt[key].text, off[key].text, `off is the default (${key} at ${k}):`);
         const c = call(off[key].text), s = slope(k);
         if (c && s && c === s) {
           eq(mark[key].text, `${off[key].text} (weak)`, `${key} marked at ${k}:`); eq(mark[key].style.fill, "#898781", `${key} grey at ${k}:`);

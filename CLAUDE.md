@@ -660,6 +660,13 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
   - The Tradovate box marks them "(weak)" (`vwapSlope`: mark, hide or off; since 2026-11-24). Its slope
     equals the research's on every 2026 RTH minute. test/mock.test.mjs checks the marking against a
     plain reference VWAP.
+  - Over 17 years the rule reverses (NQ 2010-2018 unseen: -1.9, beyond all 100 placebo markets the other
+    way; worse in 13 of 17 years, better only 2025-2026), so `vwapSlope` is off by default since 2026-11-25.
+  - Confirmed #3 (2026-11-25): on 1-minute bars the EMA row at 3/13 with the "slowing" warning beats the
+    default (NQ 2010-2018 +1.2, 0 of 100; better in 14 of 17 years). A setting, documented in the
+    indicator README; defaults unchanged.
+  - Unseen data for confirmations: data/nq_1m.bin (NQ 2010-2026) and data/es_1m.bin (ES 2010-2026), built
+    by prepare.mjs from Desktop\Backtesting; research/light_check.mjs runs idea_lab's filters on them.
   - Forward test frozen in the ledger: `--batch 53 --from 2026-11-02` once 40 sessions of new bars are
     held, with a kill rule.
   - As a gate or exit on `donchian_1250` and `macd_fade_1250` the box helps neither. A Donchian breakout
