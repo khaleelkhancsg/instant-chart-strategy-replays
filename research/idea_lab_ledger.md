@@ -92,6 +92,17 @@ slowing -0.7 (75); 5m MACD flip 16/35/18 +1.6 (11); 5m MACD warning 19/39/3 +0.3
   EMA 12/26 speed +0.4 (1) / +0.8 (11); MACD 12/26/9 +0.5 (0) / +0.5 (9).
 - Flips have no edge at any length on 1m; on 5m most lengths are negative on 2019-2025.
 
+### Second grid: MACD rows with every warning rule, and the 2m / 3m / 4m rows (research/databox_lengths2.mjs, written before either run)
+
+The method that gave #3, on the cells it did not cover: 1m MACD, 2m EMA, 2m MACD, 3m EMA, 3m MACD, 4m EMA,
+4m MACD, 5m MACD warnings; EMA 51 pairs and MACD 40 sets, each x speed / shrink / slowing (1,098 readings).
+Screen (MNQ): the 2019-2025 pick's 2026 edge positive and beating 90 of 100 placebo markets' own picks.
+Confirm (NQ 2010-2018, the screened picks frozen): gain over the default beating 95 of 100 AND the pick's own
+edge positive and beating 95 of 100. A confirmed cell counts as one of the five. Check: the 80 readings
+shared with databox_lengths.mjs must give its numbers exactly.
+
+Results: pending.
+
 ### The lengths picks confirmed on NQ 2010-2018 (databox_lengths.mjs --nq; written before the NQ file was built)
 
 The 8 picks above, frozen (read from databox_lengths_results.json), against the defaults, one run on NQ
