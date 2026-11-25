@@ -448,6 +448,8 @@ Pattern so far: the "toward balance" filters pass 2026 and 2025 Jan-Jun, then re
      on the 1m rows' warnings only, is a new trial (written before its runs): screen NQ 2010-2018 and MNQ 2019-2026
      (each beating 90), confirm on ES 2010-2026 from the close and the next open (each beating 90). Built only if
      it passes.
+   - ADAPT1 screen: MNQ 2019-2026 +1.5 on 109,981 (beats 100; halves 90 / 100); NQ 2010-2018 +1.0 on 113,785 (100;
+     90 / 97). SCREEN PASS. ES next.
 5. **A 5-minute warning is a continuation sign, not a turn.** The default 5m EMA and MACD warnings ("Potentially
    short" on the long side) call the wrong way: price keeps going the side's way more often than chance.
    - MNQ 2019-2025 EMA -1.4, MACD -1.1 (worse than 100 and 97 of 100 placebo markets); NQ 2010-2018 -1.7, -1.4

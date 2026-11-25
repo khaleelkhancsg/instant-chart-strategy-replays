@@ -1,0 +1,1530 @@
+{
+ "run": "2026-11-25T21:56:14.453Z",
+ "file": "data/nq_1m.bin",
+ "from": 1275868800000,
+ "to": 1546300800000,
+ "placebos": 100,
+ "ideas": [
+  {
+   "key": "ADAPT1",
+   "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+   "n": 113785,
+   "nh": [
+    55399,
+    58386
+   ],
+   "edge": 0.010240944612130876,
+   "h1": 0.007789840826800787,
+   "h2": 0.01254487245762581,
+   "days": 2134,
+   "beats": 100,
+   "beatsH": [
+    90,
+    97
+   ],
+   "verdict": "beats 95"
+  }
+ ],
+ "placebo": [
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 126658,
+    "nh": [
+     60912,
+     65746
+    ],
+    "edge": 0.0022994441820026745,
+    "h1": 0.002029668913985261,
+    "h2": 0.002596322291923081,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 123931,
+    "nh": [
+     60498,
+     63433
+    ],
+    "edge": -0.002778185073642636,
+    "h1": -0.004186061966472143,
+    "h2": -0.0014681872107354388,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 123989,
+    "nh": [
+     60962,
+     63027
+    ],
+    "edge": 0.004231725702335876,
+    "h1": 0.0015999958559171357,
+    "h2": 0.0064815491781444745,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 126587,
+    "nh": [
+     59434,
+     67153
+    ],
+    "edge": 0.007224654703962274,
+    "h1": 0.006521724185905575,
+    "h2": 0.007876754045125223,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 125291,
+    "nh": [
+     58564,
+     66727
+    ],
+    "edge": 0.0020045641622322696,
+    "h1": -0.0022236184255891023,
+    "h2": 0.006419760146727516,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 123981,
+    "nh": [
+     58858,
+     65123
+    ],
+    "edge": 0.005846478980940983,
+    "h1": 0.007720258572422201,
+    "h2": 0.004256715459219573,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 125368,
+    "nh": [
+     60873,
+     64495
+    ],
+    "edge": -0.0017988735685863233,
+    "h1": -0.0014278184454030174,
+    "h2": -0.002159283019104008,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 128419,
+    "nh": [
+     62568,
+     65851
+    ],
+    "edge": 0.0032765973581588836,
+    "h1": -0.007343321086883792,
+    "h2": 0.013126068785538514,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 125826,
+    "nh": [
+     61703,
+     64123
+    ],
+    "edge": 0.0015294263509595396,
+    "h1": 0.0010845755863880258,
+    "h2": 0.001865403311949676,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 124029,
+    "nh": [
+     61777,
+     62252
+    ],
+    "edge": -0.003186953473797993,
+    "h1": -0.004428976844932264,
+    "h2": -0.002334689343658991,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 124573,
+    "nh": [
+     59585,
+     64988
+    ],
+    "edge": 0.0022535200531262345,
+    "h1": 0.0058145248598147625,
+    "h2": -0.0010427044373536032,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 125023,
+    "nh": [
+     59626,
+     65397
+    ],
+    "edge": -0.008723556611107075,
+    "h1": -0.0036175359417577324,
+    "h2": -0.01346465673565217,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 124166,
+    "nh": [
+     62110,
+     62056
+    ],
+    "edge": -0.0009560158504930416,
+    "h1": -0.003133071381110908,
+    "h2": 0.0008316447396610194,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 125734,
+    "nh": [
+     61925,
+     63809
+    ],
+    "edge": 0.004889346785567905,
+    "h1": 0.004588227841449077,
+    "h2": 0.005005688861609625,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 124901,
+    "nh": [
+     58999,
+     65902
+    ],
+    "edge": 0.00022402434419255268,
+    "h1": -0.0026478380344347463,
+    "h2": 0.0029280354180298285,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 124148,
+    "nh": [
+     61588,
+     62560
+    ],
+    "edge": 0.0010123597289110609,
+    "h1": 0.0016483485336338255,
+    "h2": 0.00027273015538448186,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 120835,
+    "nh": [
+     55794,
+     65041
+    ],
+    "edge": 0.0007648160154266614,
+    "h1": -0.0018809101554419505,
+    "h2": 0.0033438167194868584,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 120431,
+    "nh": [
+     58906,
+     61525
+    ],
+    "edge": 0.0037889911447540614,
+    "h1": 0.0043292180312569095,
+    "h2": 0.0032103338276786575,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 130042,
+    "nh": [
+     62369,
+     67673
+    ],
+    "edge": 0.0012421471097979753,
+    "h1": 0.0003243761309272286,
+    "h2": 0.002116983100837133,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 123830,
+    "nh": [
+     62926,
+     60904
+    ],
+    "edge": -0.00041846360355862755,
+    "h1": -0.005031767038694679,
+    "h2": 0.003756216154727654,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 130891,
+    "nh": [
+     63364,
+     67527
+    ],
+    "edge": -0.003883644535797759,
+    "h1": -0.0018693284785658015,
+    "h2": -0.005774852573276201,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 124109,
+    "nh": [
+     59286,
+     64823
+    ],
+    "edge": 0.0022179409263747285,
+    "h1": 0.001686050238099479,
+    "h2": 0.0028358341413667887,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 123598,
+    "nh": [
+     57995,
+     65603
+    ],
+    "edge": -0.002600443137478703,
+    "h1": -0.003262371601962022,
+    "h2": -0.0017059931432775177,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 122532,
+    "nh": [
+     57193,
+     65339
+    ],
+    "edge": 0.0019718835680386793,
+    "h1": -0.0021130194402980695,
+    "h2": 0.00590075647739291,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 119811,
+    "nh": [
+     61767,
+     58044
+    ],
+    "edge": 0.0040792208171981925,
+    "h1": 0.001638413308465203,
+    "h2": 0.006182196691848718,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 123079,
+    "nh": [
+     59690,
+     63389
+    ],
+    "edge": -0.003104638665442805,
+    "h1": 0.0031217061935880364,
+    "h2": -0.008958567621323021,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 119018,
+    "nh": [
+     59470,
+     59548
+    ],
+    "edge": 0.006080367619968996,
+    "h1": 0.004829046886502819,
+    "h2": 0.007199248226840038,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 124120,
+    "nh": [
+     59616,
+     64504
+    ],
+    "edge": 0.004936323931459374,
+    "h1": 0.007875358563917523,
+    "h2": 0.0022488099243260784,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 123138,
+    "nh": [
+     60946,
+     62192
+    ],
+    "edge": 0.004608136368704441,
+    "h1": -0.0022112395492792647,
+    "h2": 0.010920334379087626,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 121738,
+    "nh": [
+     57377,
+     64361
+    ],
+    "edge": -0.0033551080486159957,
+    "h1": -0.0011963845051795041,
+    "h2": -0.005426125343522825,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 126573,
+    "nh": [
+     63021,
+     63552
+    ],
+    "edge": -0.0015628428361667002,
+    "h1": -0.0012064527983405848,
+    "h2": -0.002070402786229053,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 121293,
+    "nh": [
+     57254,
+     64039
+    ],
+    "edge": 0.0036998197302154923,
+    "h1": 0.0030076928690002114,
+    "h2": 0.004427034685997533,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 123852,
+    "nh": [
+     58433,
+     65419
+    ],
+    "edge": -0.006250215968212236,
+    "h1": -0.001108726013383854,
+    "h2": -0.010922784854004497,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 125028,
+    "nh": [
+     60792,
+     64236
+    ],
+    "edge": 0.002969630175553073,
+    "h1": 0.0030909336048763336,
+    "h2": 0.002806023717209727,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 120270,
+    "nh": [
+     57894,
+     62376
+    ],
+    "edge": 0.0030513139474316886,
+    "h1": -0.0003690572152497129,
+    "h2": 0.006329017352789457,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 122251,
+    "nh": [
+     57594,
+     64657
+    ],
+    "edge": 0.0012469796769639108,
+    "h1": 0.0005086480149979478,
+    "h2": 0.0021348710818350214,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 124293,
+    "nh": [
+     59179,
+     65114
+    ],
+    "edge": 0.0022144577060874138,
+    "h1": 0.006110338057623399,
+    "h2": -0.001305605061845183,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 120429,
+    "nh": [
+     58616,
+     61813
+    ],
+    "edge": -0.0015987289843365504,
+    "h1": -0.006575940843264072,
+    "h2": 0.0029896903116665152,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 124807,
+    "nh": [
+     62152,
+     62655
+    ],
+    "edge": -0.0015668650259423322,
+    "h1": -0.0027544774152201135,
+    "h2": -0.0004140103463499689,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 123974,
+    "nh": [
+     61972,
+     62002
+    ],
+    "edge": 0.004511795129329199,
+    "h1": 0.006551238497192413,
+    "h2": 0.002202301741018653,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 123332,
+    "nh": [
+     61662,
+     61670
+    ],
+    "edge": 0.002289478485913432,
+    "h1": 0.011903618250065473,
+    "h2": -0.007478395462800658,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 113493,
+    "nh": [
+     55106,
+     58387
+    ],
+    "edge": 0.0046303105089195995,
+    "h1": 0.005428460336297958,
+    "h2": 0.0038342026671210894,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 129675,
+    "nh": [
+     63915,
+     65760
+    ],
+    "edge": 0.0035082705193341668,
+    "h1": 0.008309868142252153,
+    "h2": -0.001121124562853404,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 126363,
+    "nh": [
+     61627,
+     64736
+    ],
+    "edge": 0.003388566662530068,
+    "h1": 0.0007953462146113588,
+    "h2": 0.005739460649270889,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 130292,
+    "nh": [
+     60227,
+     70065
+    ],
+    "edge": 0.005649776267847351,
+    "h1": 0.007243144453032813,
+    "h2": 0.004421280302730313,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 119585,
+    "nh": [
+     59653,
+     59932
+    ],
+    "edge": 0.004146390054808546,
+    "h1": 0.0037932301573626037,
+    "h2": 0.004363095158407437,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 121063,
+    "nh": [
+     57970,
+     63093
+    ],
+    "edge": -0.0014023160096514609,
+    "h1": 0.004424150432784157,
+    "h2": -0.006793453794220583,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 125403,
+    "nh": [
+     62125,
+     63278
+    ],
+    "edge": 0.0028437526433307547,
+    "h1": -0.01003417252636879,
+    "h2": 0.014751268335601087,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 128939,
+    "nh": [
+     62630,
+     66309
+    ],
+    "edge": 0.002517206630732738,
+    "h1": 0.0016664898074960632,
+    "h2": 0.0032743766662773344,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 125292,
+    "nh": [
+     60657,
+     64635
+    ],
+    "edge": -0.00006949678777290469,
+    "h1": 0.0016984880207018271,
+    "h2": -0.001734147456521451,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 122600,
+    "nh": [
+     60796,
+     61804
+    ],
+    "edge": -0.0006686173385493377,
+    "h1": 0.0010598982322655992,
+    "h2": -0.002372057338718647,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 126110,
+    "nh": [
+     63135,
+     62975
+    ],
+    "edge": -0.0016813243674189682,
+    "h1": 0.003667422245377805,
+    "h2": -0.0069695308775342135,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 125862,
+    "nh": [
+     59445,
+     66417
+    ],
+    "edge": -0.0015265608000645248,
+    "h1": -0.008922320338486278,
+    "h2": 0.005462489261353398,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 128496,
+    "nh": [
+     60942,
+     67554
+    ],
+    "edge": -0.0017069362240110797,
+    "h1": -0.0051656428010331545,
+    "h2": 0.0016400634096812583,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 130297,
+    "nh": [
+     64187,
+     66110
+    ],
+    "edge": 0.005782878637090816,
+    "h1": 0.0032629528173905298,
+    "h2": 0.007997564235244226,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 128367,
+    "nh": [
+     61605,
+     66762
+    ],
+    "edge": -0.002825462166403503,
+    "h1": 0.0005153236662091554,
+    "h2": -0.005886163481478912,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 125877,
+    "nh": [
+     60424,
+     65453
+    ],
+    "edge": -0.0009541636750371452,
+    "h1": -0.0016306121363775516,
+    "h2": -0.00023759425977004645,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 124858,
+    "nh": [
+     62355,
+     62503
+    ],
+    "edge": -0.0031386290039038256,
+    "h1": -0.009153580733468891,
+    "h2": 0.002196532551571484,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 122277,
+    "nh": [
+     61081,
+     61196
+    ],
+    "edge": 0.0006118750935775186,
+    "h1": 0.0026660314005749752,
+    "h2": -0.0016030746964308396,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 124487,
+    "nh": [
+     61853,
+     62634
+    ],
+    "edge": 0.004153075117894867,
+    "h1": 0.005091959821698466,
+    "h2": 0.003080049570865717,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 130756,
+    "nh": [
+     64147,
+     66609
+    ],
+    "edge": 0.001908781476111454,
+    "h1": 0.002726915845147282,
+    "h2": 0.0010876604466241169,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 125840,
+    "nh": [
+     62834,
+     63006
+    ],
+    "edge": 0.006742799878707961,
+    "h1": 0.009225267110437474,
+    "h2": 0.004235023278976957,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 121526,
+    "nh": [
+     58474,
+     63052
+    ],
+    "edge": 0.0008620936112374022,
+    "h1": -0.0015899303341057047,
+    "h2": 0.0031776921923262758,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 122897,
+    "nh": [
+     60966,
+     61931
+    ],
+    "edge": -0.0022296564913959482,
+    "h1": -0.0019210637093777239,
+    "h2": -0.002512184355870639,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 126258,
+    "nh": [
+     58290,
+     67968
+    ],
+    "edge": 0.001646584181593358,
+    "h1": 0.0006310252497419566,
+    "h2": 0.0024880396397289894,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 123214,
+    "nh": [
+     61671,
+     61543
+    ],
+    "edge": -0.006371607646069255,
+    "h1": -0.010995784423622312,
+    "h2": -0.0022102543665335483,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 129095,
+    "nh": [
+     61690,
+     67405
+    ],
+    "edge": -0.004742294819294723,
+    "h1": -0.011112803503099511,
+    "h2": 0.0013273493158172944,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 124639,
+    "nh": [
+     57672,
+     66967
+    ],
+    "edge": 0.0015167774662050437,
+    "h1": 0.009314934590317014,
+    "h2": -0.005567166927448186,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 132656,
+    "nh": [
+     61041,
+     71615
+    ],
+    "edge": 0.007396741021827247,
+    "h1": 0.0013090225313335258,
+    "h2": 0.01359074201545002,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 130444,
+    "nh": [
+     64479,
+     65965
+    ],
+    "edge": 0.007912500820766999,
+    "h1": 0.015026693631666643,
+    "h2": 0.0012706752065334004,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 126615,
+    "nh": [
+     60336,
+     66279
+    ],
+    "edge": 0.0023696887280580947,
+    "h1": -0.0006582670772464216,
+    "h2": 0.005324963852031739,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 125779,
+    "nh": [
+     59296,
+     66483
+    ],
+    "edge": 0.0012597963888599795,
+    "h1": 0.00026425877529551167,
+    "h2": 0.002464479855382895,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 125510,
+    "nh": [
+     61925,
+     63585
+    ],
+    "edge": 0.0032594600171260146,
+    "h1": -0.00007809102717670768,
+    "h2": 0.006273090423329686,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 122650,
+    "nh": [
+     61104,
+     61546
+    ],
+    "edge": 0.0027107735947550227,
+    "h1": 0.00006037025428623499,
+    "h2": 0.005035547418997033,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 124133,
+    "nh": [
+     61763,
+     62370
+    ],
+    "edge": -0.0009899135089422306,
+    "h1": 0.006182933457482054,
+    "h2": -0.007760266511488756,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 123054,
+    "nh": [
+     58343,
+     64711
+    ],
+    "edge": 0.009905753627361902,
+    "h1": 0.009403357906236476,
+    "h2": 0.010609017284867461,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 127743,
+    "nh": [
+     63350,
+     64393
+    ],
+    "edge": 0.006483358638236847,
+    "h1": 0.006779173535987004,
+    "h2": 0.006198845795419017,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 120978,
+    "nh": [
+     59046,
+     61932
+    ],
+    "edge": 0.0026982997809540388,
+    "h1": 0.0028829867510207774,
+    "h2": 0.002504950890953983,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 124896,
+    "nh": [
+     61034,
+     63862
+    ],
+    "edge": -0.0056092877900216775,
+    "h1": -0.0027390875314974306,
+    "h2": -0.008387103652625905,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 124738,
+    "nh": [
+     59880,
+     64858
+    ],
+    "edge": 0.0006188721308069689,
+    "h1": 0.007077367602439488,
+    "h2": -0.005407881671106229,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 125930,
+    "nh": [
+     64529,
+     61401
+    ],
+    "edge": 0.008299647587662717,
+    "h1": 0.009948446851173354,
+    "h2": 0.006172550233678464,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 124179,
+    "nh": [
+     60044,
+     64135
+    ],
+    "edge": 0.00018461516055473526,
+    "h1": -0.002697645394928172,
+    "h2": 0.0028950998853357612,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 124400,
+    "nh": [
+     58527,
+     65873
+    ],
+    "edge": -0.005070059958871276,
+    "h1": -7.083523226869559e-7,
+    "h2": -0.009474425813641218,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 123489,
+    "nh": [
+     61057,
+     62432
+    ],
+    "edge": 0.0014388867318663179,
+    "h1": -0.003680692816256992,
+    "h2": 0.006074382255641664,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 126784,
+    "nh": [
+     60807,
+     65977
+    ],
+    "edge": -0.0055130286829261355,
+    "h1": -0.010064138682293389,
+    "h2": -0.001255207251151469,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 122903,
+    "nh": [
+     58155,
+     64748
+    ],
+    "edge": 0.001349804304182356,
+    "h1": 0.006299391406183907,
+    "h2": -0.0029663075477258105,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 126290,
+    "nh": [
+     58933,
+     67357
+    ],
+    "edge": 0.002879586856565697,
+    "h1": -0.0015038972957647778,
+    "h2": 0.006878806771754231,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 125496,
+    "nh": [
+     61232,
+     64264
+    ],
+    "edge": 0.000046732179460551304,
+    "h1": 0.004494028061852229,
+    "h2": -0.0041989657154399285,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 126760,
+    "nh": [
+     60127,
+     66633
+    ],
+    "edge": -0.005355419611140111,
+    "h1": -0.005997710832223113,
+    "h2": -0.004715104445610463,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 122588,
+    "nh": [
+     57273,
+     65315
+    ],
+    "edge": 0.004233277788973422,
+    "h1": -0.0029356087106300333,
+    "h2": 0.011187641177201113,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 130287,
+    "nh": [
+     60861,
+     69426
+    ],
+    "edge": 0.003133446046048094,
+    "h1": 0.0033370620285551045,
+    "h2": 0.003095429775177738,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 129964,
+    "nh": [
+     64998,
+     64966
+    ],
+    "edge": 0.0018299776044201077,
+    "h1": 0.0011698440024690004,
+    "h2": 0.0023666505422346718,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 125887,
+    "nh": [
+     61180,
+     64707
+    ],
+    "edge": -0.0022866796192096417,
+    "h1": -0.0014154983053438763,
+    "h2": -0.0031225034387963313,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 123876,
+    "nh": [
+     58623,
+     65253
+    ],
+    "edge": 0.006569699164488296,
+    "h1": 0.010251806480667647,
+    "h2": 0.003036652923481542,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 121631,
+    "nh": [
+     58841,
+     62790
+    ],
+    "edge": 0.004197768503902688,
+    "h1": -0.000657858913537479,
+    "h2": 0.008795659627350683,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 128248,
+    "nh": [
+     63561,
+     64687
+    ],
+    "edge": -0.003005991506250416,
+    "h1": -0.0033134132909792835,
+    "h2": -0.0027866881924165643,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 117254,
+    "nh": [
+     58668,
+     58586
+    ],
+    "edge": 0.00007261362066374177,
+    "h1": -0.00765193225809363,
+    "h2": 0.007090094343611075,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 124082,
+    "nh": [
+     59653,
+     64429
+    ],
+    "edge": 0.0023900262066947064,
+    "h1": 0.008406064591472917,
+    "h2": -0.0031932621788351434,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 120441,
+    "nh": [
+     59425,
+     61016
+    ],
+    "edge": -0.0004757659481374743,
+    "h1": 0.007206110437875779,
+    "h2": -0.007754154729958607,
+    "days": 2134
+   }
+  ],
+  [
+   {
+    "key": "ADAPT1",
+    "name": "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)",
+    "n": 122097,
+    "nh": [
+     59476,
+     62621
+    ],
+    "edge": 0.0035764524009399,
+    "h1": 0.005201752019265704,
+    "h2": 0.002058537214657541,
+    "days": 2134
+   }
+  ]
+ ]
+}
