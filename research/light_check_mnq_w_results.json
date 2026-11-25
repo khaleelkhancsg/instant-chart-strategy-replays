@@ -1,0 +1,1530 @@
+{
+ "run": "2026-11-25T21:41:38.760Z",
+ "file": "data/mnq_1m_beta.bin",
+ "from": 1557100800000,
+ "to": 1793404800000,
+ "placebos": 100,
+ "ideas": [
+  {
+   "key": "ADAPTW",
+   "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+   "n": 261562,
+   "nh": [
+    125632,
+    135930
+   ],
+   "edge": 0.0012676142213179026,
+   "h1": 0.0037483251039926867,
+   "h2": -0.001025159041480639,
+   "days": 1874,
+   "beats": 96,
+   "beatsH": [
+    100,
+    33
+   ],
+   "verdict": "beats 95"
+  }
+ ],
+ "placebo": [
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260400,
+    "nh": [
+     126135,
+     134265
+    ],
+    "edge": 0.00015797327383342767,
+    "h1": -0.0008636462882887713,
+    "h2": 0.0011177318368862771,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260039,
+    "nh": [
+     125720,
+     134319
+    ],
+    "edge": -0.002899542802506749,
+    "h1": -0.005371976821020654,
+    "h2": -0.0005853921253310099,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260442,
+    "nh": [
+     125774,
+     134668
+    ],
+    "edge": -0.0025867314636466555,
+    "h1": -0.003312336643989594,
+    "h2": -0.0019090480796767441,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260410,
+    "nh": [
+     125446,
+     134964
+    ],
+    "edge": -0.0002302410091176889,
+    "h1": 0.0005195212849901812,
+    "h2": -0.0009271281845619249,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260503,
+    "nh": [
+     126193,
+     134310
+    ],
+    "edge": -0.00011986291331136883,
+    "h1": -0.0017250608049963418,
+    "h2": 0.001388325140782904,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260265,
+    "nh": [
+     125932,
+     134333
+    ],
+    "edge": 0.0015266287599914952,
+    "h1": -0.0002314799250666013,
+    "h2": 0.003174787759840702,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260097,
+    "nh": [
+     126034,
+     134063
+    ],
+    "edge": -0.003979643600312081,
+    "h1": -0.003981918069628231,
+    "h2": -0.00397750534840222,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260063,
+    "nh": [
+     125783,
+     134280
+    ],
+    "edge": 0.00044075443520504796,
+    "h1": -0.0012238638349520003,
+    "h2": 0.0020000386165809543,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260854,
+    "nh": [
+     126190,
+     134664
+    ],
+    "edge": -0.0015212269786361837,
+    "h1": -0.0005029399769659397,
+    "h2": -0.0024754362457065815,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260014,
+    "nh": [
+     125628,
+     134386
+    ],
+    "edge": -0.0024046376251103626,
+    "h1": -0.0009372820150621009,
+    "h2": -0.0037763649670890676,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260291,
+    "nh": [
+     126024,
+     134267
+    ],
+    "edge": -0.0022010719776419142,
+    "h1": -0.002442140147484104,
+    "h2": -0.0019748036091210403,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260471,
+    "nh": [
+     126008,
+     134463
+    ],
+    "edge": -0.0014198299403089657,
+    "h1": -0.0019105156934822406,
+    "h2": -0.0009599983852651394,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260612,
+    "nh": [
+     125893,
+     134719
+    ],
+    "edge": 0.0000260804667222622,
+    "h1": -0.0025815557529435804,
+    "h2": 0.002462879630926266,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260533,
+    "nh": [
+     126214,
+     134319
+    ],
+    "edge": -0.0012896685083877723,
+    "h1": -0.0032747851071102288,
+    "h2": 0.0005756633239752095,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260286,
+    "nh": [
+     126068,
+     134218
+    ],
+    "edge": -0.0012636042600540165,
+    "h1": -0.0031655783542940716,
+    "h2": 0.0005228779562854856,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260137,
+    "nh": [
+     125967,
+     134170
+    ],
+    "edge": 0.000306092563952363,
+    "h1": -0.0010415908059739978,
+    "h2": 0.0015713801175001503,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260397,
+    "nh": [
+     125998,
+     134399
+    ],
+    "edge": -0.0016314568584108729,
+    "h1": -0.003677197327652091,
+    "h2": 0.00028640865876892557,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260549,
+    "nh": [
+     125956,
+     134593
+    ],
+    "edge": -0.0019152479077238723,
+    "h1": -0.0039556856643490875,
+    "h2": -0.000005747576551427535,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260424,
+    "nh": [
+     126006,
+     134418
+    ],
+    "edge": 0.0007504310427628668,
+    "h1": -0.0003854692989890503,
+    "h2": 0.0018152457138841808,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260117,
+    "nh": [
+     125837,
+     134280
+    ],
+    "edge": -0.0018591564826835629,
+    "h1": -0.002817332681803828,
+    "h2": -0.0009612266467534408,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260231,
+    "nh": [
+     125820,
+     134411
+    ],
+    "edge": 0.00034966497890242143,
+    "h1": -0.0008571949702211713,
+    "h2": 0.0014793873885171884,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260550,
+    "nh": [
+     125927,
+     134623
+    ],
+    "edge": 0.000494921141804789,
+    "h1": -0.0006294306413183625,
+    "h2": 0.0015466451933661255,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 259984,
+    "nh": [
+     125907,
+     134077
+    ],
+    "edge": 0.0016976146344972005,
+    "h1": 0.0005158807921475104,
+    "h2": 0.0028073393664700404,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260269,
+    "nh": [
+     126033,
+     134236
+    ],
+    "edge": 0.00035016447857404945,
+    "h1": -0.001301376761561389,
+    "h2": 0.0019007820261618034,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260662,
+    "nh": [
+     125970,
+     134692
+    ],
+    "edge": -0.0016120965079281862,
+    "h1": -0.00150433026397171,
+    "h2": -0.0017128843331234262,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260499,
+    "nh": [
+     126053,
+     134446
+    ],
+    "edge": -0.0013378465026375513,
+    "h1": -0.00038062294506596673,
+    "h2": -0.0022353138955132313,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260495,
+    "nh": [
+     126115,
+     134380
+    ],
+    "edge": -0.001782194738166772,
+    "h1": -0.00294647882620163,
+    "h2": -0.0006895195799399272,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260643,
+    "nh": [
+     126051,
+     134592
+    ],
+    "edge": -0.0006176393097749398,
+    "h1": -0.0020437397347890193,
+    "h2": 0.000717962989570062,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 259711,
+    "nh": [
+     125504,
+     134207
+    ],
+    "edge": -0.0009993838369632922,
+    "h1": -0.0031280582306022885,
+    "h2": 0.0009912511604605475,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260026,
+    "nh": [
+     125775,
+     134251
+    ],
+    "edge": 0.0009842450813504363,
+    "h1": 0.0012733903251778275,
+    "h2": 0.0007133551584270307,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 259507,
+    "nh": [
+     125638,
+     133869
+    ],
+    "edge": -0.001445657106419719,
+    "h1": -0.001321851202896331,
+    "h2": -0.0015618507442811467,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 259850,
+    "nh": [
+     125669,
+     134181
+    ],
+    "edge": 0.00033471105818296497,
+    "h1": -0.0010675910551248946,
+    "h2": 0.0016480557513756874,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260362,
+    "nh": [
+     125800,
+     134562
+    ],
+    "edge": -0.0015843197773462796,
+    "h1": -0.0026022256845634265,
+    "h2": -0.000632694778253541,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260554,
+    "nh": [
+     126081,
+     134473
+    ],
+    "edge": -0.002532483860692109,
+    "h1": -0.0037987009139124816,
+    "h2": -0.0013452870829963803,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260488,
+    "nh": [
+     125890,
+     134598
+    ],
+    "edge": -0.0020617172487725163,
+    "h1": -0.0019613316279233866,
+    "h2": -0.0021556082858510536,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260649,
+    "nh": [
+     125909,
+     134740
+    ],
+    "edge": -0.0006532105557878363,
+    "h1": -0.0001793120033221701,
+    "h2": -0.0010960493033193752,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260486,
+    "nh": [
+     125970,
+     134516
+    ],
+    "edge": 0.0006484203683862564,
+    "h1": 0.0007153381913535854,
+    "h2": 0.0005857539334700053,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260530,
+    "nh": [
+     125915,
+     134615
+    ],
+    "edge": -0.002499837096586974,
+    "h1": -0.0010495450453272715,
+    "h2": -0.0038563985766179175,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260066,
+    "nh": [
+     125735,
+     134331
+    ],
+    "edge": -0.002453602910301644,
+    "h1": -0.003020892239997602,
+    "h2": -0.0019226150975903463,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260688,
+    "nh": [
+     125792,
+     134896
+    ],
+    "edge": -0.0009954568854454015,
+    "h1": -0.004619525537919063,
+    "h2": 0.002384026894147521,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260146,
+    "nh": [
+     125797,
+     134349
+    ],
+    "edge": -0.0008795048163365486,
+    "h1": -0.0012609196507097197,
+    "h2": -0.0005223689841410389,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260401,
+    "nh": [
+     125839,
+     134562
+    ],
+    "edge": -0.0006914148002893351,
+    "h1": 0.00003688742988160992,
+    "h2": -0.0013725047390720638,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260479,
+    "nh": [
+     126118,
+     134361
+    ],
+    "edge": -0.0006342371164839298,
+    "h1": -0.001190063638966416,
+    "h2": -0.00011251035527752721,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 259869,
+    "nh": [
+     125607,
+     134262
+    ],
+    "edge": 0.0017086347773867252,
+    "h1": 0.00024304604879254058,
+    "h2": 0.003079746509913703,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260032,
+    "nh": [
+     125463,
+     134569
+    ],
+    "edge": -0.0020677988937853192,
+    "h1": -0.0025275587083714054,
+    "h2": -0.0016391500547702851,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260248,
+    "nh": [
+     125651,
+     134597
+    ],
+    "edge": -0.0009803728685145905,
+    "h1": -0.0024873300699055274,
+    "h2": 0.0004264243061027682,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260365,
+    "nh": [
+     125621,
+     134744
+    ],
+    "edge": 0.00002706876904383134,
+    "h1": 0.0005324628066786812,
+    "h2": -0.0004441069746013586,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 259471,
+    "nh": [
+     125683,
+     133788
+    ],
+    "edge": -0.00267272384712066,
+    "h1": -0.001966556248644056,
+    "h2": -0.003336111163466933,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260823,
+    "nh": [
+     126061,
+     134762
+    ],
+    "edge": -0.0028013791512157835,
+    "h1": -0.0020108494755046117,
+    "h2": -0.003540867741840985,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 259972,
+    "nh": [
+     125428,
+     134544
+    ],
+    "edge": 0.00018050366785587213,
+    "h1": -0.0007125952205314737,
+    "h2": 0.0010130908317030004,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260341,
+    "nh": [
+     125697,
+     134644
+    ],
+    "edge": -0.001419549183869277,
+    "h1": -0.0019272467600865838,
+    "h2": -0.0009455877579031233,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260970,
+    "nh": [
+     126021,
+     134949
+    ],
+    "edge": -0.0009002627048365369,
+    "h1": 0.000022693661296375716,
+    "h2": -0.0017621578223731105,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260307,
+    "nh": [
+     126022,
+     134285
+    ],
+    "edge": -0.0013386126258955902,
+    "h1": -0.0032756216027965464,
+    "h2": 0.0004792057848503575,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 261074,
+    "nh": [
+     126415,
+     134659
+    ],
+    "edge": -0.0025005641057544844,
+    "h1": -0.0002898244420660455,
+    "h2": -0.004575959397455551,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260355,
+    "nh": [
+     125990,
+     134365
+    ],
+    "edge": -0.0005246980799784249,
+    "h1": -0.003057384758030997,
+    "h2": 0.0018501256804342092,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260678,
+    "nh": [
+     126197,
+     134481
+    ],
+    "edge": 0.00021104763972232902,
+    "h1": -0.001641909288394175,
+    "h2": 0.001949862828912815,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260876,
+    "nh": [
+     126071,
+     134805
+    ],
+    "edge": -0.0006556436832403367,
+    "h1": -0.00030642582982302587,
+    "h2": -0.0009822357532539199,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260083,
+    "nh": [
+     125559,
+     134524
+    ],
+    "edge": -0.00133875715759094,
+    "h1": -0.0017554447523124182,
+    "h2": -0.0009498386173629748,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260178,
+    "nh": [
+     126165,
+     134013
+    ],
+    "edge": 0.0004050182971144372,
+    "h1": -0.0027081579474882624,
+    "h2": 0.003335882324487206,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260440,
+    "nh": [
+     125824,
+     134616
+    ],
+    "edge": 0.0009890672888896903,
+    "h1": 0.0009885815164112281,
+    "h2": 0.0009895213347410755,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260393,
+    "nh": [
+     125955,
+     134438
+    ],
+    "edge": -0.0016176331344998872,
+    "h1": -0.001121643745592832,
+    "h2": -0.002082325732424493,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 259972,
+    "nh": [
+     125581,
+     134391
+    ],
+    "edge": -0.0011335240694174665,
+    "h1": -0.0020526477449315864,
+    "h2": -0.00027465353273907283,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260663,
+    "nh": [
+     126055,
+     134608
+    ],
+    "edge": 0.0008763484214144205,
+    "h1": -0.0012016579162245444,
+    "h2": 0.002822318117800126,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260532,
+    "nh": [
+     126143,
+     134389
+    ],
+    "edge": -0.0013456360406762184,
+    "h1": -0.0017413652527200364,
+    "h2": -0.0009741884519982509,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260331,
+    "nh": [
+     126012,
+     134319
+    ],
+    "edge": -0.0002435305755879538,
+    "h1": -0.00013891077350651831,
+    "h2": -0.00034168013372848924,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260392,
+    "nh": [
+     125695,
+     134697
+    ],
+    "edge": -0.0014234777331063406,
+    "h1": -0.0008549834074678932,
+    "h2": -0.001953978741006477,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260741,
+    "nh": [
+     126115,
+     134626
+    ],
+    "edge": -0.0005184509231598542,
+    "h1": -0.0033146644938293547,
+    "h2": 0.002100987182889379,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260686,
+    "nh": [
+     126131,
+     134555
+    ],
+    "edge": -0.0006169385829189806,
+    "h1": -0.0008369596362580287,
+    "h2": -0.0004106922488643952,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260533,
+    "nh": [
+     126021,
+     134512
+    ],
+    "edge": -0.002808029944306767,
+    "h1": -0.0020805504908035606,
+    "h2": -0.0034895876358876483,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260546,
+    "nh": [
+     125973,
+     134573
+    ],
+    "edge": -0.0010211630906492547,
+    "h1": -0.0035355614425435222,
+    "h2": 0.0013325505338011867,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260694,
+    "nh": [
+     126080,
+     134614
+    ],
+    "edge": -0.0014417179432160772,
+    "h1": -0.0035767055570231445,
+    "h2": 0.0005579198236491993,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260421,
+    "nh": [
+     125748,
+     134673
+    ],
+    "edge": -0.002042379974330799,
+    "h1": -0.003263134925375414,
+    "h2": -0.0009025264507295509,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260392,
+    "nh": [
+     125909,
+     134483
+    ],
+    "edge": -0.0011499503525955082,
+    "h1": -0.00040919758491242696,
+    "h2": -0.0018434762274363158,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260303,
+    "nh": [
+     126127,
+     134176
+    ],
+    "edge": -0.0019397981220063186,
+    "h1": -0.004917040006284345,
+    "h2": 0.0008588438641784484,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260981,
+    "nh": [
+     125948,
+     135033
+    ],
+    "edge": -0.0016971286480990757,
+    "h1": -0.0011632741744117068,
+    "h2": -0.0021950654728158246,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260031,
+    "nh": [
+     125771,
+     134260
+    ],
+    "edge": -0.0014473511540983067,
+    "h1": -0.002265332194644501,
+    "h2": -0.0006810894719104965,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260530,
+    "nh": [
+     126021,
+     134509
+    ],
+    "edge": -0.0014054977872906492,
+    "h1": -0.0012914134803594047,
+    "h2": -0.0015123829655596843,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260443,
+    "nh": [
+     126159,
+     134284
+    ],
+    "edge": -0.0008150785747100772,
+    "h1": -0.000422606224603978,
+    "h2": -0.0011838039568630916,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260274,
+    "nh": [
+     126078,
+     134196
+    ],
+    "edge": -0.0008924565184819466,
+    "h1": -0.0031946827611263923,
+    "h2": 0.0012704997560726331,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260030,
+    "nh": [
+     125782,
+     134248
+    ],
+    "edge": -0.0008122142230544383,
+    "h1": -0.0004328936510644867,
+    "h2": -0.0011676139324433854,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260030,
+    "nh": [
+     125907,
+     134123
+    ],
+    "edge": -0.0013906353238693776,
+    "h1": -0.002554971899956008,
+    "h2": -0.0002976227511909656,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260757,
+    "nh": [
+     126146,
+     134611
+    ],
+    "edge": -0.002410077469656341,
+    "h1": -0.003797765289636552,
+    "h2": -0.0011096542669521315,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260545,
+    "nh": [
+     126129,
+     134416
+    ],
+    "edge": -0.0019209091730207105,
+    "h1": -0.002506789998942437,
+    "h2": -0.001371149005386841,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260522,
+    "nh": [
+     125899,
+     134623
+    ],
+    "edge": -0.0007937984209485655,
+    "h1": 0.0007425141946033628,
+    "h2": -0.0022305530764336235,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260268,
+    "nh": [
+     125904,
+     134364
+    ],
+    "edge": 0.00006855783844667964,
+    "h1": 0.00037202090953254534,
+    "h2": -0.00021579819815534793,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260242,
+    "nh": [
+     125995,
+     134247
+    ],
+    "edge": 0.0006627718455608056,
+    "h1": -0.0015713728644094235,
+    "h2": 0.0027595863943603986,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260710,
+    "nh": [
+     125971,
+     134739
+    ],
+    "edge": -0.0007204415398036301,
+    "h1": 0.0008346158925500751,
+    "h2": -0.002174305230427884,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260324,
+    "nh": [
+     125993,
+     134331
+    ],
+    "edge": -0.0017157224360417214,
+    "h1": -0.003744802445978986,
+    "h2": 0.00018741144736582043,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260043,
+    "nh": [
+     125584,
+     134459
+    ],
+    "edge": -0.0010666312122008805,
+    "h1": -0.002492885935241487,
+    "h2": 0.0002654832103244356,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260101,
+    "nh": [
+     126035,
+     134066
+    ],
+    "edge": -0.0009118559142902,
+    "h1": -0.0008527667570969841,
+    "h2": -0.0009674054341300324,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260014,
+    "nh": [
+     125788,
+     134226
+    ],
+    "edge": -0.00046602502894244795,
+    "h1": -0.0009482449762292435,
+    "h2": -0.000014119416547595707,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260051,
+    "nh": [
+     125837,
+     134214
+    ],
+    "edge": 0.0012292832143901437,
+    "h1": 0.00011842621905553941,
+    "h2": 0.002270805795655292,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 259585,
+    "nh": [
+     125500,
+     134085
+    ],
+    "edge": -0.0024995183211352218,
+    "h1": -0.002316722352054101,
+    "h2": -0.00267061049490321,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260815,
+    "nh": [
+     125884,
+     134931
+    ],
+    "edge": -0.0015345616074194978,
+    "h1": -0.0027085907322403047,
+    "h2": -0.00043925006041441763,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260402,
+    "nh": [
+     126118,
+     134284
+    ],
+    "edge": 0.0001312914820078856,
+    "h1": 0.0006850795936125052,
+    "h2": -0.00038881999113375015,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260245,
+    "nh": [
+     125817,
+     134428
+    ],
+    "edge": -0.0009168852948046893,
+    "h1": -0.0017613334011864015,
+    "h2": -0.00012652965906931327,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260602,
+    "nh": [
+     126013,
+     134589
+    ],
+    "edge": -0.0008484370145951648,
+    "h1": -0.0006964402422312603,
+    "h2": -0.0009907485651371852,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260067,
+    "nh": [
+     125816,
+     134251
+    ],
+    "edge": 0.001748967264117044,
+    "h1": -0.0002999967440550036,
+    "h2": 0.003669194716070283,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260146,
+    "nh": [
+     125685,
+     134461
+    ],
+    "edge": -0.0027111550805304606,
+    "h1": -0.002733104846585593,
+    "h2": -0.002690637931716757,
+    "days": 1874
+   }
+  ],
+  [
+   {
+    "key": "ADAPTW",
+    "name": "ADAPTW: take warnings if they won the last 60 sessions, else fade",
+    "n": 260382,
+    "nh": [
+     125761,
+     134621
+    ],
+    "edge": 0.0006759895954235411,
+    "h1": 0.001462318349566302,
+    "h2": -0.000058587405562597794,
+    "days": 1874
+   }
+  ]
+ ]
+}
