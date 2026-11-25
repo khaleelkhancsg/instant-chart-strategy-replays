@@ -11,6 +11,20 @@ Only CONFIRMED counts toward the five.
 Already known before the loop (not counted): the reverse-check short lead (databox_room.mjs), the
 VWAP break lean (turn_context.mjs), the MACD row's own slight lean.
 
+## The base readings redefined (research/databox_base.mjs, written 2026-11-25)
+
+The person's point: the combinations are built from the rows' base readings, so a cleaner base lifts
+everything built on it. This changes how each row reads its line (the settings study changes the lengths).
+Written before the run (the script's header has it in full): per row (1m/5m x EMA/MACD), 5 side definitions
+(cross, hysteresis at 0.05 / 0.10 / 0.25 ATR, a cross held 2 bars) and 9 warning definitions (shrink, speed,
+slowing, back 25% / 50% from the peak, a 0.1-ATR fade, two fading bars, projected to cross within 3 / 6
+bars); 56 readings, each scored alone by the 18-point race against 100 placebo markets. Verdict: per row and
+kind, the best on 2019-2025 read on 2026 less the current definition; the mean gain over the 8 cells must
+beat 95 of 100 placebo markets making the same picks. Check: the current definitions must give the
+indicator's own onsets. If a better base passes, it becomes extra settings in databox_tune.mjs.
+
+Results: pending (runs when memory frees up).
+
 ## Box settings tuned over every entry and exit (research/databox_tune.mjs, started 2026-11-25)
 
 The person's question: build on the room study's billions of trades; change the EMA and MACD lengths, some
