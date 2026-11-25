@@ -59,6 +59,13 @@ NQ 2010-2018: CONFIRMED = lift beats 95 of 100 placebo markets (7 at 5%: about 0
 
 Results: pending (the NQ file is built when memory frees up).
 
+### Confirmed #1 and #2 re-checked on NQ 2010-2018 (idea_lab.mjs --batch 53 --file data/nq_1m.bin; written before the NQ file was built)
+
+Not counted toward the five (they are already confirmed); a robustness check of what the indicator ships.
+Batch 53's F1 and F2 unchanged, run in three spans (2010-06-07 to 2013, 2013 to 2016, 2016 to 2019: one
+whole span does not fit in memory), pooled n-weighted per placebo index. Holds = the expected sign (F1
+hurts, F2 helps) beating 95 of 100 pooled placebo markets.
+
 ## A wide grid of lengths, each row reading alone (research/databox_lengths.mjs, written 2026-11-25)
 
 Written before the run (the script's header has it in full): the indicator's arithmetic re-done exactly on

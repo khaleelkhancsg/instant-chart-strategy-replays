@@ -76,7 +76,7 @@ const ONLY = arg("--only", "") ? arg("--only", "").split(arg("--only", "").inclu
 const MIN = 60000, FLAT = 15 * 60 + 5, FIRST = 8 * 60 + 30, LAST = 14 * 60 + 55, RS = [0.00064, 0.001275];
 // --from / --to (YYYY-MM-DD, --to exclusive) replace the year's dates, for the forward test (batch 53); the
 // halves then split at the midpoint
-const FROM_ARG = arg("--from", ""), TO_ARG = arg("--to", "");
+const FROM_ARG = arg("--from", ""), TO_ARG = arg("--to", ""), FILE = arg("--file", "data/mnq_1m_beta.bin"), OTHER = FILE !== "data/mnq_1m_beta.bin";   // OTHER: another market's bars (NQ 2010-2018): a confirmation span, not a forward test
 const FROM = FROM_ARG ? Date.parse(FROM_ARG) : Date.UTC(YEAR, 0, 1);
 const TO = TO_ARG ? Date.parse(TO_ARG) : FROM_ARG ? Infinity : YEAR === 2026 ? Date.UTC(2026, 9, 31) : Date.UTC(YEAR + 1, 0, 1);
 let H2 = FROM_ARG ? NaN : Date.UTC(YEAR, 6, 1);   // set from the data's span below when --from is given
@@ -1174,12 +1174,12 @@ function measure(sample) {
   });
 }
 
-const real = Lab.loadSample({ file: "data/mnq_1m_beta.bin", from: FROM, to: TO });
+const real = Lab.loadSample({ file: FILE, from: FROM, to: TO });
 if (FROM_ARG) {   // the forward test's halves: split at the middle of the bars it has
   let lo = Infinity, hi = -Infinity; for (const t of real.b.ts) if (t >= FROM && t < TO) { lo = Math.min(lo, t); hi = Math.max(hi, t); }
-  if (!(hi > lo)) throw new Error(`no bars from ${FROM_ARG}${TO_ARG ? " to " + TO_ARG : ""} in data/mnq_1m_beta.bin: pull and rebuild first (npm run data:pull, npm run data:build)`);
+  if (!(hi > lo)) throw new Error(`no bars from ${FROM_ARG}${TO_ARG ? " to " + TO_ARG : ""} in ${FILE}: pull and rebuild first (npm run data:pull, npm run data:build)`);
   H2 = (lo + hi) / 2;
-  process.stderr.write(`  forward bars: ${new Date(lo).toISOString().slice(0, 16)} to ${new Date(hi).toISOString().slice(0, 16)} UTC, halves split ${new Date(H2).toISOString().slice(0, 10)}
+  process.stderr.write(`  ${OTHER ? FILE + " bars" : "forward bars"}: ${new Date(lo).toISOString().slice(0, 16)} to ${new Date(hi).toISOString().slice(0, 16)} UTC, halves split ${new Date(H2).toISOString().slice(0, 10)}
 `);
 }
 const R = measure(real);
@@ -1194,7 +1194,7 @@ for (let p = 0; p < PLACEBOS; p++) {
 const cnt = (k, key, up) => { const v = R[k][key]; if (!Number.isFinite(v)) return NaN; return pl.map((o) => o[k][key]).filter(Number.isFinite).filter((z) => (up ? z >= v : z <= v)).length; };
 const sg = (v) => (Number.isFinite(v) ? (v >= 0 ? "+" : "") + (100 * v).toFixed(1) : "—"), pc = (v) => (Number.isFinite(v) ? (100 * v).toFixed(1) : "—");
 const verdicts = [];
-console.log(`batch ${BATCH}, ${FROM_ARG ? `forward from ${FROM_ARG}${TO_ARG ? " to " + TO_ARG : ""}` : YEAR + (YEAR === 2026 ? " (to Oct 30)" : "")}, ${PLACEBOS} placebo markets; ${secs()}s`);
+console.log(`batch ${BATCH}, ${OTHER ? FILE + " " : ""}${FROM_ARG ? `${OTHER ? "from" : "forward from"} ${FROM_ARG}${TO_ARG ? " to " + TO_ARG : ""}` : YEAR + (YEAR === 2026 ? " (to Oct 30)" : "")}, ${PLACEBOS} placebo markets; ${secs()}s`);
 console.log(`edge: points of win rate over every minute the same way (signals) or over the box signal without the filter (filters). "hi"/"lo": placebo markets as high / as low`);
 for (let r = 0; r < 2; r++) {
   console.log(`\n${r ? "37" : "18"}-point race${r ? " (beside it)" : " (the one judged)"}`);
@@ -1204,10 +1204,10 @@ for (let r = 0; r < 2; r++) {
     let v = "";
     if (r === 0) {
       const mn = idea.minN || 100, enough = o.n0h0 >= mn && o.n0h1 >= mn;
-      if (FROM_ARG && idea.expect) {   // the forward test's rule, written before it runs (ledger, "Forward test")
+      if (FROM_ARG && !OTHER && idea.expect) {   // the forward test's rule, written before it runs (ledger, "Forward test")
         const beats = idea.expect === "helps" ? 100 - hi : 100 - lo, right = idea.expect === "helps" ? o.edge0 > 0 : o.edge0 < 0;
         v = !enough ? "FORWARD: too few warnings yet" : right && beats >= 90 ? "FORWARD: holds" : !right || beats < 50 ? "FORWARD: kill" : "FORWARD: undecided";
-      } else if (YEAR === 2026 || !ONLY) { if (enough && h1 <= 10 && h2 <= 10) v = "SCREEN PASS (helps)"; else if (enough && l1 <= 10 && l2 <= 10) v = "SCREEN PASS (hurts: the reverse helps)"; }
+      } else if (!OTHER && (YEAR === 2026 || !ONLY)) { if (enough && h1 <= 10 && h2 <= 10) v = "SCREEN PASS (helps)"; else if (enough && l1 <= 10 && l2 <= 10) v = "SCREEN PASS (hurts: the reverse helps)"; }
       else { v = hi <= 5 ? "CONFIRMED (helps)" : lo <= 5 ? "CONFIRMED (hurts)" : "not confirmed"; }
       verdicts.push({ name: idea.name, kind: idea.kind, verdict: v || "fails the screen", edge: o.edge0, hi, lo, h1, l1, h2, l2, n: o.n0 });
     }
@@ -1215,6 +1215,6 @@ for (let r = 0; r < 2; r++) {
   });
 }
 console.log(`\n(${secs()}s)`);
-const tag = FROM_ARG ? `b${BATCH}_fwd_${FROM_ARG}` : `b${BATCH}_${YEAR}${ONLY ? "_confirm" : ""}`;
+const tag = OTHER ? `b${BATCH}_${FILE.replace(/^.*\//, "").replace(/\.bin$/, "")}_${FROM_ARG || YEAR}` : FROM_ARG ? `b${BATCH}_fwd_${FROM_ARG}` : `b${BATCH}_${YEAR}${ONLY ? "_confirm" : ""}`;
 fs.writeFileSync(`research/idea_lab_${tag}_results.json`, JSON.stringify({ run: new Date().toISOString(), batch: BATCH, year: YEAR, only: ONLY, placebos: PLACEBOS,
   ideas: IDEAS.map((d) => ({ name: d.name, kind: d.kind, base: d.base || null, why: d.why })), real: R, verdicts, placebo: pl }, null, 1));
