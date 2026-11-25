@@ -81,6 +81,11 @@ slowing (#3), 1m MACD shrink, 5m EMA speed, 5m MACD shrink, 1m EMA and MACD flip
 markets overall and in both halves, same sign (negative = a continuation call). Confirm each pass once on NQ
 2010-2018 and on ES 2010-2026, the same sign beating 90 of 100 on each. One finding however many pass.
 (A no-placebo smoke run showed one MNQ number, 1m EMA 12/26 speed -0.3: discovery data only.)
+Discovery (MNQ 2019-05 to 2026-10, 117 s, research/databox_eth_mnq_results.json): one pass, the 1m MACD 12/26/9
+flip the other way: -0.2 (beats 100; halves -0.3 at 97, -0.2 at 96). For a flip, the other way is fading the
+cross (a warning's other way is continuation). Tiny. Near: 5m EMA speed -1.0 (100; halves 77 / 100), 1m EMA
+speed -0.3 (99; 86 / 98), 5m MACD -0.2 (96; 86 / 85), 1m EMA flip -0.2 (92; 63 / 98), 1m MACD warning (93;
+97 / 54). #3 overnight +0.1 (63): it is a day-session reading. Confirming the pass on NQ 2010-2018 and ES.
 
 ## New unseen data: NQ 2010-2018 (found 2026-11-25)
 
