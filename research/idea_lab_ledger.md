@@ -76,6 +76,13 @@ Results so far (2026-11-25; research/light_check_{nq,mnq}_results.json):
    is its win rate less every counted minute's the same way (idea_lab's signal convention). Screen on NQ
    2010-2018 and MNQ 2019-2026 (each beating 90), confirm on ES 2010-2026 from the close AND the next open
    (each beating 90). Counts as one of the five if all pass.
+ES results (2026-11-25; research/light_check_es_results.json, _es_open_results.json):
+- F1 +0.8 (3 of 100 the expected way), F2 -1.2 (0), B14 -0.8 (0): all REVERSED on ES, as on NQ.
+- ADAPT from the close +0.4 on 241,697 (beats 92; halves 80 / 82; 3,997 days); from the next open +0.5 on
+  247,828 (beats 98; halves 87 / 88). CONFIRMED by the rule written before the runs (90 of 100, both entries).
+  Counted: #4. It supersedes #1 / #2: the VWAP-slope effect is real but its sign follows the regime, and
+  following the side that won the last quarter works across 17 years and three markets. Small: +0.4 to +1.6
+  points of win rate.
 5. NOVEL, written while run 3 was going and before its output existed: a 5m warning as a CONTINUATION call.
    The default 5m warnings called the wrong way on MNQ 2019-2025 (EMA -1.4, MACD -1.1; worse than 100 and 97
    of 100 placebo markets) and on NQ 2010-2018 (EMA -1.7, MACD -1.4; worse than all 100), so price tends to
@@ -388,7 +395,7 @@ About 220 ideas tried (batches 1-27 screened). Runs stopped part-way, to restart
 4. Batch 30 (VIX curve, VXN premium, range broken, 5m inside bar, 15m warning): screen `--batch 30`.
 Pattern so far: the "toward balance" filters pass 2026 and 2025 Jan-Jun, then reverse in 2025 Jul-Dec.
 
-## Confirmed (count: 3 of 5; #2 extends #1)
+## Confirmed (count: 4 of 5; #2 extends #1; #4 supersedes #1 / #2)
 
 1. **1m EMA Potentially warnings that agree with VWAP's slope are weaker: skip them.**
    - Source: vwap_nodes_confluence.mjs, "1m EMA Pot. / VWAP slope agrees". The warning's call is the
@@ -414,6 +421,11 @@ Pattern so far: the "toward balance" filters pass 2026 and 2025 Jan-Jun, then re
    - Use: on the 1m chart's box, Fast EMA 3, Slow EMA 13, EMA warning "Momentum slowing". No code change: these
      are the indicator's own settings. #1 / #2 (the VWAP-slope marks) were measured on the default warning and
      are untested on this one.
+4. **Follow the side of VWAP's slope that won over the last 60 sessions (ADAPT).** #1 / #2 reverse over 17 years
+   (NQ, ES); their sign follows the regime. Each session, compare the trailing 60 sessions' box warnings against
+   VWAP's 15-minute slope with those along it, and keep the warnings on the side that won.
+   - Screen: NQ 2010-2018 +1.1 (beats 100), MNQ 2019-2026 +1.6 (100). Confirmed on ES 2010-2026, unseen: +0.4
+     from the close (92), +0.5 from the next open (98). light_check.mjs, idea ADAPT.
 
 ## Named for confirmation on 2025 (written before the 2025 runs)
 

@@ -1,0 +1,1530 @@
+{
+ "run": "2026-11-25T21:31:26.567Z",
+ "file": "data/es_1m.bin",
+ "from": 1275868800000,
+ "to": 1774310400000,
+ "placebos": 100,
+ "ideas": [
+  {
+   "key": "ADAPT",
+   "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+   "n": 247828,
+   "nh": [
+    117765,
+    130063
+   ],
+   "edge": 0.00520028823348978,
+   "h1": 0.004989729793281383,
+   "h2": 0.005259709049213246,
+   "days": 3997,
+   "beats": 98,
+   "beatsH": [
+    87,
+    88
+   ],
+   "verdict": "beats 95"
+  }
+ ],
+ "placebo": [
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 262368,
+    "nh": [
+     135929,
+     126439
+    ],
+    "edge": 0.0010221997534761162,
+    "h1": -0.0002734667742448904,
+    "h2": 0.001870653596066696,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 266605,
+    "nh": [
+     137471,
+     129134
+    ],
+    "edge": 0.0040780767074352076,
+    "h1": 0.0013052474218857024,
+    "h2": 0.006248640548692563,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 260150,
+    "nh": [
+     130264,
+     129886
+    ],
+    "edge": 0.0010437922057492943,
+    "h1": 0.0010206675991176195,
+    "h2": 0.000858559094687128,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 273394,
+    "nh": [
+     134153,
+     139241
+    ],
+    "edge": -0.0017201868500709705,
+    "h1": -0.0019961225950967387,
+    "h2": -0.0015163537478129485,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 259920,
+    "nh": [
+     128699,
+     131221
+    ],
+    "edge": 0.0035642818371149354,
+    "h1": -3.509806745793931e-7,
+    "h2": 0.00675101951615209,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 269963,
+    "nh": [
+     131150,
+     138813
+    ],
+    "edge": 0.0008670334705070393,
+    "h1": 0.0031933899360153672,
+    "h2": -0.0013176526998793237,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 265585,
+    "nh": [
+     133025,
+     132560
+    ],
+    "edge": -0.0013190578216805693,
+    "h1": 0.0015134999686775563,
+    "h2": -0.004190755628797116,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 268999,
+    "nh": [
+     130039,
+     138960
+    ],
+    "edge": 0.000547620517633074,
+    "h1": -0.0016450081481806933,
+    "h2": 0.0026723529677412095,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 259643,
+    "nh": [
+     123816,
+     135827
+    ],
+    "edge": 0.005187354508868813,
+    "h1": 0.006900253670683143,
+    "h2": 0.0036683020935200372,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 258776,
+    "nh": [
+     122385,
+     136391
+    ],
+    "edge": -0.0006136783053375394,
+    "h1": -0.00042251444221874657,
+    "h2": -0.000598850295420561,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 263416,
+    "nh": [
+     132081,
+     131335
+    ],
+    "edge": 0.0031638541111093654,
+    "h1": 0.0001390004524528532,
+    "h2": 0.0057928116700909915,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 268587,
+    "nh": [
+     132427,
+     136160
+    ],
+    "edge": -0.0019980857551097353,
+    "h1": 0.003122393352817998,
+    "h2": -0.006904773901202199,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 271538,
+    "nh": [
+     131355,
+     140183
+    ],
+    "edge": -0.002921209507352085,
+    "h1": -0.004231443021094072,
+    "h2": -0.0016073105125180565,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 262486,
+    "nh": [
+     133437,
+     129049
+    ],
+    "edge": -0.001079117741495328,
+    "h1": -0.003986973845219011,
+    "h2": 0.0016207470906614008,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 265297,
+    "nh": [
+     129366,
+     135931
+    ],
+    "edge": -0.004121492712953034,
+    "h1": -0.007455936492602011,
+    "h2": -0.0009343330033256825,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 260729,
+    "nh": [
+     131710,
+     129019
+    ],
+    "edge": -0.00031696414243481685,
+    "h1": -0.003863648071518677,
+    "h2": 0.0028554609598527847,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 271054,
+    "nh": [
+     133186,
+     137868
+    ],
+    "edge": 0.0006507618510913638,
+    "h1": 0.005403630180324359,
+    "h2": -0.003973431447441944,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 267790,
+    "nh": [
+     127630,
+     140160
+    ],
+    "edge": 0.0027714428164661853,
+    "h1": 0.005464758111351498,
+    "h2": 0.0002817921651622757,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 271378,
+    "nh": [
+     128876,
+     142502
+    ],
+    "edge": 0.004584155856469818,
+    "h1": 0.0029577038407437306,
+    "h2": 0.006330948575115014,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 258391,
+    "nh": [
+     125363,
+     133028
+    ],
+    "edge": -0.0012660131885141035,
+    "h1": -0.0004402735136322944,
+    "h2": -0.0020213733148451984,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 254195,
+    "nh": [
+     116646,
+     137549
+    ],
+    "edge": 0.0049887573967759,
+    "h1": 0.003613534956844966,
+    "h2": 0.006781271337270467,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 262055,
+    "nh": [
+     120810,
+     141245
+    ],
+    "edge": -0.0006503051707063001,
+    "h1": -0.0034739007529977495,
+    "h2": 0.002301158131378378,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 267794,
+    "nh": [
+     135158,
+     132636
+    ],
+    "edge": -0.0023638606077225344,
+    "h1": -0.0036580421636266403,
+    "h2": -0.0015096787524051525,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 262464,
+    "nh": [
+     134598,
+     127866
+    ],
+    "edge": 0.001024755960257473,
+    "h1": 0.003193894977542633,
+    "h2": -0.001396075292192378,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 278252,
+    "nh": [
+     136095,
+     142157
+    ],
+    "edge": 0.001773451796383052,
+    "h1": -0.0024121132835718817,
+    "h2": 0.005748366899753332,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 263322,
+    "nh": [
+     131335,
+     131987
+    ],
+    "edge": 0.001589777784234525,
+    "h1": 0.003021886778031113,
+    "h2": 0.00005462772623660017,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 264773,
+    "nh": [
+     129065,
+     135708
+    ],
+    "edge": 0.0009261842849676571,
+    "h1": -0.004612381591128256,
+    "h2": 0.006203376484461343,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 272444,
+    "nh": [
+     130948,
+     141496
+    ],
+    "edge": -0.005024538156287339,
+    "h1": -0.0030833501738764535,
+    "h2": -0.00673752917599485,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 261086,
+    "nh": [
+     123302,
+     137784
+    ],
+    "edge": -0.0018754403319812818,
+    "h1": 0.0008693459118250813,
+    "h2": -0.004243505369377953,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 251294,
+    "nh": [
+     117376,
+     133918
+    ],
+    "edge": -0.0012844736805016632,
+    "h1": 0.0012843922036334665,
+    "h2": -0.003404110047050657,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 264101,
+    "nh": [
+     132461,
+     131640
+    ],
+    "edge": -0.002304340918434511,
+    "h1": -0.00693130238477585,
+    "h2": 0.001910260228494498,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 275134,
+    "nh": [
+     135771,
+     139363
+    ],
+    "edge": -0.00040287604753408424,
+    "h1": 0.0019155224000157456,
+    "h2": -0.0026413409482186068,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 266620,
+    "nh": [
+     127943,
+     138677
+    ],
+    "edge": 0.00081018093049956,
+    "h1": 0.00392337362682349,
+    "h2": -0.00199328939606791,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 259525,
+    "nh": [
+     129458,
+     130067
+    ],
+    "edge": 0.0005306384979123502,
+    "h1": 0.005531743309383164,
+    "h2": -0.004542904841339679,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 267599,
+    "nh": [
+     132926,
+     134673
+    ],
+    "edge": 0.0021133719390750705,
+    "h1": 0.0047178780861288905,
+    "h2": -0.0005138804596537261,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 261392,
+    "nh": [
+     127711,
+     133681
+    ],
+    "edge": 0.00027891796084061893,
+    "h1": 0.0062496151678957945,
+    "h2": -0.005427569296160228,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 260788,
+    "nh": [
+     126710,
+     134078
+    ],
+    "edge": -0.0017680497059462397,
+    "h1": -0.004457960608799438,
+    "h2": 0.0008014386175828059,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 252004,
+    "nh": [
+     121477,
+     130527
+    ],
+    "edge": 0.005330196068959736,
+    "h1": 0.001488405342274457,
+    "h2": 0.009004096768473191,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 269364,
+    "nh": [
+     133617,
+     135747
+    ],
+    "edge": 0.003544990929913616,
+    "h1": 0.003648281298408884,
+    "h2": 0.003295374792935679,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 257960,
+    "nh": [
+     125611,
+     132349
+    ],
+    "edge": -0.0006327794760413452,
+    "h1": -0.000023317426708802103,
+    "h2": -0.0011956402688669265,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 257815,
+    "nh": [
+     123688,
+     134127
+    ],
+    "edge": 0.0015898918157831732,
+    "h1": 0.0036419496243284,
+    "h2": -0.00026444919146162427,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 250323,
+    "nh": [
+     123197,
+     127126
+    ],
+    "edge": 0.002741724084126096,
+    "h1": 0.004341638105547996,
+    "h2": 0.0011337140754510422,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 257916,
+    "nh": [
+     121843,
+     136073
+    ],
+    "edge": 0.0059020454375688924,
+    "h1": 0.004192236055089671,
+    "h2": 0.00776235512248874,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 253847,
+    "nh": [
+     128323,
+     125524
+    ],
+    "edge": 0.003381134594653168,
+    "h1": 0.0014053693812597912,
+    "h2": 0.005009419867990916,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 271565,
+    "nh": [
+     129642,
+     141923
+    ],
+    "edge": 0.0009488011260213591,
+    "h1": -0.0010755196490134789,
+    "h2": 0.00309789492835022,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 250890,
+    "nh": [
+     121625,
+     129265
+    ],
+    "edge": -0.00018523296931577393,
+    "h1": -0.00036515468638592674,
+    "h2": 0.000012494580399868838,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 269354,
+    "nh": [
+     136658,
+     132696
+    ],
+    "edge": 0.00016263249353887232,
+    "h1": 0.0007287447229439858,
+    "h2": -0.0005017040656292715,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 263080,
+    "nh": [
+     131870,
+     131210
+    ],
+    "edge": 0.0031186183724733474,
+    "h1": 0.0037964567876674904,
+    "h2": 0.0023601866984750974,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 265269,
+    "nh": [
+     126067,
+     139202
+    ],
+    "edge": -0.0012104613498128414,
+    "h1": 0.00392457310150357,
+    "h2": -0.005954806425027548,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 257980,
+    "nh": [
+     127048,
+     130932
+    ],
+    "edge": -0.00008032153061582337,
+    "h1": 0.0014610660490262384,
+    "h2": -0.0015804681929049713,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 270078,
+    "nh": [
+     137001,
+     133077
+    ],
+    "edge": -0.0007066593730040149,
+    "h1": 0.0018029348038736126,
+    "h2": -0.0033930921167953376,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 262167,
+    "nh": [
+     128094,
+     134073
+    ],
+    "edge": -0.006036515289881805,
+    "h1": -0.007130887479863124,
+    "h2": -0.0050278374515619895,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 274512,
+    "nh": [
+     133896,
+     140616
+    ],
+    "edge": 0.00006295241157555642,
+    "h1": -0.0017155304477969868,
+    "h2": 0.0017654401303108802,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 255750,
+    "nh": [
+     121385,
+     134365
+    ],
+    "edge": -0.0035508963266470683,
+    "h1": 0.0018236419076905208,
+    "h2": -0.008517643457464974,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 260368,
+    "nh": [
+     133034,
+     127334
+    ],
+    "edge": 0.0016929812890698615,
+    "h1": -0.003013465941518245,
+    "h2": 0.006069172652718002,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 268137,
+    "nh": [
+     133300,
+     134837
+    ],
+    "edge": 0.004703732663945082,
+    "h1": 0.01061919701424685,
+    "h2": -0.001115649609440661,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 273449,
+    "nh": [
+     133503,
+     139946
+    ],
+    "edge": 0.0011342605750669366,
+    "h1": -0.0005414195534837463,
+    "h2": 0.0027181585692978016,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 250857,
+    "nh": [
+     119379,
+     131478
+    ],
+    "edge": 0.0016063009894592972,
+    "h1": 0.005136368369467625,
+    "h2": -0.0015246260501208253,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 261885,
+    "nh": [
+     131370,
+     130515
+    ],
+    "edge": -0.00174784535160466,
+    "h1": -0.003169692451289119,
+    "h2": -0.0005902816342483463,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 264385,
+    "nh": [
+     127563,
+     136822
+    ],
+    "edge": -0.003653786450197538,
+    "h1": -0.006221089767651233,
+    "h2": -0.0011601994444007113,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 268618,
+    "nh": [
+     130717,
+     137901
+    ],
+    "edge": 0.0010313323889873938,
+    "h1": -0.00021099540729174748,
+    "h2": 0.0022332497078348945,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 251903,
+    "nh": [
+     123295,
+     128608
+    ],
+    "edge": -0.0018298423240423745,
+    "h1": -0.0017953510508036952,
+    "h2": -0.0018760795039294842,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 268047,
+    "nh": [
+     133211,
+     134836
+    ],
+    "edge": -0.0015964287865314897,
+    "h1": -0.0029622978346813267,
+    "h2": -0.0004856159036913943,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 261375,
+    "nh": [
+     126214,
+     135161
+    ],
+    "edge": -0.0005812772444319103,
+    "h1": 0.0029602524369555794,
+    "h2": -0.003859103344207193,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 262214,
+    "nh": [
+     126942,
+     135272
+    ],
+    "edge": -0.002075833311157682,
+    "h1": -0.004392026149063255,
+    "h2": 0.00020979052086406158,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 268247,
+    "nh": [
+     127858,
+     140389
+    ],
+    "edge": -0.0003067110783523397,
+    "h1": 0.0013394600836287296,
+    "h2": -0.0016377699436352366,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 260676,
+    "nh": [
+     129790,
+     130886
+    ],
+    "edge": 0.0006079985300416202,
+    "h1": -0.0016332033904648546,
+    "h2": 0.0024940711320628473,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 262909,
+    "nh": [
+     130775,
+     132134
+    ],
+    "edge": 0.0013834503088325234,
+    "h1": 0.0028729749338348154,
+    "h2": -0.00021697387769964438,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 265497,
+    "nh": [
+     127324,
+     138173
+    ],
+    "edge": -0.002316783446401849,
+    "h1": -0.0006612437677243621,
+    "h2": -0.0037759458214432495,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 273198,
+    "nh": [
+     140212,
+     132986
+    ],
+    "edge": -0.0037889403087689177,
+    "h1": -0.003799019135320214,
+    "h2": -0.004246637779411422,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 270035,
+    "nh": [
+     137489,
+     132546
+    ],
+    "edge": -0.004098911018898199,
+    "h1": -0.003028798582094816,
+    "h2": -0.0055914828026696894,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 267584,
+    "nh": [
+     127343,
+     140241
+    ],
+    "edge": -0.004255508073625125,
+    "h1": -0.008298603648319691,
+    "h2": -0.0001463724564319535,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 256970,
+    "nh": [
+     126241,
+     130729
+    ],
+    "edge": 0.005183976903506249,
+    "h1": 0.008069500528451623,
+    "h2": 0.002406899430679066,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 251774,
+    "nh": [
+     127112,
+     124662
+    ],
+    "edge": -0.0009195840829530622,
+    "h1": -0.0013600410036806454,
+    "h2": -0.0009299683224329169,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 254639,
+    "nh": [
+     120389,
+     134250
+    ],
+    "edge": -0.00027261585574434033,
+    "h1": -0.0013750576673937642,
+    "h2": 0.0009658133203261365,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 262543,
+    "nh": [
+     129173,
+     133370
+    ],
+    "edge": -0.003669354516107781,
+    "h1": -0.005486902408339378,
+    "h2": -0.0020020199332401734,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 265059,
+    "nh": [
+     126467,
+     138592
+    ],
+    "edge": -0.0012752377779538526,
+    "h1": -0.00006229510939842475,
+    "h2": -0.0023101171211468152,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 264484,
+    "nh": [
+     127490,
+     136994
+    ],
+    "edge": 0.00019953840697384262,
+    "h1": -0.0001996833251128871,
+    "h2": 0.0006319340725926548,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 261708,
+    "nh": [
+     127080,
+     134628
+    ],
+    "edge": 0.0028217342587218974,
+    "h1": 0.004666923888399677,
+    "h2": 0.0010949642642009705,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 267476,
+    "nh": [
+     129978,
+     137498
+    ],
+    "edge": 0.004814432327714002,
+    "h1": 0.006318190884620711,
+    "h2": 0.0034111259738787147,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 246299,
+    "nh": [
+     123886,
+     122413
+    ],
+    "edge": -0.00012768059799805886,
+    "h1": 0.0017129942944033028,
+    "h2": -0.0020972867514287286,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 267826,
+    "nh": [
+     133199,
+     134627
+    ],
+    "edge": -0.0040149450761240435,
+    "h1": -0.002310962744877798,
+    "h2": -0.005818691058916303,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 266079,
+    "nh": [
+     126386,
+     139693
+    ],
+    "edge": -0.0005335054882851242,
+    "h1": 0.0054091720073969896,
+    "h2": -0.0061144163335656865,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 264273,
+    "nh": [
+     130832,
+     133441
+    ],
+    "edge": 0.0004906028592117084,
+    "h1": 0.004250535721520898,
+    "h2": -0.0032743586354486154,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 274371,
+    "nh": [
+     133327,
+     141044
+    ],
+    "edge": 0.0018879882763113698,
+    "h1": -0.0040585537446194975,
+    "h2": 0.007582528441139436,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 256957,
+    "nh": [
+     128084,
+     128873
+    ],
+    "edge": -0.0029559915046874496,
+    "h1": -0.006486586019382179,
+    "h2": 0.00017378043594140635,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 259917,
+    "nh": [
+     132289,
+     127628
+    ],
+    "edge": 0.002610866000491041,
+    "h1": 0.0016481243988004102,
+    "h2": 0.003022561563651549,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 259139,
+    "nh": [
+     125369,
+     133770
+    ],
+    "edge": 0.0007707761303032412,
+    "h1": -0.0014810091170045503,
+    "h2": 0.0030069512713226665,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 264383,
+    "nh": [
+     129252,
+     135131
+    ],
+    "edge": -0.002875522932191621,
+    "h1": -0.0016266439318593506,
+    "h2": -0.00408259330172317,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 260809,
+    "nh": [
+     132017,
+     128792
+    ],
+    "edge": -0.0021029597115241327,
+    "h1": -0.0037936494936884335,
+    "h2": -0.0008357536678844091,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 266742,
+    "nh": [
+     130252,
+     136490
+    ],
+    "edge": -0.0053975134089504495,
+    "h1": -0.0033893428156185346,
+    "h2": -0.00731419864675148,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 265476,
+    "nh": [
+     124435,
+     141041
+    ],
+    "edge": 0.0039041576760883157,
+    "h1": 0.008128560017910735,
+    "h2": 0.00008099257090582457,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 263163,
+    "nh": [
+     128705,
+     134458
+    ],
+    "edge": 0.000710907775363534,
+    "h1": 0.004253208849001933,
+    "h2": -0.002678732147539775,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 254274,
+    "nh": [
+     125427,
+     128847
+    ],
+    "edge": 0.001791838354814057,
+    "h1": 0.004507730801061427,
+    "h2": -0.0008943161337824912,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 257296,
+    "nh": [
+     130131,
+     127165
+    ],
+    "edge": 0.001076219154742375,
+    "h1": 0.003513706638759495,
+    "h2": -0.001689196436939877,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 270023,
+    "nh": [
+     126159,
+     143864
+    ],
+    "edge": 0.0036031763186049615,
+    "h1": 0.005351395375027379,
+    "h2": 0.002163558077842076,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 261878,
+    "nh": [
+     128286,
+     133592
+    ],
+    "edge": 0.00401697683499308,
+    "h1": 0.0004028168161247514,
+    "h2": 0.007410898161890334,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 266360,
+    "nh": [
+     132301,
+     134059
+    ],
+    "edge": -0.002150318573657606,
+    "h1": -0.0034121735901569417,
+    "h2": -0.0011181821819880589,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 266403,
+    "nh": [
+     126005,
+     140398
+    ],
+    "edge": 0.005176403848139888,
+    "h1": 0.0062937693328676825,
+    "h2": 0.004320510568651514,
+    "days": 3997
+   }
+  ],
+  [
+   {
+    "key": "ADAPT",
+    "name": "ADAPT: the VWAP-slope side that won the last 60 sessions",
+    "n": 258554,
+    "nh": [
+     122480,
+     136074
+    ],
+    "edge": -0.0006386837082337782,
+    "h1": -0.0009596888557993344,
+    "h2": -0.00006654835118607982,
+    "days": 3997
+   }
+  ]
+ ]
+}
