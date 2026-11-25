@@ -41,6 +41,30 @@ What the table says (every definition, 2019-25 and 2026, each against placebo ma
 - Warnings are followed by a cross no more often than on placebo markets: that share is arithmetic, not foresight.
 Not added to databox_tune (no passing base).
 
+## The person's call (2026-11-25): confirmation at 10%, full control, keep going with novel ideas
+
+From here a confirmation needs to beat 90 of 100 placebo markets (was 95). About 43 confirmation tests so far:
+at 10% about 4 would pass by chance, so every pass is also checked over the long history. Passing at 10%
+before this: #1, #2, #3 (and two "less wrong" 5m lengths, and L5 = #2 again), plus batch 14's "both 1m rows
+warning together" (2025 +1.1, 92 of 100).
+
+### A second unseen market: ES 2010-2026, and the long-history checks (written before any of these runs)
+
+data/es_1m.bin, built from Desktop\Backtesting\ES CSV (2010-06-06 to 2026-03-23, 64 rolls adjusted, worst
+seam 4.5 points). No idea or study has read ES (MES 2019 on fed only batches 3 and 40's cross-market ideas).
+research/light_check.mjs: idea_lab's own definitions (checked equal: F1, F2 to batch 53 on 2026, B14 to batch
+14 on 2026, 2,690 warnings +3.3). Placebo seeds 5100 + p. Each run once:
+1. B14 (both 1m rows warning together) over the long history: NQ 2010-2018 and ES 2010-2026. Holds = the
+   expected sign beating 90 of 100 on each; the other way beyond 90 = a regime finding like #1 / #2.
+2. NOVEL, ADAPT: #1 / #2 flip with the regime, so follow the side of VWAP's slope that won over the last 60
+   sessions (only past sessions; the window chosen as one quarter, not tuned). Base: any box warning; the
+   filter keeps the warnings on that side; the edge is against the rest (idea_lab's convention). Built after
+   seeing #1 / #2's year table, so: screen on NQ 2010-2018 and on MNQ 2019-2026 (each beating 90), then
+   confirm on ES 2010-2026 (beating 90). Counts as one of the five if it passes all three.
+3. #3 on ES 2010-2026 (databox_lengths.mjs --es): the 1m EMA 3/13 slowing pick against the default; holds =
+   gain and its own edge each positive and beating 90 of 100 (the other 7 cells' picks are shown beside it).
+4. F1 / F2 on ES 2010-2026: description (does ES show the same regime turn?).
+
 ## New unseen data: NQ 2010-2018 (found 2026-11-25)
 
 Desktop\Backtesting\NQ CSV holds NQ (full-size, same index) 1-minute bars from 2010-06-06. Every idea and

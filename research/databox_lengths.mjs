@@ -31,8 +31,8 @@ import { placeboBars } from "./lib_levels.mjs";
 const args = process.argv.slice(2), opt = (name, dflt) => { const i = args.indexOf(name); return i >= 0 ? Number(args[i + 1]) : dflt; };
 const PLACEBOS = opt("--placebos", 100);
 const MIN = 60000, FLAT = 15 * 60 + 5, FIRST = 8 * 60 + 30, LAST = 14 * 60 + 55, R18 = 0.00064;
-const NQ = args.includes("--nq");   // confirm the frozen picks on NQ 2010-2018 (ledger, written before the run)
-const Y0 = NQ ? 2010 : 2019, NY = NQ ? 9 : 8, NS = 10, H2 = Date.UTC(2026, 6, 1);
+const ES = args.includes("--es"), NQ = args.includes("--nq") || ES;   // confirm the frozen picks on NQ 2010-2018, or ES 2010-2026 (ledger, written before each run)
+const Y0 = NQ ? 2010 : 2019, NY = ES ? 17 : NQ ? 9 : 8, NS = ES ? 17 : 10, H2 = Date.UTC(2026, 6, 1);
 const EARLY = [0, 1, 2, 3, 4, 5, 6], LATE = [7];
 const t0 = Date.now(), secs = () => ((Date.now() - t0) / 1000).toFixed(0);
 
@@ -183,14 +183,14 @@ function picks(M) {
 }
 
 // ── run ──
-const { bars: allBars } = loadBars(NQ ? "data/nq_1m.bin" : "data/mnq_1m_beta.bin");
-const bars = NQ ? sliceBars(allBars, 0, indexAtOrAfter(allBars.ts, Date.UTC(2019, 0, 3))) : allBars;
+const { bars: allBars } = loadBars(ES ? "data/es_1m.bin" : NQ ? "data/nq_1m.bin" : "data/mnq_1m_beta.bin");
+const bars = ES ? allBars : NQ ? sliceBars(allBars, 0, indexAtOrAfter(allBars.ts, Date.UTC(2019, 0, 3))) : allBars;
 const real = measure(bars);
 if (NQ) {   // the 8 cells' picks, frozen from the MNQ run, against the defaults on NQ 2010-2018
-  const V = JSON.parse(fs.readFileSync("research/databox_lengths_results.json", "utf8")).verdict.cells, ALL = [0, 1, 2, 3, 4, 5, 6, 7, 8], A = [0, 1, 2, 3, 4], B = [5, 6, 7, 8];
+  const V = JSON.parse(fs.readFileSync("research/databox_lengths_results.json", "utf8")).verdict.cells, ALL = Array.from({ length: NY }, (_, k) => k), A = ES ? [0, 1, 2, 3, 4, 5, 6, 7] : [0, 1, 2, 3, 4], B = ES ? [8, 9, 10, 11, 12, 13, 14, 15, 16] : [5, 6, 7, 8];
   const pairs = V.map((c) => [READ.findIndex((R) => R.name === c.pickName), READ.findIndex((R) => R.cell === c.cell && R.def)]);
   if (pairs.some(([a, d]) => a < 0 || d < 0)) throw new Error("a frozen pick is missing");
-  process.stderr.write(`  NQ ${new Date(bars.ts[0]).toISOString().slice(0, 10)} to ${new Date(bars.ts[bars.close.length - 1]).toISOString().slice(0, 10)}, real market ${secs()}s
+  process.stderr.write(`  ${ES ? "ES" : "NQ"} ${new Date(bars.ts[0]).toISOString().slice(0, 10)} to ${new Date(bars.ts[bars.close.length - 1]).toISOString().slice(0, 10)}, real market ${secs()}s
 `);
   const stat = (M, slots) => pairs.map(([a, d]) => ({ pick: edgeOf(M, a, slots), def: edgeOf(M, d, slots) }));
   const R0 = stat(real, ALL), RA = stat(real, A), RB = stat(real, B), P = [];
@@ -201,16 +201,16 @@ if (NQ) {   // the 8 cells' picks, frozen from the MNQ run, against the defaults
 `);
   }
   const pt = (x) => (Number.isFinite(x) ? (x >= 0 ? "+" : "") + (100 * x).toFixed(1) : "—"), high = (vals, v) => vals.filter((z) => Number.isFinite(z) && z >= v).length;
-  console.log(`databox lengths on NQ 2010-2018 (unseen): the MNQ picks against the defaults, ${PLACEBOS} placebo markets; ${secs()}s`);
-  console.log(`${"cell".padEnd(16)}${"pick".padEnd(24)}${"n".padStart(8)}${"pick".padStart(7)}${"hi".padStart(4)}${"default".padStart(9)}${"hi".padStart(4)}${"gain".padStart(7)}${"hi".padStart(4)}${"10-14".padStart(7)}${"15-18".padStart(7)}`);
+  console.log(`databox lengths on ${ES ? "ES 2010-2026" : "NQ 2010-2018"} (unseen): the MNQ picks against the defaults, ${PLACEBOS} placebo markets; ${secs()}s`);
+  console.log(`${"cell".padEnd(16)}${"pick".padEnd(24)}${"n".padStart(8)}${"pick".padStart(7)}${"hi".padStart(4)}${"default".padStart(9)}${"hi".padStart(4)}${"gain".padStart(7)}${"hi".padStart(4)}${(ES ? "10-17" : "10-14").padStart(7)}${(ES ? "18-26" : "15-18").padStart(7)}`);
   const out = R0.map((z, c) => {
     const gain = z.pick.edge - z.def.edge, hg = high(P.map((q) => q[c].gain), gain), hp = high(P.map((q) => q[c].pick), z.pick.edge), hd = high(P.map((q) => q[c].def), z.def.edge);
-    const ga = RA[c].pick.edge - RA[c].def.edge, gb = RB[c].pick.edge - RB[c].def.edge, v = gain > 0 && hg <= 5 ? "CONFIRMED better than the default" : "not confirmed";
+    const ga = RA[c].pick.edge - RA[c].def.edge, gb = RB[c].pick.edge - RB[c].def.edge, v = ES ? (gain > 0 && hg <= 10 && z.pick.edge > 0 && hp <= 10 ? "CONFIRMED on ES (10% bar, own edge too)" : "not confirmed on ES") : gain > 0 && hg <= 5 ? "CONFIRMED better than the default" : "not confirmed";
     console.log(`${CELLS[c].padEnd(16)}${V[c].pickName.padEnd(24)}${String(z.pick.n).padStart(8)}${pt(z.pick.edge).padStart(7)}${String(hp).padStart(4)}${pt(z.def.edge).padStart(9)}${String(hd).padStart(4)}${pt(gain).padStart(7)}${String(hg).padStart(4)}${pt(ga).padStart(7)}${pt(gb).padStart(7)}  ${v}`);
     return { cell: CELLS[c], pick: V[c].pickName, pickEdge: z.pick, defEdge: z.def, gain, gainHi: hg, pickHi: hp, defHi: hd, gain1014: ga, gain1518: gb, verdict: v };
   });
-  fs.writeFileSync("research/databox_lengths_nq_results.json", JSON.stringify({ run: new Date().toISOString(), placebos: PLACEBOS, cells: out, placebo: P }, null, 1));
-  console.log("wrote research/databox_lengths_nq_results.json");
+  fs.writeFileSync(ES ? "research/databox_lengths_es_results.json" : "research/databox_lengths_nq_results.json", JSON.stringify({ run: new Date().toISOString(), placebos: PLACEBOS, cells: out, placebo: P }, null, 1));
+  console.log(`wrote research/databox_lengths_${ES ? "es" : "nq"}_results.json`);
   process.exit(0);
 }
 process.stderr.write(`  real market: ${secs()}s\n`);
