@@ -75,7 +75,24 @@ flip/warning) the best on 2019-2025 read on 2026 less the default; the mean gain
 placebo markets making the same picks. Check: the defaults equal databox_base's rows (passed in a 1-placebo
 trial whose verdict line is not counted).
 
-Results: pending.
+Results (2026-11-25, 1,842 s, research/databox_lengths_results.json). VERDICT: no better lengths. Mean gain
+over the 8 cells +0.5 points; 9 of 100 placebo markets as high (needed 5 or fewer). Picks (2026 gain over the
+default, placebo as high): 1m EMA flip 15/89 -0.4 (63); 1m EMA warning 3/13 slowing +0.5 (16); 1m MACD flip
+5/13/3 +0.3 (27); 1m MACD warning 5/13/9 shrink -0.0 (57); 5m EMA flip 15/50 +2.5 (15); 5m EMA warning 12/13
+slowing -0.7 (75); 5m MACD flip 16/35/18 +1.6 (11); 5m MACD warning 19/39/3 +0.3 (34).
+- Faster 1m warnings are the strongest base readings measured: 1m EMA 3/13 slowing +0.7 (0 of 100 as high)
+  on 2019-2025 and +1.3 (0) in 2026, both halves +1.3 / +1.4; 3/13 shrink +0.7 (0) / +1.5 (0); 5/13 slowing
+  +0.7 (0) / +1.4 (0). 1m MACD 8/17/3 +0.9 (0) / +0.9 (0); 6/13/3 +0.9 (0) / +0.7 (2). The defaults:
+  EMA 12/26 speed +0.4 (1) / +0.8 (11); MACD 12/26/9 +0.5 (0) / +0.5 (9).
+- Flips have no edge at any length on 1m; on 5m most lengths are negative on 2019-2025.
+
+### The lengths picks confirmed on NQ 2010-2018 (databox_lengths.mjs --nq; written before the NQ file was built)
+
+The 8 picks above, frozen (read from databox_lengths_results.json), against the defaults, one run on NQ
+2010-2018 with 100 placebo markets: a cell is CONFIRMED better than the default when its gain (pick edge
+less default edge, 2010-2018) is positive and beats 95 of 100 placebo markets. 8 cells at 5%: about 0.4
+false confirmations expected. The 2010-2014 and 2015-2018 halves are described. A confirmed 1m warning
+setting would be a new default for the indicator, counted as one of the five.
 
 ## In-between timeframes (research/databox_mid.mjs, written 2026-11-25)
 

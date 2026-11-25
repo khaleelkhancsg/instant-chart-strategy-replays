@@ -24,14 +24,15 @@
 
 import fs from "node:fs";
 import { loadBars } from "../src/data.mjs";
-import { resample } from "../src/resample.mjs";
+import { resample, sliceBars, indexAtOrAfter } from "../src/resample.mjs";
 import { rawOffsets } from "../src/levels.mjs";
 import { placeboBars } from "./lib_levels.mjs";
 
 const args = process.argv.slice(2), opt = (name, dflt) => { const i = args.indexOf(name); return i >= 0 ? Number(args[i + 1]) : dflt; };
 const PLACEBOS = opt("--placebos", 100);
 const MIN = 60000, FLAT = 15 * 60 + 5, FIRST = 8 * 60 + 30, LAST = 14 * 60 + 55, R18 = 0.00064;
-const Y0 = 2019, NY = 8, NS = 10, H2 = Date.UTC(2026, 6, 1);
+const NQ = args.includes("--nq");   // confirm the frozen picks on NQ 2010-2018 (ledger, written before the run)
+const Y0 = NQ ? 2010 : 2019, NY = NQ ? 9 : 8, NS = 10, H2 = Date.UTC(2026, 6, 1);
 const EARLY = [0, 1, 2, 3, 4, 5, 6], LATE = [7];
 const t0 = Date.now(), secs = () => ((Date.now() - t0) / 1000).toFixed(0);
 
@@ -63,15 +64,18 @@ function emaSeries(x, n) {   // emaStep over a whole series: v and count
   }
   return v;
 }
-function linesOf(close) {
+// one line at a time (j: an EMA pair, then a MACD set), so a long market fits in memory
+function lineMaker(close) {
   const N = close.length, x = Float64Array.from(close), cache = new Map(), ema = (n) => { if (!cache.has(n)) cache.set(n, emaSeries(x, n)); return cache.get(n); };
-  const out = [];   // { diff (NaN until ready, as the research reads it), raw diff for rowStep }
-  for (const [f, s] of EMA_PAIRS) {
+  return (j) => {
+  if (j < EMA_PAIRS.length) {
+    const [f, s] = EMA_PAIRS[j];
     const a = ema(f), b = ema(s), raw = new Float64Array(N), ready = new Uint8Array(N);
     for (let i = 0; i < N; i++) { raw[i] = a[i] - b[i]; ready[i] = i >= s ? 1 : 0; }
-    out.push({ raw, ready, from: 0 });
+    return { raw, ready, from: 0 };
   }
-  for (const [f, s, g] of MACD_SETS) {
+  {
+    const [f, s, g] = MACD_SETS[j - EMA_PAIRS.length];
     const a = ema(f), b = ema(s), raw = new Float64Array(N).fill(NaN), ready = new Uint8Array(N);
     let count = 0, total = 0, prev = NaN;
     for (let i = s - 1; i < N; i++) {
@@ -79,9 +83,9 @@ function linesOf(close) {
       if (count < g) { count++; total += line; prev = total / count; } else { count++; prev = prev + (2 / (g + 1)) * (line - prev); }
       raw[i] = line - prev; ready[i] = count >= g ? 1 : 0;
     }
-    out.push({ raw, ready, from: s - 1 });
+    return { raw, ready, from: s - 1 };
   }
-  return out;
+  };
 }
 // rowStep over a series (from the row's first bar), then the research's reading: side and warning only when ready
 function readings(L, rule) {
@@ -122,7 +126,7 @@ function measure(b) {
     const y = new Date(TS[i]).getUTCFullYear() - Y0;
     if (y < 0 || y >= NY) continue;
     if (new5 >= 0) at5[new5] = i;
-    slotA[i] = y; if (y === NY - 1) slotB[i] = TS[i] < H2 ? 8 : 9;
+    slotA[i] = y; if (y === NY - 1 && !NQ) slotB[i] = TS[i] < H2 ? 8 : 9;
     const P = C[i], Rr = R18 * (P - off[i]);
     let u = 0, d = 0;
     for (let j = i + 1; j < N && TD[j] === TD[i] && CT[j] < FLAT; j++) {
@@ -135,9 +139,12 @@ function measure(b) {
     for (const s of [slotA[i], slotB[i]]) if (s >= 0) { bn[s * 2] += 1; bw[s * 2] += winU[i]; bn[s * 2 + 1] += 1; bw[s * 2 + 1] += winD[i]; }
   }
   const n = new Float64Array(NR * NS * 2), w = new Float64Array(NR * NS * 2);
-  const LS = [linesOf(b.close), linesOf(b5.close)];
+  const MK = [lineMaker(b.close), lineMaker(b5.close)];
+  let curKey = "", curLine = null;
   READ.forEach((R, r) => {
-    const rd = readings(LS[R.t][R.line], R.what === "flip" ? null : R.rule);
+    const key = R.t + ":" + R.line;
+    if (key !== curKey) { curLine = MK[R.t](R.line); curKey = key; }
+    const rd = readings(curLine, R.what === "flip" ? null : R.rule);
     const calls = R.what === "flip" ? flipsOf(rd.side) : onsetsOf(rd.warn);
     for (let k = 0; k < calls.length; k++) {
       const c = calls[k];
@@ -176,8 +183,36 @@ function picks(M) {
 }
 
 // ── run ──
-const { bars } = loadBars("data/mnq_1m_beta.bin");
+const { bars: allBars } = loadBars(NQ ? "data/nq_1m.bin" : "data/mnq_1m_beta.bin");
+const bars = NQ ? sliceBars(allBars, 0, indexAtOrAfter(allBars.ts, Date.UTC(2019, 0, 3))) : allBars;
 const real = measure(bars);
+if (NQ) {   // the 8 cells' picks, frozen from the MNQ run, against the defaults on NQ 2010-2018
+  const V = JSON.parse(fs.readFileSync("research/databox_lengths_results.json", "utf8")).verdict.cells, ALL = [0, 1, 2, 3, 4, 5, 6, 7, 8], A = [0, 1, 2, 3, 4], B = [5, 6, 7, 8];
+  const pairs = V.map((c) => [READ.findIndex((R) => R.name === c.pickName), READ.findIndex((R) => R.cell === c.cell && R.def)]);
+  if (pairs.some(([a, d]) => a < 0 || d < 0)) throw new Error("a frozen pick is missing");
+  process.stderr.write(`  NQ ${new Date(bars.ts[0]).toISOString().slice(0, 10)} to ${new Date(bars.ts[bars.close.length - 1]).toISOString().slice(0, 10)}, real market ${secs()}s
+`);
+  const stat = (M, slots) => pairs.map(([a, d]) => ({ pick: edgeOf(M, a, slots), def: edgeOf(M, d, slots) }));
+  const R0 = stat(real, ALL), RA = stat(real, A), RB = stat(real, B), P = [];
+  for (let p = 0; p < PLACEBOS; p++) {
+    const M = measure(placeboBars(bars, 6600 + p));
+    P.push(stat(M, ALL).map((z) => ({ gain: z.pick.edge - z.def.edge, pick: z.pick.edge, def: z.def.edge })));
+    if ((p + 1) % 10 === 0 || p + 1 === PLACEBOS) process.stderr.write(`  ${p + 1}/${PLACEBOS} placebo markets, ${secs()}s
+`);
+  }
+  const pt = (x) => (Number.isFinite(x) ? (x >= 0 ? "+" : "") + (100 * x).toFixed(1) : "—"), high = (vals, v) => vals.filter((z) => Number.isFinite(z) && z >= v).length;
+  console.log(`databox lengths on NQ 2010-2018 (unseen): the MNQ picks against the defaults, ${PLACEBOS} placebo markets; ${secs()}s`);
+  console.log(`${"cell".padEnd(16)}${"pick".padEnd(24)}${"n".padStart(8)}${"pick".padStart(7)}${"hi".padStart(4)}${"default".padStart(9)}${"hi".padStart(4)}${"gain".padStart(7)}${"hi".padStart(4)}${"10-14".padStart(7)}${"15-18".padStart(7)}`);
+  const out = R0.map((z, c) => {
+    const gain = z.pick.edge - z.def.edge, hg = high(P.map((q) => q[c].gain), gain), hp = high(P.map((q) => q[c].pick), z.pick.edge), hd = high(P.map((q) => q[c].def), z.def.edge);
+    const ga = RA[c].pick.edge - RA[c].def.edge, gb = RB[c].pick.edge - RB[c].def.edge, v = gain > 0 && hg <= 5 ? "CONFIRMED better than the default" : "not confirmed";
+    console.log(`${CELLS[c].padEnd(16)}${V[c].pickName.padEnd(24)}${String(z.pick.n).padStart(8)}${pt(z.pick.edge).padStart(7)}${String(hp).padStart(4)}${pt(z.def.edge).padStart(9)}${String(hd).padStart(4)}${pt(gain).padStart(7)}${String(hg).padStart(4)}${pt(ga).padStart(7)}${pt(gb).padStart(7)}  ${v}`);
+    return { cell: CELLS[c], pick: V[c].pickName, pickEdge: z.pick, defEdge: z.def, gain, gainHi: hg, pickHi: hp, defHi: hd, gain1014: ga, gain1518: gb, verdict: v };
+  });
+  fs.writeFileSync("research/databox_lengths_nq_results.json", JSON.stringify({ run: new Date().toISOString(), placebos: PLACEBOS, cells: out, placebo: P }, null, 1));
+  console.log("wrote research/databox_lengths_nq_results.json");
+  process.exit(0);
+}
 process.stderr.write(`  real market: ${secs()}s\n`);
 const BASE = JSON.parse(fs.readFileSync("research/databox_base_results.json", "utf8")).real;
 for (const [nm, ref] of [["1m EMA 12/26 flip", "1m EMA side: cross"], ["1m EMA 12/26 speed", "1m EMA warning: speed"], ["1m MACD 12/26/9 flip", "1m MACD side: cross"], ["1m MACD 12/26/9 shrink", "1m MACD warning: shrink"],
