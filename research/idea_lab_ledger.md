@@ -121,13 +121,24 @@ slowing -0.7 (75); 5m MACD flip 16/35/18 +1.6 (11); 5m MACD warning 19/39/3 +0.3
 ### Second grid: MACD rows with every warning rule, and the 2m / 3m / 4m rows (research/databox_lengths2.mjs, written before either run)
 
 The method that gave #3, on the cells it did not cover: 1m MACD, 2m EMA, 2m MACD, 3m EMA, 3m MACD, 4m EMA,
-4m MACD, 5m MACD warnings; EMA 51 pairs and MACD 40 sets, each x speed / shrink / slowing (1,098 readings).
+4m MACD, 5m MACD warnings; EMA 51 pairs and MACD 40 sets, each x speed / shrink / slowing (1,059 readings).
 Screen (MNQ): the 2019-2025 pick's 2026 edge positive and beating 90 of 100 placebo markets' own picks.
 Confirm (NQ 2010-2018, the screened picks frozen): gain over the default beating 95 of 100 AND the pick's own
 edge positive and beating 95 of 100. A confirmed cell counts as one of the five. Check: the 80 readings
 shared with databox_lengths.mjs must give its numbers exactly.
 
-Results: pending.
+Results, MNQ screen (2026-11-25, 2,302 s; research/databox_lengths2_results.json; check passed, the 80 shared readings
+exact): 1 of 8 cells passes.
+  1m MACD warning  pick 1m MACD 5/13/9 slowing     2019-25   +1.1 | 2026   +0.6 (12 of 100 as high; halves +0.0 / +1.3) | default +0.5 / +0.5  fails the screen
+  2m EMA warning   pick 2m EMA 3/13 slowing        2019-25   -0.2 | 2026   +1.1 (4 of 100 as high; halves +0.9 / +1.4) | default -0.4 / +0.4  SCREEN PASS
+  2m MACD warning  pick 2m MACD 5/13/3 slowing     2019-25   +0.4 | 2026   +0.4 (25 of 100 as high; halves +0.2 / +0.7) | default -0.4 / -0.2  fails the screen
+  3m EMA warning   pick 3m EMA 8/13 slowing        2019-25   -0.0 | 2026   +0.7 (14 of 100 as high; halves +0.7 / +0.9) | default -0.4 / +0.3  fails the screen
+  3m MACD warning  pick 3m MACD 24/52/5 shrink     2019-25   +0.2 | 2026   -0.7 (83 of 100 as high; halves -0.4 / -1.0) | default -0.3 / +0.3  fails the screen
+  4m EMA warning   pick 4m EMA 15/21 speed         2019-25   -0.0 | 2026   -0.3 (59 of 100 as high; halves -0.9 / +0.6) | default -0.1 / -0.1  fails the screen
+  4m MACD warning  pick 4m MACD 12/26/9 speed      2019-25   +0.1 | 2026   -1.1 (91 of 100 as high; halves -2.0 / +0.0) | default -0.1 / -1.0  fails the screen
+  5m MACD warning  pick 5m MACD 6/13/3 slowing     2019-25   +0.1 | 2026   -1.1 (78 of 100 as high; halves -0.7 / -1.5) | default -1.1 / -0.3  fails the screen
+The pass is the 2m EMA row at 3/13 "slowing", #3's setting one timeframe up; its 2019-2025 edge is -0.2, so the
+NQ stage's own-edge test decides. NQ: pending.
 
 ### The lengths picks confirmed on NQ 2010-2018 (databox_lengths.mjs --nq; written before the NQ file was built)
 
