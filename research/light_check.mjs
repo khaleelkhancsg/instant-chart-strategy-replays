@@ -49,6 +49,7 @@ const ALL_IDEAS = {
   F2: { name: "F2: any box warning against VWAP slope", expect: "helps", base: potAny, pass: (x, i, d) => Number.isFinite(x.vw[i - 15]) && d * (x.vw[i] - x.vw[i - 15]) < 0 },
   B14: { name: "B14: both 1m rows warning together", expect: "helps", base: (x, i) => pot(x.m1[i - 1], x.m1[i]), pass: (x, i, d) => (d === 1 ? x.e1[i] === 4 : x.e1[i] === 2) },
   ADAPT: { name: "ADAPT: the VWAP-slope side that won the last 60 sessions", expect: "helps", base: potAny, adaptive: true },
+  ADAPT1: { name: "ADAPT1: ADAPT on the 1m rows only (what a 1m chart's box sees)", expect: "helps", base: (x, i) => pot(x.m1[i - 1], x.m1[i]) || pot(x.e1[i - 1], x.e1[i]), adaptive: true },
   ADAPTW: { name: "ADAPTW: take warnings if they won the last 60 sessions, else fade", expect: "helps", base: potAny, adaptiveW: true },
 };
 const IDEAS = WANT.map((k) => { if (!ALL_IDEAS[k]) throw new Error(`no idea ${k}`); return { key: k, ...ALL_IDEAS[k] }; });

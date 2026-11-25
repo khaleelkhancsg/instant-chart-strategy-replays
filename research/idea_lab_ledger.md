@@ -426,6 +426,10 @@ Pattern so far: the "toward balance" filters pass 2026 and 2025 Jan-Jun, then re
    VWAP's 15-minute slope with those along it, and keep the warnings on the side that won.
    - Screen: NQ 2010-2018 +1.1 (beats 100), MNQ 2019-2026 +1.6 (100). Confirmed on ES 2010-2026, unseen: +0.4
      from the close (92), +0.5 from the next open (98). light_check.mjs, idea ADAPT.
+   - To build it into the Tradovate box, which on a 1-minute chart sees only that chart's rows: ADAPT1, the same rule
+     on the 1m rows' warnings only, is a new trial (written before its runs): screen NQ 2010-2018 and MNQ 2019-2026
+     (each beating 90), confirm on ES 2010-2026 from the close and the next open (each beating 90). Built only if
+     it passes.
 
 ## Named for confirmation on 2025 (written before the 2025 runs)
 
