@@ -452,6 +452,11 @@ Pattern so far: the "toward balance" filters pass 2026 and 2025 Jan-Jun, then re
      it passes.
    - ADAPT1 screen: MNQ 2019-2026 +1.5 on 109,981 (beats 100; halves 90 / 100); NQ 2010-2018 +1.0 on 113,785 (100;
      90 / 97). SCREEN PASS. ES next.
+   - ADAPT1 on ES (research/light_check_es_a1_results.json, _es_a1_open_results.json): from the close +0.5 (97; halves
+     86 / 85), from the next open +0.3 (86; 76 / 76). NOT CONFIRMED (the next-open leg is under 90). Not built.
+   - Instead the box builds the confirmed rule itself: on a 1-minute chart it also forms the 5-minute bars and runs
+     its rows on them, so its warnings are ADAPT's base exactly (1m and 5m, MACD then EMA). Shipped only if it gives
+     the research's weak side session by session (research/verify_adapt_box.mjs).
 5. **A 5-minute warning is a continuation sign, not a turn.** The default 5m EMA and MACD warnings ("Potentially
    short" on the long side) call the wrong way: price keeps going the side's way more often than chance.
    - MNQ 2019-2025 EMA -1.4, MACD -1.1 (worse than 100 and 97 of 100 placebo markets); NQ 2010-2018 -1.7, -1.4
