@@ -41,6 +41,19 @@ What the table says (every definition, 2019-25 and 2026, each against placebo ma
 - Warnings are followed by a cross no more often than on placebo markets: that share is arithmetic, not foresight.
 Not added to databox_tune (no passing base).
 
+## In-between timeframes (research/databox_mid.mjs, written 2026-11-25)
+
+The person's question: do 2m, 3m and 4m rows add confluence and edge to the box's 1m and 5m readings?
+Written before the run (the script's header has it in full): the indicator's EMA and MACD rows on clock-aligned
+2m / 3m / 4m bars. Bases: the box's 8 readings (1m and 5m x EMA and MACD x flip and warning onset). 46 mid
+filters per base: the call agreeing / not with each mid row's side, slope or warning (36), and the three mid
+timeframes stacked (10). Verdict: per base, the best mid filter on 2019-2025 read on 2026 as lift over the
+base; the mean of the 8 must beat 95 of 100 placebo markets making the same picks. Each mid row alone is
+described beside it. Check: the 1m and 5m rows alone equal databox_base's counts and edges exactly (passed in
+a 2-placebo trial run, whose verdict line is not counted).
+
+Results: pending.
+
 ## Box settings tuned over every entry and exit (research/databox_tune.mjs, started 2026-11-25)
 
 The person's question: build on the room study's billions of trades; change the EMA and MACD lengths, some
