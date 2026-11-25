@@ -134,7 +134,18 @@ pick beating 95 of 100. Per-setting cells are leads (about 10 of 96 beat 90 of 1
 Check before the run: at the default setting alone it reproduced databox_room.mjs to ten decimals on the
 real market and on placebo markets 0 and 1.
 
-Results: pending (4 shards, 2 at a time, about 3 hours).
+Results (2026-11-25, 4 shards of about 90 minutes; research/databox_tune_results.json, _ranked.csv).
+VERDICT: no setting or combination passes. As one search over all 16 settings (2.9 million strategies):
+- ALL: the 10 best on 2019-2025 lost in 2026: -3.63 net points a trade against -1.06 for every minute with
+  the same exits, t -2.0; 97 of 100 placebo markets' picks did as well. ROOM (stops 2 ATR+, held 40 min+):
+  t -1.3, 88 of 100. INSIDE 2026 (Jan-Jun picks on Jul-Oct): t 0.1, 45 of 100. None near the 95 needed.
+- AVOID: the 10 worst on 2019-2025 did not keep losing; in 2026 they made +0.36 against -1.40 (t 1.9).
+- PERSIST: a strategy's t on 2019-2025 against its t on 2026, all 1.46 million: r -0.04 (59 of 100 placebo
+  as high); Jan-Jun against Jul-Oct r -0.08. What worked before says nothing about what works next.
+- REVERSE: 2026's 10 best read on 2019-2025: mean t 0.60, 20 of 100 as high; years positive 4.8 of 7, 8 of 100.
+- Per setting, 13 of 96 cells beat 90 of 100 (about 10 by chance). 20/50 EMA + 6/13/5 MACD beats 90 in four
+  of six cells (all t 1.69, room 1.73, inside 2.90, reverse 1.63): a lead only, picked after looking.
+The lengths and combinations people tune do not carry an edge from one period to the next.
 
 ## Forward test of the two confirmed findings (written 2026-11-24, before any forward bar is read)
 
