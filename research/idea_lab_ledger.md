@@ -52,7 +52,21 @@ base; the mean of the 8 must beat 95 of 100 placebo markets making the same pick
 described beside it. Check: the 1m and 5m rows alone equal databox_base's counts and edges exactly (passed in
 a 2-placebo trial run, whose verdict line is not counted).
 
-Results: pending.
+Results (2026-11-25, 907 s, research/databox_mid_results.json). VERDICT: no added edge. Mean 2026 lift over the 8
+picks +0.6 points; 23 of 100 placebo markets as high. Picks (2026 lift, placebo as high): 1m EMA flip 3m MACD
+slope against -0.3 (67); 1m EMA warning 2m+3m+4m EMA sides all agree -0.9 (81); 1m MACD flip 2m MACD slope
+against +1.8 (8); 1m MACD warning 4m MACD warning agrees +0.8 (31); 5m EMA flip mid MACD slopes not all agree
+-2.8 (95); 5m EMA warning 3m MACD slope against +0.2 (46); 5m MACD flip 2m MACD slope against +4.2 (3); 5m MACD
+warning 2m EMA slope against +1.6 (23).
+- Each mid row alone: no 2m / 3m / 4m flip or warning beats 90 placebo markets on 2019-2025 except the 3m MACD
+  flip (+0.4, 2), which is -0.6 in 2026. The only base edge anywhere is still the 1m warnings.
+- Leads (beat 90 in both periods; 7 of 368 mid cells; chance gives about 4 at 10% x 10%,
+  and these are picked after looking): the call against the 2m MACD line's last move, on the 1m EMA warning (+0.7 | +0.8),
+  the 1m MACD flip (+1.8 | +1.8) and the 5m EMA warning (+1.3 | +2.8); the 1m MACD warning with the 3m MACD
+  slope or warning agreeing (+1.2 | +3.3; +1.7 | +4.2); the 5m MACD flip with the 2m MACD side agreeing; the
+  5m MACD warning against the 4m EMA side. "Against the 2m MACD's last move" is a call against the last few
+  minutes' push: the same fade-the-push shape as confirmed #2 (against VWAP's slope), likely not new.
+  Not counted toward the 5; it would need unused data (the forward bars) to confirm.
 
 ## Box settings tuned over every entry and exit (research/databox_tune.mjs, started 2026-11-25)
 
