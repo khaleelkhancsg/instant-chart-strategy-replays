@@ -103,6 +103,13 @@ exposed the same way.
 The check (databox_eth.mjs and databox_lengths.mjs --entry-open): the race starts at the next bar's open, a
 fill one could get, with the every-minute baseline moved the same way. Rule: a reading whose edge loses its
 sign or falls under 90 of 100 with next-open entry is bounce, not counted; one that keeps both stands.
+Bounce check, overnight (next-open races; research/databox_eth_{mnq,nq,es}_open_results.json): the 1m MACD flip
+faded keeps its sign and beats 100 on NQ (-0.3, from -1.1; halves 98 / 100) and ES (-0.9, from -2.2; 100 / 100),
+but on MNQ, where it was found, it is -0.0 (79 of 100). Most of it was bounce, and what is left lives only where
+the race is a few ticks (NQ / ES before about 2019); on MNQ's fine ticks there is nothing. NOT COUNTED: a coarse-
+tick effect, not usable on MNQ. Same shape for the 1m EMA flip faded (NQ -1.0, ES -1.1, MNQ -0.0).
+Beside it: #3 overnight with next-open races: ES +0.7 (100; halves 100 / 100), NQ +0.5 (100; 100 / 83), MNQ +0.1
+(65).
 
 ## New unseen data: NQ 2010-2018 (found 2026-11-25)
 
