@@ -348,7 +348,7 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
   t("every line of text is centred and sits inside the box, in every corner, even in a font 15% wider", () => {
     const WIDE = (p) => p.text.length * p.size * (p.weight === "bold" ? 0.58 : 0.52) * 1.15;
     let lines = 0;
-    for (const corner of ["topLeft", "topRight", "bottomLeft", "bottomRight"]) for (const k of [300, 2500, 5000]) for (const showBars of [true, false]) for (const vwapSlope of ["off", "mark"]) {
+    for (const corner of ["topLeft", "topRight", "bottomLeft", "bottomRight"]) for (const k of [300, 2500, 5000]) for (const showBars of [true, false]) for (const vwapSlope of ["off", "mark", "adaptive"]) {
       const r = new Run(box, { props: { corner, showBars, vwapSlope } }).compute(BARS.slice(0, k + 1));
       const out = graphicsPrims(r.map((o) => ({ graphics: o.graphics })), A, k - 99, k);
       const b0 = out.find((q) => q.key === "dbBox"), xs = b0.pts.map((q) => q.x), ys = b0.pts.map((q) => q.y);
@@ -362,7 +362,7 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
       eq(overlaps(out).length, 0, `overlapping text (${corner}):`);
       // the longest state the row can show with this setting, wherever it is not showing now, also fits
       for (const key of ["dbState0", "dbState1"]) {
-        const q = { ...out.find((z) => z.key === key), text: vwapSlope === "mark" ? "Potentially short (weak)" : "Potentially short" }, tb = textBox(q, WIDE(q));
+        const q = { ...out.find((z) => z.key === key), text: vwapSlope === "off" ? "Potentially short" : "Potentially short (weak)" }, tb = textBox(q, WIDE(q));
         if (tb.x < L || tb.x + tb.w > R) throw new Error(`"${q.text}" would leave the box (${corner}, bar counts ${showBars ? "on" : "off"}, vwapSlope ${vwapSlope})`);
       }
     }
@@ -474,6 +474,34 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
       }
     }
     if (weak < 20 || strong < 20) throw new Error(`too few cases: ${weak} weak, ${strong} other warnings`);
+  });
+  t("adaptive marks nothing for 60 sessions, then one weak side a session, and each row's text follows it", () => {
+    for (let k = 60; k < BARS.length; k += 37) {
+      const ad = boxAt(k, { vwapSlope: "adaptive" }), off = boxAt(k, { vwapSlope: "off" });
+      for (const key of ["dbState0", "dbState1"]) eq(ad[key].text, off[key].text, `nothing marked in the first sessions (${key} at ${k}):`);
+    }
+    const LONG = market(70 * 1380 + 600), st = [];
+    const run = new Run(box, { props: { vwapSlope: "adaptive" } }), map = run.calc.map.bind(run.calc);
+    run.calc.map = (d, i) => { const out = map(d, i), S = run.calc.st[i]; st[i] = S.ad ? { day: S.ad.curDay, mode: S.ad.mode, slope: S.slope, e: S.ema.warn, m: S.macd ? S.macd.warn : 0 } : null; return out; };
+    run.compute(LONG);
+    const days = [], modeOf = new Map();
+    for (const z of st) if (z && z.day >= 0) { if (!modeOf.has(z.day)) { modeOf.set(z.day, z.mode); days.push(z.day); } else eq(z.mode, modeOf.get(z.day), `one weak side all session (${z.day}):`); }
+    if (days.length < 65) throw new Error(`only ${days.length} sessions with warnings`);
+    days.forEach((dd, n) => { if (n < 60) eq(modeOf.get(dd), 0, `no weak side in session ${n + 1}:`); else if (![1, -1].includes(modeOf.get(dd))) throw new Error(`session ${n + 1} has no weak side`); });
+    // the text: a warning on the session's losing side of the slope reads "(weak)", the others read as off
+    let weak = 0, plain = 0;
+    for (let k = st.length - 1; k > st.length - 1200 && weak + plain < 60; k -= 7) {
+      const z = st[k];
+      if (!z || !z.slope || !modeOf.get(z.day)) continue;
+      const ad = new Run(box, { props: { vwapSlope: "adaptive" } }).compute(LONG.slice(0, k + 1))[k].graphics.items, txt = (key) => ad.find((it) => it.key === key).text;
+      for (const [key, w] of [["dbState0", z.e], ["dbState1", z.m]]) {
+        if (!w) continue;
+        const isWeak = w === -modeOf.get(z.day) * z.slope;
+        if (isWeak !== / \(weak\)$/.test(txt(key))) throw new Error(`${key} at ${k}: "${txt(key)}" with warn ${w}, slope ${z.slope}, mode ${modeOf.get(z.day)}`);
+        isWeak ? weak++ : plain++;
+      }
+    }
+    if (weak < 3 || plain < 3) throw new Error(`too few cases: ${weak} weak, ${plain} plain`);
   });
   t("the box always draws the same keys, so the platform replaces it", () => {
     const keys = (props) => Object.keys(boxAt(500, props)).sort().join(",");

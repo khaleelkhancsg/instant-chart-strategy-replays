@@ -26,7 +26,10 @@ const args = process.argv.slice(2), arg = (name, dflt) => { const i = args.index
 const CHECK = args.includes("--check"), PLACEBOS = CHECK ? 0 : Number(arg("--placebos", 100));
 const FILE = CHECK ? "data/mnq_1m_beta.bin" : arg("--file", "data/nq_1m.bin");
 const FROM = CHECK ? Date.UTC(2026, 0, 1) : Date.parse(arg("--from", "2010-06-07")), TO = CHECK ? Date.UTC(2026, 9, 31) : Date.parse(arg("--to", "2019-01-01"));
-const OPEN = args.includes("--entry-open");   // the race from the next bar's open (the bid-ask bounce check)
+const OPEN = args.includes("--entry-open");
+// --dump-modes FILE: each session's ADAPT mode on the real market (the Tradovate box's check); --r-adjusted: the race
+// sized from the chart's (back-adjusted) price, as the box sees it, for that check only
+const DUMP = arg("--dump-modes", ""), RADJ = args.includes("--r-adjusted"), MODES = {};   // the race from the next bar's open (the bid-ask bounce check)
 const H2 = CHECK ? Date.UTC(2026, 6, 1) : (FROM + TO) / 2, TAG = arg("--tag", "") + (OPEN ? "_open" : "");
 const WANT = CHECK ? ["F1", "F2"] : arg("--ideas", "F1|F2|B14|ADAPT").split("|");
 const MIN = 60000, FLAT = 15 * 60 + 5, FIRST = 8 * 60 + 30, LAST = 14 * 60 + 55, R18 = 0.00064, TRAIL = 60;
@@ -79,7 +82,7 @@ function measure(sample) {
     const closeCt = (CT[i] + 1) % 1440;
     if (closeCt < FIRST || closeCt > LAST || TD[i + 1] !== TD[i] || !(A5[i] > 0) || !(a1[i - 1] > 0)) continue;
     counted[i] = 1;
-    const P = OPEN ? b.open[i + 1] : C[i], R = R18 * (C[i] - off[i]);
+    const P = OPEN ? b.open[i + 1] : C[i], R = R18 * (RADJ ? C[i] : C[i] - off[i]);
     let up = 0, dn = 0;
     for (let j = i + 1; j < N && TD[j] === TD[i] && CT[j] < FLAT; j++) {
       const hu = H[j] - P >= R, hd = P - L[j] >= R;
@@ -130,6 +133,7 @@ function measure(sample) {
       let an = 0, aw = 0, wn = 0, ww = 0; for (const h of hist) { an += h.a[0]; aw += h.a[1]; wn += h.w[0]; ww += h.w[1]; }
       mode = an && wn ? (aw / an - ww / wn > 0 ? -1 : 1) : 0;   // -1: keep warnings against the slope; +1: with it
       if (mode) days++;
+      if (DUMP && sample === DUMP_SAMPLE) MODES[td] = mode;
     };
     for (let i = 31; i + 1 < N; i++) {
       if (!counted[i]) continue;
@@ -152,7 +156,10 @@ function measure(sample) {
 }
 
 const real = Lab.loadSample({ file: FILE, from: FROM, to: TO });
+let DUMP_SAMPLE = real;
 const R = measure(real);
+if (DUMP) { fs.writeFileSync(DUMP, JSON.stringify(MODES)); process.stderr.write(`  wrote ${Object.keys(MODES).length} sessions' modes to ${DUMP}
+`); }
 process.stderr.write(`  ${FILE} ${new Date(FROM).toISOString().slice(0, 10)} to ${new Date(TO).toISOString().slice(0, 10)}, real market: ${secs()}s\n`);
 const pt = (v) => (Number.isFinite(v) ? (v >= 0 ? "+" : "") + (100 * v).toFixed(1) : "—");
 if (CHECK) {

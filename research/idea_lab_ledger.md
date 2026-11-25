@@ -457,6 +457,9 @@ Pattern so far: the "toward balance" filters pass 2026 and 2025 Jan-Jun, then re
    - Instead the box builds the confirmed rule itself: on a 1-minute chart it also forms the 5-minute bars and runs
      its rows on them, so its warnings are ADAPT's base exactly (1m and 5m, MACD then EMA). Shipped only if it gives
      the research's weak side session by session (research/verify_adapt_box.mjs).
+     Result: the same weak side on 1,871 of 1,874 MNQ sessions 2019-2026; the 3 others were ties of 0.014 points or
+     less over 60 sessions. Shipped as vwapSlope "adaptive" (TradingCustomIndicators); test/mock.test.mjs checks no
+     marks for 60 sessions, one weak side a session, and the text following it (shown to fail with the side flipped).
 5. **A 5-minute warning is a continuation sign, not a turn.** The default 5m EMA and MACD warnings ("Potentially
    short" on the long side) call the wrong way: price keeps going the side's way more often than chance.
    - MNQ 2019-2025 EMA -1.4, MACD -1.1 (worse than 100 and 97 of 100 placebo markets); NQ 2010-2018 -1.7, -1.4
