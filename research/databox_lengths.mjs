@@ -31,6 +31,7 @@ import { placeboBars } from "./lib_levels.mjs";
 const args = process.argv.slice(2), opt = (name, dflt) => { const i = args.indexOf(name); return i >= 0 ? Number(args[i + 1]) : dflt; };
 const PLACEBOS = opt("--placebos", 100);
 const MIN = 60000, FLAT = 15 * 60 + 5, FIRST = 8 * 60 + 30, LAST = 14 * 60 + 55, R18 = 0.00064;
+const OPEN = args.includes("--entry-open");   // the race from the next bar's open (the bid-ask bounce check)
 const ES = args.includes("--es"), NQ = args.includes("--nq") || ES;   // confirm the frozen picks on NQ 2010-2018, or ES 2010-2026 (ledger, written before each run)
 const Y0 = NQ ? 2010 : 2019, NY = ES ? 17 : NQ ? 9 : 8, NS = ES ? 17 : 10, H2 = Date.UTC(2026, 6, 1);
 const EARLY = [0, 1, 2, 3, 4, 5, 6], LATE = [7];
@@ -127,7 +128,7 @@ function measure(b) {
     if (y < 0 || y >= NY) continue;
     if (new5 >= 0) at5[new5] = i;
     slotA[i] = y; if (y === NY - 1 && !NQ) slotB[i] = TS[i] < H2 ? 8 : 9;
-    const P = C[i], Rr = R18 * (P - off[i]);
+    const P = OPEN ? b.open[i + 1] : C[i], Rr = R18 * (C[i] - off[i]);
     let u = 0, d = 0;
     for (let j = i + 1; j < N && TD[j] === TD[i] && CT[j] < FLAT; j++) {
       const up = H[j] - P >= Rr, dn = P - L[j] >= Rr;
@@ -201,7 +202,7 @@ if (NQ) {   // the 8 cells' picks, frozen from the MNQ run, against the defaults
 `);
   }
   const pt = (x) => (Number.isFinite(x) ? (x >= 0 ? "+" : "") + (100 * x).toFixed(1) : "—"), high = (vals, v) => vals.filter((z) => Number.isFinite(z) && z >= v).length;
-  console.log(`databox lengths on ${ES ? "ES 2010-2026" : "NQ 2010-2018"} (unseen): the MNQ picks against the defaults, ${PLACEBOS} placebo markets; ${secs()}s`);
+  console.log(`databox lengths on ${ES ? "ES 2010-2026" : "NQ 2010-2018"}${OPEN ? ", races from the next bar's open" : ""} (unseen): the MNQ picks against the defaults, ${PLACEBOS} placebo markets; ${secs()}s`);
   console.log(`${"cell".padEnd(16)}${"pick".padEnd(24)}${"n".padStart(8)}${"pick".padStart(7)}${"hi".padStart(4)}${"default".padStart(9)}${"hi".padStart(4)}${"gain".padStart(7)}${"hi".padStart(4)}${(ES ? "10-17" : "10-14").padStart(7)}${(ES ? "18-26" : "15-18").padStart(7)}`);
   const out = R0.map((z, c) => {
     const gain = z.pick.edge - z.def.edge, hg = high(P.map((q) => q[c].gain), gain), hp = high(P.map((q) => q[c].pick), z.pick.edge), hd = high(P.map((q) => q[c].def), z.def.edge);
@@ -209,8 +210,8 @@ if (NQ) {   // the 8 cells' picks, frozen from the MNQ run, against the defaults
     console.log(`${CELLS[c].padEnd(16)}${V[c].pickName.padEnd(24)}${String(z.pick.n).padStart(8)}${pt(z.pick.edge).padStart(7)}${String(hp).padStart(4)}${pt(z.def.edge).padStart(9)}${String(hd).padStart(4)}${pt(gain).padStart(7)}${String(hg).padStart(4)}${pt(ga).padStart(7)}${pt(gb).padStart(7)}  ${v}`);
     return { cell: CELLS[c], pick: V[c].pickName, pickEdge: z.pick, defEdge: z.def, gain, gainHi: hg, pickHi: hp, defHi: hd, gain1014: ga, gain1518: gb, verdict: v };
   });
-  fs.writeFileSync(ES ? "research/databox_lengths_es_results.json" : "research/databox_lengths_nq_results.json", JSON.stringify({ run: new Date().toISOString(), placebos: PLACEBOS, cells: out, placebo: P }, null, 1));
-  console.log(`wrote research/databox_lengths_${ES ? "es" : "nq"}_results.json`);
+  fs.writeFileSync(`research/databox_lengths_${ES ? "es" : "nq"}${OPEN ? "_open" : ""}_results.json`, JSON.stringify({ run: new Date().toISOString(), placebos: PLACEBOS, cells: out, placebo: P }, null, 1));
+  console.log(`wrote research/databox_lengths_${ES ? "es" : "nq"}${OPEN ? "_open" : ""}_results.json`);
   process.exit(0);
 }
 process.stderr.write(`  real market: ${secs()}s\n`);

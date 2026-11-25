@@ -23,7 +23,8 @@ import { placeboBars } from "./lib_levels.mjs";
 
 const args = process.argv.slice(2), arg = (name, dflt) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : dflt; };
 const FILE = arg("--file", "data/mnq_1m_beta.bin"), FROM = Date.parse(arg("--from", "2019-05-06")), TO = Date.parse(arg("--to", "2026-10-31"));
-const PLACEBOS = Number(arg("--placebos", 100)), TAG = arg("--tag", ""), MID = Date.parse(arg("--mid", "")) || (FROM + TO) / 2;
+const OPEN = args.includes("--entry-open");   // the race from the next bar's open (the bid-ask bounce check)
+const PLACEBOS = Number(arg("--placebos", 100)), TAG = arg("--tag", "") + (args.includes("--entry-open") ? "_open" : ""), MID = Date.parse(arg("--mid", "")) || (FROM + TO) / 2;
 const MIN = 60000, R18 = 0.00064, HORIZON = 60, E0 = 18 * 60, E1 = 7 * 60 + 30, STOP = 8 * 60 + 25;
 const Y0 = new Date(FROM).getUTCFullYear(), NY = new Date(TO - 1).getUTCFullYear() - Y0 + 1;
 const t0 = Date.now(), secs = () => ((Date.now() - t0) / 1000).toFixed(0);
@@ -86,7 +87,7 @@ function measure(b) {
     if (new5 >= 0) at5[new5] = i;
     const y = new Date(TS[i]).getUTCFullYear() - Y0;
     slot[i] = y * 2 + (TS[i] < MID ? 0 : 1);
-    const P = C[i], R = R18 * (P - off[i]);
+    const P = OPEN ? b.open[i + 1] : C[i], R = R18 * (C[i] - off[i]);
     let u = 0, d = 0;
     for (let j = i + 1; j < N && j <= i + HORIZON && TD[j] === TD[i]; j++) {
       const cj = (CT[j] + 1) % 1440;
@@ -135,7 +136,7 @@ for (let p = 0; p < PLACEBOS; p++) {
 }
 const pt = (v) => (Number.isFinite(v) ? (v >= 0 ? "+" : "") + (100 * v).toFixed(1) : "—");
 const beat = (vals, v) => (v >= 0 ? vals.filter((z) => z < v).length : vals.filter((z) => z > v).length);   // placebo markets beaten, in the reading's own direction
-console.log(`databox overnight (18:00-07:30 CT, 60-minute race): ${FILE} ${new Date(FROM).toISOString().slice(0, 10)} to ${new Date(TO).toISOString().slice(0, 10)}, halves split ${new Date(MID).toISOString().slice(0, 10)}, ${PLACEBOS} placebo markets; ${secs()}s`);
+console.log(`databox overnight (18:00-07:30 CT, 60-minute race${OPEN ? ", from the next bar's open" : ""}): ${FILE} ${new Date(FROM).toISOString().slice(0, 10)} to ${new Date(TO).toISOString().slice(0, 10)}, halves split ${new Date(MID).toISOString().slice(0, 10)}, ${PLACEBOS} placebo markets; ${secs()}s`);
 const out = READ.map((R, r) => {
   const a = edgeOf(real, r, -1), h1 = edgeOf(real, r, 0), h2 = edgeOf(real, r, 1);
   const b0 = beat(pl.map((p) => p[r][0]), a.edge), b1 = beat(pl.map((p) => p[r][1]), h1.edge), b2 = beat(pl.map((p) => p[r][2]), h2.edge);
