@@ -11,6 +11,21 @@ Only CONFIRMED counts toward the five.
 Already known before the loop (not counted): the reverse-check short lead (databox_room.mjs), the
 VWAP break lean (turn_context.mjs), the MACD row's own slight lean.
 
+## Box settings tuned over every entry and exit (research/databox_tune.mjs, started 2026-11-25)
+
+The person's question: build on the room study's billions of trades; change the EMA and MACD lengths, some
+rows faster (noisier) and others slower; which entry and exit combinations add edge, which to ignore.
+Written before the run (the script's header has it in full): 16 settings (EMA 5/13, 9/21, 12/26, 20/50 x
+MACD 6/13/5, 12/26/9, 24/52/18 on both timeframes, plus fast-1m/slow-5m, slow-1m/fast-5m, fast-1m/default-
+5m, default-1m/slow-5m); the room study's 179,712 strategies each (2.9 million in all); picked as one
+search, against 100 placebo markets each running the same search; readings all, room, inside, reverse,
+persist, and new "avoid" (the 10 worst on 2019-2025 read on 2026). A pass is a pooled all / room / inside
+pick beating 95 of 100. Per-setting cells are leads (about 10 of 96 beat 90 of 100 by chance).
+Check before the run: at the default setting alone it reproduced databox_room.mjs to ten decimals on the
+real market and on placebo markets 0 and 1.
+
+Results: pending (4 shards, 2 at a time, about 3 hours).
+
 ## Forward test of the two confirmed findings (written 2026-11-24, before any forward bar is read)
 
 Built into the Tradovate databox the same day (TradingCustomIndicators/tradovate/emaMacdDatabox.js,
