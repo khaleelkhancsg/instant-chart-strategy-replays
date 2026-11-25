@@ -664,6 +664,9 @@ is the study, on `data/topstepx_raw_1m.bin` for the forward bars (`lib_pct.mjs` 
     way; worse in 13 of 17 years, better only 2025-2026), so `vwapSlope` is off by default since 2026-11-25.
     `vwapSlope: "adaptive"` carries confirmed #4 instead (the side that lost over 60 sessions is weak; the box
     forms 5m bars itself on a 1m chart); research/verify_adapt_box.mjs: same weak side on 1,871 of 1,874 sessions.
+    Since 2026-11-25 `adaptive` is the default (1m charts; elsewhere it reads as off), and a third row "Fast EMA 3/13"
+    (`fastRow` auto = 1m charts) shows #3's slowing warning only; research/verify_fast_row.mjs: identical on all
+    2,641,986 MNQ bars. The 12/26 rows are unchanged.
   - Confirmed #3 (2026-11-25): on 1-minute bars the EMA row at 3/13 with the "slowing" warning beats the
     default (NQ 2010-2018 +1.2, 0 of 100; better in 14 of 17 years). A setting, documented in the
     indicator README; defaults unchanged.

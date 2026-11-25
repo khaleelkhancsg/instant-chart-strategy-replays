@@ -461,7 +461,7 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
       eq(boxAt(k, {}).dbState0.text, off.dbState0.text, `the tests' helper reads off at ${k}:`);
       const dflt = Object.fromEntries(new Run(box, { props: {} }).compute(BARS.slice(0, k + 1))[k].graphics.items.map((it) => [it.key, it]));
       for (const key of ["dbState0", "dbState1"]) {
-        eq(dflt[key].text, off[key].text, `off is the default (${key} at ${k}):`);
+        eq(dflt[key].text, off[key].text, `the default (adaptive) reads as off in the first 60 sessions (${key} at ${k}):`);
         const c = call(off[key].text), s = slope(k);
         if (c && s && c === s) {
           eq(mark[key].text, `${off[key].text} (weak)`, `${key} marked at ${k}:`); eq(mark[key].style.fill, "#898781", `${key} grey at ${k}:`);
@@ -503,12 +503,42 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
     }
     if (weak < 3 || plain < 3) throw new Error(`too few cases: ${weak} weak, ${plain} plain`);
   });
+  t("adaptive is the default VWAP-slope setting, and the fast row is on for 1-minute charts", () => {
+    eq(defaultProps(box).vwapSlope, "adaptive"); eq(defaultProps(box).fastRow, "auto");
+    eq(defaultProps(box).fastEmaFast, 3); eq(defaultProps(box).fastEmaSlow, 13);
+  });
+  t("the fast row (EMA 3/13) shows only its 'momentum slowing' warning, from Tradovate's EMA", () => {
+    const raw3 = loadIndicator(`const EMA = require("./tools/EMA"); class c { init() { this.f = EMA(3); this.s = EMA(13); }
+      map(d) { return { f: this.f(d.value()), s: this.s(d.value()) }; } } module.exports = { name: "x", calculator: c };`, tools);
+    const F = new Run(raw3).compute(BARS), hFast = (i) => (i < 0 ? undefined : F[i].f - F[i].s);
+    let warned = 0, quiet = 0;
+    for (let k = 2; k < 3000; k += 7) {
+      const b = boxAt(k, {}), e = expected(hFast, k, k >= 13, "slowing");
+      const want = e.text === "Warming up" ? "Warming up" : e.text.startsWith("Potentially") ? e.text : "No warning";
+      eq(b.dbState2.text, want, `fast row at bar ${k}:`);
+      eq(b.dbLabel2.text, "Fast EMA 3/13"); eq(b.dbBars2.text, "", `no count on the fast row (${k}):`);
+      want.startsWith("Potentially") ? warned++ : quiet++;
+    }
+    if (warned < 50 || quiet < 50) throw new Error(`too few cases: ${warned} warnings, ${quiet} quiet`);
+  });
+  t("the fast row: auto shows it on 1-minute bars only, on / off force it, and the box shrinks without it", () => {
+    const five = BARS.map((b, i) => ({ ...b, ts: BARS[0].ts + i * 300000 }));
+    const at = (bars, props, k = 500) => Object.fromEntries(new Run(box, { props: { vwapSlope: "off", ...props } }).compute(bars.slice(0, k + 1))[k].graphics.items.map((it) => [it.key, it]));
+    const h = (b) => { const ys = b.dbBox.primitives[0].points.map((q) => q.y.value); return Math.max(...ys) - Math.min(...ys); };
+    eq(at(BARS, {}).dbLabel2.text, "Fast EMA 3/13");
+    eq(at(five, {}).dbLabel2.text, "", "auto on 5-minute bars:"); eq(at(five, {}).dbState2.text, "");
+    eq(at(five, { fastRow: "on" }).dbLabel2.text, "Fast EMA 3/13", "on, on 5-minute bars:");
+    eq(at(BARS, { fastRow: "off" }).dbState2.text, "", "off on 1-minute bars:");
+    if (!(h(at(BARS, { fastRow: "off" })) < h(at(BARS, {})))) throw new Error("the box did not shrink without the fast row");
+    eq(h(at(five, {})), h(at(BARS, { fastRow: "off" })), "a hidden row takes no room:");
+  });
   t("the box always draws the same keys, so the platform replaces it", () => {
     const keys = (props) => Object.keys(boxAt(500, props)).sort().join(",");
     eq(keys({ showBars: false }), keys({}));
     for (const corner of ["topRight", "bottomLeft", "bottomRight"]) eq(keys({ corner }), keys({}));
     eq(keys({ updates: "close" }), keys({}));
-    eq(keys({}), "dbBars0,dbBars1,dbBox,dbEdge,dbHead,dbLabel0,dbLabel1,dbState0,dbState1");
+    eq(keys({ fastRow: "off" }), keys({}));
+    eq(keys({}), "dbBars0,dbBars1,dbBars2,dbBox,dbEdge,dbHead,dbLabel0,dbLabel1,dbLabel2,dbState0,dbState1,dbState2");
   });
 }
 
