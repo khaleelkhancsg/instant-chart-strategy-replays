@@ -100,6 +100,20 @@ less default edge, 2010-2018) is positive and beats 95 of 100 placebo markets. 8
 false confirmations expected. The 2010-2014 and 2015-2018 halves are described. A confirmed 1m warning
 setting would be a new default for the indicator, counted as one of the five.
 
+Results (2026-11-25, 2,010 s, research/databox_lengths_nq_results.json): 3 of 8 cells CONFIRMED better than the
+default (about 0.4 expected by chance).
+  1m EMA warning 3/13 slowing: gain +1.2 (0 of 100 as high); the pick +0.3 (2 as high), the default -0.9
+    (100 as high: worse than every placebo market); halves +1.6 / +0.7. COUNTED: confirmed #3.
+  5m EMA warning 12/13 slowing: gain +0.8 (0); but the pick is still -0.9 (100 as high) against the default's
+    -1.7. 5m MACD warning 19/39/3: gain +0.5 (4); the pick -1.0 against -1.4. Confirmed by the rule, not
+    counted: both are less wrong, not right (5m warnings call the wrong way on NQ 2010-2018 at any length).
+  Not confirmed: 1m EMA flip (-0.2, 59), 1m MACD flip (-0.2, 95), 1m MACD warning 5/13/9 (+0.0, 38), 5m EMA
+    flip (+0.1, 44), 5m MACD flip (+0.7, 12).
+Checked for dilution (a reading firing more often drifts toward 0 and beats a negative default without
+foresight): the 3/13 slowing warning is positive on its own in all three periods, each beating 98+ of 100
+placebo markets (MNQ 2019-2025 +0.7, 2026 +1.3, NQ 2010-2018 +0.3). Its MNQ neighbours (5/13 slowing, 3/13
+shrink, 3/21 slowing) are as good: not a knife-edge.
+
 ## In-between timeframes (research/databox_mid.mjs, written 2026-11-25)
 
 The person's question: do 2m, 3m and 4m rows add confluence and edge to the box's 1m and 5m readings?
@@ -244,7 +258,7 @@ About 220 ideas tried (batches 1-27 screened). Runs stopped part-way, to restart
 4. Batch 30 (VIX curve, VXN premium, range broken, 5m inside bar, 15m warning): screen `--batch 30`.
 Pattern so far: the "toward balance" filters pass 2026 and 2025 Jan-Jun, then reverse in 2025 Jul-Dec.
 
-## Confirmed (count: 2 of 5; #2 extends #1)
+## Confirmed (count: 3 of 5; #2 extends #1)
 
 1. **1m EMA Potentially warnings that agree with VWAP's slope are weaker: skip them.**
    - Source: vwap_nodes_confluence.mjs, "1m EMA Pot. / VWAP slope agrees". The warning's call is the
@@ -260,6 +274,16 @@ Pattern so far: the "toward balance" filters pass 2026 and 2025 Jan-Jun, then re
      halves beat 100 and 93 of 100).
    - 2025, unchanged: +2.2 (beats 97 of 100; Jan-Jun +4.4, Jul-Dec +0.1, flat).
    - Same mechanism as #1, now across every row: an extension, not an independent discovery.
+3. **The 1m EMA row warns better at EMA 3/13 with the "Momentum slowing" rule than at the default 12/26 "speed".**
+   - Source: databox_lengths.mjs (2026-11-25), the 1m EMA warning cell's pick on 2019-2025 among 153 lengths
+     and rules; the cell-level verdict there did not pass (9 of 100), the pick was a lead.
+   - MNQ 2019-2025 +0.7 points over every minute (0 of 100 placebo markets as high); 2026 +1.3 (0), halves +1.3
+     / +1.4; the default +0.4 and +0.8.
+   - NQ 2010-2018, unseen, frozen: +1.2 over the default (0 of 100 as high), halves +1.6 / +0.7; the default is
+     -0.9 there.
+   - Use: on the 1m chart's box, Fast EMA 3, Slow EMA 13, EMA warning "Momentum slowing". No code change: these
+     are the indicator's own settings. #1 / #2 (the VWAP-slope marks) were measured on the default warning and
+     are untested on this one.
 
 ## Named for confirmation on 2025 (written before the 2025 runs)
 
