@@ -64,6 +64,13 @@ research/light_check.mjs: idea_lab's own definitions (checked equal: F1, F2 to b
 3. #3 on ES 2010-2026 (databox_lengths.mjs --es): the 1m EMA 3/13 slowing pick against the default; holds =
    gain and its own edge each positive and beating 90 of 100 (the other 7 cells' picks are shown beside it).
 4. F1 / F2 on ES 2010-2026: description (does ES show the same regime turn?).
+5. NOVEL, written while run 3 was going and before its output existed: a 5m warning as a CONTINUATION call.
+   The default 5m warnings called the wrong way on MNQ 2019-2025 (EMA -1.4, MACD -1.1; worse than 100 and 97
+   of 100 placebo markets) and on NQ 2010-2018 (EMA -1.7, MACD -1.4; worse than all 100), so price tends to
+   keep going the side's way. Seen on both, so ES decides: CONFIRMED when the default 5m EMA (and, separately,
+   5m MACD) warning's edge on ES 2010-2026 is negative beyond 90 of 100 placebo markets (read from run 3's
+   "default" column: placebo markets as high of 90 or more). 2026 MNQ went the other way (EMA +0.4, MACD
+   -0.3), so a pass is a long-run tendency, not this year's.
 
 ## New unseen data: NQ 2010-2018 (found 2026-11-25)
 
