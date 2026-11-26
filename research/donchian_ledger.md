@@ -37,10 +37,26 @@ Results (168 s): nothing confirmed. lift (placebo markets beaten) pooled 2025-26
 range, the gap its way, beyond the overnight extreme, a trend day (half an ADR from the open), the 5m EMA row not
 warning toward the trade (#5), volatility expanding
 
-Results: pending.
+Results (189 s): nothing confirmed.
+- a wide signal bar: +0.413 (96), 2025 +0.646, 2026 +0.056, keeps 75%: SCREEN PASS; 2019-24 -0.116 (12), forward
+  -0.106 (36): not confirmed.
+- the gap its way +0.179 (80) and beyond the overnight extreme +0.149 (67) fail the screen, though 2019-24 is strong
+  (+0.229 at 98, +0.234 at 97); both are negative forward (6, 7).
+- no losing trade earlier today -0.454 (11): refusing after a loser refuses better trades. Beyond the opening range
+  -0.011 (50), trend day +0.137 (63; keeps 37%), the 5m EMA row not toward it +1.272 (82; keeps 99%, 2026 no refusals),
+  volatility expanding -0.140 (19).
 
 ## Batch 3 (written before it ran): with the 20-session average, yesterday closed strong its way, at a new session
 extreme, through a round 100, the first or last two hours, the day already 1 ADR wide, on the trade's side of the
 RTH open, VXN at 25 or above
 
-Results: pending.
+Results (191 s): nothing confirmed.
+- through a round 100: +0.364 (91), both years positive, keeps 61%: SCREEN PASS; 2019-24 +0.030 (33): not confirmed
+  (forward +1.101 at 98).
+- VXN at 25 or above: +0.336 (91), both years positive, but keeps 25%; 2019-24 +0.235 (96), forward +0.215 (69). With
+  batch 1's VXN-above-median (screen 98, 2019-24 87, forward 92) the VXN family is the loop's most consistent lead.
+- yesterday closed strong its way +0.399 (98) but keeps 23% and is -1.336 forward; at a new session extreme +0.238
+  (80); price on the trade's side of the RTH open +0.797 (83; keeps 97%); with the 20-session average -0.100 (29; 2019-24
+  90); the first / last two hours -0.116 (31); the day already 1 ADR wide -0.026 (41).
+
+Trial count after batch 3: 25.
