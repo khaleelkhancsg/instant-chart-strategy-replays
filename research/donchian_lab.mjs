@@ -28,7 +28,8 @@ import fs from "node:fs";
 import { loadBars } from "../src/data.mjs";
 import { runStrategy } from "../src/run.mjs";
 import { resample } from "../src/resample.mjs";
-import { atr } from "../src/indicators.mjs";
+import { atr, rsi } from "../src/indicators.mjs";
+import { RED_FOLDER } from "../src/news_calendar.mjs";
 import { configOf } from "./lib_eval1250.mjs";
 import { placeboBars, studyLines } from "./lib_levels.mjs";
 
@@ -43,6 +44,14 @@ const t0 = Date.now(), secs = () => ((Date.now() - t0) / 1000).toFixed(0);
 // ── outside data: the VXN close dated before each session ──
 const VXN = (() => { const m = new Map(); for (const line of fs.readFileSync("data/raw/fred/VXNCLS.csv", "utf8").split(/\r?\n/).slice(1)) { const [d, v] = line.split(","); if (d && v && v !== ".") m.set(d, Number(v)); } return m; })();
 const vxnBefore = (() => { const keys = [...VXN.keys()].sort(); return (ms) => { const day = new Date(ms).toISOString().slice(0, 10); let lo = 0, hi = keys.length - 1, best = -1; while (lo <= hi) { const mid = (lo + hi) >> 1; if (keys[mid] < day) { best = mid; lo = mid + 1; } else hi = mid - 1; } return best >= 0 ? VXN.get(keys[best]) : NaN; }; })();
+
+// ── calendars: options-expiry Fridays, mega-cap earnings sessions, red-folder release times ──
+const EXPIRY = new Set(fs.readFileSync("data/raw/events/index_days.csv", "utf8").split(/\r?\n/).slice(1).map((l) => l.split(",")[0]).filter(Boolean));
+const EARN = new Set(fs.readFileSync("data/raw/events/earnings.csv", "utf8").split(/\r?\n/).slice(1).map((l) => l.split(",")[2]).filter(Boolean));
+const NEWS = RED_FOLDER.map((r) => r[0]);
+const dateOf = (td) => new Date(td * DAY).toISOString().slice(0, 10);
+const newsWithin = (ms, before, after) => { let lo = 0, hi = NEWS.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (NEWS[m] < ms - before) lo = m + 1; else hi = m; } return NEWS[lo] >= ms - before && NEWS[lo] <= ms + after; };
+const newsDays = new Set(NEWS.map((ms) => new Date(ms).toISOString().slice(0, 10)));
 
 // ── the box's readings (the indicator's arithmetic, as databox_lengths.mjs) ──
 function emaSeries(x, n) { const N = x.length, v = new Float64Array(N); let c = 0, t = 0, p = NaN; for (let i = 0; i < N; i++) { if (c < n) { c++; t += x[i]; p = t / c; } else { c++; p = p + (2 / (n + 1)) * (x[i] - p); } v[i] = p; } return v; }
@@ -72,12 +81,14 @@ function context(b) {
   // the session's RTH open, high and low so far; the prior RTH day's high, low, close; the overnight high and low;
   // the 10-session average RTH range; cumulative RTH volume against the last 10 sessions' at the same minute
   const F = (n) => new Float64Array(n).fill(NaN);
-  Object.assign(x, { rOpen: F(N), dHi: F(N), dLo: F(N), pdH: F(N), pdL: F(N), pdC: F(N), onH: F(N), onL: F(N), adr: F(N), relVol: F(N), vxn: F(N), wd: new Int8Array(N), orH: F(N), orL: F(N), sma20: F(N) });
+  Object.assign(x, { rOpen: F(N), dHi: F(N), dLo: F(N), pdH: F(N), pdL: F(N), pdC: F(N), onH: F(N), onL: F(N), adr: F(N), relVol: F(N), vxn: F(N), wd: new Int8Array(N), orH: F(N), orL: F(N), sma20: F(N), c5: F(N), h5: F(N), l5: F(N), pInside: new Int8Array(N), pNR7: new Int8Array(N) });
+  x.rsi = rsi(C, 14);
+  let days = [];   // finished RTH sessions: { h, l, c }
   let orH = -Infinity, orL = Infinity, closes = [];
   let lastRthClose = NaN, td = -1, rOpen = NaN, hi = -Infinity, lo = Infinity, onH = -Infinity, onL = Infinity, last = null, cum = 0, cumArr = [], ranges = [], volHist = [];
   for (let i = 0; i < N; i++) {
     if (TD[i] !== td) {
-      if (td >= 0 && hi > lo) { last = { h: hi, l: lo, c: lastRthClose }; ranges.push(hi - lo); if (ranges.length > 10) ranges.shift(); volHist.push(cumArr); if (volHist.length > 10) volHist.shift(); closes.push(lastRthClose); if (closes.length > 20) closes.shift(); }
+      if (td >= 0 && hi > lo) { last = { h: hi, l: lo, c: lastRthClose }; ranges.push(hi - lo); if (ranges.length > 10) ranges.shift(); volHist.push(cumArr); if (volHist.length > 10) volHist.shift(); closes.push(lastRthClose); if (closes.length > 20) closes.shift(); days.push({ h: hi, l: lo, c: lastRthClose }); if (days.length > 7) days.shift(); }
       td = TD[i]; rOpen = NaN; hi = -Infinity; lo = Infinity; onH = -Infinity; onL = Infinity; cum = 0; cumArr = []; orH = -Infinity; orL = Infinity;
     }
     const ct = CT[i], rth = ct >= 510 && ct < 900;
@@ -89,6 +100,12 @@ function context(b) {
     if (ranges.length === 10) x.adr[i] = ranges.reduce((a, z) => a + z, 0) / 10;
     if (ct >= 540 && orH > orL) { x.orH[i] = orH; x.orL[i] = orL; }   // the opening 30 minutes, known from 09:00
     if (closes.length === 20) x.sma20[i] = closes.reduce((a, z) => a + z, 0) / 20;
+    if (days.length === 7) {
+      const L5 = days.slice(-5), y = days[6], yy = days[5];
+      x.c5[i] = days[1].c; x.h5[i] = Math.max(...L5.map((d) => d.h)); x.l5[i] = Math.min(...L5.map((d) => d.l));
+      x.pInside[i] = y.h <= yy.h && y.l >= yy.l ? 1 : 0;
+      x.pNR7[i] = days.every((d) => d === y || y.h - y.l < d.h - d.l) ? 1 : 0;
+    }
     if (rth && volHist.length === 10) { let s = 0, n = 0; for (const h of volHist) { const v = h[ct - 510]; if (v > 0) { s += v; n++; } } if (n >= 5) x.relVol[i] = cum / (s / n); }
     x.wd[i] = new Date(TS[i]).getUTCDay();
   }
@@ -128,6 +145,26 @@ const BATCHES = {
     { name: "the day's range already 1 ADR or more", why: "a wide day is a trending day; its breakouts continue (the late-size rule assumes the opposite)", keep: (x, j) => Number.isFinite(x.adr[j]) && x.dHi[j] - x.dLo[j] >= x.adr[j] },
     { name: "price on the trade's side of the RTH open", why: "the day's open is its reference; a breakout on the winning side has the day's flow with it", keep: (x, j, t) => t.dir * (x.C[j] - x.rOpen[j]) > 0 },
     { name: "VXN at 25 or above", why: "in calm markets dealers are long gamma and pin; breakouts fail. Above 25 they run", keep: (x, j) => x.vxnNow[j] >= 25 },
+  ],
+  4: [
+    { name: "the last hour moved its way by 2 five-minute ATRs", why: "momentum: an hour of one-way flow is an order being worked; the breakout is its next leg", keep: (x, j, t) => t.dir * (x.C[j] - x.C[j - 60]) >= 2 * x.A5[j] },
+    { name: "the last 5 sessions closed up (long) / down (short)", why: "the week's trend's holders buy (sell) intraday breakouts its way", keep: (x, j, t) => Number.isFinite(x.c5[j]) && t.dir * (x.pdC[j] - x.c5[j]) > 0 },
+    { name: "yesterday was an inside day", why: "compression before expansion: a day inside the one before leaves orders stacked at both edges", keep: (x, j) => x.pInside[j] === 1 },
+    { name: "yesterday was the narrowest of 7 (NR7)", why: "the classic volatility-contraction setup: the narrowest day is followed by a range day", keep: (x, j) => x.pNR7[j] === 1 },
+    { name: "beyond the last 5 sessions' high (long) / low (short)", why: "a break of the week's range triggers the week's stops and swing traders' entries", keep: (x, j, t) => Number.isFinite(x.h5[j]) && (t.dir === 1 ? x.C[j] > x.h5[j] : x.C[j] < x.l5[j]) },
+    { name: "the signal bar closes in its top (long) / bottom (short) fifth", why: "conviction: buyers held the high into the close; a breakout bar that closes off its high is already being sold", keep: (x, j, t) => { const h = Math.max(x.H[j], x.H[j - 1]), l = Math.min(x.L[j], x.L[j - 1]), r = h - l; if (!(r > 0)) return false; const pos = (x.C[j] - l) / r; return t.dir === 1 ? pos >= 0.8 : pos <= 0.2; } },
+    { name: "1m RSI not stretched (below 75 long / above 25 short)", why: "a breakout already overbought is the late buyers; the next push has no one left", keep: (x, j, t) => (t.dir === 1 ? x.rsi[j] < 75 : x.rsi[j] > 25) },
+    { name: "the day's first breakout its way", why: "the first break of the day takes the overnight orders; later ones are repeats into a known level", keep: (x, j, t) => !t.before.some((z) => z.dir === t.dir) },
+  ],
+  5: [
+    { name: "no red-folder release in the last 30 minutes", why: "after CPI / NFP / FOMC the first moves are repricing whipsaws, not trends", keep: (x, j) => !newsWithin(x.TS[j], 30 * MIN, 0) },
+    { name: "not a red-folder release day", why: "release days are driven by one number; breakouts before it are positioning that gets unwound", keep: (x, j) => !newsDays.has(dateOf(x.TD[j])) },
+    { name: "not a Monday", why: "Mondays open on the weekend's news and drift; breakouts lack follow-through", keep: (x, j) => x.wd[j] !== 1 },
+    { name: "not a Friday", why: "Friday afternoons are squared for the weekend; breakouts are unwound", keep: (x, j) => x.wd[j] !== 5 },
+    { name: "not an options-expiry Friday", why: "expiry pins price near big strikes; breakouts fail", keep: (x, j) => !EXPIRY.has(dateOf(x.TD[j])) },
+    { name: "not the last two sessions of the month", why: "month-end rebalancing flows run against the month's trend and whipsaw intraday", keep: (x, j) => { const d = new Date(x.TD[j] * DAY), m = d.getUTCMonth(); let n = 0; for (let k = 1; k <= 4; k++) { const e = new Date(d.getTime() + k * DAY); if (e.getUTCMonth() !== m) break; if (e.getUTCDay() % 6 !== 0) n++; } return n >= 2; } },
+    { name: "not the session before mega-cap earnings", why: "before a big report traders wait and dealers pin the index; breakouts fail", keep: (x, j) => { const d = new Date(x.TD[j] * DAY); for (let k = 1; k <= 3; k++) { const e = new Date(d.getTime() + k * DAY); if (e.getUTCDay() % 6 === 0) continue; return !EARN.has(e.toISOString().slice(0, 10)); } return true; } },
+    { name: "a mega-cap earnings session", why: "a big report moves the index on news; breakouts that day are information, and they run", keep: (x, j) => EARN.has(dateOf(x.TD[j])) },
   ],
 };
 

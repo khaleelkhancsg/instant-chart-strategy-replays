@@ -60,3 +60,15 @@ Results (191 s): nothing confirmed.
   90); the first / last two hours -0.116 (31); the day already 1 ADR wide -0.026 (41).
 
 Trial count after batch 3: 25.
+
+## Batch 4 (written before it ran): momentum and compression. The last hour moved its way by 2 five-minute ATRs, the
+last 5 sessions its way, yesterday an inside day, yesterday NR7, beyond the 5-session high / low, the signal bar closing
+in its top / bottom fifth, 1m RSI not stretched, the day's first breakout its way
+
+Results: pending.
+
+## Batch 5 (written before it ran): calendar and events. No red-folder release in the last 30 minutes, not a release
+day, not Monday, not Friday, not an options-expiry Friday, not the month's last two sessions, not the session before
+mega-cap earnings, a mega-cap earnings session
+
+Results: pending.
