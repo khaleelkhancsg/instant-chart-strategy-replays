@@ -97,8 +97,14 @@ console.log(`${"period".padEnd(30)}${"wins".padStart(5)}${"real".padStart(7)}${"
 PERIODS.forEach((p, k) => {
   const r = R[k], tw = q(twin, (z) => z[k].pass), pl = q(plac, (z) => z[k].pass), twp = q(twin, (z) => z[k].per), twn = q(twin, (z) => z[k].n), pln = q(plac, (z) => z[k].n);
   const legit = r.pass > tw.max && r.pass > pl.max && r.per > 0;
-  console.log(`${p.label.padEnd(30)}${String(r.windows).padStart(5)}${f1(r.pass).padStart(7)}${`${f1(tw.med)}/${f1(tw.max)}`.padStart(14)}${`${f1(pl.med)}/${f1(pl.max)}`.padStart(17)}  ${String(r.n).padStart(6)}${money(r.net).padStart(9)}${f1(r.pf).padStart(6)}${money(r.per).padStart(7)}${money(twp.med).padStart(10)}${`${twn.med}/${pln.med}`.padStart(12)}${f1(r.range).padStart(11)}${p.judged ? (legit ? "  BEATS LUCK" : "  does not beat luck") : ""}`);
+  const bt = twin.filter((z) => z[k].pass < r.pass).length, bp = plac.filter((z) => z[k].pass < r.pass).length;
+  console.log(`${p.label.padEnd(30)}${String(r.windows).padStart(5)}${f1(r.pass).padStart(7)}${`${f1(tw.med)}/${f1(tw.max)}`.padStart(14)}${`${f1(pl.med)}/${f1(pl.max)}`.padStart(17)}  ${String(r.n).padStart(6)}${money(r.net).padStart(9)}${f1(r.pf).padStart(6)}${money(r.per).padStart(7)}${money(twp.med).padStart(10)}${`${twn.med}/${pln.med}`.padStart(12)}${f1(r.range).padStart(11)}  beats ${bt}/${bp} of ${SEEDS}${p.judged ? (legit ? "  BEATS LUCK" : "  does not beat luck") : ""}`);
 });
+// added after the first full run (a lead, not the verdict): the four judged periods pooled, each seed paired across them
+const J = PERIODS.map((p, k) => (p.judged ? k : -1)).filter((k) => k >= 0), avg = (row) => J.reduce((a, k) => a + row[k].pass, 0) / J.length;
+const ra = avg(R), tws = twin.map(avg), pls = plac.map(avg);
+console.log(`
+pooled over the four out-of-sample periods (added after the first run): real ${f1(ra)}%; beats ${tws.filter((z) => z < ra).length} of ${SEEDS} twins (median ${f1(q(twin, avg).med)}%) and ${pls.filter((z) => z < ra).length} of ${SEEDS} placebo markets (median ${f1(q(plac, avg).med)}%)`);
 console.log(`\nEach 2026-chosen addition turned off (calendar pass rate; the shipped book first):`);
 console.log(`${"".padEnd(32)}${PERIODS.map((p) => p.label.split(" (")[0].slice(0, 12).padStart(13)).join("")}`);
 console.log(`${"shipped".padEnd(32)}${R.map((r) => f1(r.pass).padStart(13)).join("")}`);

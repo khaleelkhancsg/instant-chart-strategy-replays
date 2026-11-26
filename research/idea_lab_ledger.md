@@ -155,7 +155,36 @@ Legitimate in a period = the real calendar pass rate above every one of 40 coin-
 direction) and every one of 40 placebo markets, and positive per trade after costs. Placebo trade counts are shown:
 if the breakout's filters find few trades on a trendless market, the twin is the fair control. Beside it: each
 2026-chosen addition turned off, period by period; per-trade figures; the average RTH range. (A 1-seed smoke run
-was seen first: it showed the placebo markets give the book far fewer trades.)
+was seen first; with 40 seeds the placebo markets give it about as many trades as the real market, so both
+controls are fair.)
+Results (2026-11-26, 65 s, 40 + 40 seeds; $1,250 eval, calendar, closed trades unless said):
+  period (window starts)      real   twin median (beaten)  placebo median (beaten)  trades  $/trade (twin)  RTH range
+  2025 Jan-Jun  OOS           52.5   29.3 (36 of 40)       28.2 (36)                137     +$18 (-$2)      368
+  2025 Jul-Dec  OOS           42.4   24.5 (36)             33.2 (35)                139     +$40 (-$9)      275
+  2026 Jan-Mar  in-sample     75.6   38.9 (40)             20.0 (40)                 58     +$61 (+$14)     371
+  2026 Apr-Jul  in-sample     66.7   30.5 (37)             29.5 (39)                 70     +$91 (+$4)      428
+  fwd Jul 15-Aug 22  OOS      17.9   25.6 (13)             33.3 (12)                 29     +$23 (-$32)     426
+  fwd Aug 23-Sep 30  OOS      71.1   60.5 (26)             39.5 (33)                 24     +$64 (+$56)     290
+  2019 0.0 (range 85: the target is out of reach); 2020 19.4 (32 of 40 twins); 2021 20.0 (21); 2022 55.6 (40);
+  2023 30.7 (37); 2024 40.2 (40).
+- By the rule written first (above every twin and placebo seed, and positive per trade) no out-of-sample period
+  passes. At the person's 10% bar (36 of 40) both 2025 halves pass, narrowly; both forward halves do not (13 and 26
+  of 40). Pooled over the four (added after looking): 46.0% against twins' median 37.0%, 30 of 40 beaten.
+- Per trade it is positive in every out-of-sample half (+$18 to +$64) and the twins mostly lose: there is a modest
+  directional edge, clearest 2022-2025, but too small to show reliably in a few windows.
+- Live equity, the way the firm judges (research/eval_back_to_back.mjs, rerun, identical to its record): 2026 Jan 1 -
+  Jul 14 70.3% every day / 58.7% back to back; 2025 45.1% / 50.6%; forward Jul 15 - Oct 30 44.2% / 45.4%.
+- Sensitivity (MCP, 2026): the published 74.5% sits on narrow peaks for size (3 lots 60.0, 5 lots 52.1) and target
+  (1.4 ATR 53.3, 2.1 ATR 61.2), where all history is smooth (26-37%): the size and target were fitted to 2026's
+  volatility. The breakout lookback, stop, ADX and the day breaker are flat (spread 1-4 points).
+- The 2026-chosen additions out of sample (pass rate shipped vs off, 2025 H1 / H2 / fwd H1 / fwd H2): EMA filter
+  52.5/42.4/17.9/71.1 vs 55.2/40.8/12.8/71.1 (no help in 2025; its 2026 gain of 5-10 points did not carry);
+  late size vs 50.8/37.0/20.5/76.3 (small help in 2025); 40-minute exit vs 48.1/33.7/20.5/60.5 (helps); day blocks
+  vs 37.0/21.7/15.4/76.3 (help most: +15 and +21 in 2025); slow-trend rescue vs 39.8/31.0/17.9/86.8.
+VERDICT: the 74.5% is not a fair expectation. It is in-sample, on a size/target peak tuned to 2026's wide market,
+and closed-trade. Out of sample the book passes about 42-52% (2025) and 18-71% (forward halves) on closed trades,
+45-50% per attempt on live equity, against a coin-flip twin's ~25-37%. The edge over luck is real but modest
+(about p 0.1 per 2025 half; not shown forward).
 
 ## Selectivity and time of day (research/selectivity_tod.mjs, written 2026-11-26 before any run)
 
