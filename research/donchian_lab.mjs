@@ -53,6 +53,32 @@ const dateOf = (td) => new Date(td * DAY).toISOString().slice(0, 10);
 const newsWithin = (ms, before, after) => { let lo = 0, hi = NEWS.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (NEWS[m] < ms - before) lo = m + 1; else hi = m; } return NEWS[lo] >= ms - before && NEWS[lo] <= ms + after; };
 const newsDays = new Set(NEWS.map((ms) => new Date(ms).toISOString().slice(0, 10)));
 
+// ── daily outside series, each read from the last value dated before the session (FRED's release lag: yields 1 day,
+// the dollar a week, credit 2 days; CFTC from its usable date) ──
+function series(file, col = 1) {
+  const rows = fs.readFileSync(file, "utf8").split(/\r?\n/).slice(1).map((l) => l.split(",")).filter((r) => r[0] && r[col] && r[col] !== ".");
+  return { d: rows.map((r) => r[0]), v: rows.map((r) => Number(r[col])) };
+}
+const at = (S, day, lagDays = 0, back = 0) => {   // the value `back` observations before the last one dated before day - lag
+  const cut = new Date(Date.parse(day) - lagDays * DAY).toISOString().slice(0, 10);
+  let lo = 0, hi = S.d.length - 1, k = -1; while (lo <= hi) { const m = (lo + hi) >> 1; if (S.d[m] < cut) { k = m; lo = m + 1; } else hi = m - 1; }
+  return k - back >= 0 ? S.v[k - back] : NaN;
+};
+const Y10 = series("data/raw/fred/DGS10.csv"), USD = series("data/raw/fred/DTWEXBGS.csv"), HY = series("data/raw/fred/BAMLH0A0HYM2.csv");
+const VIXs = series("data/raw/fred/VIXCLS.csv"), VXV = series("data/raw/fred/VXVCLS.csv"), VXNs = series("data/raw/fred/VXNCLS.csv");
+const COT = (() => { const rows = fs.readFileSync("data/raw/events/cot_nq.csv", "utf8").split(/\r?\n/).slice(1).map((l) => l.split(",")).filter((r) => r[1]);
+  return { d: rows.map((r) => r[1]), v: rows.map((r) => Number(r[7]) - Number(r[8])) }; })();   // leveraged funds' net, by its usable date
+const macro = new Map();
+function macroOf(td) {
+  if (macro.has(td)) return macro.get(td);
+  const day = dateOf(td), m = {
+    y10chg: at(Y10, day, 1) - at(Y10, day, 1, 1), usd5: at(USD, day, 7) - at(USD, day, 7, 1), hy5: at(HY, day, 2) - at(HY, day, 2, 5),
+    vixVxv: at(VIXs, day) / at(VXV, day), vxn5: at(VXNs, day) - at(VXNs, day, 0, 5), vxnVix: at(VXNs, day) / at(VIXs, day),
+    levNet: at(COT, day, -1), levNetPrev: at(COT, day, -1, 1),
+  };
+  macro.set(td, m); return m;
+}
+
 // ── the box's readings (the indicator's arithmetic, as databox_lengths.mjs) ──
 function emaSeries(x, n) { const N = x.length, v = new Float64Array(N); let c = 0, t = 0, p = NaN; for (let i = 0; i < N; i++) { if (c < n) { c++; t += x[i]; p = t / c; } else { c++; p = p + (2 / (n + 1)) * (x[i] - p); } v[i] = p; } return v; }
 function warnState(close, f, s, rule) {
@@ -83,6 +109,7 @@ function context(b) {
   const F = (n) => new Float64Array(n).fill(NaN);
   Object.assign(x, { rOpen: F(N), dHi: F(N), dLo: F(N), pdH: F(N), pdL: F(N), pdC: F(N), onH: F(N), onL: F(N), adr: F(N), relVol: F(N), vxn: F(N), wd: new Int8Array(N), orH: F(N), orL: F(N), sma20: F(N), c5: F(N), h5: F(N), l5: F(N), pInside: new Int8Array(N), pNR7: new Int8Array(N) });
   x.rsi = rsi(C, 14);
+  { const b15 = resample(b, 15), e = emaSeries(Float64Array.from(b15.close), 20); x.e15 = new Float64Array(N).fill(NaN); for (let i = 0, k = -1; i < N; i++) { while (k + 1 < b15.ts.length && b15.ts[k + 1] + 15 * MIN <= TS[i] + MIN) k++; if (k >= 19) x.e15[i] = e[k]; } }
   let days = [];   // finished RTH sessions: { h, l, c }
   let orH = -Infinity, orL = Infinity, closes = [];
   let lastRthClose = NaN, td = -1, rOpen = NaN, hi = -Infinity, lo = Infinity, onH = -Infinity, onL = Infinity, last = null, cum = 0, cumArr = [], ranges = [], volHist = [];
@@ -165,6 +192,26 @@ const BATCHES = {
     { name: "not the last two sessions of the month", why: "month-end rebalancing flows run against the month's trend and whipsaw intraday", keep: (x, j) => { const d = new Date(x.TD[j] * DAY), m = d.getUTCMonth(); let n = 0; for (let k = 1; k <= 4; k++) { const e = new Date(d.getTime() + k * DAY); if (e.getUTCMonth() !== m) break; if (e.getUTCDay() % 6 !== 0) n++; } return n >= 2; } },
     { name: "not the session before mega-cap earnings", why: "before a big report traders wait and dealers pin the index; breakouts fail", keep: (x, j) => { const d = new Date(x.TD[j] * DAY); for (let k = 1; k <= 3; k++) { const e = new Date(d.getTime() + k * DAY); if (e.getUTCDay() % 6 === 0) continue; return !EARN.has(e.toISOString().slice(0, 10)); } return true; } },
     { name: "a mega-cap earnings session", why: "a big report moves the index on news; breakouts that day are information, and they run", keep: (x, j) => EARN.has(dateOf(x.TD[j])) },
+  ],
+  6: [
+    { name: "with yesterday's 10-year yield move (falling yields, long)", why: "falling yields lift long-duration tech; the day's flow leans long, rising yields short", keep: (x, j, t) => { const v = macroOf(x.TD[j]).y10chg; return Number.isFinite(v) && v !== 0 && t.dir * -v > 0; } },
+    { name: "with the dollar's week (weaker dollar, long)", why: "a weaker dollar loosens conditions and lifts risk assets; the drift favours longs", keep: (x, j, t) => { const v = macroOf(x.TD[j]).usd5; return Number.isFinite(v) && v !== 0 && t.dir * -v > 0; } },
+    { name: "with credit's week (spreads narrowing, long)", why: "narrowing high-yield spreads are risk appetite; equities follow credit", keep: (x, j, t) => { const v = macroOf(x.TD[j]).hy5; return Number.isFinite(v) && v !== 0 && t.dir * -v > 0; } },
+    { name: "VIX below VIX3M (a calm curve)", why: "an inverted curve is panic: whipsaws both ways; breakouts need an orderly market", keep: (x, j) => macroOf(x.TD[j]).vixVxv < 1 },
+    { name: "VXN up over the last 5 sessions", why: "rising fear makes dealers shorter gamma; they hedge with the move and breakouts extend", keep: (x, j) => macroOf(x.TD[j]).vxn5 > 0 },
+    { name: "VXN high relative to VIX (above 1.25)", why: "tech-specific volatility: NQ moving on its own story trends harder than on the market's", keep: (x, j) => macroOf(x.TD[j]).vxnVix > 1.25 },
+    { name: "with leveraged funds' net NQ position", why: "trend followers' positioning is the trend's fuel; breakouts its way have them adding", keep: (x, j, t) => { const v = macroOf(x.TD[j]).levNet; return Number.isFinite(v) && v !== 0 && t.dir * v > 0; } },
+    { name: "with the change in leveraged funds' net", why: "funds adding to a side are actively buying (selling) through the week", keep: (x, j, t) => { const m = macroOf(x.TD[j]), v = m.levNet - m.levNetPrev; return Number.isFinite(v) && v !== 0 && t.dir * v > 0; } },
+  ],
+  7: [
+    { name: "a narrow channel: the hour's range under 4 two-minute ATRs", why: "a breakout from compression releases orders stacked at both edges; a wide channel has spent the move", keep: (x, j) => { let h = -Infinity, l = Infinity; for (let k = j - 60; k < j - 1; k++) { h = Math.max(h, x.H[k]); l = Math.min(l, x.L[k]); } return h - l < 4 * 1.4 * x.a1[j]; } },
+    { name: "a tested level: 3+ bars within 0.25 ATR of it in the last hour", why: "a level touched again and again collects stops behind it; breaking it releases them", keep: (x, j, t) => { let lvl = t.dir === 1 ? -Infinity : Infinity; for (let k = j - 60; k < j - 1; k++) lvl = t.dir === 1 ? Math.max(lvl, x.H[k]) : Math.min(lvl, x.L[k]); let n = 0; for (let k = j - 60; k < j - 1; k++) if (Math.abs((t.dir === 1 ? x.H[k] : x.L[k]) - lvl) <= 0.25 * 1.4 * x.a1[j]) n++; return n >= 3; } },
+    { name: "a fresh push: price pulled back 1 ATR in the last hour", why: "a breakout after a reset has new buyers; one in a grinding trend is the last of them", keep: (x, j, t) => { let ext = t.dir === 1 ? -Infinity : Infinity, pb = 0; for (let k = j - 60; k < j; k++) { if (t.dir === 1) { ext = Math.max(ext, x.H[k]); pb = Math.max(pb, ext - x.L[k]); } else { ext = Math.min(ext, x.L[k]); pb = Math.max(pb, x.H[k] - ext); } } return pb >= 1.4 * x.a1[j]; } },
+    { name: "breakout volume twice the last hour's average", why: "a level broken on heavy volume is absorbed supply; on light volume it is a few stops", keep: (x, j) => { let s = 0; for (let k = j - 61; k < j - 1; k++) s += x.V[k]; return x.V[j] + x.V[j - 1] >= 2 * 2 * (s / 60); } },
+    { name: "the hour's efficiency ratio 0.3 or more", why: "an orderly trend (net move over path) breaks out cleanly; chop breaks out and back", keep: (x, j) => { let p = 0; for (let k = j - 59; k <= j; k++) p += Math.abs(x.C[k] - x.C[k - 1]); return p > 0 && Math.abs(x.C[j] - x.C[j - 60]) / p >= 0.3; } },
+    { name: "not extended: under 1 ADR from the session's opposite extreme", why: "a breakout already a full day's range from the day's low (high) is late", keep: (x, j, t) => Number.isFinite(x.adr[j]) && (t.dir === 1 ? x.C[j] - x.dLo[j] : x.dHi[j] - x.C[j]) < x.adr[j] },
+    { name: "no losing trade in the last 30 minutes", why: "a fresh failure says the market is rotating right now; the next break meets the same flow", keep: (x, j, t) => !t.before.some((z) => z.pnl < 0 && z.exit > x.TS[j] - 30 * MIN) },
+    { name: "the 15-minute trend agrees (its EMA 20)", why: "a slower trend the breakout's way is the bigger flow behind it", keep: (x, j, t) => Number.isFinite(x.e15[j]) && t.dir * (x.C[j] - x.e15[j]) > 0 },
   ],
 };
 

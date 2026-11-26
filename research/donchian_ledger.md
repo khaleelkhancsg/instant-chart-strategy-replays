@@ -65,10 +65,33 @@ Trial count after batch 3: 25.
 last 5 sessions its way, yesterday an inside day, yesterday NR7, beyond the 5-session high / low, the signal bar closing
 in its top / bottom fifth, 1m RSI not stretched, the day's first breakout its way
 
-Results: pending.
+Results (309 s): nothing passes the screen. Last hour its way -0.305 (17; forward +0.928 at 92), last 5 sessions +0.012
+(49), inside day -0.064 (33; keeps 10%), NR7 -0.432 (6; keeps 19%), beyond the 5-session range +0.035 (56), bar closing
+at its extreme +0.020 (46), RSI not stretched +0.058 (65), the day's first breakout its way +0.158 (71; 2026 -0.556).
 
 ## Batch 5 (written before it ran): calendar and events. No red-folder release in the last 30 minutes, not a release
 day, not Monday, not Friday, not an options-expiry Friday, not the month's last two sessions, not the session before
 mega-cap earnings, a mega-cap earnings session
+
+Results (341 s): nothing confirmed.
+- not a Monday: +0.665 (100), 2025 +0.716, 2026 +0.555, keeps 81%: SCREEN PASS; 2019-24 -0.030 (33), forward -1.035 (6):
+  not confirmed.
+- no release in the last 30 minutes +3.778 (97) refuses almost nothing (no 2026 trade within 30 minutes of a release).
+- not an options-expiry Friday -0.980 (1): refusing expiry Fridays HURTS in 2025 and 2026 (-1.004, -0.920; forward -1.356).
+  The reverse (expiry Fridays are good breakout days) is a lead, found after looking.
+- release day -0.142 (24), Friday -0.073 (36), month-end -0.308 (26; 2019-24 +0.341 at 96), before earnings -0.153 (31),
+  an earnings session -0.046 (37; keeps 12%).
+
+Trial count after batch 5: 41.
+
+## Batch 6 (written before it ran): macro, each read before the session. With yesterday's 10-year yield move, with the
+dollar's week, with credit's week, VIX below VIX3M, VXN up over 5 sessions, VXN above 1.25 x VIX, with leveraged funds'
+net NQ position, with its weekly change
+
+Results: pending.
+
+## Batch 7 (written before it ran): breakout structure. A narrow channel, a tested level, a fresh push after a 1-ATR
+pullback, breakout volume twice the hour's, the hour's efficiency 0.3+, under 1 ADR from the day's opposite extreme, no
+losing trade in the last 30 minutes, the 15-minute EMA 20 agrees
 
 Results: pending.
