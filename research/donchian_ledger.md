@@ -186,4 +186,9 @@ overnight midpoint (every period positive), the VXN family (3 screen passes; for
 total ATR-unit result less the book's, per book trade). Flat by 14:30, 30 minutes' rest after a stop, hold through an
 opposite signal, out after 30 minutes, a market entry on the signal, no entries after 14:00
 
-Results: pending.
+Results (966 s): nothing passes the screen. Flat by 14:30 +0.031 (82; 2026 -0.026), market entry +0.089 (87; 2026 -0.189,
+forward -0.161), out after 30 minutes -0.099 (11), hold through an opposite signal +0.002 (68; it almost never happens),
+no entries after 14:00 -0.001 (35). SLIP: 30 minutes' rest after a stop changes no trade (the day blocks end the day
+first).
+
+Trial count after batch 14: 111 (7 slips).
