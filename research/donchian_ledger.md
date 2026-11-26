@@ -129,10 +129,22 @@ the next forward bars, not results: VXN above its 60-session median (forward +0.
 its way, volume rising into the break, no rejection wick, within 1 ATR of the 1m EMA 21, the 1m MACD histogram growing
 its way, the close beyond the bar before's extreme, the last 5-minute bar closed its way
 
-Results: pending.
+Results (517 s): nothing passes the screen. Strong body -0.204 (15), 3 closes its way -0.140 (34), volume rising -0.471
+(0: refusing these HURTS), no rejection wick +0.045 (43), MACD histogram growing +0.113 (73; 2019-24 -0.255 at 1), 5-minute
+bar its way +0.113 (72). SLIPS: within 1 ATR of the EMA 21 keeps 0% (a breakout is always beyond it); closing beyond the
+bar before's extreme refuses nothing (the breakout already does).
 
 ## Batch 10 (written before it ran; recency-weighted): levels and room. Room to the next round 100, the overnight
 midpoint, the week's open, the month's open, inside the VWAP 1-sigma bands, beyond the band its way, room to the
 20-session extreme, a new 20-session extreme
 
-Results: pending.
+Results (518 s): nothing confirmed under the recency rule.
+- on the trade's side of the overnight midpoint: +0.954 (96), 2025 +0.623, 2026 +1.539, keeps 95%: SCREEN PASS; forward
+  +0.755 (75): NOT CONFIRMED (needs 90); 2019-24 +0.409 (91). Under batches 1-8's rule (2019-24 beats 90, forward
+  positive) it would have confirmed. Positive in every period: the loop's best candidate, a LEAD for the next forward bars.
+  It refuses only 5% of trades.
+- the week's open -0.488 (0: refusing trades against it HURTS in 2025-26; 2019-24 +0.100), inside the VWAP bands +0.469
+  (85; keeps 3%), beyond the band -0.128 (31), the month's open -0.056 (35), room to round 100 -0.052 (31), room to the
+  20-session extreme -0.121 (33), a new 20-session extreme -0.061 (41; keeps 19%).
+
+Trial count after batch 10: 81 (6 slips).
