@@ -147,6 +147,16 @@ Bounce check, #3 in the day session (databox_lengths.mjs --nq --entry-open, 1,89
 research/databox_lengths_nq_open_results.json): STANDS. 1m EMA 3/13 slowing +0.4 on its own (0 of 100 as
 high), the default -0.6; gain +0.9 (0 of 100); halves +1.3 / +0.5. (From the close it was +0.3 / +1.2.)
 
+## Is donchian_1250's pass rate real? (research/donchian_audit.mjs, written 2026-11-26 before the full run)
+
+2026 to Jul 14 is in-sample (the EMA filter, late size, 40-minute exit and day blocks were chosen on it). Judged:
+2025 H1, 2025 H2 and the forward bars Jul 15 - Oct 30 in two halves (window starts Jul 15 - Aug 22, Aug 23 - Sep 30).
+Legitimate in a period = the real calendar pass rate above every one of 40 coin-flip twins (same trades, random
+direction) and every one of 40 placebo markets, and positive per trade after costs. Placebo trade counts are shown:
+if the breakout's filters find few trades on a trendless market, the twin is the fair control. Beside it: each
+2026-chosen addition turned off, period by period; per-trade figures; the average RTH range. (A 1-seed smoke run
+was seen first: it showed the placebo markets give the book far fewer trades.)
+
 ## Selectivity and time of day (research/selectivity_tod.mjs, written 2026-11-26 before any run)
 
 The person's question: a discretionary trader can beat the same strategy run mechanically by not taking every
