@@ -116,3 +116,11 @@ Results (322 s): nothing confirmed.
 
 Trial count after batch 8: 65 (4 slips). Screen passes so far, all failing 2019-2024: VXN above its median (87; forward
 92), a wide signal bar (12), through a round 100 (33; forward 98), not a Monday (33), the opening drive (21).
+
+## The confirmation rule changes from batch 9 (the person's choice, 2026-11-26, asked after batch 8)
+
+RECENCY-WEIGHTED: a screen pass is CONFIRMED when its forward lift (Jul 15 - Oct 30) beats 90 of 100 placebo markets with
+20 or more forward trades kept, and 2019-2024 does not go the other way (its lift beats at least 10 of 100). Chosen after
+seeing batches 1-8, so it applies from batch 9 only. Two of the earlier screen passes would meet it, and are LEADS for
+the next forward bars, not results: VXN above its 60-session median (forward +0.678, 92; 2019-24 87) and through a round
+100 in the last 10 minutes (forward +1.101, 98; 2019-24 33).

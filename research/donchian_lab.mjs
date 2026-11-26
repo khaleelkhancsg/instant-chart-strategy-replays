@@ -20,6 +20,9 @@
 //   2026 separately, and the rule keeps at least 30% of the trades.
 // - CONFIRMED (the person's 10% bar): a screen pass whose lift on 2019-2024 beats 90 of 100 placebo markets and is
 //   positive forward (the forward bars hold about 70 trades: too few to require more; their placebo count is shown).
+//   From batch 9 on (the person's choice, 2026-11-26, after batch 8): RECENCY-WEIGHTED. A screen pass is CONFIRMED when
+//   its forward lift beats 90 of 100 placebo markets with 20 or more forward trades kept, and 2019-2024 does not go the
+//   other way (its lift beats at least 10 of 100). Batches 1-8 keep the rule they ran under.
 // - A confirmed rule then gets a full engine run (the refused trade changes what follows: flips, day blocks) for its
 //   pass rate on live equity against the shipped book, 2025, 2026 and forward. Only that decides whether it ships.
 // - Count every idea. A rule written after seeing a result is a lead.
@@ -274,7 +277,8 @@ console.log(`${"idea".padEnd(54)}${"2025+26".padStart(13)}${"2025".padStart(8)}$
 const out = IDEAS.map((idea, q) => {
   const S = liftOf(real[q], SCREEN), A = liftOf(real[q], Y25), B = liftOf(real[q], Y26), C = liftOf(real[q], [CONF]), F = liftOf(real[q], [FWD]);
   const bS = beats(S.lift, pl.map((m) => liftOf(m[q], SCREEN).lift)), bC = beats(C.lift, pl.map((m) => liftOf(m[q], [CONF]).lift)), bF = beats(F.lift, pl.map((m) => liftOf(m[q], [FWD]).lift));
-  const screen = bS >= 0.9 * PLACEBOS && A.lift > 0 && B.lift > 0 && S.kept >= 0.3, conf = screen && bC >= 0.9 * PLACEBOS && F.lift > 0;
+  const screen = bS >= 0.9 * PLACEBOS && A.lift > 0 && B.lift > 0 && S.kept >= 0.3;
+  const conf = BATCH >= 9 ? screen && bF >= 0.9 * PLACEBOS && F.kn >= 20 && bC >= 0.1 * PLACEBOS : screen && bC >= 0.9 * PLACEBOS && F.lift > 0;
   const v = conf ? "CONFIRMED" : screen ? "screen pass, not confirmed" : "fails the screen";
   console.log(`${idea.name.padEnd(54)}${`${pt(S.lift)} (${bS})`.padStart(13)}${pt(A.lift).padStart(8)}${pt(B.lift).padStart(8)}${pc(S.kept).padStart(6)} |${`${pt(C.lift)} (${bC})`.padStart(13)}${`${pt(F.lift)} (${bF})`.padStart(13)}  ${v}`);
   return { name: idea.name, why: idea.why, screen: S, y2025: A, y2026: B, conf: C, fwd: F, beats: { screen: bS, conf: bC, fwd: bF }, verdict: v };
