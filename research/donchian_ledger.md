@@ -181,3 +181,9 @@ Results: nothing passes the screen.
 
 Trial count after batch 13: 105 (6 slips). Screen passes: 7, none confirmed. Leads for the next forward bars: the
 overnight midpoint (every period positive), the VXN family (3 screen passes; forward 77-92), through a round 100.
+
+## Batch 14 (written before it ran; recency-weighted): MANAGEMENT, each a whole re-run of the book (lift = the variant's
+total ATR-unit result less the book's, per book trade). Flat by 14:30, 30 minutes' rest after a stop, hold through an
+opposite signal, out after 30 minutes, a market entry on the signal, no entries after 14:00
+
+Results: pending.

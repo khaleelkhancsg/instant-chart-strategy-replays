@@ -26,6 +26,10 @@
 // - A confirmed rule then gets a full engine run (the refused trade changes what follows: flips, day blocks) for its
 //   pass rate on live equity against the shipped book, 2025, 2026 and forward. Only that decides whether it ships.
 // - Count every idea. A rule written after seeing a result is a lead.
+// - From batch 14, MANAGEMENT ideas: an idea with `cfg` ({params, exec, filter} on top of the book's) is the whole book run
+//   again that way, on the real market and on every placebo market. Its lift in a period: (the variant's summed ATR-unit
+//   result less the book's) per book trade in that period; "kept" = its trades over the book's. Same screen and
+//   confirmation rules.
 
 import fs from "node:fs";
 import { loadBars } from "../src/data.mjs";
@@ -297,6 +301,14 @@ const BATCHES = {
     { name: "20 minutes or more since the last trade closed", why: "a new break straight after an exit is the same move's noise; a fresh one is a new leg", keep: (x, j, t) => { const l = t.before[t.before.length - 1]; return !l || x.TS[j] + MIN - l.exit >= 20 * MIN; } },
     { name: "longs in the last 60 sessions made more than shorts (with that side)", why: "the regime's direction: whichever side of the breakout has paid lately is the market's lean", keep: (x, j, t) => { let L = 0, S = 0, n = 0; for (const z of t.last20) { n++; if (z.dir === 1) L += z.R; else S += z.R; } return n >= 10 && (t.dir === 1 ? L >= S : S >= L); } },
   ],
+  14: [
+    { name: "flat by 14:30 CT", why: "the last half hour is position squaring and MOC imbalances: late moves reverse", cfg: { exec: { flattenCt: 870 } } },
+    { name: "30 minutes' rest after a stop", why: "a stopped breakout means the market is rotating; the next signal minutes later is the same rotation", cfg: { exec: { cooldownAfterStopMins: 30 } } },
+    { name: "hold through an opposite signal (no flip)", why: "an opposite breakout inside a running trade is often a shakeout; the trade's own stop and target know better", cfg: { exec: { flipOnOpposite: false } } },
+    { name: "out after 30 minutes whatever happens", why: "a breakout's edge is in its first minutes; holding longer is exposure without it", cfg: { exec: { maxBarsInTrade: 15 } } },
+    { name: "enter at the market on the signal instead of the stop order", why: "the stop order waits for more breakout and misses the fast ones; the signal is the edge", cfg: { exec: { entryType: "market" } } },
+    { name: "no new entries after 14:00 CT", why: "an hour before the flat there is no time to reach the target; the late trades are cut by the clock", cfg: { filter: { startCt: 510, endCt: 840 } } },
+  ],
 };
 
 function tradesOn(b, cfg) {
@@ -317,12 +329,20 @@ function tradesOn(b, cfg) {
   }
   return out;
 }
-function measure(b, cfg, ideas) {
+async function variantCfg(o) { return configOf("donchian_1250", o, "1250"); }
+function measure(b, cfg, ideas, vcfgs) {
   const x = context(b);
   // VXN's 60-session median, dated before the session
   x.vxnHi = new Int8Array(x.N); x.vxnNow = new Float64Array(x.N).fill(NaN); { let td = -1, v = NaN, hist = [], med = NaN; for (let i = 0; i < x.N; i++) { if (x.TD[i] !== td) { td = x.TD[i]; v = vxnBefore(x.TS[i]); if (Number.isFinite(v)) { const z = [...hist].sort((p, q) => p - q); med = z.length >= 60 ? z[z.length >> 1] : NaN; hist.push(v); if (hist.length > 60) hist.shift(); } } x.vxnHi[i] = Number.isFinite(med) && v > med ? 1 : 0; x.vxnNow[i] = v; } }
   const tr = tradesOn(b, cfg), P = PERIODS.length;
-  return ideas.map((idea) => {
+  const per = (t) => PERIODS.findIndex((q) => t.entry >= q.a && t.entry < q.b);
+  return ideas.map((idea, q) => {
+    if (idea.cfg) {   // management: the variant's whole run against the book's; k = the variant, r = the book
+      const k = new Float64Array(P * 3), r = new Float64Array(P * 3), vt = tradesOn(b, vcfgs[q]);
+      for (const t of tr) { const p = per(t); if (p >= 0) { r[p * 3]++; r[p * 3 + 1] += t.R; r[p * 3 + 2] += t.pnl; } }
+      for (const t of vt) { const p = per(t); if (p >= 0) { k[p * 3]++; k[p * 3 + 1] += t.R; k[p * 3 + 2] += t.pnl; } }
+      return { k: Array.from(k), r: Array.from(r), mgmt: true };
+    }
     const k = new Float64Array(P * 3), r = new Float64Array(P * 3);   // n, sum R, sum $
     for (const t of tr) {
       const p = PERIODS.findIndex((q) => t.entry >= q.a && t.entry < q.b);
@@ -333,16 +353,21 @@ function measure(b, cfg, ideas) {
     return { k: Array.from(k), r: Array.from(r) };
   });
 }
-const liftOf = (m, ps) => { let kn = 0, ks = 0, rn = 0, rs = 0; for (const p of ps) { kn += m.k[p * 3]; ks += m.k[p * 3 + 1]; rn += m.r[p * 3]; rs += m.r[p * 3 + 1]; } return { lift: kn && rn ? ks / kn - rs / rn : NaN, kept: kn / (kn + rn), kn }; };
+const liftOf = (m, ps) => {
+  let kn = 0, ks = 0, rn = 0, rs = 0; for (const p of ps) { kn += m.k[p * 3]; ks += m.k[p * 3 + 1]; rn += m.r[p * 3]; rs += m.r[p * 3 + 1]; }
+  if (m.mgmt) return { lift: rn ? (ks - rs) / rn : NaN, kept: rn ? kn / rn : NaN, kn };   // the variant's total less the book's, per book trade
+  return { lift: kn && rn ? ks / kn - rs / rn : NaN, kept: kn / (kn + rn), kn };
+};
 
 const IDEAS = BATCHES[BATCH];
 if (!IDEAS) throw new Error(`no batch ${BATCH}`);
 const { bars } = loadBars("data/mnq_1m_beta.bin");
 const cfg = await configOf("donchian_1250", {}, "1250");
-const real = measure(bars, cfg, IDEAS);
+const VCFG = await Promise.all(IDEAS.map((i) => (i.cfg ? variantCfg(i.cfg) : null)));
+const real = measure(bars, cfg, IDEAS, VCFG);
 process.stderr.write(`  batch ${BATCH}: real market ${secs()}s\n`);
 const pl = [];
-for (let p = 0; p < PLACEBOS; p++) { pl.push(measure(placeboBars(bars, 9100 + p), cfg, IDEAS)); if ((p + 1) % 10 === 0) process.stderr.write(`  ${p + 1}/${PLACEBOS} placebo markets, ${secs()}s\n`); }
+for (let p = 0; p < PLACEBOS; p++) { pl.push(measure(placeboBars(bars, 9100 + p), cfg, IDEAS, VCFG)); if ((p + 1) % 10 === 0) process.stderr.write(`  ${p + 1}/${PLACEBOS} placebo markets, ${secs()}s\n`); }
 
 const pt = (v) => (Number.isFinite(v) ? (v >= 0 ? "+" : "") + v.toFixed(3) : "—"), pc = (v) => (100 * v).toFixed(0) + "%";
 const beats = (v, vals) => vals.filter((z) => Number.isFinite(z) && z < v).length;
