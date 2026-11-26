@@ -153,15 +153,31 @@ Trial count after batch 10: 81 (6 slips).
 night, a gap of 0.3 ADR+, yesterday 1.2 ADR+, VXN up 5% yesterday, VXN in its year's top third, the day's high made in
 the last hour (longs), today's range over half an ADR
 
-Results: pending.
+Results (three batches at once: 2.6 hours): nothing confirmed.
+- VXN in the top third of its last year: +0.222 (91), 2025 +0.089, 2026 +0.380, keeps 44%: SCREEN PASS; forward +0.275
+  (77): not confirmed (2019-24 +0.109, 65). The third VXN rule to pass the screen (with batch 1's median and batch 3's 25+).
+- yesterday 1.2 ADR+ +0.400 (94) but keeps 27%; the day's high made in the last hour +0.277 (85; 2019-24 +0.398 at 98,
+  forward -1.581 at 0); VXN up 5% yesterday +0.108 (59; forward +1.199 at 100, keeps 17%); active day -0.011 (34; forward
+  98); active night -0.116 (29); gap 0.3 ADR -0.086 (39); range over half an ADR +0.050 (57).
 
 ## Batch 12 (written before it ran; recency-weighted): the bigger trend. With the 200- and 50-session averages, last
 week, the month so far, yesterday's candle, today's VWAP over yesterday's, opened beyond yesterday's range, 50 over 200
 
-Results: pending.
+Results: nothing passes the screen. The longer trends split by era: 2019-24 mostly positive (opened beyond yesterday's
+range +0.201 at 98; 50 over 200 +0.145 at 76; 200-session +0.119 at 70), 2025 negative for every one (-0.19 to -0.64),
+2026 positive. Pooled 2025-26: 200-session -0.003 (56), 50-session -0.159 (19), last week -0.120 (35), month +0.004 (45),
+yesterday's candle -0.190 (15), VWAP over yesterday's +0.097 (70), opened beyond -0.212 (9), 50 over 200 -0.076 (37).
 
 ## Batch 13 (written before it ran; recency-weighted): the book's own record (regime-following, as ADAPT). Its last 60
 sessions made money, its last 20 trades won 60%+, its last 5 made money, the previous trade today won, the day's P&L not
 negative, the same direction as the previous trade, 20 minutes since the last exit, the side that paid more lately
 
-Results: pending.
+Results: nothing passes the screen.
+- the book's last 20 trades won 60%+: +0.389 (96), 2025 +0.460, but 2026 -0.052 (fails "positive in 2026"); 2019-24
+  +0.236 (100); forward -0.329 (36). Regime-following works on the book over 2019-2025, not since.
+- the side that paid more lately -0.095 (35; 2019-24 +0.201 at 98); previous trade today won -0.287 (11; keeps 19%);
+  20 minutes since the last exit +0.279 (85; 2026 -0.520); same direction as the last trade +0.250 (60; keeps 98%); last
+  60 sessions made money -0.097 (59); last 5 trades +0.001 (56); day P&L not negative -0.190 (41).
+
+Trial count after batch 13: 105 (6 slips). Screen passes: 7, none confirmed. Leads for the next forward bars: the
+overnight midpoint (every period positive), the VXN family (3 screen passes; forward 77-92), through a round 100.
