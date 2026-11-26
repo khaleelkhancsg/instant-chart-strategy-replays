@@ -165,6 +165,19 @@ the full design. In short:
   was set against the same half hour before any full run.
 - Books (part 3, after): donchian_1250 and macd_fade_1250 with dayMaxWins / dayMaxLosses and time windows through
   the lab's compare tool, on 2026 and its halves, as leads.
+Part 3 results (2026-11-26, compare tool, $1,250 eval, calendar windows, costs in):
+- Daily stops lower the pass rate of both books in every period:
+    donchian_1250: every signal 32.0% (2019-2025) / 74.5% (2026; halves 76.4 / 73.3); stop after the first winner
+    26.1% / 63.0% (55.1 / 73.3); stop after the first loser 29.9% / 70.3% (68.5 / 73.3).
+    macd_fade_1250: every signal 31.9% / 55.8% (59.6 / 50.7); first winner 22.1% / 49.1%; first loser 27.5% / 52.7%.
+  No window passes with the stop that fails without it in 2026 (onlyB 0 for donchian; 2 and 0 for the fade).
+- Time windows picked on 2019-2025 by hour, read on 2026:
+    donchian_1250 08:30-10:30 CT only (its best two hours 2019-2025, PF 1.21 / 1.24): 23.6% (2019-2025) and 69.7%
+    (2026; 69.7 / 70.7) against 32.0% and 74.5%. The mean window net is about the same on 2019-2025 ($149 vs $145):
+    the trades kept are no worse, but fewer trades reach the target in 30 days less often.
+    macd_fade_1250 08:30-10:00 CT only: 30.9% / 56.4% against 31.9% / 55.8%: its trades already sit there.
+Reading: on a combine with a target and a clock, skipping trades costs reach. A skip has to pick better trades by
+more than the target time it gives away; these do not.
 
 ## New unseen data: NQ 2010-2018 (found 2026-11-25)
 
