@@ -192,3 +192,9 @@ no entries after 14:00 -0.001 (35). SLIP: 30 minutes' rest after a stop changes 
 first).
 
 Trial count after batch 14: 111 (7 slips).
+
+## Batch 15 (written before it ran; recency-weighted): order flow and structure. Signed volume its way over 15 minutes,
+higher highs and lows over the hour, a squeeze before the break, accelerating, beyond the developing value area, on the
+trade's side of the developing POC, the hour's net move its way, not after a spike bar
+
+Results: pending.

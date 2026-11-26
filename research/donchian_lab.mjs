@@ -109,6 +109,7 @@ function context(b) {
   const x = { N, TS, O, H, L, C, V, TD, CT };
   { const v = studyLines({ b }, "vwap", 1, { anchor: "rth", bands: 1 }); x.vw = v.VWAP; x.vwUp = v["+1σ"]; x.vwDn = v["−1σ"]; }
   x.ema21 = emaSeries(Float64Array.from(C), 21);
+  { const v = studyLines({ b }, "vprofile", 1, { anchor: "rth" }); x.dpoc = v.POC; x.dvah = v.VAH; x.dval = v.VAL; }
   { const f = emaSeries(Float64Array.from(C), 12), sl = emaSeries(Float64Array.from(C), 26), line = new Float64Array(N); for (let i = 0; i < N; i++) line[i] = f[i] - sl[i]; const sg = emaSeries(line, 9); x.hist = new Float64Array(N); for (let i = 0; i < N; i++) x.hist[i] = line[i] - sg[i]; }
   x.a1 = atr(H, L, C, 14);
   x.fast = warnState(C, 3, 13, "slowing");   // #3, the box's fast row
@@ -308,6 +309,16 @@ const BATCHES = {
     { name: "out after 30 minutes whatever happens", why: "a breakout's edge is in its first minutes; holding longer is exposure without it", cfg: { exec: { maxBarsInTrade: 15 } } },
     { name: "enter at the market on the signal instead of the stop order", why: "the stop order waits for more breakout and misses the fast ones; the signal is the edge", cfg: { exec: { entryType: "market" } } },
     { name: "no new entries after 14:00 CT", why: "an hour before the flat there is no time to reach the target; the late trades are cut by the clock", cfg: { filter: { startCt: 510, endCt: 840 } } },
+  ],
+  15: [
+    { name: "signed volume its way over the last 15 minutes", why: "more volume on up bars than down bars (long) is net buying: an order-flow stand-in", keep: (x, j, t) => { let sv = 0; for (let k = j - 14; k <= j; k++) sv += Math.sign(x.C[k] - x.O[k]) * x.V[k]; return t.dir * sv > 0; } },
+    { name: "higher highs and higher lows over the last hour (long)", why: "trend structure: each pullback bought higher; a breakout in it continues the staircase", keep: (x, j, t) => { const seg = (a, z) => { let h = -Infinity, l = Infinity; for (let k = a; k < z; k++) { h = Math.max(h, x.H[k]); l = Math.min(l, x.L[k]); } return [h, l]; }; const [h1, l1] = seg(j - 60, j - 40), [h2, l2] = seg(j - 40, j - 20), [h3, l3] = seg(j - 20, j); return t.dir === 1 ? h3 > h2 && h2 > h1 && l3 > l2 && l2 > l1 : h3 < h2 && h2 < h1 && l3 < l2 && l2 < l1; } },
+    { name: "a squeeze before the break: the last 10 bars' average range under 0.7 ATR", why: "a coiled market breaks with force; the stops stacked through the squeeze all fill at once", keep: (x, j) => { let r = 0; for (let k = j - 11; k < j - 1; k++) r += x.H[k] - x.L[k]; return r / 10 < 0.7 * x.a1[j]; } },
+    { name: "accelerating: the last 5 minutes moved more its way than the 5 before", why: "acceleration into the break is urgency; deceleration is a market running out of buyers", keep: (x, j, t) => t.dir * (x.C[j] - x.C[j - 5]) > t.dir * (x.C[j - 5] - x.C[j - 10]) },
+    { name: "beyond the developing value area its way (above VAH, long)", why: "price leaving the day's value is initiative buying (selling): a trend day's tell", keep: (x, j, t) => Number.isFinite(x.dvah[j]) && (t.dir === 1 ? x.C[j] > x.dvah[j] : x.C[j] < x.dval[j]) },
+    { name: "on the trade's side of the developing POC", why: "the day's most-traded price is its fair value; a breakout away from it has the day's acceptance behind it", keep: (x, j, t) => Number.isFinite(x.dpoc[j]) && t.dir * (x.C[j] - x.dpoc[j]) > 0 },
+    { name: "the last hour's net move its way (any size)", why: "the simplest momentum: the hour's flow already leans the breakout's way", keep: (x, j, t) => t.dir * (x.C[j] - x.C[j - 60]) > 0 },
+    { name: "not after a spike: no 1-minute bar over 2.5 ATR in the last 10", why: "a breakout made by one spike is a stop run that reverses; a steady one is buying", keep: (x, j) => { for (let k = j - 9; k <= j; k++) if (x.H[k] - x.L[k] > 2.5 * x.a1[k - 1]) return false; return true; } },
   ],
 };
 
