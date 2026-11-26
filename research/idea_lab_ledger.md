@@ -147,6 +147,25 @@ Bounce check, #3 in the day session (databox_lengths.mjs --nq --entry-open, 1,89
 research/databox_lengths_nq_open_results.json): STANDS. 1m EMA 3/13 slowing +0.4 on its own (0 of 100 as
 high), the default -0.6; gain +0.9 (0 of 100); halves +1.3 / +0.5. (From the close it was +0.3 / +1.2.)
 
+## Selectivity and time of day (research/selectivity_tod.mjs, written 2026-11-26 before any run)
+
+The person's question: a discretionary trader can beat the same strategy run mechanically by not taking every
+signal; and times of day matter. Skipping at random cannot change the expected result per trade, so the test is
+whether the skip rules traders use, or the hours they trade, separate winners from losers. The script's header has
+the full design. In short:
+- Readings: 1m EMA 12/26 speed (default), 1m EMA 3/13 slowing (#3), 1m MACD shrink, 5m EMA speed, 5m MACD shrink.
+- Time of day: each reading's edge per half hour (13 slots, against every minute in the same slot and direction).
+  The 6 best NQ 2010-2018 slots per reading are its good hours; CONFIRMED when the edge there less in the other 7
+  is positive and beats 90 of 100 placebo markets on MNQ 2019-2026, ES 2010-2026 and ES from the next open. 5 trials.
+- Skip rules on the default 1m EMA warning and on #3: FIRST of the session, HOT (last settled signal won), TILT
+  (stop after 2 losers), QUIT (stop after a winner), SPACED (none in the 10 bars before); only races settled before
+  the signal count. Lift = passing less failing signals' edge (against the same half hour). Screen NQ and MNQ
+  (each beating 90, same sign), confirm ES close and next open (each beating 90). 10 trials.
+- A smoke run on one NQ month (counts only) showed the readings fire 70-115 times a session, so the rules' edge
+  was set against the same half hour before any full run.
+- Books (part 3, after): donchian_1250 and macd_fade_1250 with dayMaxWins / dayMaxLosses and time windows through
+  the lab's compare tool, on 2026 and its halves, as leads.
+
 ## New unseen data: NQ 2010-2018 (found 2026-11-25)
 
 Desktop\Backtesting\NQ CSV holds NQ (full-size, same index) 1-minute bars from 2010-06-06. Every idea and
