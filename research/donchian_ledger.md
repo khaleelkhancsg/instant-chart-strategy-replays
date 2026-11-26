@@ -88,10 +88,23 @@ Trial count after batch 5: 41.
 dollar's week, with credit's week, VIX below VIX3M, VXN up over 5 sessions, VXN above 1.25 x VIX, with leveraged funds'
 net NQ position, with its weekly change
 
-Results: pending.
+Results (310 s): nothing passes the screen. Credit's week +0.201 (84), yields +0.003 (59), VIX curve calm +0.056 (62),
+VXN 5-day rise -0.018 (46), VXN / VIX -0.054 (42; keeps 29%), the dollar -0.305 (7), leveraged funds' position -0.272
+(8), their weekly change -0.028 (45; 2019-24 +0.162 at 94, but 2026 -0.797).
 
 ## Batch 7 (written before it ran): breakout structure. A narrow channel, a tested level, a fresh push after a 1-ATR
 pullback, breakout volume twice the hour's, the hour's efficiency 0.3+, under 1 ADR from the day's opposite extreme, no
 losing trade in the last 30 minutes, the 15-minute EMA 20 agrees
+
+Results (316 s): nothing passes the screen. Tested level +0.200 (78; 2025 -0.037), not extended +0.061 (64), efficiency
+-0.098 (26), breakout volume -0.273 (12), narrow channel -0.159 (24; keeps 17%). DESIGN SLIPS (they refuse no 2025-26
+trade, so they tested nothing): a fresh push (a 1-ATR pullback happens in almost every hour), no loser in the last 30
+minutes (the day rules make it rare), the 15-minute EMA agrees (the book's own 10-minute EMA filter already enforces it).
+
+Trial count after batch 7: 57 (3 of them slips).
+
+## Batch 8 (written before it ran): session structure. With the opening drive, after a narrow first hour, the first
+hour not broken the other way first, on the trade's side of yesterday's final VWAP, of yesterday's midpoint, a narrow
+overnight, with a 3-session close streak, fewer than 2 losers earlier today
 
 Results: pending.

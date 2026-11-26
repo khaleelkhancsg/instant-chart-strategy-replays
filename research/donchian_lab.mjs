@@ -107,7 +107,8 @@ function context(b) {
   // the session's RTH open, high and low so far; the prior RTH day's high, low, close; the overnight high and low;
   // the 10-session average RTH range; cumulative RTH volume against the last 10 sessions' at the same minute
   const F = (n) => new Float64Array(n).fill(NaN);
-  Object.assign(x, { rOpen: F(N), dHi: F(N), dLo: F(N), pdH: F(N), pdL: F(N), pdC: F(N), onH: F(N), onL: F(N), adr: F(N), relVol: F(N), vxn: F(N), wd: new Int8Array(N), orH: F(N), orL: F(N), sma20: F(N), c5: F(N), h5: F(N), l5: F(N), pInside: new Int8Array(N), pNR7: new Int8Array(N) });
+  Object.assign(x, { rOpen: F(N), dHi: F(N), dLo: F(N), pdH: F(N), pdL: F(N), pdC: F(N), onH: F(N), onL: F(N), adr: F(N), relVol: F(N), vxn: F(N), wd: new Int8Array(N), orH: F(N), orL: F(N), sma20: F(N), c5: F(N), h5: F(N), l5: F(N), pInside: new Int8Array(N), pNR7: new Int8Array(N), drive: new Int8Array(N), ibH: F(N), ibL: F(N), pdVW: F(N), streak: new Int8Array(N) });
+  let ibHi = -Infinity, ibLo = Infinity, d15 = 0, lastVW = NaN, pdVW = NaN, cl3 = [];
   x.rsi = rsi(C, 14);
   { const b15 = resample(b, 15), e = emaSeries(Float64Array.from(b15.close), 20); x.e15 = new Float64Array(N).fill(NaN); for (let i = 0, k = -1; i < N; i++) { while (k + 1 < b15.ts.length && b15.ts[k + 1] + 15 * MIN <= TS[i] + MIN) k++; if (k >= 19) x.e15[i] = e[k]; } }
   let days = [];   // finished RTH sessions: { h, l, c }
@@ -116,10 +117,11 @@ function context(b) {
   for (let i = 0; i < N; i++) {
     if (TD[i] !== td) {
       if (td >= 0 && hi > lo) { last = { h: hi, l: lo, c: lastRthClose }; ranges.push(hi - lo); if (ranges.length > 10) ranges.shift(); volHist.push(cumArr); if (volHist.length > 10) volHist.shift(); closes.push(lastRthClose); if (closes.length > 20) closes.shift(); days.push({ h: hi, l: lo, c: lastRthClose }); if (days.length > 7) days.shift(); }
-      td = TD[i]; rOpen = NaN; hi = -Infinity; lo = Infinity; onH = -Infinity; onL = Infinity; cum = 0; cumArr = []; orH = -Infinity; orL = Infinity;
+      if (td >= 0) { pdVW = lastVW; cl3.push(lastRthClose); if (cl3.length > 4) cl3.shift(); }
+      td = TD[i]; rOpen = NaN; hi = -Infinity; lo = Infinity; onH = -Infinity; onL = Infinity; cum = 0; cumArr = []; orH = -Infinity; orL = Infinity; ibHi = -Infinity; ibLo = Infinity; d15 = 0;
     }
     const ct = CT[i], rth = ct >= 510 && ct < 900;
-    if (rth) { if (!Number.isFinite(rOpen)) rOpen = O[i]; hi = Math.max(hi, H[i]); lo = Math.min(lo, L[i]); cum += V[i]; cumArr[ct - 510] = cum; lastRthClose = C[i]; if (ct < 540) { orH = Math.max(orH, H[i]); orL = Math.min(orL, L[i]); } }
+    if (rth) { if (!Number.isFinite(rOpen)) rOpen = O[i]; hi = Math.max(hi, H[i]); lo = Math.min(lo, L[i]); cum += V[i]; cumArr[ct - 510] = cum; lastRthClose = C[i]; if (ct < 540) { orH = Math.max(orH, H[i]); orL = Math.min(orL, L[i]); } if (ct < 570) { ibHi = Math.max(ibHi, H[i]); ibLo = Math.min(ibLo, L[i]); } if (ct === 524) d15 = Math.sign(C[i] - rOpen); if (Number.isFinite(x.vw[i])) lastVW = x.vw[i]; }
     else if (!Number.isFinite(rOpen)) { onH = Math.max(onH, H[i]); onL = Math.min(onL, L[i]); }
     x.rOpen[i] = rOpen; if (rth) { x.dHi[i] = hi; x.dLo[i] = lo; }
     if (last) { x.pdH[i] = last.h; x.pdL[i] = last.l; x.pdC[i] = last.c; }
@@ -127,6 +129,10 @@ function context(b) {
     if (ranges.length === 10) x.adr[i] = ranges.reduce((a, z) => a + z, 0) / 10;
     if (ct >= 540 && orH > orL) { x.orH[i] = orH; x.orL[i] = orL; }   // the opening 30 minutes, known from 09:00
     if (closes.length === 20) x.sma20[i] = closes.reduce((a, z) => a + z, 0) / 20;
+    if (ct >= 525) x.drive[i] = d15;
+    if (ct >= 570 && ibHi > ibLo) { x.ibH[i] = ibHi; x.ibL[i] = ibLo; }
+    x.pdVW[i] = pdVW;
+    if (cl3.length === 4) { const a = Math.sign(cl3[1] - cl3[0]), b2 = Math.sign(cl3[2] - cl3[1]), c3 = Math.sign(cl3[3] - cl3[2]); x.streak[i] = a === b2 && b2 === c3 ? a : 0; }
     if (days.length === 7) {
       const L5 = days.slice(-5), y = days[6], yy = days[5];
       x.c5[i] = days[1].c; x.h5[i] = Math.max(...L5.map((d) => d.h)); x.l5[i] = Math.min(...L5.map((d) => d.l));
@@ -212,6 +218,16 @@ const BATCHES = {
     { name: "not extended: under 1 ADR from the session's opposite extreme", why: "a breakout already a full day's range from the day's low (high) is late", keep: (x, j, t) => Number.isFinite(x.adr[j]) && (t.dir === 1 ? x.C[j] - x.dLo[j] : x.dHi[j] - x.C[j]) < x.adr[j] },
     { name: "no losing trade in the last 30 minutes", why: "a fresh failure says the market is rotating right now; the next break meets the same flow", keep: (x, j, t) => !t.before.some((z) => z.pnl < 0 && z.exit > x.TS[j] - 30 * MIN) },
     { name: "the 15-minute trend agrees (its EMA 20)", why: "a slower trend the breakout's way is the bigger flow behind it", keep: (x, j, t) => Number.isFinite(x.e15[j]) && t.dir * (x.C[j] - x.e15[j]) > 0 },
+  ],
+  8: [
+    { name: "with the opening drive (the first 15 minutes' direction)", why: "the opening drive is the overnight imbalance being worked; it sets the day's side", keep: (x, j, t) => x.drive[j] === t.dir },
+    { name: "after a narrow first hour (IB under half an ADR)", why: "a narrow initial balance leaves the day's range to come: a range-expansion day", keep: (x, j) => Number.isFinite(x.ibH[j]) && x.ibH[j] - x.ibL[j] < 0.5 * x.adr[j] },
+    { name: "the first hour not broken the other way first", why: "a day that has already failed a break the other way is rotating, not trending", keep: (x, j, t) => { if (!Number.isFinite(x.ibH[j])) return true; for (let k = j - 1; k > j - 400 && x.TD[k] === x.TD[j] && x.CT[k] >= 570; k--) if (t.dir === 1 ? x.L[k] < x.ibL[j] : x.H[k] > x.ibH[j]) return false; return true; } },
+    { name: "on the trade's side of yesterday's final VWAP", why: "yesterday's average price is where yesterday's holders break even; above it they are long and comfortable", keep: (x, j, t) => Number.isFinite(x.pdVW[j]) && t.dir * (x.C[j] - x.pdVW[j]) > 0 },
+    { name: "on the trade's side of yesterday's midpoint", why: "the prior day's balance point; a breakout above it has yesterday's range below as support", keep: (x, j, t) => Number.isFinite(x.pdH[j]) && t.dir * (x.C[j] - (x.pdH[j] + x.pdL[j]) / 2) > 0 },
+    { name: "a narrow overnight (under 0.4 ADR)", why: "a quiet night leaves orders unfilled; the cash session expands the range and breakouts run", keep: (x, j) => Number.isFinite(x.onH[j]) && x.onH[j] - x.onL[j] < 0.4 * x.adr[j] },
+    { name: "with a 3-session close streak", why: "three closes the same way are a multi-day order being worked; intraday breakouts with it have it behind them", keep: (x, j, t) => x.streak[j] === t.dir },
+    { name: "fewer than 2 losing trades earlier today", why: "two failed breakouts mark a range day; the third meets the same edges", keep: (x, j, t) => t.before.filter((z) => z.pnl < 0).length < 2 },
   ],
 };
 
