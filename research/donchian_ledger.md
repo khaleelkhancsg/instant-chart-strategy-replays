@@ -148,3 +148,20 @@ Results (518 s): nothing confirmed under the recency rule.
   20-session extreme -0.121 (33), a new 20-session extreme -0.061 (41; keeps 19%).
 
 Trial count after batch 10: 81 (6 slips).
+
+## Batch 11 (written before it ran; recency-weighted): day activity. 1m ATR above its 20-session average, an active
+night, a gap of 0.3 ADR+, yesterday 1.2 ADR+, VXN up 5% yesterday, VXN in its year's top third, the day's high made in
+the last hour (longs), today's range over half an ADR
+
+Results: pending.
+
+## Batch 12 (written before it ran; recency-weighted): the bigger trend. With the 200- and 50-session averages, last
+week, the month so far, yesterday's candle, today's VWAP over yesterday's, opened beyond yesterday's range, 50 over 200
+
+Results: pending.
+
+## Batch 13 (written before it ran; recency-weighted): the book's own record (regime-following, as ADAPT). Its last 60
+sessions made money, its last 20 trades won 60%+, its last 5 made money, the previous trade today won, the day's P&L not
+negative, the same direction as the previous trade, 20 minutes since the last exit, the side that paid more lately
+
+Results: pending.
