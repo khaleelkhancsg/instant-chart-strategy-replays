@@ -72,20 +72,23 @@ function context(b) {
   // the session's RTH open, high and low so far; the prior RTH day's high, low, close; the overnight high and low;
   // the 10-session average RTH range; cumulative RTH volume against the last 10 sessions' at the same minute
   const F = (n) => new Float64Array(n).fill(NaN);
-  Object.assign(x, { rOpen: F(N), dHi: F(N), dLo: F(N), pdH: F(N), pdL: F(N), pdC: F(N), onH: F(N), onL: F(N), adr: F(N), relVol: F(N), vxn: F(N), wd: new Int8Array(N) });
-  let td = -1, rOpen = NaN, hi = -Infinity, lo = Infinity, onH = -Infinity, onL = Infinity, last = null, cum = 0, cumArr = [], ranges = [], volHist = [];
+  Object.assign(x, { rOpen: F(N), dHi: F(N), dLo: F(N), pdH: F(N), pdL: F(N), pdC: F(N), onH: F(N), onL: F(N), adr: F(N), relVol: F(N), vxn: F(N), wd: new Int8Array(N), orH: F(N), orL: F(N), sma20: F(N) });
+  let orH = -Infinity, orL = Infinity, closes = [];
+  let lastRthClose = NaN, td = -1, rOpen = NaN, hi = -Infinity, lo = Infinity, onH = -Infinity, onL = Infinity, last = null, cum = 0, cumArr = [], ranges = [], volHist = [];
   for (let i = 0; i < N; i++) {
     if (TD[i] !== td) {
-      if (td >= 0 && hi > lo) { last = { h: hi, l: lo, c: C[i - 1] }; ranges.push(hi - lo); if (ranges.length > 10) ranges.shift(); volHist.push(cumArr); if (volHist.length > 10) volHist.shift(); }
-      td = TD[i]; rOpen = NaN; hi = -Infinity; lo = Infinity; onH = -Infinity; onL = Infinity; cum = 0; cumArr = [];
+      if (td >= 0 && hi > lo) { last = { h: hi, l: lo, c: lastRthClose }; ranges.push(hi - lo); if (ranges.length > 10) ranges.shift(); volHist.push(cumArr); if (volHist.length > 10) volHist.shift(); closes.push(lastRthClose); if (closes.length > 20) closes.shift(); }
+      td = TD[i]; rOpen = NaN; hi = -Infinity; lo = Infinity; onH = -Infinity; onL = Infinity; cum = 0; cumArr = []; orH = -Infinity; orL = Infinity;
     }
     const ct = CT[i], rth = ct >= 510 && ct < 900;
-    if (rth) { if (!Number.isFinite(rOpen)) rOpen = O[i]; hi = Math.max(hi, H[i]); lo = Math.min(lo, L[i]); cum += V[i]; cumArr[ct - 510] = cum; }
+    if (rth) { if (!Number.isFinite(rOpen)) rOpen = O[i]; hi = Math.max(hi, H[i]); lo = Math.min(lo, L[i]); cum += V[i]; cumArr[ct - 510] = cum; lastRthClose = C[i]; if (ct < 540) { orH = Math.max(orH, H[i]); orL = Math.min(orL, L[i]); } }
     else if (!Number.isFinite(rOpen)) { onH = Math.max(onH, H[i]); onL = Math.min(onL, L[i]); }
     x.rOpen[i] = rOpen; if (rth) { x.dHi[i] = hi; x.dLo[i] = lo; }
     if (last) { x.pdH[i] = last.h; x.pdL[i] = last.l; x.pdC[i] = last.c; }
     if (onH > onL) { x.onH[i] = onH; x.onL[i] = onL; }
     if (ranges.length === 10) x.adr[i] = ranges.reduce((a, z) => a + z, 0) / 10;
+    if (ct >= 540 && orH > orL) { x.orH[i] = orH; x.orL[i] = orL; }   // the opening 30 minutes, known from 09:00
+    if (closes.length === 20) x.sma20[i] = closes.reduce((a, z) => a + z, 0) / 20;
     if (rth && volHist.length === 10) { let s = 0, n = 0; for (const h of volHist) { const v = h[ct - 510]; if (v > 0) { s += v; n++; } } if (n >= 5) x.relVol[i] = cum / (s / n); }
     x.wd[i] = new Date(TS[i]).getUTCDay();
   }
@@ -106,6 +109,26 @@ const BATCHES = {
     { name: "volume above the last 10 sessions' at this minute", why: "a breakout on heavy participation is real buying (selling); on light volume it is a few orders", keep: (x, j) => x.relVol[j] > 1 },
     { name: "VXN above its 60-session median", why: "in volatile markets dealers are shorter gamma and hedge with the move, so breakouts extend", keep: (x, j) => x.vxnHi[j] === 1 },
   ],
+  2: [
+    { name: "a wide signal bar (2-minute range >= 1.4 one-minute ATRs)", why: "a breakout on a wide bar is urgent buying (selling); a narrow one drifts through the level", keep: (x, j) => Math.max(x.H[j], x.H[j - 1]) - Math.min(x.L[j], x.L[j - 1]) >= x.a1[j] * 1.4 },
+    { name: "no losing trade earlier today", why: "a failed breakout earlier says the day rotates; the next one meets the same sellers (buyers)", keep: (x, j, t) => !t.before.some((z) => z.pnl < 0) },
+    { name: "beyond the 30-minute opening range", why: "the opening range is the day's first auction; a break beyond it has the open's losers' stops behind it", keep: (x, j, t) => Number.isFinite(x.orH[j]) && (t.dir === 1 ? x.C[j] > x.orH[j] : x.C[j] < x.orL[j]) },
+    { name: "the opening gap points the trade's way", why: "an RTH open above yesterday's close (long) is overnight demand still being worked", keep: (x, j, t) => Number.isFinite(x.pdC[j]) && t.dir * (x.rOpen[j] - x.pdC[j]) > 0 },
+    { name: "beyond the overnight high (long) / low (short)", why: "the overnight extremes hold the night's stops; breaking them brings that flow", keep: (x, j, t) => Number.isFinite(x.onH[j]) && (t.dir === 1 ? x.C[j] > x.onH[j] : x.C[j] < x.onL[j]) },
+    { name: "a trend day: half an ADR from the open its way", why: "a day already half a normal range from its open the trade's way is a trend day; breakouts with it keep going", keep: (x, j, t) => Number.isFinite(x.adr[j]) && t.dir * (x.C[j] - x.rOpen[j]) >= 0.5 * x.adr[j] },
+    { name: "the 5m EMA row not warning toward the trade", why: "confirmed #5: a 5m warning is a continuation sign, so one pointing toward the trade means the 5m trend against it continues", keep: (x, j, t) => x.e5[j] !== t.dir },
+    { name: "volatility expanding: 5m ATR above an hour ago", why: "an expanding range is new information arriving; breakouts in it follow through, in contraction they fade", keep: (x, j) => x.A5[j] > x.A5[j - 60] },
+  ],
+  3: [
+    { name: "with the 20-session average: long above, short below", why: "the daily trend's holders add on intraday breakouts its way and fade those against it", keep: (x, j, t) => Number.isFinite(x.sma20[j]) && t.dir * (x.C[j] - x.sma20[j]) > 0 },
+    { name: "yesterday closed strong its way (top / bottom fifth)", why: "a close at the extreme carries overnight and next-day continuation from late buyers (sellers)", keep: (x, j, t) => { const r = x.pdH[j] - x.pdL[j]; if (!(r > 0)) return false; const pos = (x.pdC[j] - x.pdL[j]) / r; return t.dir === 1 ? pos >= 0.8 : pos <= 0.2; } },
+    { name: "at a new session high (long) / low (short)", why: "a breakout to a new day extreme has no one trapped above (below) to sell (buy) into it", keep: (x, j, t) => (t.dir === 1 ? x.H[j] >= x.dHi[j] : x.L[j] <= x.dLo[j]) },
+    { name: "through a round 100 in the last 10 minutes", why: "round numbers hold resting stops and options strikes; crossing one triggers them", keep: (x, j, t) => { for (let k = j - 10; k <= j; k++) { const a = Math.floor(x.C[k - 1] / 100), z = Math.floor(x.C[k] / 100); if (t.dir === 1 ? z > a : z < a) return true; } return false; } },
+    { name: "the first two hours or the last two (not 10:30-13:00)", why: "breakouts need participation: the open and the afternoon hold most of it", keep: (x, j) => { const c = closeCt(x, j); return c < 630 || c >= 780; } },
+    { name: "the day's range already 1 ADR or more", why: "a wide day is a trending day; its breakouts continue (the late-size rule assumes the opposite)", keep: (x, j) => Number.isFinite(x.adr[j]) && x.dHi[j] - x.dLo[j] >= x.adr[j] },
+    { name: "price on the trade's side of the RTH open", why: "the day's open is its reference; a breakout on the winning side has the day's flow with it", keep: (x, j, t) => t.dir * (x.C[j] - x.rOpen[j]) > 0 },
+    { name: "VXN at 25 or above", why: "in calm markets dealers are long gamma and pin; breakouts fail. Above 25 they run", keep: (x, j) => x.vxnNow[j] >= 25 },
+  ],
 };
 
 function tradesOn(b, cfg) {
@@ -119,7 +142,7 @@ function tradesOn(b, cfg) {
 function measure(b, cfg, ideas) {
   const x = context(b);
   // VXN's 60-session median, dated before the session
-  x.vxnHi = new Int8Array(x.N); { let td = -1, v = NaN, hist = [], med = NaN; for (let i = 0; i < x.N; i++) { if (x.TD[i] !== td) { td = x.TD[i]; v = vxnBefore(x.TS[i]); if (Number.isFinite(v)) { const z = [...hist].sort((p, q) => p - q); med = z.length >= 60 ? z[z.length >> 1] : NaN; hist.push(v); if (hist.length > 60) hist.shift(); } } x.vxnHi[i] = Number.isFinite(med) && v > med ? 1 : 0; } }
+  x.vxnHi = new Int8Array(x.N); x.vxnNow = new Float64Array(x.N).fill(NaN); { let td = -1, v = NaN, hist = [], med = NaN; for (let i = 0; i < x.N; i++) { if (x.TD[i] !== td) { td = x.TD[i]; v = vxnBefore(x.TS[i]); if (Number.isFinite(v)) { const z = [...hist].sort((p, q) => p - q); med = z.length >= 60 ? z[z.length >> 1] : NaN; hist.push(v); if (hist.length > 60) hist.shift(); } } x.vxnHi[i] = Number.isFinite(med) && v > med ? 1 : 0; x.vxnNow[i] = v; } }
   const tr = tradesOn(b, cfg), P = PERIODS.length;
   return ideas.map((idea) => {
     const k = new Float64Array(P * 3), r = new Float64Array(P * 3);   // n, sum R, sum $
