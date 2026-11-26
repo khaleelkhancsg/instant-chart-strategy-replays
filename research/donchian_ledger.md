@@ -197,4 +197,21 @@ Trial count after batch 14: 111 (7 slips).
 higher highs and lows over the hour, a squeeze before the break, accelerating, beyond the developing value area, on the
 trade's side of the developing POC, the hour's net move its way, not after a spike bar
 
-Results: pending.
+Results (616 s): nothing passes the screen. Signed volume its way +0.794 (82; keeps 99%, 2026 refuses none), not after a
+spike +0.306 (88; 2026 -0.199), higher highs and lows +0.163 (85), beyond the value area +0.201 (65; forward -0.821), a
+squeeze +0.180 (68; keeps 7%), accelerating -0.195 (24), the developing POC -1.303 (6; keeps 100% in 2026). SLIP: the
+hour's net move its way refuses nothing (a 60-bar breakout always has it).
+
+Trial count after batch 15: 119 (8 slips). Screen passes 7, confirmed 0.
+
+## Forward test of the three leads (written 2026-11-26, before any bar after 2026-10-30 is read)
+
+The leads, frozen exactly as their batches wrote them: L1 on the trade's side of the overnight midpoint (batch 10);
+L2 VXN above its 60-session median (batch 1); L3 through a round 100 in the last 10 minutes (batch 3). (Batches 3 and
+11's other VXN rules are near-duplicates of L2 and are not tested separately.)
+- When: once data/mnq_1m_beta.bin holds 40 or more RTH sessions after 2026-10-30 (needs the TopstepX key regenerated,
+  then npm run data:pull and data:build), and again at 80 if undecided. Run with the harness's periods extended to a
+  "forward 2" period starting 2026-10-31, 100 placebo markets, nothing else changed.
+- HOLDS: lift positive and beating 90 of 100 placebo markets, with 20 or more trades kept. Then the ship test (full
+  engine, live equity) against the shipped book on all bars from 2026-07-15.
+- KILL: lift negative, or beating fewer than 50 of 100: dropped. Between: undecided, read again at 80 sessions.
