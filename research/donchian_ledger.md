@@ -107,4 +107,12 @@ Trial count after batch 7: 57 (3 of them slips).
 hour not broken the other way first, on the trade's side of yesterday's final VWAP, of yesterday's midpoint, a narrow
 overnight, with a 3-session close streak, fewer than 2 losers earlier today
 
-Results: pending.
+Results (322 s): nothing confirmed.
+- with the opening drive: +0.373 (94), 2025 +0.483, 2026 +0.174, keeps 50%: SCREEN PASS; 2019-24 -0.090 (21), forward
+  -0.036 (35): not confirmed.
+- narrow first hour -0.324 (7; keeps 28%), first hour not broken the other way -0.002 (49), yesterday's VWAP +0.009 (51),
+  yesterday's midpoint -0.073 (32), narrow overnight +0.041 (60; keeps 10%), 3-session streak +0.099 (61; keeps 14%).
+  Fewer than 2 losers earlier today refuses no 2025-26 trade (a slip: the day blocks stop the day first).
+
+Trial count after batch 8: 65 (4 slips). Screen passes so far, all failing 2019-2024: VXN above its median (87; forward
+92), a wide signal bar (12), through a round 100 (33; forward 98), not a Monday (33), the opening drive (21).
