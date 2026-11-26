@@ -178,6 +178,22 @@ Part 3 results (2026-11-26, compare tool, $1,250 eval, calendar windows, costs i
     macd_fade_1250 08:30-10:00 CT only: 30.9% / 56.4% against 31.9% / 55.8%: its trades already sit there.
 Reading: on a combine with a target and a clock, skipping trades costs reach. A skip has to pick better trades by
 more than the target time it gives away; these do not.
+Parts 1-2 results (2026-11-26; research/selectivity_tod_{nq,mnq,es,es_open}_results.json; node research/selectivity_tod.mjs --analyze):
+- TIME OF DAY: not confirmed for any reading. The 6 best NQ half hours, read on MNQ / ES / ES next open:
+  1m EMA default -0.8 (1) / +0.1 (66) / +0.2 (79); #3 -0.0 (52) / +0.6 (100) / +0.5 (99); 1m MACD -0.0 / -0.1 / +0.0;
+  5m EMA -0.2 (59) / +0.5 (89) / +0.5 (93); 5m MACD +0.5 (78) / +1.2 (100) / +1.4 (100). MNQ fails every one.
+  The hour profile flips by era: the default 1m EMA warning is positive every morning half hour on MNQ 2019-2026
+  and negative every one on NQ 2010-2018 and ES.
+- SKIP RULES: none helps. SPACED on the default 1m EMA warning CONFIRMED as HURTING (NQ -0.8, MNQ -1.5, ES -1.0,
+  next open -0.9; 95-100): a warning soon after another does better than a lone one. FIRST, TILT and QUIT lean
+  negative (keeping fewer, earlier signals keeps worse ones) without passing.
+Recency view (the person, 2026-11-26: 2025 and 2026 weighted first), MNQ 2025 and 2026 and their halves,
+research/selectivity_tod_mnq2025{,a,b}_results.json and mnq2026{,a,b}: no skip rule keeps its sign through the four
+halves (e.g. #3 FIRST -16.8 (98) in 2026 Jan-Jun, +7.7 (99) in Jul-Oct). Time of day, first two hours / last hour
+against the rest: #3's last hour -3.6 in 2026 (100; halves 99 / 98) but +1.1 in 2025 (81). One lead, found after
+looking at 60 cells (about 6 would pass 90 by chance): 5m MACD warnings in the last hour (13:55-14:55) are worse
+in every recent half: 2025 -6.7 (100; halves -8.4 at 100, -5.0 at 92), 2026 -2.5 (83; -0.9 at 61, -4.7 at 87).
+For the forward test, not a rule.
 
 ## New unseen data: NQ 2010-2018 (found 2026-11-25)
 
