@@ -124,3 +124,15 @@ RECENCY-WEIGHTED: a screen pass is CONFIRMED when its forward lift (Jul 15 - Oct
 seeing batches 1-8, so it applies from batch 9 only. Two of the earlier screen passes would meet it, and are LEADS for
 the next forward bars, not results: VXN above its 60-session median (forward +0.678, 92; 2019-24 87) and through a round
 100 in the last 10 minutes (forward +1.101, 98; 2019-24 33).
+
+## Batch 9 (written before it ran; recency-weighted confirmation): the breakout bar. A strong body, the last 3 closes
+its way, volume rising into the break, no rejection wick, within 1 ATR of the 1m EMA 21, the 1m MACD histogram growing
+its way, the close beyond the bar before's extreme, the last 5-minute bar closed its way
+
+Results: pending.
+
+## Batch 10 (written before it ran; recency-weighted): levels and room. Room to the next round 100, the overnight
+midpoint, the week's open, the month's open, inside the VWAP 1-sigma bands, beyond the band its way, room to the
+20-session extreme, a new 20-session extreme
+
+Results: pending.

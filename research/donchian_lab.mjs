@@ -101,7 +101,9 @@ function warnState(close, f, s, rule) {
 function context(b) {
   const N = b.close.length, TS = b.ts, O = b.open, H = b.high, L = b.low, C = b.close, V = b.volume, TD = b.tday, CT = b.ctMin;
   const x = { N, TS, O, H, L, C, V, TD, CT };
-  x.vw = studyLines({ b }, "vwap", 1, { anchor: "rth", bands: 1 }).VWAP;
+  { const v = studyLines({ b }, "vwap", 1, { anchor: "rth", bands: 1 }); x.vw = v.VWAP; x.vwUp = v["+1σ"]; x.vwDn = v["−1σ"]; }
+  x.ema21 = emaSeries(Float64Array.from(C), 21);
+  { const f = emaSeries(Float64Array.from(C), 12), sl = emaSeries(Float64Array.from(C), 26), line = new Float64Array(N); for (let i = 0; i < N; i++) line[i] = f[i] - sl[i]; const sg = emaSeries(line, 9); x.hist = new Float64Array(N); for (let i = 0; i < N; i++) x.hist[i] = line[i] - sg[i]; }
   x.a1 = atr(H, L, C, 14);
   x.fast = warnState(C, 3, 13, "slowing");   // #3, the box's fast row
   const b5 = resample(b, 5), w5 = warnState(b5.close, 12, 26, "speed"), a5 = atr(b5.high, b5.low, b5.close, 14);
@@ -110,7 +112,8 @@ function context(b) {
   // the session's RTH open, high and low so far; the prior RTH day's high, low, close; the overnight high and low;
   // the 10-session average RTH range; cumulative RTH volume against the last 10 sessions' at the same minute
   const F = (n) => new Float64Array(n).fill(NaN);
-  Object.assign(x, { rOpen: F(N), dHi: F(N), dLo: F(N), pdH: F(N), pdL: F(N), pdC: F(N), onH: F(N), onL: F(N), adr: F(N), relVol: F(N), vxn: F(N), wd: new Int8Array(N), orH: F(N), orL: F(N), sma20: F(N), c5: F(N), h5: F(N), l5: F(N), pInside: new Int8Array(N), pNR7: new Int8Array(N), drive: new Int8Array(N), ibH: F(N), ibL: F(N), pdVW: F(N), streak: new Int8Array(N) });
+  Object.assign(x, { rOpen: F(N), dHi: F(N), dLo: F(N), pdH: F(N), pdL: F(N), pdC: F(N), onH: F(N), onL: F(N), adr: F(N), relVol: F(N), vxn: F(N), wd: new Int8Array(N), orH: F(N), orL: F(N), sma20: F(N), c5: F(N), h5: F(N), l5: F(N), pInside: new Int8Array(N), pNR7: new Int8Array(N), drive: new Int8Array(N), ibH: F(N), ibL: F(N), pdVW: F(N), streak: new Int8Array(N), wOpen: F(N), mOpen: F(N), h20: F(N), l20: F(N) });
+  let wOpen = NaN, mOpen = NaN, wk = -1, mo = -1, hl20 = [];
   let ibHi = -Infinity, ibLo = Infinity, d15 = 0, lastVW = NaN, pdVW = NaN, cl3 = [];
   x.rsi = rsi(C, 14);
   { const b15 = resample(b, 15), e = emaSeries(Float64Array.from(b15.close), 20); x.e15 = new Float64Array(N).fill(NaN); for (let i = 0, k = -1; i < N; i++) { while (k + 1 < b15.ts.length && b15.ts[k + 1] + 15 * MIN <= TS[i] + MIN) k++; if (k >= 19) x.e15[i] = e[k]; } }
@@ -119,11 +122,12 @@ function context(b) {
   let lastRthClose = NaN, td = -1, rOpen = NaN, hi = -Infinity, lo = Infinity, onH = -Infinity, onL = Infinity, last = null, cum = 0, cumArr = [], ranges = [], volHist = [];
   for (let i = 0; i < N; i++) {
     if (TD[i] !== td) {
-      if (td >= 0 && hi > lo) { last = { h: hi, l: lo, c: lastRthClose }; ranges.push(hi - lo); if (ranges.length > 10) ranges.shift(); volHist.push(cumArr); if (volHist.length > 10) volHist.shift(); closes.push(lastRthClose); if (closes.length > 20) closes.shift(); days.push({ h: hi, l: lo, c: lastRthClose }); if (days.length > 7) days.shift(); }
+      if (td >= 0 && hi > lo) { last = { h: hi, l: lo, c: lastRthClose }; ranges.push(hi - lo); if (ranges.length > 10) ranges.shift(); volHist.push(cumArr); if (volHist.length > 10) volHist.shift(); closes.push(lastRthClose); if (closes.length > 20) closes.shift(); days.push({ h: hi, l: lo, c: lastRthClose }); if (days.length > 7) days.shift(); hl20.push([hi, lo]); if (hl20.length > 20) hl20.shift(); }
       if (td >= 0) { pdVW = lastVW; cl3.push(lastRthClose); if (cl3.length > 4) cl3.shift(); }
       td = TD[i]; rOpen = NaN; hi = -Infinity; lo = Infinity; onH = -Infinity; onL = Infinity; cum = 0; cumArr = []; orH = -Infinity; orL = Infinity; ibHi = -Infinity; ibLo = Infinity; d15 = 0;
     }
     const ct = CT[i], rth = ct >= 510 && ct < 900;
+    if (rth && !Number.isFinite(rOpen)) { const d = new Date(TD[i] * DAY), w = Math.floor((TD[i] + 3) / 7), m = d.getUTCFullYear() * 12 + d.getUTCMonth(); if (w !== wk) { wk = w; wOpen = O[i]; } if (m !== mo) { mo = m; mOpen = O[i]; } }
     if (rth) { if (!Number.isFinite(rOpen)) rOpen = O[i]; hi = Math.max(hi, H[i]); lo = Math.min(lo, L[i]); cum += V[i]; cumArr[ct - 510] = cum; lastRthClose = C[i]; if (ct < 540) { orH = Math.max(orH, H[i]); orL = Math.min(orL, L[i]); } if (ct < 570) { ibHi = Math.max(ibHi, H[i]); ibLo = Math.min(ibLo, L[i]); } if (ct === 524) d15 = Math.sign(C[i] - rOpen); if (Number.isFinite(x.vw[i])) lastVW = x.vw[i]; }
     else if (!Number.isFinite(rOpen)) { onH = Math.max(onH, H[i]); onL = Math.min(onL, L[i]); }
     x.rOpen[i] = rOpen; if (rth) { x.dHi[i] = hi; x.dLo[i] = lo; }
@@ -134,7 +138,8 @@ function context(b) {
     if (closes.length === 20) x.sma20[i] = closes.reduce((a, z) => a + z, 0) / 20;
     if (ct >= 525) x.drive[i] = d15;
     if (ct >= 570 && ibHi > ibLo) { x.ibH[i] = ibHi; x.ibL[i] = ibLo; }
-    x.pdVW[i] = pdVW;
+    x.pdVW[i] = pdVW; x.wOpen[i] = wOpen; x.mOpen[i] = mOpen;
+    if (hl20.length === 20) { x.h20[i] = Math.max(...hl20.map((z) => z[0])); x.l20[i] = Math.min(...hl20.map((z) => z[1])); }
     if (cl3.length === 4) { const a = Math.sign(cl3[1] - cl3[0]), b2 = Math.sign(cl3[2] - cl3[1]), c3 = Math.sign(cl3[3] - cl3[2]); x.streak[i] = a === b2 && b2 === c3 ? a : 0; }
     if (days.length === 7) {
       const L5 = days.slice(-5), y = days[6], yy = days[5];
@@ -231,6 +236,26 @@ const BATCHES = {
     { name: "a narrow overnight (under 0.4 ADR)", why: "a quiet night leaves orders unfilled; the cash session expands the range and breakouts run", keep: (x, j) => Number.isFinite(x.onH[j]) && x.onH[j] - x.onL[j] < 0.4 * x.adr[j] },
     { name: "with a 3-session close streak", why: "three closes the same way are a multi-day order being worked; intraday breakouts with it have it behind them", keep: (x, j, t) => x.streak[j] === t.dir },
     { name: "fewer than 2 losing trades earlier today", why: "two failed breakouts mark a range day; the third meets the same edges", keep: (x, j, t) => t.before.filter((z) => z.pnl < 0).length < 2 },
+  ],
+  9: [
+    { name: "a strong signal bar: body 60% of its range or more", why: "a full-bodied bar is one side in control from open to close; a small body is indecision", keep: (x, j) => { const o = x.O[j - 1], h = Math.max(x.H[j], x.H[j - 1]), l = Math.min(x.L[j], x.L[j - 1]), r = h - l; return r > 0 && Math.abs(x.C[j] - o) >= 0.6 * r; } },
+    { name: "the last 3 one-minute closes each its way", why: "consecutive closes are steady aggression, not one print through a level", keep: (x, j, t) => t.dir * (x.C[j] - x.C[j - 1]) > 0 && t.dir * (x.C[j - 1] - x.C[j - 2]) > 0 && t.dir * (x.C[j - 2] - x.C[j - 3]) > 0 },
+    { name: "volume rising into the break (last 3 minutes over the 3 before)", why: "participation building as the level breaks is new money arriving", keep: (x, j) => x.V[j] + x.V[j - 1] + x.V[j - 2] > x.V[j - 3] + x.V[j - 4] + x.V[j - 5] },
+    { name: "no rejection wick (the far wick under a quarter of the bar)", why: "a long wick at the breakout's end is the level's sellers (buyers) already answering", keep: (x, j, t) => { const h = Math.max(x.H[j], x.H[j - 1]), l = Math.min(x.L[j], x.L[j - 1]), r = h - l; return r > 0 && (t.dir === 1 ? h - x.C[j] : x.C[j] - l) < 0.25 * r; } },
+    { name: "within 1 two-minute ATR of the 1m EMA 21", why: "a breakout far above its short average is stretched; the first pullback comes before the target", keep: (x, j) => Math.abs(x.C[j] - x.ema21[j]) < 1.4 * x.a1[j] },
+    { name: "the 1m MACD histogram growing its way", why: "accelerating momentum: the push is gaining force at the break, not fading", keep: (x, j, t) => t.dir * (x.hist[j] - x.hist[j - 1]) > 0 && t.dir * x.hist[j] > 0 },
+    { name: "the signal bar closes beyond the bar before's extreme", why: "follow-through: the break held to the close beyond the last bar, not a wick through it", keep: (x, j, t) => (t.dir === 1 ? x.C[j] > Math.max(x.H[j - 2], x.H[j - 3]) : x.C[j] < Math.min(x.L[j - 2], x.L[j - 3])) },
+    { name: "the last closed 5-minute bar closed its way", why: "the slower bar agreeing shows the move is more than a 2-minute burst", keep: (x, j, t) => { const k5 = Math.floor((x.TS[j] + MIN) / (5 * MIN)) * 5 * MIN; let o = NaN, c = NaN; for (let k = j; k > j - 12; k--) { if (x.TS[k] < k5 - 5 * MIN) break; if (x.TS[k] < k5) { c = Number.isFinite(c) ? c : x.C[k]; o = x.O[k]; } } return Number.isFinite(o) && t.dir * (c - o) > 0; } },
+  ],
+  10: [
+    { name: "room: the next round 100 ahead is 1 two-minute ATR away or more", why: "round numbers are magnets and resistance; a target past one fights it", keep: (x, j, t) => { const c = x.C[j], next = t.dir === 1 ? Math.ceil(c / 100) * 100 : Math.floor(c / 100) * 100; return Math.abs(next - c) >= 1.4 * x.a1[j]; } },
+    { name: "on the trade's side of the overnight midpoint", why: "the night's balance point; a breakout away from it has the overnight inventory behind it", keep: (x, j, t) => Number.isFinite(x.onH[j]) && t.dir * (x.C[j] - (x.onH[j] + x.onL[j]) / 2) > 0 },
+    { name: "on the trade's side of the week's open", why: "the week's open is the weekly traders' reference; above it they are net long", keep: (x, j, t) => Number.isFinite(x.wOpen[j]) && t.dir * (x.C[j] - x.wOpen[j]) > 0 },
+    { name: "on the trade's side of the month's open", why: "the month's open is where monthly flows are measured; the month's winners add", keep: (x, j, t) => Number.isFinite(x.mOpen[j]) && t.dir * (x.C[j] - x.mOpen[j]) > 0 },
+    { name: "inside the VWAP 1-sigma bands", why: "beyond a band the move is already extended against the day's distribution", keep: (x, j) => Number.isFinite(x.vwUp[j]) && x.C[j] <= x.vwUp[j] && x.C[j] >= x.vwDn[j] },
+    { name: "beyond the VWAP 1-sigma band its way", why: "a break outside the day's normal range is the distribution shifting: a trend day", keep: (x, j, t) => Number.isFinite(x.vwUp[j]) && (t.dir === 1 ? x.C[j] > x.vwUp[j] : x.C[j] < x.vwDn[j]) },
+    { name: "room to the 20-session high (long) / low (short): 1 ADR or more", why: "the month's extreme is resistance; a breakout well below it has room", keep: (x, j, t) => Number.isFinite(x.h20[j]) && (t.dir === 1 ? x.h20[j] - x.C[j] : x.C[j] - x.l20[j]) >= x.adr[j] },
+    { name: "a new 20-session high (long) / low (short)", why: "a break to a new monthly extreme has no overhead supply and draws momentum funds", keep: (x, j, t) => Number.isFinite(x.h20[j]) && (t.dir === 1 ? x.C[j] > x.h20[j] : x.C[j] < x.l20[j]) },
   ],
 };
 
