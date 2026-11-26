@@ -521,6 +521,16 @@ console.log("\nthe EMA + MACD databox against Tradovate's own EMA and MACD");
     }
     if (warned < 50 || quiet < 50) throw new Error(`too few cases: ${warned} warnings, ${quiet} quiet`);
   });
+  t("a chart saved before the fast row and VWAP-slope settings existed reads them as the defaults, not undefined", () => {
+    const old = { fastEmaFast: undefined, fastEmaSlow: undefined, fastRow: undefined, vwapSlope: undefined };
+    for (const k of [40, 700, 2900]) {
+      const a = Object.fromEntries(new Run(box, { props: old }).compute(BARS.slice(0, k + 1))[k].graphics.items.map((it) => [it.key, it]));
+      const b = Object.fromEntries(new Run(box, { props: {} }).compute(BARS.slice(0, k + 1))[k].graphics.items.map((it) => [it.key, it]));
+      eq(a.dbLabel2.text, "Fast EMA 3/13", `label at ${k}:`);
+      for (const key of ["dbState0", "dbState1", "dbState2", "dbBars0", "dbBars1"]) eq(a[key].text, b[key].text, `${key} at ${k}:`);
+    }
+    if (/Warming up/.test(Object.fromEntries(new Run(box, { props: old }).compute(BARS.slice(0, 2901))[2900].graphics.items.map((it) => [it.key, it])).dbState2.text)) throw new Error("the fast row never warms up");
+  });
   t("the fast row: auto shows it on 1-minute bars only, on / off force it, and the box shrinks without it", () => {
     const five = BARS.map((b, i) => ({ ...b, ts: BARS[0].ts + i * 300000 }));
     const at = (bars, props, k = 500) => Object.fromEntries(new Run(box, { props: { vwapSlope: "off", ...props } }).compute(bars.slice(0, k + 1))[k].graphics.items.map((it) => [it.key, it]));
